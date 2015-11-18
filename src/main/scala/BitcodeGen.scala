@@ -1,6 +1,9 @@
 import java.io.PrintWriter
 
-import ASTGen.{IVal, InfixCall, LangAST}
+import ASTGen._
+
+import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 
 /**
   * Created by over on 18.11.15.
@@ -42,9 +45,30 @@ object BitcodeGen {
   case class TmpVal(name: String) extends LlvmAST
 
   var nTmpVal = 0;
+  val vals = mutable.Map[String, StoredVal]()
 
   def gen(out: PrintWriter, ast: LangAST): LlvmAST = {
     ast match {
+      case id: Ident =>
+        val s = vals(id.name)
+        s
+      case v: AnonIVal =>
+        out.println(s"  %${v.name} = alloca i32, align 4")
+        out.println(s"  store i32 ${v.value}, i32* %${v.name}, align 4")
+        StoredVal(v.name)
+      case nv: NamedVal =>
+        out.println(s"  %${nv.name} = alloca i32, align 4")
+        gen(out, nv.init) match {
+          case StoredVal(name) =>
+            nTmpVal += 1
+            out.println(s"  %$nTmpVal = load i32* %$name, align 4")
+            out.println(s"  store i32 %${nTmpVal.toString}, i32* %${nv.name}, align 4")
+          case TmpVal(name) => out.println(s"  store i32 %${name}, i32* %${nv.name}, align 4")
+        }
+        val sv = StoredVal(nv.name)
+        vals(sv.name) = sv
+
+        sv
       case InfixCall(op, l, r) =>
         val v1 = gen(out, l) match {
           case StoredVal(name) =>
@@ -71,14 +95,10 @@ object BitcodeGen {
           case "-" => out.println(s"  %$nTmpVal = sub nsw i32 %${v1.name}, %${v2.name}")
         }
         TmpVal(nTmpVal.toString)
-      case v: IVal =>
-        out.println(s"  %${v.name} = alloca i32, align 4")
-        out.println(s"  store i32 ${v.value}, i32* %${v.name}, align 4")
-        StoredVal(v.name)
     }
   }
 
-  def genBitcode(out: PrintWriter, ast: LangAST) = {
+  def genBitcode(out: PrintWriter, ast: List[LangAST]) = {
     out.println(
       """; ModuleID = 'main.c'
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
@@ -89,13 +109,18 @@ target triple = "x86_64-pc-linux-gnu"
 ; Function Attrs: nounwind uwtable
 define i32 @main() #0 {""")
 
-    val tmpVal = gen(out, ast).asInstanceOf[TmpVal]
+    ast.map(gen(out, _)).last match {
+      case TmpVal(name) => out.println(
+        s"""  call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([3 x i8]* @.str, i32 0, i32 0), i32 %${name})""")
+      case StoredVal(name) =>
+        out.println(s"  %res = load i32* %$name, align 4")
+        out.println( s"""  call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([3 x i8]* @.str, i32 0, i32 0), i32 %res)""")
+    }
 
     out.println(
-      s"""  call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([3 x i8]* @.str, i32 0, i32 0), i32 %${tmpVal.name})
-  ret i32 0
+      s"""  ret i32 0
 }
-declare i32 @printf(i8*, ...) #1""".stripMargin)
+declare i32 @printf(i8*, ...) #1""")
   }
 
 }
