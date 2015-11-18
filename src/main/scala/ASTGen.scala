@@ -1,3 +1,5 @@
+import java.io.Reader
+
 import scala.util.parsing.combinator.{RegexParsers, JavaTokenParsers}
 
 /**
@@ -71,7 +73,7 @@ object ASTGen extends RegexParsers {
     }
   }
 
-  def getAst(input: String): LangAST = {
+  def genAst(input: Reader): LangAST = {
     parseAll(expr, input) match {
       case Success(result, _) => result
       case Failure(msg, _) => throw new RuntimeException(msg)

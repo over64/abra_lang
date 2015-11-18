@@ -1,4 +1,4 @@
-import java.io.{BufferedReader, File, FileOutputStream, PrintWriter}
+import java.io._
 import java.util.Scanner
 
 import ASTGen.{LangAST, IVal, InfixCall}
@@ -20,15 +20,17 @@ object Compiler {
   }
 
   def main(args: Array[String]) {
-    val ast = ASTGen.getAst("(2*2 + 100 * 10 / 4 )*(3 + 2) + 1")
+    val sourceFile = new File(args(0))
+    val ast = ASTGen.genAst(new FileReader(sourceFile))
+
     println(s"parsed ast: $ast")
     println(s"scala eval: ${eval(ast)}")
 
-    val llc = Runtime.getRuntime().exec("llc-3.6")
+    val llc = Runtime.getRuntime().exec("llc")
     val llcIn = new PrintWriter(llc.getOutputStream)
     val llcOut = new Scanner(llc.getInputStream)
 
-    val gcc = Runtime.getRuntime().exec("gcc -x assembler -o bin -")
+    val gcc = Runtime.getRuntime().exec(s"gcc -x assembler -o ${sourceFile.getName.split("\\.")(0)}.elf -")
     val gccIn = new PrintWriter(gcc.getOutputStream)
     val gccErr = new Scanner(gcc.getErrorStream)
 

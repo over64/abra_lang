@@ -1,4 +1,5 @@
 .idea/
+*.elf
 project/project
 project/target
 target/
