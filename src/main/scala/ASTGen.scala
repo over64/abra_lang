@@ -11,21 +11,33 @@ object AST {
 
   trait Assignable extends Lang
 
-  case class Ident(name: String) extends Assignable
+  case class Ident(name: String) extends Assignable {
+    override def toString() = name
+  }
 
   sealed trait Const extends Assignable {
     val name: String
   }
 
-  case class IConst(name: String, value: Int) extends Const
+  case class IConst(name: String, value: Int) extends Const {
+    override def toString() = value.toString
+  }
 
-  case class Val(name: String, init: Assignable) extends Assignable
+  case class Val(name: String, init: Assignable) extends Assignable {
+    override def toString() = s"val $name = $init"
+  }
 
-  case class Var(name: String, init: Assignable) extends Assignable
+  case class Var(name: String, init: Assignable) extends Assignable {
+    override def toString() = s"val $name = $init"
+  }
 
-  case class InfixCall(fn: String, x: Assignable, y: Assignable) extends Assignable
+  case class InfixCall(fn: String, x: Assignable, y: Assignable) extends Assignable {
+    override def toString() = s"$fn($x, $y)"
+  }
 
-  case class Assignment(i: Ident, assignment: Assignable) extends Lang
+  case class Assignment(i: Ident, assignment: Assignable) extends Lang {
+    override def toString() = s"$i = $assignment"
+  }
 
 }
 

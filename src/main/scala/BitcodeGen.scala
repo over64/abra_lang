@@ -79,7 +79,7 @@ object BitcodeGen {
           case r: Result => r
         }
         symbols(v.name) = sv
-        sv
+        Nope()
       case AST.Assignment(i, expr) =>
         val l = gen(out, expr)
         val s = symbols(i.name)
@@ -109,7 +109,7 @@ object BitcodeGen {
         }
         val sv = Stored(v.name)
         symbols(v.name) = sv
-        sv
+        Nope()
       case AST.InfixCall(op, l, r) =>
         val v1 = gen(out, l) match {
           case Const(c) => c.toString
@@ -153,6 +153,9 @@ target triple = "x86_64-pc-linux-gnu"
 define i32 @main() #0 {""")
 
     ast.map(gen(out, _)).last match {
+      case nope: Nope =>
+      case Const(c) => out.println(
+        s"""  call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([3 x i8]* @.str, i32 0, i32 0), i32 $c)""")
       case Result(name) => out.println(
         s"""  call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([3 x i8]* @.str, i32 0, i32 0), i32 %${name})""")
       case Stored(name) =>
