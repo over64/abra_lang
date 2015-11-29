@@ -47,7 +47,7 @@ object BitcodeGen {
   var nTmpVal = 0;
   val vals = mutable.Map[String, StoredVal]()
 
-  def gen(out: PrintWriter, ast: LangAST): LlvmAST = {
+  def gen(out: Pipeline, ast: LangAST): LlvmAST = {
     ast match {
       case id: Ident =>
         val s = vals(id.name)
@@ -98,7 +98,7 @@ object BitcodeGen {
     }
   }
 
-  def genBitcode(out: PrintWriter, ast: List[LangAST]) = {
+  def genBitcode(out: Pipeline, ast: List[LangAST]) = {
     out.println(
       """; ModuleID = 'main.c'
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
