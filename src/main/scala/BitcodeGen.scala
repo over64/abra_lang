@@ -1,9 +1,6 @@
-import java.io.PrintWriter
 
-import ASTGen._
 
 import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
 
 /**
   * Created by over on 18.11.15.
@@ -38,67 +35,113 @@ object BitcodeGen {
   //
   //  !0 = !{!"Debian clang version 3.6.2-3 (tags/RELEASE_362/final) (based on LLVM 3.6.2)"}
 
+
+  //work with var?
+  //  case v: AST.Val =>
+  //  val sv = gen(out, v.init) match {
+  //    case c: Const => out.println(s"  store i32 ${c}, i32* %${v.name}, align 4")
+  //    case Stored(name) =>
+  //      nTmpVal += 1
+  //      out.println(s"  %$nTmpVal = load i32* %$name, align 4")
+  //      out.println(s"  store i32 %${nTmpVal.toString}, i32* %${v.name}, align 4")
+  //    case Result(name) => out.println(s"  store i32 %${name}, i32* %${v.name}, align 4")
+  //  }
+
   sealed trait LlvmAST
 
-  case class StoredVal(name: String) extends LlvmAST
+  sealed trait Operable extends LlvmAST
 
-  case class TmpVal(name: String) extends LlvmAST
+  case class Const(v: Int) extends Operable
+
+  case class Result(name: String) extends Operable
+
+  case class Stored(name: String) extends LlvmAST
+
+  case class Nope() extends LlvmAST
+
 
   var nTmpVal = 0;
-  val vals = mutable.Map[String, StoredVal]()
+  val symbols = mutable.Map[String, LlvmAST]()
 
-  def gen(out: Pipeline, ast: LangAST): LlvmAST = {
+  def gen(out: Pipeline, ast: AST.Lang): LlvmAST = {
     ast match {
-      case id: Ident =>
-        val s = vals(id.name)
-        s
-      case v: AnonIVal =>
-        out.println(s"  %${v.name} = alloca i32, align 4")
-        out.println(s"  store i32 ${v.value}, i32* %${v.name}, align 4")
-        StoredVal(v.name)
-      case nv: NamedVal =>
-        out.println(s"  %${nv.name} = alloca i32, align 4")
-        gen(out, nv.init) match {
-          case StoredVal(name) =>
+      case id: AST.Ident =>
+        symbols(id.name)
+      case v: AST.IConst =>
+        Const(v.value)
+      case v: AST.Val =>
+        val sv = gen(out, v.init) match {
+          case c: Const => c
+          case Stored(name) =>
             nTmpVal += 1
             out.println(s"  %$nTmpVal = load i32* %$name, align 4")
-            out.println(s"  store i32 %${nTmpVal.toString}, i32* %${nv.name}, align 4")
-          case TmpVal(name) => out.println(s"  store i32 %${name}, i32* %${nv.name}, align 4")
+            Result(nTmpVal.toString)
+          case r: Result => r
         }
-        val sv = StoredVal(nv.name)
-        vals(sv.name) = sv
-
+        symbols(v.name) = sv
         sv
-      case InfixCall(op, l, r) =>
-        val v1 = gen(out, l) match {
-          case StoredVal(name) =>
+      case AST.Assignment(i, expr) =>
+        val l = gen(out, expr)
+        val s = symbols(i.name)
+        s match {
+          case c: Const => throw new RuntimeException("reassing to val")
+          case r: Result => throw new RuntimeException("reassing to val")
+          case Stored(name) =>
+            l match {
+              case Const(c) => out.println(s"  store i32 $c, i32* %$name, align 4")
+              case Stored(innerName) =>
+                nTmpVal += 1
+                out.println(s"  %$nTmpVal = load i32* %$innerName, align 4")
+                out.println(s"  store i32 %${nTmpVal.toString}, i32* %$name, align 4")
+              case Result(innerName) => out.println(s"  store i32 %$innerName, i32* %$name, align 4")
+            }
+        }
+        Nope()
+      case v: AST.Var =>
+        out.println(s"  %${v.name} = alloca i32, align 4")
+        gen(out, v.init) match {
+          case Const(c) => out.println(s"  store i32 $c, i32* %${v.name}, align 4")
+          case Stored(name) =>
             nTmpVal += 1
             out.println(s"  %$nTmpVal = load i32* %$name, align 4")
-            TmpVal(nTmpVal.toString)
-          case tmp: TmpVal => tmp
+            out.println(s"  store i32 %${nTmpVal.toString}, i32* %${v.name}, align 4")
+          case Result(name) => out.println(s"  store i32 %${name}, i32* %${v.name}, align 4")
+        }
+        val sv = Stored(v.name)
+        symbols(v.name) = sv
+        sv
+      case AST.InfixCall(op, l, r) =>
+        val v1 = gen(out, l) match {
+          case Const(c) => c.toString
+          case Stored(name) =>
+            nTmpVal += 1
+            out.println(s"  %$nTmpVal = load i32* %$name, align 4")
+            s"%$nTmpVal"
+          case Result(name) => s"%$name"
         }
 
         val v2 = gen(out, r) match {
-          case StoredVal(name) =>
+          case Const(c) => c.toString
+          case Stored(name) =>
             nTmpVal += 1
             out.println(s"  %$nTmpVal = load i32* %$name, align 4")
-            TmpVal(nTmpVal.toString)
-          case tmp: TmpVal => tmp
+            s"%$nTmpVal"
+          case Result(name) => s"%$name"
         }
 
         nTmpVal += 1
 
         op match {
-          case "*" => out.println(s"  %$nTmpVal = mul nsw i32 %${v1.name}, %${v2.name}")
-          case "/" => out.println(s"  %$nTmpVal = sdiv i32 %${v1.name}, %${v2.name}")
-          case "+" => out.println(s"  %$nTmpVal = add nsw i32 %${v1.name}, %${v2.name}")
-          case "-" => out.println(s"  %$nTmpVal = sub nsw i32 %${v1.name}, %${v2.name}")
+          case "*" => out.println(s"  %$nTmpVal = mul nsw i32 $v1, $v2")
+          case "/" => out.println(s"  %$nTmpVal = sdiv i32 $v1, $v2")
+          case "+" => out.println(s"  %$nTmpVal = add nsw i32 $v1, $v2")
+          case "-" => out.println(s"  %$nTmpVal = sub nsw i32 $v1, $v2")
         }
-        TmpVal(nTmpVal.toString)
+        Result(nTmpVal.toString)
     }
   }
 
-  def genBitcode(out: Pipeline, ast: List[LangAST]) = {
+  def genBitcode(out: Pipeline, ast: List[AST.Lang]) = {
     out.println(
       """; ModuleID = 'main.c'
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
@@ -110,9 +153,9 @@ target triple = "x86_64-pc-linux-gnu"
 define i32 @main() #0 {""")
 
     ast.map(gen(out, _)).last match {
-      case TmpVal(name) => out.println(
+      case Result(name) => out.println(
         s"""  call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([3 x i8]* @.str, i32 0, i32 0), i32 %${name})""")
-      case StoredVal(name) =>
+      case Stored(name) =>
         out.println(s"  %res = load i32* %$name, align 4")
         out.println( s"""  call i32 (i8*, ...)* @printf(i8* getelementptr inbounds ([3 x i8]* @.str, i32 0, i32 0), i32 %res)""")
     }
