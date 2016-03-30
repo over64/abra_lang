@@ -1,8 +1,4 @@
-val a = 5
-5 + (1 + 4 + 5) * 3
-val b = a * 2
-val c = 5 + 4 * 2 + b
-var d = a + b + c + 1
-d = a + b
-d = d * 2
-d
+val a = !((!false + 1*2)*2 + !3)
+var b = 1 + 1
+val c = !a + b
+true

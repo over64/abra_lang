@@ -7,14 +7,14 @@ object Compiler {
 
   def main(args: Array[String]) {
     val sourceFile = new File(args(0))
-    val ast = ASTGen.genAst(new FileReader(sourceFile))
+    val ast = ASTGen.genAst2(new FileReader(sourceFile))
 
     println(s"parsed ast:")
     ast.foreach(println(_))
 
-    val pipeline = new Pipeline(sourceFile.getName)
-    BitcodeGen.genBitcode(pipeline, ast)
-    pipeline.finish()
-    println("Done!")
+    //    val pipeline = new Pipeline(sourceFile.getName)
+    //    BitcodeGen.genBitcode(pipeline, ast)
+    //    pipeline.finish()
+    //    println("Done!")
   }
 }
