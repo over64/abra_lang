@@ -1,0 +1,2 @@
+type Int = llvm { i32 }
+type Vec3i = (x: Int, y: Int, z: Int)

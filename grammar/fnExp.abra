@@ -1,0 +1,12 @@
+val fn : (i: Int) -> Int = { i ->
+    i + 1
+}
+var fn2 : (i: Int) -> Int = { j: Int ->
+    j * j * j
+}
+
+val fn3 : (fn1: (i: Int) -> Int, a: Int) -> Int = { fn1, a ->
+    fn1(a) * 3
+}
+
+val lambdaSum = \self: Int, b: Int -> self + b

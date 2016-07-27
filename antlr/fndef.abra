@@ -1,0 +1,3 @@
+def + = llvm {
+    ret add self, i
+}

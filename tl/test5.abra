@@ -1,0 +1,27 @@
+type Unit = llvm { void }
+type Int = llvm { i32 }
+type Vec3i = (x: Int, y: Int, z: Int)
+type Some = (v3: Vec3i, u: Unit, i: Int)
+
+def main = {
+    val a: Int = 1
+    var b: Int = 2
+    a + b
+}
+
+def + = llvm { self: Int, other: Int ->
+  %1 = add nsw i32 %other, %self
+  ret i32 %1
+}: Int
+
+def addVec3i = llvm { self: Vec3i, other: Vec3i ->
+  %1 = add nsw i32 %other, %self
+  ret i32 %1
+}: Vec3i
+
+def main = { a: Int, b: Int, c: Int ->
+    (1 + 1)
+    (1 + 0) + 3 + 4.times * (3 + 1).shl - a.b.c.bar(baz()) + foo(1,1)
+    xor(1 + 1, 1)
+    a xor b
+}

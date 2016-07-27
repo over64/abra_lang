@@ -1,0 +1,3 @@
+def foo = {
+    val a = -1 * -1.00 * 2
+}: Unit
