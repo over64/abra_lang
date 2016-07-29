@@ -44,7 +44,8 @@ class TypeCheckerTest extends FunSuite {
         |}
         |def main = {
         |  val a = 1 + 1
-        |}: Unit
+        |  1
+        |}: Int
       """.stripMargin
 
     val ast0 = moduleParser.parse(src).asInstanceOf[Module]

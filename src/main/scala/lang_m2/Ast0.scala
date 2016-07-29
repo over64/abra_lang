@@ -46,8 +46,8 @@ object Ast0 {
   case class Cond(info: AstInfo, ifCond: Expression, _then: Block, _else: Option[Block]) extends Expression
   case class While(info: AstInfo, cond: Expression, _then: Block) extends BlockExpression
 
-  case class Store(info: AstInfo, to: Access, what: Expression) extends ParseNode with BlockExpression
-  case class Val(info: AstInfo, mutable: Boolean, name: String, typeHint: Option[TypeHint], init: Expression) extends ParseNode with BlockExpression
+  case class Store(info: AstInfo, to: Access, what: Expression) extends BlockExpression
+  case class Val(info: AstInfo, mutable: Boolean, name: String, typeHint: Option[TypeHint], init: Expression) extends BlockExpression
 
   case class FnArg(info: AstInfo, name: String, typeHint: Option[TypeHint]) extends ParseNode
   case class LlInline(info: AstInfo, value: String) extends FnBody
