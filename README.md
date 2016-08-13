@@ -69,10 +69,11 @@ Yes, it is unicode, baby! If you have UTF8 locale...
     type Vec3 = (x: Float, y: Float: z: Float)
   ```
 #### Functions
-  Function body can be defined in 3 styles
+  Function body can be defined in 4 styles
   1. llvm inline IR block (function type hint required)
-  2. code block: function type hint optional, block type hint - required
+  2. code block: function type hint optional, block type hint required
   3. lambda-expression: function type-hint optional
+  4. single-expression: no type hints
 
   last function expression is return value
   
@@ -93,7 +94,17 @@ Yes, it is unicode, baby! If you have UTF8 locale...
     
     # Haskell-like lambdas
     def twice = \self: Int -> self + self
+    
+    # single-expression
+    def Pi = 3.14
   ```
+  
+  Is it too much? No. Every syntax for it's own purpose for maximum eye-candy. Mind map:
+  
+  - __if__ function with llvm IR __then__ LLVM IR inline block
+  - __else if__ function for const expression __then__ single-expression
+  - __else if__ simple function which uses only one expression (often math functions) __then__ lambda-expression
+  - __else__ code block
 
 #### Function call
   Rich function call rules for eye-candy DSL
