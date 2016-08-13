@@ -16,6 +16,7 @@ Research platform for design language with new memory management and modularity 
   - command-line compiler
   - tuple initialization
   - function pointers (no closures yet)
+  - simple FFI to C
   - refactor / tests
 
 #### Hello, world
