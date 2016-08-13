@@ -34,7 +34,7 @@ Yes, it is unicode, baby! If you have UTF8 locale...
     'こんにちは、世界!'.print
 ```
 #### Uniform declaration sytax
-  WHAT_TO_DECLARE [: TYPE_HINT] = INIT_EXPRESSION
+  WHAT_TO_DECLARE NAME [: TYPE_HINT] = INIT_EXPRESSION
   
   There is only one rule you need to know!
   ```scala
