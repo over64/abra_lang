@@ -141,7 +141,7 @@ def close = { self: Fd ->
 }: Unit
 
 # Usage
-def PATH = '/tmp/file'
+def PATH = \ -> '/tmp/file'
 def main = {
     open(PATH).write('hello, world\n').close()
 }: Unit
@@ -166,21 +166,6 @@ def foreachDemo = {
         (1 to 10) foreach \j ->
             (1 to 10) foreach \k ->
                 (i + j + k).print
-
-
-
-    type Unit = llvm { void }
-    type List<T> = Node of (value: T, tail: List<T>) | Nil of Unit
-
-    val list = Node('hello', Nil)
-
-    list match {
-        case Nil -> print('empty list')
-        case Node(head, tail) -> print(head)
-    }
-
-
-
 }: Unit
 
 def + = \self: Vec3, v2: Vec3 -> Vec3(self.x + v2.x, self.y + v2.y, self.z + v2.z)

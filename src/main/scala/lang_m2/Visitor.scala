@@ -44,9 +44,11 @@ class Visitor extends AbstractParseTreeVisitor[ParseNode] with M2ParserVisitor[P
     }
   }
 
-  override def visitLiteralSeq(ctx: LiteralSeqContext): Access =
-    Access(ctx.literal().map { lc => visitLiteral(lc) }.toSeq)
-
+  override def visitRealdId(ctx: RealdIdContext): lId = {
+    val realId = if (ctx.Id() != null) ctx.Id()
+    else ctx.getToken(SELF, 0)
+    lId(astInfo(realId.getSymbol), realId.getSymbol.getText)
+  }
 
   override def visitScalarTypeHint(ctx: ScalarTypeHintContext): ScalarTypeHint =
     ScalarTypeHint(astInfo(ctx.getStart), ctx.Id().getText)
@@ -140,25 +142,31 @@ class Visitor extends AbstractParseTreeVisitor[ParseNode] with M2ParserVisitor[P
   override def visitStore(ctx: StoreContext): Store =
     Store(
       astInfo(ctx.getStart),
-      visitLiteralSeq(ctx.literalSeq()),
+      ctx.realdId().map(id => visitRealdId(id)),
       ctx.expression().accept(this).asInstanceOf[Expression])
 
   def visitExpr(ctx: ExpressionContext) = ctx.accept(this).asInstanceOf[Expression]
 
   override def visitExprLiteral(ctx: ExprLiteralContext): Literal = visitLiteral(ctx.literal())
 
-  override def visitExpLiteralSeq(ctx: ExpLiteralSeqContext): Access = visitLiteralSeq(ctx.literalSeq())
-
-  override def visitExprDirectCall(ctx: ExprDirectCallContext): Call = {
-    val oldArgs = if (ctx.tuple() != null) Some(visitTuple(ctx.tuple())) else None
-    val firstArg = visitExpr(ctx.expression())
-    Call(astInfo(ctx.start), ctx.op.getText, Tuple(astInfo(ctx.start), Seq(firstArg) ++ oldArgs.map(_.seq).getOrElse(Seq())))
-  }
-
   override def visitExprApply(ctx: ExprApplyContext): Call = {
     val oldArgs = visitTuple(ctx.tuple())
     val firstArg = visitExpr(ctx.expression())
-    Call(astInfo(ctx.getStart), "apply", Tuple(oldArgs.info, Seq(firstArg) ++ oldArgs.seq))
+    firstArg match {
+      case Prop(from, prop) =>
+        val all = Seq(from) ++ Seq(prop)
+        all.last match {
+          case id: lId =>
+            Call(astInfo(ctx.getStart), id.value, Tuple(oldArgs.info, all.dropRight(1) ++ oldArgs.seq))
+          case _ =>
+            Call(astInfo(ctx.getStart), "apply", Tuple(oldArgs.info, all ++ oldArgs.seq))
+        }
+      case id: lId =>
+        Call(astInfo(ctx.getStart), id.value, Tuple(oldArgs.info, oldArgs.seq))
+
+      case other@_ =>
+        Call(astInfo(ctx.getStart), "apply", Tuple(oldArgs.info, Seq(firstArg) ++ oldArgs.seq))
+    }
   }
 
   override def visitExprInfixCall(ctx: ExprInfixCallContext): Call =
@@ -197,10 +205,7 @@ class Visitor extends AbstractParseTreeVisitor[ParseNode] with M2ParserVisitor[P
     While(
       astInfo(ctx.getStart),
       cond = ctx.cond.accept(this).asInstanceOf[Expression],
-      _then = (ctx.then_expr, ctx.then_block) match {
-        case (expr, null) => Block(astInfo(expr.getStart), Seq(), Seq(visitExpr(expr)))
-        case (null, block) => visitBlock(block)
-      }
+      _then = visitBlock(ctx.then_block)
     )
 
   override def visitFunction(ctx: FunctionContext): Fn = {
@@ -236,4 +241,8 @@ class Visitor extends AbstractParseTreeVisitor[ParseNode] with M2ParserVisitor[P
 
   override def visitModule(ctx: ModuleContext): Module =
     Module(astInfo(ctx.getStart), ctx.level1().map { l1 => visitLevel1(l1) })
+
+  override def visitExprProp(ctx: ExprPropContext): Prop = {
+    Prop(ctx.expression().accept(this).asInstanceOf[Expression], lId(astInfo(ctx.op), ctx.op.getText))
+  }
 }

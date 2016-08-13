@@ -17,18 +17,11 @@ public interface M2ParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitLiteral(M2Parser.LiteralContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link M2Parser#literalSeq}.
+	 * Visit a parse tree produced by {@link M2Parser#realdId}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitLiteralSeq(M2Parser.LiteralSeqContext ctx);
-	/**
-	 * Visit a parse tree produced by the {@code exprDirectCall}
-	 * labeled alternative in {@link M2Parser#expression}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitExprDirectCall(M2Parser.ExprDirectCallContext ctx);
+	T visitRealdId(M2Parser.RealdIdContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code exprParen}
 	 * labeled alternative in {@link M2Parser#expression}.
@@ -36,6 +29,13 @@ public interface M2ParserVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitExprParen(M2Parser.ExprParenContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code exprProp}
+	 * labeled alternative in {@link M2Parser#expression}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitExprProp(M2Parser.ExprPropContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code exprTuple}
 	 * labeled alternative in {@link M2Parser#expression}.
@@ -92,13 +92,6 @@ public interface M2ParserVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitExprLambda(M2Parser.ExprLambdaContext ctx);
-	/**
-	 * Visit a parse tree produced by the {@code expLiteralSeq}
-	 * labeled alternative in {@link M2Parser#expression}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitExpLiteralSeq(M2Parser.ExpLiteralSeqContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code exprApply}
 	 * labeled alternative in {@link M2Parser#expression}.

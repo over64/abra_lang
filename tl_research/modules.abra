@@ -1,0 +1,42 @@
+# Modules & duck typing demo
+
+# /forms/forms.abra
+import validators.Form1Validator._
+import validators.AddressFormValidator._
+
+type Form = Form1 = (someField: String)
+          | AddressForm = (firstLine: String, name: String, country: String)
+
+def validate = { self: Form ->
+    logger.debug('begin validation')
+    # compiler knows!
+    self.validation
+}: Map<String, String>
+
+# /forms/validators.abra
+import Forms.Form
+
+module Form1Validator = {
+    def validation = { self: Form1 ->
+
+    }: Map<String, String>
+}
+
+module AddressFormValidator = {
+    import FieldValidator._
+
+    def validation = { self: AddressForm ->
+
+    }: Map<String, String>
+}
+
+# Main.abra
+import forms.forms._
+
+def main = {
+    val f1 = Form1()
+    val addrForm = AddressForm(firstLine="_", name="masha", country="Russia")
+
+    f1.validate
+    f2.validate
+}: Unit

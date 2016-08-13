@@ -34,11 +34,11 @@ class LowLangTest extends FunSuite {
         fPlus,
         Fn(GlobalFnPtr("main", Signature(args = Seq(), ret = tInt)), Block(Seq(
           Var("a", tInt),
-          Store(Access("a", tInt, Seq()), lInt("10")),
+          Store(lId("a"), Seq(), tInt, lInt("10")),
           Var("b", tInt),
-          Store(Access("b", tInt, Seq()), lInt("11")),
+          Store(lId("b"), Seq(), tInt, lInt("11")),
           Var("c", tInt),
-          Store(Access("c", tInt, Seq()), Call(pPlus,
+          Store(lId("c"), Seq(), tInt, Call(pPlus,
             Seq(lId("a"), Call(pPlus,
               Seq(lId("b"), lInt("10")))))),
           Ret(tInt, lId("c"))
@@ -67,36 +67,36 @@ class LowLangTest extends FunSuite {
       functions = Seq(
         fPlus,
         Fn(pVec3Init, Block(Seq(
-          Store(Access("ret", tVec3, Seq("x")), lParam("x")),
-          Store(Access("ret", tVec3, Seq("y")), lParam("y")),
-          Store(Access("ret", tVec3, Seq("z")), lParam("z")),
+          Store(lParam("ret"), Seq("x"), tVec3, lParam("x")),
+          Store(lParam("ret"), Seq("y"), tVec3, lParam("y")),
+          Store(lParam("ret"), Seq("z"), tVec3, lParam("z")),
           RetVoid()
         ))),
         Fn(pVec3Plus, Block(Seq(
-          Store(Access("ret", tVec3, Seq("x")), Call(pPlus, Seq(
-            Access("self", tVec3, Seq("x")), Access("other", tVec3, Seq("x"))))),
-          Store(Access("ret", tVec3, Seq("y")), Call(pPlus, Seq(
-            Access("self", tVec3, Seq("y")), Access("other", tVec3, Seq("y"))))),
-          Store(Access("ret", tVec3, Seq("z")), Call(pPlus, Seq(
-            Access("self", tVec3, Seq("z")), Access("other", tVec3, Seq("z"))))),
+          Store(lParam("ret"), Seq("x"), tVec3, Call(pPlus, Seq(
+            Access(lParam("self"), tVec3, "x"), Access(lParam("other"), tVec3, "x")))),
+          Store(lParam("ret"), Seq("y"), tVec3, Call(pPlus, Seq(
+            Access(lParam("self"), tVec3, "y"), Access(lParam("other"), tVec3, "y")))),
+          Store(lParam("ret"), Seq("z"), tVec3, Call(pPlus, Seq(
+            Access(lParam("self"), tVec3, "z"), Access(lParam("other"), tVec3, "z")))),
           RetVoid()
         ))),
         Fn(pVec3Dot, Block(Seq(
           Var("i", tInt),
-          Store(Access("i", tInt, Seq()), Call(pPlus, Seq(
-            Access("self", tVec3, Seq("x")), Call(pPlus, Seq(
-              Access("self", tVec3, Seq("y")), Access("self", tVec3, Seq("z"))))))),
+          Store(lId("i"), Seq(), tInt, Call(pPlus, Seq(
+            Access(lParam("self"), tVec3, "x"), Call(pPlus, Seq(
+              Access(lParam("self"), tVec3, "y"), Access(lParam("self"), tVec3, "z")))))),
           Ret(tInt, lId("i"))
         ))),
         Fn(GlobalFnPtr("main", Signature(args = Seq(), ret = tInt)), Block(Seq(
           Var("v1", tVec3),
-          Store(Access("v1", tVec3, Seq()), Call(pVec3Init, Seq(lInt("1"), lInt("2"), lInt("3")))),
+          Store(lId("v1"), Seq(), tVec3, Call(pVec3Init, Seq(lInt("1"), lInt("2"), lInt("3")))),
           Var("v2", tVec3),
-          Store(Access("v2", tVec3, Seq()), Call(pVec3Init, Seq(lInt("3"), lInt("2"), lInt("1")))),
+          Store(lId("v2"), Seq(), tVec3, Call(pVec3Init, Seq(lInt("3"), lInt("2"), lInt("1")))),
           Var("v3", tVec3),
-          Store(Access("v3", tVec3, Seq()), Call(pVec3Plus, Seq(lId("v1"), lId("v2")))),
+          Store(lId("v3"), Seq(), tVec3, Call(pVec3Plus, Seq(lId("v1"), lId("v2")))),
           Var("i", tInt),
-          Store(Access("i", tInt, Seq()), Call(pVec3Dot, Seq(lId("v3")))),
+          Store(lId("i"), Seq(), tInt, Call(pVec3Dot, Seq(lId("v3")))),
           Ret(tInt, lId("i"))
         )))
       )
@@ -111,13 +111,13 @@ class LowLangTest extends FunSuite {
         fMore,
         Fn(GlobalFnPtr("main", Signature(args = Seq(), ret = tInt)), Block(Seq(
           Var("a", tInt),
-          Store(Access("a", tInt, Seq()), lInt("11")),
+          Store(lId("a"), Seq(), tInt, lInt("11")),
           Var("b", tInt),
-          Store(Access("b", tInt, Seq()), lInt("10")),
+          Store(lId("b"), Seq(), tInt, lInt("10")),
           Var("c", tInt),
           Cond(Call(pMore, Seq(lId("a"), lId("b"))),
-            _if = Seq(Store(Access("c", tInt, Seq()), lInt("1"))),
-            _else = Seq(Store(Access("c", tInt, Seq()), lInt("2")))
+            _if = Seq(Store(lId("c"), Seq(), tInt, lInt("1"))),
+            _else = Seq(Store(lId("c"), Seq(), tInt, lInt("2")))
           ),
           Ret(tInt, lId("c"))
         )))
@@ -132,9 +132,9 @@ class LowLangTest extends FunSuite {
         fPlus, fMore,
         Fn(GlobalFnPtr("main", Signature(args = Seq(), ret = tInt)), Block(Seq(
           Var("a", tInt),
-          Store(Access("a", tInt, Seq()), lInt("0")),
+          Store(lId("a"), Seq(), tInt, lInt("0")),
           While(Call(pMore, Seq(lInt("255"), lId("a"))), Seq(
-            Store(Access("a", tInt, Seq()), Call(pPlus, Seq(lId("a"), lInt("1"))))
+            Store(lId("a"), Seq(), tInt, Call(pPlus, Seq(lId("a"), lInt("1"))))
           )),
           Ret(tInt, lId("a"))
         )))
@@ -152,9 +152,9 @@ class LowLangTest extends FunSuite {
         ))),
         Fn(GlobalFnPtr("main", Signature(args = Seq(), ret = tInt)), Block(Seq(
           Var("a", tInt),
-          Store(Access("a", tInt, Seq()), lInt("0")),
+          Store(lId("a"), Seq(), tInt, lInt("0")),
           While(Call(pMore, Seq(lInt("255"), lId("a"))), Seq(
-            Store(Access("a", tInt, Seq()), Call(pPlus, Seq(lId("a"), lInt("1"))))
+            Store(lId("a"), Seq(), tInt, Call(pPlus, Seq(lId("a"), lInt("1"))))
           )),
           Ret(tInt, lId("a"))
         )))

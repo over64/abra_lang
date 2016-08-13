@@ -11,14 +11,13 @@ literal           : IntLiteral
                   | 'self'
                   ;
 
-literalSeq : literal ('.' literal)* ;
+realdId: Id | 'self' ;
 
 expression : literal #exprLiteral
-           | literalSeq #expLiteralSeq
            | '(' expression ')' #exprParen
            | tuple #exprTuple
+           | expression '.' op=(Id | '*' | '/' | '+' | '-' | '>' | '<' | '<=' | '>=' | '==' | '!=' | '||' | '&&') #exprProp
            | expression tuple #exprApply
-           | expression '.' op=(Id | '*' | '/' | '+' | '-' | '>' | '<' | '<=' | '>=' | '==' | '!=' | '||' | '&&' ) tuple #exprDirectCall
            | block #exprBlock
            | lambdaBlock #exprLambda
            | op=('!' | '-') expression #exprUnaryCall
@@ -28,13 +27,13 @@ expression : literal #exprLiteral
            | expression op=('==' | '!=') expression #exprInfixCall
            | expression op=('||' | '&&') expression #exprInfixCall
            | 'if' NL* cond=expression NL* (('then' NL* then_expr=expression) | then_block=block) (NL* 'else' NL* (else_expr=expression | else_block=block))? #exprIfElse
-           | 'while' NL* cond=expression NL* (('then' NL* then_expr=expression) | then_block=block) #exprWhile
+           | 'while' NL* cond=expression NL* then_block=block #exprWhile
            ;
 
-store : literalSeq '=' expression ;
+store : head=realdId ('.' tail+=realdId)* '=' expression ;
 
 fnArg: ('self' | Id) (':' typeHint)? ;
-block : '{' (fnArg (',' fnArg)* '->')? NL* (blockBody (NL | ';')+)* '}' ;
+block : '{' (fnArg (',' fnArg)* '->')? NL* (blockBody ((NL* | ';') blockBody)*)? NL* '}' ;
 blockBody : (variable | store | expression)  ;
 lambdaBlock : '\\' (fnArg (',' fnArg)*)? '->' NL* expression ;
 

@@ -21,17 +21,17 @@ class LiteralParse extends FunSuite {
     withInput("self", lId(AstInfo(1, 0), "self"))
   }
 
-  val literalSeqParser = new Util {
-    override def whatToParse: (M2Parser) => ParseTree = { parser => parser.literalSeq() }
-  }
-
-  test("parse literalSeq") {
-    import literalSeqParser._
-    withInput("1.true.'123'.some", Access(Seq(
-      lInt(AstInfo(1, 0), "1"),
-      lBoolean(AstInfo(1, 2), "true"),
-      lString(AstInfo(1, 7), "123"),
-      lId(AstInfo(1, 13), "some"))
-    ))
-  }
+//  val literalSeqParser = new Util {
+//    override def whatToParse: (M2Parser) => ParseTree = { parser => parser.literalSeq() }
+//  }
+//
+//  test("parse literalSeq") {
+//    import literalSeqParser._
+//    withInput("1.true.'123'.some", Prop(
+//      lInt(AstInfo(1, 0), "1"), Seq(
+//        lBoolean(AstInfo(1, 2), "true"),
+//        lString(AstInfo(1, 7), "123"),
+//        lId(AstInfo(1, 13), "some"))
+//    ))
+//  }
 }

@@ -1,4 +1,0 @@
-type Int = llvm { i32 }
-type Fd = (self handle: Int)
-type String = llvm { i8* }
-type Vec3 = (x: Float, y: Float, z: Float)

@@ -2,6 +2,8 @@ package lang_m2
 
 import Ast1._
 
+import scala.collection.mutable
+
 class IrGen {
   var tmpVars = 0
   var labelId = 0
@@ -18,24 +20,26 @@ class IrGen {
     s"label$labelId"
   }
 
-  // (resultName, resultType)
-  def evalAccess(access: Access): (String, Type) =
-    if (access.seq.isEmpty)
-      (access.irFrom, access.fromType)
-    else {
-      val res = nextTmpVar()
-      val (resType, indicies) =
-        access.seq.foldLeft((access.fromType, Seq[Int](0))) {
-          case ((_type, seq), field) =>
-            val (f, idx) =
-              _type.asInstanceOf[Struct].fields.zipWithIndex.find {
-                case (f, idx) => f.name == field
-              }.head
-            (f._type, seq ++ Seq(idx))
-        }
-      println(s"\t$res = getelementptr ${access.fromType.name}, ${access.fromType.name}* %${access.from}, ${indicies.map { i => s"i32 $i" } mkString (", ")}")
-      (res, resType)
+  def evalGep(baseType: Type, fields: Seq[String]): (Type, Seq[Int]) = {
+    fields.foldLeft((baseType, Seq[Int](0))) {
+      case ((_type, seq), field) =>
+        val (f, idx) =
+          _type.asInstanceOf[Struct].fields.zipWithIndex.find {
+            case (f, idx) => f.name == field
+          }.head
+        (f._type, seq ++ Seq(idx))
     }
+  }
+
+  // (resultName, resultType)
+  def evalAccess(access: Access): (String, Type) = {
+    val base = genInit(access.fromType, access.from, true)
+    val (resType, indicies) = evalGep(access.fromType, Seq(access.prop))
+    val res = nextTmpVar()
+
+    println(s"\t$res = getelementptr ${access.fromType.name}, ${access.fromType.name}* $base, ${indicies.map { i => s"i32 $i" } mkString (", ")}")
+    (res, resType)
+  }
 
   def joinCallArgs(ptr: FnPtr, args: Seq[Init]): String = {
     val calculatedArgs = args.zip(ptr.signature.args).map {
@@ -53,9 +57,21 @@ class IrGen {
     case lInt(value) =>
       if (needPtr) throw new Exception("not implemented in current ABI") else value
     case lFloat(value) =>
-      if (needPtr) throw new Exception("not implemented in current ABI") else value
-    case lString(value) =>
-      if (needPtr) throw new Exception("not implemented in current ABI") else value
+      if (needPtr) throw new Exception("not implemented in current ABI")
+      else {
+        if (_type.name == "float") {
+          val d = (new java.lang.Float(value)).toDouble
+          "0x" + java.lang.Long.toHexString(java.lang.Double.doubleToLongBits(d))
+        }
+        else value
+      }
+    case lString(name, value) =>
+      if (needPtr) throw new Exception("not implemented in current ABI")
+      else {
+        val tmp = nextTmpVar()
+        println(s"\t$tmp = bitcast [${value.bytesLen} x i8]* @.$name to i8*")
+        tmp
+      }
     case lId(varName) =>
       if (needPtr) "%" + varName
       else {
@@ -64,13 +80,20 @@ class IrGen {
         tmp
       }
     case lParam(paramName) =>
-      // параметры всегда value
-      if (needPtr) {
-        val tmp = nextTmpVar()
-        println(s"\t$tmp = load ${_type.name}, ${_type.name}* %$paramName")
-        tmp
-      } else
-        "%" + paramName
+      val isPtr = _type.isInstanceOf[Struct]
+      (needPtr, isPtr) match {
+        case (true, true) => "%" + paramName
+        case (false, false) => "%" + paramName
+        case (true, false) =>
+          val tmp = nextTmpVar()
+          println(s"\t%$tmp = alloca ${_type.name}, align 4")
+          println(s"\tstore ${_type.name} %$paramName, ${_type.name}* $tmp")
+          tmp
+        case (false, true) =>
+          val tmp = nextTmpVar()
+          println(s"\t$tmp = load ${_type.name}, ${_type.name}* %$paramName")
+          tmp
+      }
     case a: Access =>
       val (tmp, _type) = evalAccess(a)
       val next = nextTmpVar()
@@ -129,10 +152,18 @@ class IrGen {
     seq.foreach {
       case v: Var =>
         println(s"\t${v.irName} = alloca ${v._type.name}, align 4")
-      case Store(access, init) =>
-        val (res, _type) = evalAccess(access)
-        val forStore = genInit(_type, init, needPtr = false)
-        println(s"\tstore ${_type.name} $forStore, ${_type.name}* $res")
+      case Store(to, fields, varType, init) =>
+        val base = to match {
+          case p: lParam => genInit(varType, p, true)
+          case v: lId => genInit(varType, v, true)
+        }
+
+        val (resType, indicies) = evalGep(varType, fields)
+        val forStore = genInit(resType, init, needPtr = false)
+        val res = nextTmpVar()
+
+        println(s"\t$res = getelementptr ${varType.name}, ${varType.name}* ${base}, ${indicies.map { i => s"i32 $i" } mkString (", ")}")
+        println(s"\tstore ${resType.name} $forStore, ${resType.name}* $res")
       case call: Call =>
         genInit(call.ptr.signature.ret, call)
       //      case VoidCall(ptr, args) =>
@@ -184,10 +215,53 @@ class IrGen {
     println("}")
   }
 
+  case class StringConst(name: String, value: HexUtil.EncodeResult)
+
+  def inferStringConsts(functions: Seq[Fn]): (Seq[StringConst], Seq[Fn]) = {
+    var idSeq = 0
+    val consts = mutable.ListBuffer[StringConst]()
+
+    def mapInit(init: Init): Init = init match {
+      case ls@lString(name, value) =>
+        consts += StringConst(name, value)
+        ls
+      case some@_ => some
+    }
+    def mapStat(stat: Stat): Stat = stat match {
+      case Store(toVar: CanStore, fields: Seq[String], varType: Type, init: Init) =>
+        Store(toVar, fields, varType, mapInit(init))
+      case Call(ptr: FnPtr, args: Seq[Init]) =>
+        Call(ptr, args.map(arg => mapInit(arg)))
+      case Cond(init: Init, _if: Seq[Stat], _else: Seq[Stat]) =>
+        Cond(mapInit(init), _if.map(stat => mapStat(stat)), _else.map(stat => mapStat(stat)))
+      case While(init: Init, seq: Seq[Stat]) =>
+        While(mapInit(init), seq.map(stat => mapStat(stat)))
+      case Ret(_type: Type, init: Init) =>
+        Ret(_type, mapInit(init))
+      case v: Var => v
+      case rv: RetVoid => rv
+    }
+
+    val mapped = functions.map { fn =>
+      Fn(fn.ptr, fn.body match {
+        case ir: IrInline => ir
+        case Block(seq) => Block(seq.map { stat => mapStat(stat) })
+      })
+    }
+    (consts, mapped)
+  }
+
   def gen(module: Module): Unit = {
+    println("declare i32 @puts(i8* nocapture readonly)")
+
     module.structs.foreach { struct =>
       println(s"${struct.name} = type { ${struct.fields.map { f => f._type.name }.mkString(", ")} }")
     }
-    module.functions.foreach { fn => tmpVars = 0; genFunction(fn) }
+    val (consts, functions) = inferStringConsts(module.functions)
+
+    consts.foreach { const =>
+      println(s"@.${const.name} = constant [${const.value.bytesLen} x i8] ${"c\"" + const.value.str + "\""}, align 1")
+    }
+    functions.foreach { fn => tmpVars = 0; genFunction(fn) }
   }
 }

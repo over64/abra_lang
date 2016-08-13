@@ -17,18 +17,19 @@ object Ast1 {
 
   sealed trait Stat
   sealed trait Init
+  sealed trait CanStore
 
   sealed trait Literal extends Init {
     val value: String
   }
   case class lInt(value: String) extends Literal
   case class lFloat(value: String) extends Literal
-  case class lString(value: String) extends Literal
-  case class lId(value: String) extends Literal {
+  case class lString(value: String, enc: HexUtil.EncodeResult) extends Literal
+  case class lId(value: String) extends Literal with CanStore {
     def irId = "%" + value
   }
 
-  case class lParam(value: String) extends Literal {
+  case class lParam(value: String) extends Literal with CanStore {
     def irId = "%" + value
   }
 
@@ -62,10 +63,8 @@ object Ast1 {
     override def irName = "@" + escape(name)
   }
 
-  case class Access(from: String, fromType: Type, seq: Seq[String]) extends Init {
-    def irFrom = "%" + from
-  }
-  case class Store(to: Access, init: Init) extends Stat
+  case class Access(from: Init, fromType: Type, prop: String) extends Init
+  case class Store(toVar: CanStore, fields: Seq[String], varType: Type, init: Init) extends Stat
   case class Call(ptr: FnPtr, args: Seq[Init]) extends Init with Stat
   case class Cond(init: Init, _if: Seq[Stat], _else: Seq[Stat]) extends Stat
   case class While(init: Init, seq: Seq[Stat]) extends Stat

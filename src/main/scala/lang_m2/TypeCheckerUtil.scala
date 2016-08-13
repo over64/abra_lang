@@ -11,22 +11,20 @@ trait TypeCheckerUtil {
 
   case class InferedFn(name: String, args: Seq[TypeHint], ret: TypeHint, lowFn: Ast1.Fn)
 
-  case class InferedBlockExpr(th: TypeHint, seq: Seq[Ast1.Stat])
+  case class InferedExp(th: TypeHint, stats: Seq[Ast1.Stat], init: Option[Ast1.Init])
 
-  case class InferedExpr(th: TypeHint, init: Ast1.Init)
-
-  case class ValInfo(mutable: Boolean, th: TypeHint)
+  case class ValInfo(mutable: Boolean, isParam: Boolean, th: TypeHint)
 
   case class InferContext(typeMap: Map[String, Type],
                           fnMap: Map[String, Seq[Fn]],
                           varMap: Map[String, ValInfo] = Map(),
                           evaluatedMap: Map[String, Seq[InferedFn]] = Map(),
-                          inferStack: Seq[String] = Seq()) {
+                          inferStack: Seq[(String, Option[TypeHint])] = Seq()) {
     def addVar(name: String, vi: ValInfo) =
       InferContext(typeMap, fnMap, varMap ++ Map(name -> vi), evaluatedMap, inferStack)
 
-    def stackPush(name: String) =
-      InferContext(typeMap, fnMap, varMap, evaluatedMap, inferStack ++ Seq(name))
+    def stackPush(name: String, firstArgType: Option[TypeHint]) =
+      InferContext(typeMap, fnMap, varMap, evaluatedMap, inferStack :+ (name, firstArgType))
 
     def stackPop =
       InferContext(typeMap, fnMap, varMap, evaluatedMap, inferStack.dropRight(1))
@@ -40,18 +38,31 @@ trait TypeCheckerUtil {
 
       InferContext(typeMap, fnMap, varMap, newMap, inferStack)
     }
+
+    def isInfered(fnName: String, firstArgType: Option[TypeHint]): Boolean =
+      evaluatedMap.get(fnName).map { infFns =>
+        infFns.find { infFn => infFn.args.headOption == firstArgType }.map(infFn => true).getOrElse(false)
+      }.getOrElse(false)
+
+    def isInfering(fnName: String, firstArgType: Option[TypeHint]): Boolean = {
+      inferStack.find {
+        case (_fnName, oth) => _fnName == fnName && (
+          (oth, firstArgType) match {
+            case (None, None) => true
+            case (Some(x), None) => false
+            case (None, Some(x)) => false
+            case (Some(x), Some(y)) => x.name == y.name
+          })
+      }.map { x => true }.getOrElse(false)
+    }
+
   }
-
-  sealed trait ExprEvalResult
-
-  case class SuccessEval(infExpr: InferedExpr, ctx: InferContext) extends ExprEvalResult
-
-  case class ErrorEval(msg: String) extends ExprEvalResult
 
   class CancelEval extends Exception
 
   val thUnit = ScalarTypeHint(null, "Unit")
   val thInt = ScalarTypeHint(null, "Int")
+  val thFloat = ScalarTypeHint(null, "Float")
   val thBool = ScalarTypeHint(null, "Boolean")
   val thString = ScalarTypeHint(null, "String")
 
@@ -88,4 +99,14 @@ trait TypeCheckerUtil {
       case FnTypeHint(_, seq, ret) =>
         Ast1.FnPointer(seq.map(arg => mapTypeHintToLow(ctx, arg.typeHint)), mapTypeHintToLow(ctx, ret))
     }
+
+  def assertTypeEquals(info: AstInfo, t1: TypeHint, t2: TypeHint) =
+    if (t1.name != t2.name) throw new Exception(error(info, s"expected expression of type ${t1.name} has ${t2.name}"))
+
+  var annoVars = 0
+
+  def nextAnonVar = {
+    annoVars += 1
+    s"anon$annoVars"
+  }
 }
