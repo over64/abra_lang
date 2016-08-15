@@ -1,5 +1,11 @@
 ### test_lang:
 Research platform for design language with new memory management and modularity concepts
+#### Build compiler
+  For build compiler you just need JDK8 and SBT
+  ```bash
+    sbt> assembly
+  ```
+  Get compiler in ```target/scala-2.11/kadabra.jar```. Demo programs stored in ```tl``` folder
 #### Status
   Basic C-like expression-based language with type inference based on value types (no reference types yet)
   - val / var
