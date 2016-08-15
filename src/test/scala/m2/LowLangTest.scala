@@ -1,5 +1,7 @@
 package m2
 
+import java.io.PrintStream
+
 import lang_m2.IrGen
 import org.scalatest.FunSuite
 import lang_m2.Ast1.Store
@@ -28,7 +30,7 @@ class LowLangTest extends FunSuite {
       |    ret i1 %1 """.stripMargin))
 
   test("a low lang dev test") {
-    new IrGen().gen(Module(
+    new IrGen(new PrintStream(System.out)).gen(Module(
       structs = Seq(tVec3),
       functions = Seq(
         fPlus,
@@ -60,7 +62,7 @@ class LowLangTest extends FunSuite {
       args = Seq(Field("self", tVec3)),
       ret = tInt))
 
-    new IrGen().gen(Module(
+    new IrGen(new PrintStream(System.out)).gen(Module(
       structs = Seq(
         tVec3
       ),
@@ -105,7 +107,7 @@ class LowLangTest extends FunSuite {
 
   test("cond test") {
 
-    new IrGen().gen(Module(
+    new IrGen(new PrintStream(System.out)).gen(Module(
       structs = Seq(),
       functions = Seq(
         fMore,
@@ -126,7 +128,7 @@ class LowLangTest extends FunSuite {
   }
 
   test("loop test") {
-    new IrGen().gen(Module(
+    new IrGen(new PrintStream(System.out)).gen(Module(
       structs = Seq(),
       functions = Seq(
         fPlus, fMore,
@@ -143,7 +145,7 @@ class LowLangTest extends FunSuite {
   }
 
   test("fn pointer test") {
-    new IrGen().gen(Module(
+    new IrGen(new PrintStream(System.out)).gen(Module(
       structs = Seq(),
       functions = Seq(
         fPlus,

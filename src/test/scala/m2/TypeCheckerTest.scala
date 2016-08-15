@@ -1,8 +1,10 @@
 package m2
 
+import java.io.{FileOutputStream, PrintStream}
+
 import grammar2.M2Parser
 import lang_m2.Ast0._
-import lang_m2.{IrGen, TypeChecker, Ast1}
+import lang_m2.{Ast1, IrGen, TypeChecker}
 import org.antlr.v4.runtime.tree.ParseTree
 import org.scalatest.FunSuite
 
@@ -28,7 +30,8 @@ class TypeCheckerTest extends FunSuite {
     println(ast0)
     val ast1 = typeChecker.transform(ast0)
     println(ast1)
-    new IrGen().gen(ast1)
+    val out = new PrintStream(System.out)
+    new IrGen(out).gen(ast1)
   }
 
   test("simple test") {
@@ -67,7 +70,9 @@ class TypeCheckerTest extends FunSuite {
     println(ast0)
     val ast1 = typeChecker.transform(ast0)
     println(ast1)
-    new IrGen().gen(ast1)
+
+    val out = new PrintStream(System.out)
+    new IrGen(out).gen(ast1)
   }
 
   test("a store and access test") {
@@ -92,7 +97,9 @@ class TypeCheckerTest extends FunSuite {
     println(ast0)
     val ast1 = typeChecker.transform(ast0)
     println(ast1)
-    new IrGen().gen(ast1)
+
+    val out = new PrintStream(System.out)
+    new IrGen(out).gen(ast1)
   }
 
   test("float test") {
@@ -128,7 +135,9 @@ class TypeCheckerTest extends FunSuite {
     println(ast0)
     val ast1 = typeChecker.transform(ast0)
     println(ast1)
-    new IrGen().gen(ast1)
+
+    val out = new PrintStream(System.out)
+    new IrGen(out).gen(ast1)
   }
 
   test("strings test (Hello, world)") {
@@ -143,14 +152,16 @@ class TypeCheckerTest extends FunSuite {
         |}
         |
         |def main = \ ->
-        |  'Привет, мир!'.print
+        |  'こんにちは、世界!'.print
       """.stripMargin
 
     val ast0 = moduleParser.parse(src).asInstanceOf[Module]
     println(ast0)
     val ast1 = typeChecker.transform(ast0)
     println(ast1)
-    new IrGen().gen(ast1)
+
+    val out = new PrintStream(System.out)
+    new IrGen(out).gen(ast1)
   }
 
   test("a conditions test") {
@@ -181,7 +192,9 @@ class TypeCheckerTest extends FunSuite {
     println(ast0)
     val ast1 = typeChecker.transform(ast0)
     println(ast1)
-    new IrGen().gen(ast1)
+
+    val out = new PrintStream(System.out)
+    new IrGen(out).gen(ast1)
   }
 
   test("a while loop test") {
@@ -215,6 +228,81 @@ class TypeCheckerTest extends FunSuite {
     println(ast0)
     val ast1 = typeChecker.transform(ast0)
     println(ast1)
-    new IrGen().gen(ast1)
+
+    val out = new PrintStream(System.out)
+    new IrGen(out).gen(ast1)
+  }
+
+  test("a cheat arrays test") {
+    val src =
+      """
+        |type Unit = llvm { void }
+        |type Boolean = llvm { i1 }
+        |type Int = llvm { i32 }
+        |type IntArray = llvm { i32* }
+        |
+        |def +: (self: Int, other: Int) -> Int = llvm {
+        |  %1 = add nsw i32 %other, %self
+        |  ret i32 %1
+        |}
+        |def *: (self: Int, other: Int) -> Int = llvm {
+        |  %1 = mul nsw i32 %other, %self
+        |  ret i32 %1
+        |}
+        |def <: (self: Int, other: Int) -> Boolean = llvm {
+        |  %1 = icmp slt i32 %self, %other
+        |  ret i1 %1
+        |}
+        |
+        |def allocIntArray : (size: Int) -> IntArray = llvm {
+        |  %1 = mul nsw i32 %size, 4
+        |  %2 = call i8* @malloc(i32 %1)
+        |  %3 = bitcast i8* %2 to i32*
+        |  ret i32* %3
+        |}
+        |
+        |def set: (self: IntArray, index: Int, value: Int) -> Unit = llvm {
+        |  %1 = getelementptr i32, i32* %self, i32 %index
+        |  store i32 %value, i32* %1
+        |  ret void
+        |}
+        |
+        |def apply: (self: IntArray, index: Int) -> Int = llvm {
+        |  %1 = getelementptr i32, i32* %self, i32 %index
+        |  %2 = load i32, i32* %1
+        |  ret i32 %2
+        |}
+        |
+        |def free : (self: IntArray) -> Unit = llvm {
+        |  %1 = bitcast i32* %self to i8*
+        |  call void @free(i8* %1)
+        |  ret void
+        |}
+        |
+        |def main = {
+        |  val array = allocIntArray(10)
+        |  var i = 0
+        |  while i < 10 {
+        |    array.set(i, i)
+        |    i = i + 1
+        |  }
+        |  i = 0
+        |  var sum = 0
+        |  while i < 10 {
+        |    sum = sum + array.apply(i)
+        |    i = i + 1
+        |  }
+        |  array.free
+        |  sum
+        |}: Int
+      """.stripMargin
+
+    val ast0 = moduleParser.parse(src).asInstanceOf[Module]
+    println(ast0)
+    val ast1 = typeChecker.transform(ast0)
+    println(ast1)
+
+    val out = new PrintStream(System.out)
+    new IrGen(out).gen(ast1)
   }
 }

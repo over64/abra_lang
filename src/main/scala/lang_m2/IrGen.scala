@@ -1,10 +1,12 @@
 package lang_m2
 
+import java.io.{PrintStream}
+
 import Ast1._
 
 import scala.collection.mutable
 
-class IrGen {
+case class IrGen(val out: PrintStream) {
   var tmpVars = 0
   var labelId = 0
 
@@ -37,7 +39,7 @@ class IrGen {
     val (resType, indicies) = evalGep(access.fromType, Seq(access.prop))
     val res = nextTmpVar()
 
-    println(s"\t$res = getelementptr ${access.fromType.name}, ${access.fromType.name}* $base, ${indicies.map { i => s"i32 $i" } mkString (", ")}")
+    out.println(s"\t$res = getelementptr ${access.fromType.name}, ${access.fromType.name}* $base, ${indicies.map { i => s"i32 $i" } mkString (", ")}")
     (res, resType)
   }
 
@@ -69,14 +71,14 @@ class IrGen {
       if (needPtr) throw new Exception("not implemented in current ABI")
       else {
         val tmp = nextTmpVar()
-        println(s"\t$tmp = bitcast [${value.bytesLen} x i8]* @.$name to i8*")
+        out.println(s"\t$tmp = bitcast [${value.bytesLen} x i8]* @.$name to i8*")
         tmp
       }
     case lId(varName) =>
       if (needPtr) "%" + varName
       else {
         val tmp = nextTmpVar()
-        println(s"\t$tmp = load ${_type.name}, ${_type.name}* %$varName")
+        out.println(s"\t$tmp = load ${_type.name}, ${_type.name}* %$varName")
         tmp
       }
     case lParam(paramName) =>
@@ -86,18 +88,18 @@ class IrGen {
         case (false, false) => "%" + paramName
         case (true, false) =>
           val tmp = nextTmpVar()
-          println(s"\t%$tmp = alloca ${_type.name}, align 4")
-          println(s"\tstore ${_type.name} %$paramName, ${_type.name}* $tmp")
+          out.println(s"\t%$tmp = alloca ${_type.name}, align 4")
+          out.println(s"\tstore ${_type.name} %$paramName, ${_type.name}* $tmp")
           tmp
         case (false, true) =>
           val tmp = nextTmpVar()
-          println(s"\t$tmp = load ${_type.name}, ${_type.name}* %$paramName")
+          out.println(s"\t$tmp = load ${_type.name}, ${_type.name}* %$paramName")
           tmp
       }
     case a: Access =>
       val (tmp, _type) = evalAccess(a)
       val next = nextTmpVar()
-      println(s"\t$next = load ${_type.name}, ${_type.name}* $tmp")
+      out.println(s"\t$next = load ${_type.name}, ${_type.name}* $tmp")
       next
     case Call(ptr, args) =>
       ptr.signature.ret match {
@@ -106,7 +108,7 @@ class IrGen {
           val newArgs = Seq(lId(newVar)) ++ args
           val newSignArgs = Seq(Field("ret", struct)) ++ ptr.signature.args
 
-          println(s"\t%$newVar = alloca ${struct.name}, align 4")
+          out.println(s"\t%$newVar = alloca ${struct.name}, align 4")
 
           val calculatedArgs = newArgs.zip(newSignArgs).map {
             case (arg, argType) =>
@@ -118,11 +120,11 @@ class IrGen {
               s"${if (argType._type.isInstanceOf[Struct]) argType._type.name + "*" else argType._type.name} $arg"
           }.mkString(", ")
 
-          println(s"\tcall ${ptr.signature.realRet.name} ${ptr.irName}($joinedArgs)")
+          out.println(s"\tcall ${ptr.signature.realRet.name} ${ptr.irName}($joinedArgs)")
           if (needPtr) "%" + newVar
           else {
             val tmp = nextTmpVar()
-            println(s"\t$tmp = load ${_type.name}, ${_type.name}* %$newVar")
+            out.println(s"\t$tmp = load ${_type.name}, ${_type.name}* %$newVar")
             tmp
           }
         case _ =>
@@ -137,12 +139,12 @@ class IrGen {
           }.mkString(", ")
 
           if (ptr.signature.ret == Scalar("void")) {
-            println(s"\tcall ${ptr.signature.ret.name} ${ptr.irName}($joinedArgs)")
+            out.println(s"\tcall ${ptr.signature.ret.name} ${ptr.irName}($joinedArgs)")
             return null
           }
 
           val tmp = nextTmpVar()
-          println(s"\t$tmp = call ${ptr.signature.ret.name} ${ptr.irName}($joinedArgs)")
+          out.println(s"\t$tmp = call ${ptr.signature.ret.name} ${ptr.irName}($joinedArgs)")
           if (needPtr) throw new Exception("not implemented in current ABI")
           else tmp
       }
@@ -151,7 +153,7 @@ class IrGen {
   def genStat(seq: Seq[Stat]): Unit =
     seq.foreach {
       case v: Var =>
-        println(s"\t${v.irName} = alloca ${v._type.name}, align 4")
+        out.println(s"\t${v.irName} = alloca ${v._type.name}, align 4")
       case Store(to, fields, varType, init) =>
         val base = to match {
           case p: lParam => genInit(varType, p, true)
@@ -162,57 +164,57 @@ class IrGen {
         val forStore = genInit(resType, init, needPtr = false)
         val res = nextTmpVar()
 
-        println(s"\t$res = getelementptr ${varType.name}, ${varType.name}* ${base}, ${indicies.map { i => s"i32 $i" } mkString (", ")}")
-        println(s"\tstore ${resType.name} $forStore, ${resType.name}* $res")
+        out.println(s"\t$res = getelementptr ${varType.name}, ${varType.name}* ${base}, ${indicies.map { i => s"i32 $i" } mkString (", ")}")
+        out.println(s"\tstore ${resType.name} $forStore, ${resType.name}* $res")
       case call: Call =>
         genInit(call.ptr.signature.ret, call)
       //      case VoidCall(ptr, args) =>
       //        val joinedArgs = joinCallArgs(ptr, args)
-      //        println(s"\tcall ${ptr.signature.ret.name} ${ptr.irName}($joinedArgs)")
+      //        out.println(s"\tcall ${ptr.signature.ret.name} ${ptr.irName}($joinedArgs)")
       case Cond(init, _if, _else) =>
         val condVar = genInit(Scalar("i1"), init, needPtr = false)
         val (ifLabel, elseLabel, endLabel) = (nextLabel, nextLabel, nextLabel)
 
-        println(s"\tbr i1 $condVar, label %$ifLabel, label %$elseLabel")
-        println(s"$ifLabel:")
+        out.println(s"\tbr i1 $condVar, label %$ifLabel, label %$elseLabel")
+        out.println(s"$ifLabel:")
         genStat(_if)
-        println(s"\tbr label %$endLabel")
-        println(s"$elseLabel:")
+        out.println(s"\tbr label %$endLabel")
+        out.println(s"$elseLabel:")
         genStat(_else)
-        println(s"\tbr label %$endLabel")
-        println(s"$endLabel:")
+        out.println(s"\tbr label %$endLabel")
+        out.println(s"$endLabel:")
       case While(init, seq) =>
         val (beginLabel, bodyLabel, endLabel) = (nextLabel, nextLabel, nextLabel)
 
-        println(s"\tbr label %$beginLabel")
-        println(s"$beginLabel:")
+        out.println(s"\tbr label %$beginLabel")
+        out.println(s"$beginLabel:")
 
         val condVar = genInit(Scalar("i1"), init, needPtr = false)
-        println(s"\tbr i1 $condVar, label %$bodyLabel, label %$endLabel")
-        println(s"$bodyLabel:")
+        out.println(s"\tbr i1 $condVar, label %$bodyLabel, label %$endLabel")
+        out.println(s"$bodyLabel:")
 
         genStat(seq)
 
-        println(s"\tbr label %$beginLabel")
-        println(s"$endLabel:")
+        out.println(s"\tbr label %$beginLabel")
+        out.println(s"$endLabel:")
 
       case Ret(_type, init) =>
         val tmp = genInit(_type, init)
-        println(s"\tret ${_type.name} $tmp")
+        out.println(s"\tret ${_type.name} $tmp")
       case RetVoid() =>
-        println(s"\tret void")
+        out.println(s"\tret void")
     }
 
   def genFunction(fn: Fn): Unit = {
     val signature = fn.ptr.signature
-    println(s"define ${signature.realRet.name} ${fn.ptr.irName}(${signature.irArgs.mkString(", ")}) {")
+    out.println(s"define ${signature.realRet.name} ${fn.ptr.irName}(${signature.irArgs.mkString(", ")}) {")
 
     fn.body match {
-      case IrInline(ir) => println(s"$ir")
+      case IrInline(ir) => out.println(s"$ir")
       case Block(seq) =>
         genStat(seq)
     }
-    println("}")
+    out.println("}")
   }
 
   case class StringConst(name: String, value: HexUtil.EncodeResult)
@@ -252,15 +254,18 @@ class IrGen {
   }
 
   def gen(module: Module): Unit = {
-    println("declare i32 @puts(i8* nocapture readonly)")
+    out.println("declare i32 @puts(i8* nocapture readonly)")
+    out.println("declare noalias i8* @malloc(i32)")
+    out.println("declare void @free(i8*)")
+
 
     module.structs.foreach { struct =>
-      println(s"${struct.name} = type { ${struct.fields.map { f => f._type.name }.mkString(", ")} }")
+      out.println(s"${struct.name} = type { ${struct.fields.map { f => f._type.name }.mkString(", ")} }")
     }
     val (consts, functions) = inferStringConsts(module.functions)
 
     consts.foreach { const =>
-      println(s"@.${const.name} = constant [${const.value.bytesLen} x i8] ${"c\"" + const.value.str + "\""}, align 1")
+      out.println(s"@.${const.name} = constant [${const.value.bytesLen} x i8] ${"c\"" + const.value.str + "\""}, align 1")
     }
     functions.foreach { fn => tmpVars = 0; genFunction(fn) }
   }

@@ -2,10 +2,12 @@ name := "test-lang-compiler"
 
 version := "0.0.0"
 
-scalaVersion := "2.11.7"
+scalaVersion := "2.11.8"
 
 
 resolvers += Resolver.mavenLocal
+
+assemblyJarName in assembly := "kadabra.jar"
 
 
 libraryDependencies ++= Seq(
