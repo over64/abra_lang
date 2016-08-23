@@ -153,7 +153,7 @@ Need imperative programming?
   }
 ```
 #### Function pointers & anonymous functions
-```
+```scala
 def foo = { fn: (x: Int) -> Int, x: Int ->
   fn(x)
 }: Int
