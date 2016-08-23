@@ -11,9 +11,10 @@ Research platform for design language with new memory management and modularity 
   - val / var
   - if-else expressions
   - while loops
-  - functions. Rich function call syntax: infix calls, unary calls, apply calls, self calls, usual calls
+  - Rich function call syntax: infix calls, unary calls, apply calls, self calls, usual calls
+  - types: scalar and struct types (no arrays and ATD yet
+  - function pointers
   - natural operator overloading (no 'operators' in language syntax)
-  - types: scalar and struct types (no arrays and ATD yet)
   - smooth integration with LLVM via scalar types and inline LLVM IR
   - local type inference
   - uniform declaration syntax
@@ -150,6 +151,29 @@ Need imperative programming?
     doSomethingLikeFather()
     a = a + 1
   }
+```
+#### Function pointers & anonymous functions
+```
+type Unit = llvm { void }
+type Int = llvm { i32 }
+
+def +: (self: Int, other: Int) -> Int = llvm {
+  %1 = add nsw i32 %other, %self
+  ret i32 %1
+}
+
+def foo = { fn: (x: Int) -> Int, x: Int ->
+  fn(x)
+}: Int
+
+def main = {
+  val fn = \i: Int -> i + 1
+  val a = foo(\i -> i + 1, 1)
+  val b = foo({ i -> i + 1 }, 2)
+  val c = foo(fn, 3)
+
+  fn(0) + c + a + b
+}: Int
 ```
   
 
