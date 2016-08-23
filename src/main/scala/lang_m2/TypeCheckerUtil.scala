@@ -6,10 +6,14 @@ import lang_m2.Ast0._
   * Created by over on 29.07.16.
   */
 trait TypeCheckerUtil {
-  def error(info: AstInfo, msg: String) =
-    s"at ${info.line}:${info.col + 1} ->\n\t$msg"
+  def error(info: AstInfo, msg: String) = {
+    if (info != null)
+      s"at ${info.line}:${info.col + 1} ->\n\t$msg"
+    else
+      s"at __no sources__ ->\n\t$msg"
+  }
 
-  case class InferedFn(name: String, args: Seq[TypeHint], ret: TypeHint, lowFn: Ast1.Fn)
+  case class InferedFn(name: String, args: Seq[TypeHint], ret: TypeHint, lowFn: Ast1.Fn, val th: FnTypeHint)
 
   case class InferedExp(th: TypeHint, stats: Seq[Ast1.Stat], init: Option[Ast1.Init])
 
@@ -43,6 +47,11 @@ trait TypeCheckerUtil {
       evaluatedMap.get(fnName).map { infFns =>
         infFns.find { infFn => infFn.args.headOption == firstArgType }.map(infFn => true).getOrElse(false)
       }.getOrElse(false)
+
+    def findInfered(fnName: String, firstArgType: Option[TypeHint]): Option[InferedFn] =
+      evaluatedMap.get(fnName).map { infFns =>
+        infFns.find { infFn => infFn.args.headOption == firstArgType }
+      }.getOrElse(None)
 
     def isInfering(fnName: String, firstArgType: Option[TypeHint]): Boolean = {
       inferStack.find {
@@ -97,16 +106,51 @@ trait TypeCheckerUtil {
           })
         }
       case FnTypeHint(_, seq, ret) =>
-        Ast1.FnPointer(seq.map(arg => mapTypeHintToLow(ctx, arg.typeHint)), mapTypeHintToLow(ctx, ret))
+        Ast1.FnPointer(seq.map(arg => Ast1.Field(arg.name, mapTypeHintToLow(ctx, arg.typeHint))), mapTypeHintToLow(ctx, ret))
+    }
+
+  def inferFnArgs(fn: Fn) =
+    fn.typeHint match {
+      case Some(th) =>
+        fn.body match {
+          case Block(_, args, _) =>
+            th.seq.zip(args).foreach {
+              case (protoHint, blockArg) =>
+                blockArg.typeHint.map { th =>
+                  if (th.name != protoHint.typeHint.name)
+                    throw new Exception(error(th.info, s"expected arg of type ${protoHint.typeHint.name} has ${th.name}"))
+                }
+            }
+            th.seq.zip(args).map {
+              case (th, arg) => FnTypeHintField(null, arg.name, th.typeHint)
+            }
+          case _ => th.seq
+        }
+      case None =>
+        fn.body match {
+          case inline: LlInline => throw new Exception(error(fn.info, "expected explicit function type definition"))
+          case Block(info, args, _) => // все аргументы должны быть с типами
+            args.map {
+              arg =>
+                val th = arg.typeHint.getOrElse(throw new Exception(error(arg.info, "expected explicit argument type definition")))
+                FnTypeHintField(null, arg.name, th)
+            }
+        }
     }
 
   def assertTypeEquals(info: AstInfo, t1: TypeHint, t2: TypeHint) =
     if (t1.name != t2.name) throw new Exception(error(info, s"expected expression of type ${t1.name} has ${t2.name}"))
 
   var annoVars = 0
+  var anonFns = 0
 
   def nextAnonVar = {
     annoVars += 1
     s"anon$annoVars"
+  }
+
+  def nextAnonFn = {
+    annoVars += 1
+    s"anonFn$annoVars"
   }
 }

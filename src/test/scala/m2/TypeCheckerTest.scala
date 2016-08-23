@@ -208,10 +208,6 @@ class TypeCheckerTest extends FunSuite {
         |  %1 = add nsw i32 %other, %self
         |  ret i32 %1
         |}
-        |def *: (self: Int, other: Int) -> Int = llvm {
-        |  %1 = mul nsw i32 %other, %self
-        |  ret i32 %1
-        |}
         |def <: (self: Int, other: Int) -> Boolean = llvm {
         |  %1 = icmp slt i32 %self, %other
         |  ret i1 %1
@@ -221,6 +217,40 @@ class TypeCheckerTest extends FunSuite {
         |  var a = 0
         |  while a < 100 { a = a + 1 }
         |  a
+        |}: Int
+      """.stripMargin
+
+    val ast0 = moduleParser.parse(src).asInstanceOf[Module]
+    println(ast0)
+    val ast1 = typeChecker.transform(ast0)
+    println(ast1)
+
+    val out = new PrintStream(System.out)
+    new IrGen(out).gen(ast1)
+  }
+
+  test("fn pointer test") {
+    val src =
+      """
+        |type Unit = llvm { void }
+        |type Int = llvm { i32 }
+        |
+        |def +: (self: Int, other: Int) -> Int = llvm {
+        |  %1 = add nsw i32 %other, %self
+        |  ret i32 %1
+        |}
+        |
+        |def foo = { fn: (x: Int) -> Int, x: Int ->
+        |  fn(x)
+        |}: Int
+        |
+        |def main = {
+        |  val fn = \i: Int -> i + 1
+        |  val a = foo(\i -> i + 1, 1)
+        |  val b = foo({ i -> i + 1 }, 2)
+        |  val c = foo(fn, 3)
+        |
+        |  fn(0) + c + a + b
         |}: Int
       """.stripMargin
 

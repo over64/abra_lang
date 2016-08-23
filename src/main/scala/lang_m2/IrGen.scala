@@ -43,18 +43,6 @@ case class IrGen(val out: PrintStream) {
     (res, resType)
   }
 
-  def joinCallArgs(ptr: FnPtr, args: Seq[Init]): String = {
-    val calculatedArgs = args.zip(ptr.signature.args).map {
-      case (arg, argType) =>
-        genInit(argType._type, arg, needPtr = argType._type.isInstanceOf[Struct])
-    }
-
-    calculatedArgs.zip(ptr.signature.args).map {
-      case (arg, argType) =>
-        s"${if (argType._type.isInstanceOf[Struct]) argType._type.name + "*" else argType._type.name} $arg"
-    }.mkString(", ")
-  }
-
   def genInit(_type: Type, init: Init, needPtr: Boolean = false): String = init match {
     case lInt(value) =>
       if (needPtr) throw new Exception("not implemented in current ABI") else value
@@ -74,13 +62,16 @@ case class IrGen(val out: PrintStream) {
         out.println(s"\t$tmp = bitcast [${value.bytesLen} x i8]* @.$name to i8*")
         tmp
       }
-    case lId(varName) =>
+    case lLocal(varName) =>
       if (needPtr) "%" + varName
       else {
         val tmp = nextTmpVar()
         out.println(s"\t$tmp = load ${_type.name}, ${_type.name}* %$varName")
         tmp
       }
+    case lGlobal(value) =>
+      if (needPtr) throw new Exception("not implemented in current ABI")
+      else "@" + value
     case lParam(paramName) =>
       val isPtr = _type.isInstanceOf[Struct]
       (needPtr, isPtr) match {
@@ -101,12 +92,21 @@ case class IrGen(val out: PrintStream) {
       val next = nextTmpVar()
       out.println(s"\t$next = load ${_type.name}, ${_type.name}* $tmp")
       next
-    case Call(ptr, args) =>
-      ptr.signature.ret match {
+    case Call(id, _type, args) =>
+      val toCall = id match {
+        case lLocal(value) =>
+          val tmp = nextTmpVar()
+          out.println(s"\t$tmp = load ${_type.name}, ${_type.name}* %$value")
+          tmp
+        case lGlobal(value) => "@" + escapeFnName(value)
+        case lParam(value) => "%" + value
+      }
+
+      _type.ret match {
         case struct@Struct(_name, fields) =>
           val newVar = nextTmpVar(needPercent = false)
-          val newArgs = Seq(lId(newVar)) ++ args
-          val newSignArgs = Seq(Field("ret", struct)) ++ ptr.signature.args
+          val newArgs = Seq(lLocal(newVar)) ++ args
+          val newSignArgs = _type.realArgs
 
           out.println(s"\t%$newVar = alloca ${struct.name}, align 4")
 
@@ -120,31 +120,31 @@ case class IrGen(val out: PrintStream) {
               s"${if (argType._type.isInstanceOf[Struct]) argType._type.name + "*" else argType._type.name} $arg"
           }.mkString(", ")
 
-          out.println(s"\tcall ${ptr.signature.realRet.name} ${ptr.irName}($joinedArgs)")
+          out.println(s"\tcall ${_type.realRet.name} ${toCall}($joinedArgs)")
           if (needPtr) "%" + newVar
           else {
             val tmp = nextTmpVar()
-            out.println(s"\t$tmp = load ${_type.name}, ${_type.name}* %$newVar")
+            out.println(s"\t$tmp = load ${_type.ret.name}, ${_type.ret.name}* %$newVar")
             tmp
           }
         case _ =>
-          val calculatedArgs = (args).zip(ptr.signature.args).map {
+          val calculatedArgs = (args).zip(_type.args).map {
             case (arg, argType) =>
               genInit(argType._type, arg, needPtr = argType._type.isInstanceOf[Struct])
           }
 
-          val joinedArgs = calculatedArgs.zip(ptr.signature.args).map {
+          val joinedArgs = calculatedArgs.zip(_type.args).map {
             case (arg, argType) =>
               s"${if (argType._type.isInstanceOf[Struct]) argType._type.name + "*" else argType._type.name} $arg"
           }.mkString(", ")
 
-          if (ptr.signature.ret == Scalar("void")) {
-            out.println(s"\tcall ${ptr.signature.ret.name} ${ptr.irName}($joinedArgs)")
+          if (_type.ret == Scalar("void")) {
+            out.println(s"\tcall ${_type.ret.name} ${toCall}($joinedArgs)")
             return null
           }
 
           val tmp = nextTmpVar()
-          out.println(s"\t$tmp = call ${ptr.signature.ret.name} ${ptr.irName}($joinedArgs)")
+          out.println(s"\t$tmp = call ${_type.ret.name} ${toCall}($joinedArgs)")
           if (needPtr) throw new Exception("not implemented in current ABI")
           else tmp
       }
@@ -167,10 +167,7 @@ case class IrGen(val out: PrintStream) {
         out.println(s"\t$res = getelementptr ${varType.name}, ${varType.name}* ${base}, ${indicies.map { i => s"i32 $i" } mkString (", ")}")
         out.println(s"\tstore ${resType.name} $forStore, ${resType.name}* $res")
       case call: Call =>
-        genInit(call.ptr.signature.ret, call)
-      //      case VoidCall(ptr, args) =>
-      //        val joinedArgs = joinCallArgs(ptr, args)
-      //        out.println(s"\tcall ${ptr.signature.ret.name} ${ptr.irName}($joinedArgs)")
+        genInit(call._type.ret, call)
       case Cond(init, _if, _else) =>
         val condVar = genInit(Scalar("i1"), init, needPtr = false)
         val (ifLabel, elseLabel, endLabel) = (nextLabel, nextLabel, nextLabel)
@@ -206,8 +203,8 @@ case class IrGen(val out: PrintStream) {
     }
 
   def genFunction(fn: Fn): Unit = {
-    val signature = fn.ptr.signature
-    out.println(s"define ${signature.realRet.name} ${fn.ptr.irName}(${signature.irArgs.mkString(", ")}) {")
+    val signature = fn._type
+    out.println(s"define ${signature.realRet.name} @${escapeFnName(fn.name)}(${signature.irArgs.mkString(", ")}) {")
 
     fn.body match {
       case IrInline(ir) => out.println(s"$ir")
@@ -230,10 +227,10 @@ case class IrGen(val out: PrintStream) {
       case some@_ => some
     }
     def mapStat(stat: Stat): Stat = stat match {
-      case Store(toVar: CanStore, fields: Seq[String], varType: Type, init: Init) =>
+      case Store(toVar: lId, fields: Seq[String], varType: Type, init: Init) =>
         Store(toVar, fields, varType, mapInit(init))
-      case Call(ptr: FnPtr, args: Seq[Init]) =>
-        Call(ptr, args.map(arg => mapInit(arg)))
+      case Call(name, ptr, args: Seq[Init]) =>
+        Call(name, ptr, args.map(arg => mapInit(arg)))
       case Cond(init: Init, _if: Seq[Stat], _else: Seq[Stat]) =>
         Cond(mapInit(init), _if.map(stat => mapStat(stat)), _else.map(stat => mapStat(stat)))
       case While(init: Init, seq: Seq[Stat]) =>
@@ -245,7 +242,7 @@ case class IrGen(val out: PrintStream) {
     }
 
     val mapped = functions.map { fn =>
-      Fn(fn.ptr, fn.body match {
+      Fn(fn.name, fn._type, fn.body match {
         case ir: IrInline => ir
         case Block(seq) => Block(seq.map { stat => mapStat(stat) })
       })
