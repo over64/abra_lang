@@ -154,14 +154,6 @@ Need imperative programming?
 ```
 #### Function pointers & anonymous functions
 ```
-type Unit = llvm { void }
-type Int = llvm { i32 }
-
-def +: (self: Int, other: Int) -> Int = llvm {
-  %1 = add nsw i32 %other, %self
-  ret i32 %1
-}
-
 def foo = { fn: (x: Int) -> Int, x: Int ->
   fn(x)
 }: Int
