@@ -45,6 +45,7 @@ def mkIntArray = { size: Int, init: (index: Int) -> Int ->
   val array = allocIntArray(10)
   var i = 0
   while i < 10 {
+    # array(i) = init(i)
     array.set(i, init(i))
     i = i + 1
   }

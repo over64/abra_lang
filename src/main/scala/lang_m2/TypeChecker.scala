@@ -2,6 +2,7 @@ package lang_m2
 
 import lang_m2.Ast0._
 import lang_m2.Ast1.FnPointer
+import lang_m2.CE
 
 class TypeChecker extends TypeCheckerUtil {
 
@@ -13,7 +14,7 @@ class TypeChecker extends TypeCheckerUtil {
       case v: Val =>
         val (_ctx, initExp) = evalBlockExpression(ctx, forInit = true, v.typeHint, v.init)
 
-        v.typeHint.map { th => assertTypeEquals(v.init.info, th, initExp.th) }
+        v.typeHint.map { th => assertTypeEquals(v.init, th, initExp.th) }
 
         val __ctx = _ctx.addVar(v.name, ValInfo(v.mutable, false, initExp.th))
         val lowType = mapTypeHintToLow(ctx, initExp.th)
@@ -25,16 +26,16 @@ class TypeChecker extends TypeCheckerUtil {
           None)
 
         (__ctx, infExp)
-      case block@Block(info, args, seq) =>
+      case block@Block(args, seq) =>
         val th = typeAdvice.map {
           case fth: FnTypeHint => Some(fth)
           case _ => None
         }.getOrElse(None)
 
-        val (_ctx, infFn) = evalFunction(ctx, true, Fn(info, nextAnonFn, th, block, None))
+        val (_ctx, infFn) = evalFunction(ctx, true, Fn(nextAnonFn, th, block, None))
 
         (_ctx, InferedExp(infFn.th, Seq(), Some(Ast1.lGlobal(infFn.name))))
-      case Call(info, fnName, Tuple(_, args)) =>
+      case self@Call(fnName, Tuple(args)) =>
         var res: Option[(InferContext, InferedExp)] = None
 
         // try to find in local vars and params
@@ -119,14 +120,14 @@ class TypeChecker extends TypeCheckerUtil {
         }
 
         res match {
-          case None => throw new Exception(error(info, "no fn to call"))
+          case None => throw new CompileEx(self, CE.NoFnToCall(fnName))
           case Some(res) => res
         }
-      case lInt(info, value) =>
+      case lInt(value) =>
         val infTh = typeAdvice.map {
-          case sth@ScalarTypeHint(_, typeName) =>
+          case sth@ScalarTypeHint(typeName) =>
             ctx.typeMap(typeName) match {
-              case ScalarType(_, name, ll) =>
+              case ScalarType(name, ll) =>
                 if (ll.matches("i\\d+") && ll != "i1") sth
                 else thInt
               case _ => thInt
@@ -135,11 +136,11 @@ class TypeChecker extends TypeCheckerUtil {
         }.getOrElse(thInt)
 
         (ctx, InferedExp(infTh, Seq(), Some(Ast1.lInt(value))))
-      case lFloat(info, value) =>
+      case lFloat(value) =>
         val infTh = typeAdvice.map {
-          case sth@ScalarTypeHint(_, typeName) =>
+          case sth@ScalarTypeHint(typeName) =>
             ctx.typeMap(typeName) match {
-              case ScalarType(_, name, ll) =>
+              case ScalarType(name, ll) =>
                 if (Seq("half", "float", "double", "fp128", "x86_fp80", "ppc_fp128").contains(ll)) sth
                 else thFloat
               case _ => thFloat
@@ -148,12 +149,12 @@ class TypeChecker extends TypeCheckerUtil {
         }.getOrElse(thFloat)
 
         (ctx, InferedExp(infTh, Seq(), Some(Ast1.lFloat(value))))
-      case lBoolean(info, value) =>
+      case lBoolean(value) =>
         (ctx, InferedExp(thBool, Seq(), Some(Ast1.lInt(value))))
-      case lString(info, value) =>
+      case lString(value) =>
         (ctx, InferedExp(thString, Seq(), Some(Ast1.lString(s"${nextAnonVar}", HexUtil.singleByteNullTerminated(value.getBytes)))))
-      case lId(info, varName) =>
-        val vi = ctx.varMap.getOrElse(varName, throw new Exception(error(info, s"variable with name $varName not found")))
+      case self@lId(varName) =>
+        val vi = ctx.varMap.getOrElse(varName, throw new CompileEx(self, CE.VarNotFound(varName)))
 
         val literal =
           if (vi.isParam) Ast1.lParam(varName)
@@ -164,7 +165,7 @@ class TypeChecker extends TypeCheckerUtil {
         val (_ctx, infFrom) = evalBlockExpression(ctx, forInit = true, None, from)
 
         val realField = infFrom.th match {
-          case ScalarTypeHint(info, typeName) =>
+          case ScalarTypeHint(typeName) =>
             ctx.typeMap(typeName) match {
               case factor: FactorType =>
                 factor.fields.find(field => field.name == prop.value)
@@ -179,28 +180,28 @@ class TypeChecker extends TypeCheckerUtil {
           (_ctx, InferedExp(field.typeHint, Seq(), Some(Ast1.Access(infFrom.init.get, lowFromType, field.name))))
         } else {
           // Fixme: no cheats, bro. Test that needed function exists
-          evalBlockExpression(ctx, forInit = true, typeAdvice, Call(prop.info, prop.value, Tuple(prop.info, Seq(from))))
+          evalBlockExpression(ctx, forInit = true, typeAdvice, Call(prop.value, Tuple(Seq(from))))
         }
-      case Store(info, to, what) =>
+      case Store(to, what) =>
         // FIXME: validate fields and ret
         val (_ctx, condExp) = evalBlockExpression(ctx, forInit = true, Some(thBool), what)
         val varName = to.head.value
-        val _var = _ctx.varMap.getOrElse(to.head.value, throw new Exception(error(to.head.info, s"variable with name ${to.head} not found")))
+        val _var = _ctx.varMap.getOrElse(to.head.value, throw new CompileEx(to.head, CE.VarNotFound(varName)))
 
         if (!_var.mutable)
-          throw new Exception(error(to.head.info, s"reassignment to val"))
+          throw new CompileEx(to.head, CE.ReassignToVal())
 
         val srcType = ctx.typeMap(_var.th.name)
 
         to.drop(1).foldLeft[Type](srcType) {
           case (res, prop) =>
             res match {
-              case FactorType(info, name, fields) =>
+              case FactorType(name, fields) =>
                 fields.find(f => f.name == prop.value) match {
                   case Some(field) => ctx.typeMap(field.typeHint.name)
-                  case None => throw new Exception(error(prop.info, s"cannot find field ${prop.value} in type $name"))
+                  case None => throw new CompileEx(prop, CE.PropNotFound(prop.value, name))
                 }
-              case _type@_ => throw new Exception(error(prop.info, s"cannot find field ${prop.value} in type ${_type.name}"))
+              case _type@_ => throw new CompileEx(prop, CE.PropNotFound(prop.value, _type.name))
             }
         }
 
@@ -208,7 +209,7 @@ class TypeChecker extends TypeCheckerUtil {
         val lowStore = Ast1.Store(if (_var.isParam) Ast1.lParam(varName) else Ast1.lLocal(varName), to.drop(1).map(_.value), lowVarType, condExp.init.get)
 
         (_ctx, InferedExp(thUnit, condExp.stats :+ lowStore, None))
-      case Cond(info, ifCond, _then, _else) =>
+      case self@Cond(ifCond, _then, _else) =>
         val anonVarName = nextAnonVar
 
         def retMapper(ctx: InferContext, last: Option[InferedExp]): (InferContext, InferedExp) =
@@ -229,7 +230,7 @@ class TypeChecker extends TypeCheckerUtil {
           }.getOrElse((ctx, InferedExp(thUnit, Seq(), None)))
 
         val (_ctx, condExp) = evalBlockExpression(ctx, forInit = true, Some(thBool), ifCond)
-        assertTypeEquals(ifCond.info, thBool, condExp.th)
+        assertTypeEquals(ifCond, thBool, condExp.th)
 
         val (__ctx, ifTh, ifBranch) = evalBlock2(_ctx, typeAdvice, _then.seq, retMapper)
         val (___ctx, elseTh, elseBranch) = _else.map { _else =>
@@ -240,16 +241,16 @@ class TypeChecker extends TypeCheckerUtil {
 
         if (forInit) {
           if (ifTh.name != elseTh.name)
-            throw new Exception(error(info, s"expected equal types in if-else branches"))
+            throw new CompileEx(self, CE.BranchTypesNotEqual())
           val lowType = mapTypeHintToLow(___ctx, ifTh)
           (___ctx, InferedExp(ifTh, Seq(Ast1.Var(anonVarName, lowType)) :+ lowIf, Some(Ast1.lLocal(anonVarName))))
         }
         else
           (___ctx, InferedExp(ifTh, Seq(lowIf), None))
-      case While(info, cond, _then) =>
+      case While(cond, _then) =>
         val (_ctx, condExp) = evalBlockExpression(ctx, forInit = true, Some(thBool), cond)
 
-        assertTypeEquals(cond.info, thBool, condExp.th)
+        assertTypeEquals(cond, thBool, condExp.th)
 
         val (__ctx, th, block) = evalBlock2(_ctx, typeAdvice, _then.seq, {
           case (ctx, infExp) =>
@@ -306,11 +307,11 @@ class TypeChecker extends TypeCheckerUtil {
       return (ctx, alreadyInfered.get)
 
     val expectedRet: Option[TypeHint] = fn.typeHint match {
-      case Some(FnTypeHint(info, _, retTh)) =>
+      case Some(FnTypeHint(_, retTh)) =>
         fn.retTypeHint match {
           case Some(rth) =>
             if (rth.name != retTh.name)
-              throw new Exception(error(rth.info, s"expected ret of type ${retTh.name} has ${rth.name}"))
+              throw new CompileEx(rth, CE.ExprTypeMismatch(retTh, rth))
           case _ =>
         }
         Some(retTh)
@@ -322,20 +323,20 @@ class TypeChecker extends TypeCheckerUtil {
     }
 
     val (inferedRet, lowBody, _ctx): (TypeHint, Ast1.FnBody, InferContext) = fn.body match {
-      case LlInline(info, value) => // ret должен быть указан явно
+      case LlInline(value) => // ret должен быть указан явно
         expectedRet.map { ret =>
           (ret, Ast1.IrInline(value), ctx)
-        }.getOrElse(throw new Exception(error(info, s"function with llvm body definition must have explicit return type declaration")))
-      case Block(info, args, seq) =>
+        }.getOrElse(throw new CompileEx(fn, CE.NeedExplicitTypeDefinition()))
+      case self@Block(args, seq) =>
         val ctxWithArgs = infArgs.foldLeft(ctx) {
           case (ctx, arg) => ctx.addVar(arg.name, ValInfo(false, true, arg.typeHint))
         }
 
         val (__ctx, th, body) = evalBlock2(ctxWithArgs.stackPush(fn.name, firstArgTh), expectedRet, seq, retMapper = {
           case (_ctx, Some(infExp)) =>
-            if (infExp.th.name == thUnit.name)
+            if (infExp.th == thUnit)
               (_ctx, genVoid(infExp))
-            else if (expectedRet.isDefined && expectedRet.get.name == thUnit.name)
+            else if (expectedRet.isDefined && expectedRet.get == thUnit)
               (_ctx, genVoid(infExp))
             else {
               val lowType = mapTypeHintToLow(_ctx, infExp.th)
@@ -356,26 +357,24 @@ class TypeChecker extends TypeCheckerUtil {
         })
 
         expectedRet.map { eth =>
-          assertTypeEquals(info, eth, th)
+          assertTypeEquals(self, eth, th)
         }
 
         (th, body, __ctx.stackPop)
     }
 
     val lowFnName = fn.typeHint match {
-      case Some(th) => th.seq.headOption.map {
-        first => if (first.name == "self") fn.name + s"_for_${
-          first.typeHint.name
-        }"
+      case Some(th) => th.seq.headOption.map { first =>
+        if (first.name == "self") fn.name + s"_for_${first.typeHint.name}"
         else fn.name
       }.getOrElse(fn.name)
       case None =>
         fn.body match {
-          case inline: LlInline => throw new Exception(error(fn.info, "expected explicit function type definition"))
-          case Block(info, args, _) =>
+          case inline: LlInline => throw new CompileEx(fn, CE.NeedExplicitTypeDefinition())
+          case Block(args, _) =>
             args.headOption.map {
               arg =>
-                val _type = arg.typeHint.getOrElse(throw new Exception(error(arg.info, "expected explicit argument type definition")))
+                val _type = arg.typeHint.getOrElse(throw new CompileEx(arg, CE.NeedExplicitTypeDefinition()))
                 if (arg.name == "self") fn.name + s"_for_${
                   _type.name
                 }"
@@ -384,7 +383,7 @@ class TypeChecker extends TypeCheckerUtil {
         }
     }
 
-    val th = FnTypeHint(null, infArgs, inferedRet)
+    val th = FnTypeHint(infArgs, inferedRet)
     val lowSignature = Ast1.FnPointer(
       args = infArgs.map {
         arg => Ast1.Field(arg.name, mapTypeHintToLow(_ctx, arg.typeHint))
@@ -397,7 +396,7 @@ class TypeChecker extends TypeCheckerUtil {
     (_ctx.addInferedFn(fn.name, infFn), infFn)
   }
 
-  def transform(src: Module): Ast1.Module = {
+  def transform(src: Module, sourceMap: SourceMap): TypeCheckResult = {
     val typeDefs = src.seq.filter {
       el => el.isInstanceOf[Type]
     }.map(_.asInstanceOf[Type])
@@ -406,27 +405,33 @@ class TypeChecker extends TypeCheckerUtil {
       el => el.isInstanceOf[Fn]
     }.map(_.asInstanceOf[Fn])
 
-    val constructors = typeDefs.filter(_.isInstanceOf[FactorType]).map { td =>
-      val factorType = td.asInstanceOf[FactorType]
-      Macro.genConstructor(factorType)
-    }
+    try {
 
-    val typeMap = typeDefs.map(td => (td.name, td)).toMap
-    checkTypeMap(typeMap)
-
-    val fnMap = (functions ++ constructors).groupBy(fn => fn.name)
-    val ctx = InferContext(typeMap, fnMap)
-
-    val structs = typeMap.values.filter(_.isInstanceOf[FactorType]).map {
-      td =>
+      val constructors = typeDefs.filter(_.isInstanceOf[FactorType]).map { td =>
         val factorType = td.asInstanceOf[FactorType]
-        mapTypeHintToLow(ctx, ScalarTypeHint(null, factorType.name)).asInstanceOf[Ast1.Struct]
-    }.toSeq
+        Macro.genConstructor(factorType)
+      }
 
-    val bbb = functions.foldLeft(ctx) {
-      case (___ctx, fn) => evalFunction(___ctx, true, fn)._1
+      val typeMap = typeDefs.map(td => (td.name, td)).toMap
+      checkTypeMap(typeMap)
+
+      val fnMap = (functions ++ constructors).groupBy(fn => fn.name)
+      val ctx = InferContext(typeMap, fnMap)
+
+      val structs = typeMap.values.filter(_.isInstanceOf[FactorType]).map { td =>
+        val factorType = td.asInstanceOf[FactorType]
+        mapTypeHintToLow(ctx, ScalarTypeHint(factorType.name)).asInstanceOf[Ast1.Struct]
+      }.toSeq
+
+      val bbb = functions.foldLeft(ctx) {
+        case (___ctx, fn) => evalFunction(___ctx, true, fn)._1
+      }
+
+      TypeCheckSuccess(Ast1.Module(structs, bbb.evaluatedMap.values.flatten.map(_.lowFn).toSeq))
+    } catch {
+      case ex: CompileEx =>
+        val at = sourceMap.find(ex.node).getOrElse(AstInfo("__no_source", 0, 0))
+        TypeCheckFail(at, ex.error)
     }
-
-    Ast1.Module(structs, bbb.evaluatedMap.values.flatten.map(_.lowFn).toSeq)
   }
 }

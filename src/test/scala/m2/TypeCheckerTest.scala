@@ -4,7 +4,7 @@ import java.io.{FileOutputStream, PrintStream}
 
 import grammar2.M2Parser
 import lang_m2.Ast0._
-import lang_m2.{Ast1, IrGen, TypeChecker}
+import lang_m2._
 import org.antlr.v4.runtime.tree.ParseTree
 import org.scalatest.FunSuite
 
@@ -12,9 +12,25 @@ class TypeCheckerTest extends FunSuite {
   val moduleParser = new Util {
     override def whatToParse: (M2Parser) => ParseTree = { parser => parser.module() }
   }
-  val typeChecker = new TypeChecker()
+
+  def dotypeCheck(src: String) = {
+    val (ast0, sourceMap) = moduleParser.parse[Module](src)
+    println(ast0)
+
+    val typeChecker = new TypeChecker()
+    val typeCheckerResult = typeChecker.transform(ast0, sourceMap)
+    typeCheckerResult match {
+      case TypeCheckSuccess(ast1) =>
+        println(ast1)
+        val out = new PrintStream(System.out)
+        new IrGen(out).gen(ast1)
+      case TypeCheckFail(at, error) =>
+        throw new Exception(s"at ${at.fname}:${at.line}:${at.line} -> \n\t$error")
+    }
+  }
+
   test("type def test") {
-    val src =
+    dotypeCheck(
       """
         |type Unit = llvm { void }
         |type Boolean = llvm { i1 }
@@ -24,18 +40,11 @@ class TypeCheckerTest extends FunSuite {
         |type Vec3 = (x: Float, y: Float, z: Float)
         |type Fd = (self handle: Int)
         |type FnPtr = (name: String, ptr: () -> Unit)
-      """.stripMargin
-
-    val ast0 = moduleParser.parse(src).asInstanceOf[Module]
-    println(ast0)
-    val ast1 = typeChecker.transform(ast0)
-    println(ast1)
-    val out = new PrintStream(System.out)
-    new IrGen(out).gen(ast1)
+      """.stripMargin)
   }
 
   test("simple test") {
-    val src =
+    dotypeCheck(
       """
         |type Unit = llvm { void }
         |type Boolean = llvm { i1 }
@@ -64,19 +73,11 @@ class TypeCheckerTest extends FunSuite {
         |  val v3 = v1 + v2
         |  a + v3.x
         |}: Int
-      """.stripMargin
-
-    val ast0 = moduleParser.parse(src).asInstanceOf[Module]
-    println(ast0)
-    val ast1 = typeChecker.transform(ast0)
-    println(ast1)
-
-    val out = new PrintStream(System.out)
-    new IrGen(out).gen(ast1)
+      """.stripMargin)
   }
 
   test("a store and access test") {
-    val src =
+    dotypeCheck(
       """
         |type Int = llvm { i32 }
         |type Vec3 = (x: Int, y: Int, z: Int)
@@ -91,19 +92,11 @@ class TypeCheckerTest extends FunSuite {
         |  a.x = a.y + a.z
         |  a.x
         |}: Int
-      """.stripMargin
-
-    val ast0 = moduleParser.parse(src).asInstanceOf[Module]
-    println(ast0)
-    val ast1 = typeChecker.transform(ast0)
-    println(ast1)
-
-    val out = new PrintStream(System.out)
-    new IrGen(out).gen(ast1)
+      """.stripMargin)
   }
 
   test("float test") {
-    val src =
+    dotypeCheck(
       """
         |type Unit = llvm { void }
         |type Float = llvm { float }
@@ -129,19 +122,11 @@ class TypeCheckerTest extends FunSuite {
         |
         | a.toInt
         |}: Int
-      """.stripMargin
-
-    val ast0 = moduleParser.parse(src).asInstanceOf[Module]
-    println(ast0)
-    val ast1 = typeChecker.transform(ast0)
-    println(ast1)
-
-    val out = new PrintStream(System.out)
-    new IrGen(out).gen(ast1)
+      """.stripMargin)
   }
 
   test("strings test (Hello, world)") {
-    val src =
+    dotypeCheck(
       """
         |type Unit = llvm { void }
         |type String = llvm { i8* }
@@ -153,19 +138,11 @@ class TypeCheckerTest extends FunSuite {
         |
         |def main = \ ->
         |  'こんにちは、世界!'.print
-      """.stripMargin
-
-    val ast0 = moduleParser.parse(src).asInstanceOf[Module]
-    println(ast0)
-    val ast1 = typeChecker.transform(ast0)
-    println(ast1)
-
-    val out = new PrintStream(System.out)
-    new IrGen(out).gen(ast1)
+      """.stripMargin)
   }
 
   test("a conditions test") {
-    val src =
+    dotypeCheck(
       """
         |type Unit = llvm { void }
         |type Boolean = llvm { i1 }
@@ -186,19 +163,11 @@ class TypeCheckerTest extends FunSuite {
         |  val b = if a > 11 then true else false
         |  b
         |}: Boolean
-      """.stripMargin
-
-    val ast0 = moduleParser.parse(src).asInstanceOf[Module]
-    println(ast0)
-    val ast1 = typeChecker.transform(ast0)
-    println(ast1)
-
-    val out = new PrintStream(System.out)
-    new IrGen(out).gen(ast1)
+      """.stripMargin)
   }
 
   test("a while loop test") {
-    val src =
+    dotypeCheck(
       """
         |type Unit = llvm { void }
         |type Boolean = llvm { i1 }
@@ -218,19 +187,11 @@ class TypeCheckerTest extends FunSuite {
         |  while a < 100 { a = a + 1 }
         |  a
         |}: Int
-      """.stripMargin
-
-    val ast0 = moduleParser.parse(src).asInstanceOf[Module]
-    println(ast0)
-    val ast1 = typeChecker.transform(ast0)
-    println(ast1)
-
-    val out = new PrintStream(System.out)
-    new IrGen(out).gen(ast1)
+      """.stripMargin)
   }
 
   test("fn pointer test") {
-    val src =
+    dotypeCheck(
       """
         |type Unit = llvm { void }
         |type Int = llvm { i32 }
@@ -252,19 +213,11 @@ class TypeCheckerTest extends FunSuite {
         |
         |  fn(0) + c + a + b
         |}: Int
-      """.stripMargin
-
-    val ast0 = moduleParser.parse(src).asInstanceOf[Module]
-    println(ast0)
-    val ast1 = typeChecker.transform(ast0)
-    println(ast1)
-
-    val out = new PrintStream(System.out)
-    new IrGen(out).gen(ast1)
+      """.stripMargin)
   }
 
   test("a cheat arrays test") {
-    val src =
+    dotypeCheck(
       """
         |type Unit = llvm { void }
         |type Boolean = llvm { i1 }
@@ -325,14 +278,6 @@ class TypeCheckerTest extends FunSuite {
         |  array.free
         |  sum
         |}: Int
-      """.stripMargin
-
-    val ast0 = moduleParser.parse(src).asInstanceOf[Module]
-    println(ast0)
-    val ast1 = typeChecker.transform(ast0)
-    println(ast1)
-
-    val out = new PrintStream(System.out)
-    new IrGen(out).gen(ast1)
+      """.stripMargin)
   }
 }

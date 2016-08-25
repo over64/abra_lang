@@ -35,27 +35,37 @@ object Compiler {
     val parser = new M2Parser(tokens)
 
     val tree = parser.module()
-    val ast0 = new Visitor().visit(tree)
-    val ast1 = new TypeChecker().transform(ast0.asInstanceOf[Ast0.Module])
+    val visitor = new Visitor(fname)
+    val ast0 = visitor.visit(tree)
+    val typeCheckResult = new TypeChecker().transform(ast0.asInstanceOf[Ast0.Module], visitor.sourceMap)
 
-    val fnameNoExt = fname.split("\\.").dropRight(1).mkString(".")
+//    visitor.sourceMap.nodes.foreach {
+//      case(info, node) => println(s"$info ->\n\t$node")
+//    }
 
-    val llFname = fnameNoExt + ".ll"
-    val llFile = new File(llFname)
-    llFile.createNewFile()
-    val llOut = new FileOutputStream(llFile)
+    typeCheckResult match {
+      case TypeCheckSuccess(ast1) =>
+        val fnameNoExt = fname.split("\\.").dropRight(1).mkString(".")
 
-    new IrGen(new PrintStream(llOut)).gen(ast1)
+        val llFname = fnameNoExt + ".ll"
+        val llFile = new File(llFname)
+        llFile.createNewFile()
+        val llOut = new FileOutputStream(llFile)
 
-    llOut.close()
+        new IrGen(new PrintStream(llOut)).gen(ast1)
 
-    val llc = Runtime.getRuntime.exec(Array("llc-3.8", llFname))
-    llc.waitFor()
-    if (llc.exitValue() != 0) {
-      println("llc exited with " + llc.exitValue())
-      return
+        llOut.close()
+
+        val llc = Runtime.getRuntime.exec(Array("llc-3.8", llFname))
+        llc.waitFor()
+        if (llc.exitValue() != 0) {
+          println("llc exited with " + llc.exitValue())
+          return
+        }
+
+        Runtime.getRuntime.exec(Array("gcc", fnameNoExt + ".s", "-o", fnameNoExt))
+      case TypeCheckFail(at, error) =>
+        println(s"at ${at.fname}:${at.line}:${at.col} -> \n\t$error")
     }
-
-    Runtime.getRuntime.exec(Array("gcc", fnameNoExt + ".s", "-o", fnameNoExt))
   }
 }

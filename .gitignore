@@ -5,3 +5,4 @@
 project/project
 project/target
 target/
+grammar/M2Lexer.tokens

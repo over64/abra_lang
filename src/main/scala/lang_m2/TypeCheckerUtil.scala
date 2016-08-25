@@ -5,18 +5,15 @@ import lang_m2.Ast0._
 /**
   * Created by over on 29.07.16.
   */
+sealed trait TypeCheckResult
+case class TypeCheckSuccess(module: Ast1.Module) extends TypeCheckResult
+case class TypeCheckFail(at: AstInfo, error: CompileError) extends TypeCheckResult
+
 trait TypeCheckerUtil {
-  def error(info: AstInfo, msg: String) = {
-    if (info != null)
-      s"at ${info.line}:${info.col + 1} ->\n\t$msg"
-    else
-      s"at __no sources__ ->\n\t$msg"
-  }
+  class CompileEx(val node: ParseNode, val error: CompileError) extends Exception
 
   case class InferedFn(name: String, args: Seq[TypeHint], ret: TypeHint, lowFn: Ast1.Fn, val th: FnTypeHint)
-
   case class InferedExp(th: TypeHint, stats: Seq[Ast1.Stat], init: Option[Ast1.Init])
-
   case class ValInfo(mutable: Boolean, isParam: Boolean, th: TypeHint)
 
   case class InferContext(typeMap: Map[String, Type],
@@ -69,27 +66,30 @@ trait TypeCheckerUtil {
 
   class CancelEval extends Exception
 
-  val thUnit = ScalarTypeHint(null, "Unit")
-  val thInt = ScalarTypeHint(null, "Int")
-  val thFloat = ScalarTypeHint(null, "Float")
-  val thBool = ScalarTypeHint(null, "Boolean")
-  val thString = ScalarTypeHint(null, "String")
+  val thUnit = ScalarTypeHint("Unit")
+  val thInt = ScalarTypeHint("Int")
+  val thFloat = ScalarTypeHint("Float")
+  val thBool = ScalarTypeHint("Boolean")
+  val thString = ScalarTypeHint("String")
 
   def assertTypeDefined(typeHint: TypeHint, typeMap: Map[String, Type]): Unit = {
     typeHint match {
-      case ScalarTypeHint(info, name) =>
-        if (typeMap.get(name) == None) throw new Exception(error(info, "type with name $name not found"))
-      case FnTypeHint(_, seq, ret) =>
+      case self@ScalarTypeHint(name) =>
+        if (typeMap.get(name) == None) throw new CompileEx(self, CE.TypeNotFound(name))
+      case FnTypeHint(seq, ret) =>
         seq.foreach(th => assertTypeDefined(th.typeHint, typeMap))
         assertTypeDefined(ret, typeMap)
     }
   }
 
+  def assertTypeEquals(node: ParseNode, expected: TypeHint, has: TypeHint): Unit =
+    if (expected != has) throw new CompileEx(node, CE.ExprTypeMismatch(expected, has))
+
   def checkTypeMap(typeMap: Map[String, Type]) = {
     typeMap.foreach {
       case (name, _type) =>
         _type match {
-          case FactorType(info, name, fields) =>
+          case FactorType(name, fields) =>
             fields.foreach { field => assertTypeDefined(field.typeHint, typeMap) }
           case _ =>
         }
@@ -98,14 +98,14 @@ trait TypeCheckerUtil {
 
   def mapTypeHintToLow(ctx: InferContext, typeHint: TypeHint): Ast1.Type =
     typeHint match {
-      case ScalarTypeHint(_, typeName) =>
+      case ScalarTypeHint(typeName) =>
         ctx.typeMap(typeName) match {
-          case ScalarType(_, _, llType) => Ast1.Scalar(llType)
-          case FactorType(_, name, fields) => Ast1.Struct(name, fields.map { field =>
+          case ScalarType(_, llType) => Ast1.Scalar(llType)
+          case FactorType(name, fields) => Ast1.Struct(name, fields.map { field =>
             Ast1.Field(field.name, mapTypeHintToLow(ctx, field.typeHint))
           })
         }
-      case FnTypeHint(_, seq, ret) =>
+      case FnTypeHint(seq, ret) =>
         Ast1.FnPointer(seq.map(arg => Ast1.Field(arg.name, mapTypeHintToLow(ctx, arg.typeHint))), mapTypeHintToLow(ctx, ret))
     }
 
@@ -113,33 +113,30 @@ trait TypeCheckerUtil {
     fn.typeHint match {
       case Some(th) =>
         fn.body match {
-          case Block(_, args, _) =>
+          case Block(args, _) =>
             th.seq.zip(args).foreach {
               case (protoHint, blockArg) =>
                 blockArg.typeHint.map { th =>
                   if (th.name != protoHint.typeHint.name)
-                    throw new Exception(error(th.info, s"expected arg of type ${protoHint.typeHint.name} has ${th.name}"))
+                    throw new CompileEx(th, CE.ExprTypeMismatch(protoHint.typeHint, th))
                 }
             }
             th.seq.zip(args).map {
-              case (th, arg) => FnTypeHintField(null, arg.name, th.typeHint)
+              case (th, arg) => FnTypeHintField(arg.name, th.typeHint)
             }
           case _ => th.seq
         }
       case None =>
         fn.body match {
-          case inline: LlInline => throw new Exception(error(fn.info, "expected explicit function type definition"))
-          case Block(info, args, _) => // все аргументы должны быть с типами
+          case inline: LlInline => throw new CompileEx(fn, CE.NeedExplicitTypeDefinition())
+          case Block(args, _) => // все аргументы должны быть с типами
             args.map {
               arg =>
-                val th = arg.typeHint.getOrElse(throw new Exception(error(arg.info, "expected explicit argument type definition")))
-                FnTypeHintField(null, arg.name, th)
+                val th = arg.typeHint.getOrElse(throw new CompileEx(fn, CE.NeedExplicitTypeDefinition()))
+                FnTypeHintField(arg.name, th)
             }
         }
     }
-
-  def assertTypeEquals(info: AstInfo, t1: TypeHint, t2: TypeHint) =
-    if (t1.name != t2.name) throw new Exception(error(info, s"expected expression of type ${t1.name} has ${t2.name}"))
 
   var annoVars = 0
   var anonFns = 0
