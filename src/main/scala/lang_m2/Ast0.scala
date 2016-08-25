@@ -29,7 +29,11 @@ object Ast0 {
   }
 
   case class ScalarTypeHint(name: String) extends TypeHint
-  case class FnTypeHintField(name: String, typeHint: TypeHint) extends ParseNode
+  case class FnTypeHintField(name: String, typeHint: TypeHint) extends ParseNode {
+    override def equals(o: scala.Any): Boolean =
+      if (!o.isInstanceOf[FnTypeHintField]) false
+      else o.asInstanceOf[FnTypeHintField].typeHint == typeHint
+  }
   case class FnTypeHint(seq: Seq[FnTypeHintField], ret: TypeHint) extends TypeHint {
     override val name: String = s"fn${seq.map(_.typeHint.name).mkString("_")}__${ret.name}"
   }

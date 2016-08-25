@@ -39,9 +39,9 @@ object Compiler {
     val ast0 = visitor.visit(tree)
     val typeCheckResult = new TypeChecker().transform(ast0.asInstanceOf[Ast0.Module], visitor.sourceMap)
 
-//    visitor.sourceMap.nodes.foreach {
-//      case(info, node) => println(s"$info ->\n\t$node")
-//    }
+    //    visitor.sourceMap.nodes.foreach {
+    //      case(info, node) => println(s"$info ->\n\t$node")
+    //    }
 
     typeCheckResult match {
       case TypeCheckSuccess(ast1) =>
@@ -60,10 +60,16 @@ object Compiler {
         llc.waitFor()
         if (llc.exitValue() != 0) {
           println("llc exited with " + llc.exitValue())
+          System.exit(1)
           return
         }
 
-        Runtime.getRuntime.exec(Array("gcc", fnameNoExt + ".s", "-o", fnameNoExt))
+        val gcc = Runtime.getRuntime.exec(Array("gcc", fnameNoExt + ".s", "-o", fnameNoExt))
+        gcc.waitFor()
+        if (gcc.exitValue() != 0) {
+          println("gcc exited with " + gcc.exitValue())
+          System.exit(1)
+        }
       case TypeCheckFail(at, error) =>
         println(s"at ${at.fname}:${at.line}:${at.col} -> \n\t$error")
     }

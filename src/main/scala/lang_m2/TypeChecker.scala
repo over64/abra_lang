@@ -49,7 +49,7 @@ class TypeChecker extends TypeCheckerUtil {
                   (__ctx, seq :+ infExp)
               }
               val allMatches = th.seq.zip(infArgs).forall {
-                case (th, infArg) => th.typeHint.name == infArg.th.name
+                case (th, infArg) => th.typeHint == infArg.th
               }
 
               if (allMatches) {
@@ -85,7 +85,7 @@ class TypeChecker extends TypeCheckerUtil {
           else {
             // check first arg
             val (_ctx, inferedFirstArg) = evalBlockExpression(ctx, forInit = true, Some(fnArgs.head.typeHint), args.head)
-            if (fnArgs.head.typeHint.name != inferedFirstArg.th.name) None
+            if (fnArgs.head.typeHint != inferedFirstArg.th) None
             else {
               //infer last args
               val (__ctx, infLastArgs) = fnArgs.zip(args).drop(1).foldLeft((_ctx, Seq[InferedExp]())) {
@@ -95,7 +95,7 @@ class TypeChecker extends TypeCheckerUtil {
               }
               // check last args
               val allMatches = fnArgs.zip(infLastArgs).drop(1).forall {
-                case (th, infArg) => th.typeHint.name == infArg.th.name
+                case (th, infArg) => th.typeHint == infArg.th
               }
               if (!allMatches) None
               else {
@@ -218,7 +218,7 @@ class TypeChecker extends TypeCheckerUtil {
               Seq(last.init.get.asInstanceOf[Ast1.Stat])
             else Seq()
 
-            if (last.th.name == thUnit.name)
+            if (last.th == thUnit)
               (ctx, InferedExp(thUnit, last.stats ++ lastStatInit, None))
             else {
               if (forInit) {
@@ -240,7 +240,7 @@ class TypeChecker extends TypeCheckerUtil {
         val lowIf = Ast1.Cond(condExp.init.get, ifBranch.seq, elseBranch.seq)
 
         if (forInit) {
-          if (ifTh.name != elseTh.name)
+          if (ifTh != elseTh)
             throw new CompileEx(self, CE.BranchTypesNotEqual())
           val lowType = mapTypeHintToLow(___ctx, ifTh)
           (___ctx, InferedExp(ifTh, Seq(Ast1.Var(anonVarName, lowType)) :+ lowIf, Some(Ast1.lLocal(anonVarName))))
@@ -310,7 +310,7 @@ class TypeChecker extends TypeCheckerUtil {
       case Some(FnTypeHint(_, retTh)) =>
         fn.retTypeHint match {
           case Some(rth) =>
-            if (rth.name != retTh.name)
+            if (rth != retTh)
               throw new CompileEx(rth, CE.ExprTypeMismatch(retTh, rth))
           case _ =>
         }
