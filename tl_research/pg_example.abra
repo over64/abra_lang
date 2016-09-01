@@ -1,0 +1,17 @@
+import org.postgresql.pg
+
+type User = (name: String, age: Int, lastName: Option<String> = None)
+
+def main = {
+  val (uname, passwd) = ('over', '123')
+  val pool = pg.mkPool('localhost:5432/test_db', uname, passwd, connections = 1)
+
+  (1 to 10).foreach({ id ->
+    # direct entity mapping using macro?
+    val user = pool
+      .execute[User]('select #name, #age from users where id = $id').headOption
+    user.print
+  })
+
+  pool.close
+}: Unit
