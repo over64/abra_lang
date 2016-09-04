@@ -7,6 +7,9 @@ import lang_m2.Ast0.TypeHint
   */
 sealed trait CompileError
 object CE {
+  case class AlreadyDefined(symbolName: String) extends CompileError {
+    override def toString = s"symbol with name $symbolName already defined"
+  }
   case class VarNotFound(varName: String) extends CompileError {
     override def toString = s"variable with name $varName not found"
   }

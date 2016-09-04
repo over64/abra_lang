@@ -129,7 +129,7 @@ import org.file2 where Type1 = File1Type1, Type2 = File1Type2
 # main.abra
 import org.postgresql.pg
 
-type User = (name: String, age: Int, lastName: Option[String]= None)
+type User = (name: String, age: Int, lastName: Option[String] = None)
 
 def main = {
     val (uname, passwd) = ('over', '123')
@@ -162,7 +162,6 @@ def fma = { a: T, b: T, c: T ->
 }: T
 
 fma(1, 2, 3)
-
 ```
 ```abra
 # abra/lists.abra

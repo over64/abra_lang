@@ -30,6 +30,8 @@ object Ast0 {
 
   case class ScalarTypeHint(name: String) extends TypeHint
   case class FnTypeHintField(name: String, typeHint: TypeHint) extends ParseNode {
+    override def hashCode(): Int = typeHint.hashCode()
+
     override def equals(o: scala.Any): Boolean =
       if (!o.isInstanceOf[FnTypeHintField]) false
       else o.asInstanceOf[FnTypeHintField].typeHint == typeHint
