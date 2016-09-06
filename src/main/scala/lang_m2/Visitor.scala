@@ -207,7 +207,9 @@ class Visitor(fname: String) extends AbstractParseTreeVisitor[ParseNode] with M2
 
   override def visitFunction(ctx: FunctionContext): Fn = {
     val (block, retType) =
-      if (ctx.lambdaBlock() != null)
+      if (ctx.expression() != null)
+        (Block(Seq(), Seq(visitExpr(ctx.expression()))), None)
+      else if (ctx.lambdaBlock() != null)
         (visitLambdaBlock(ctx.lambdaBlock()), None)
       else {
         val body: FnBody =

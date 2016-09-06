@@ -60,7 +60,7 @@ type : scalarType
      ;
 
 function : 'def' name=('self' | Id | '*' | '/' | '+' | '-' | '>' | '<' | '<=' | '>=' | '==' | '!=' | '||' | '&&')
-    (':' fnTypeHint)? '=' (lambdaBlock | (block ':' typeHint) | LlLiteral) ;
+    (':' fnTypeHint)? '=' NL* (lambdaBlock | (block ':' typeHint) | LlLiteral | expression) ;
 
 level1: type | function;
 module: NL* (level1 (NL+ level1)* NL*)? ;

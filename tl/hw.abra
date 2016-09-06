@@ -6,5 +6,5 @@ def print: (self: String) -> Unit = llvm  {
   ret void
 }
 
-def main = \ ->
+def main =
   'Привет, мир!'.print

@@ -136,7 +136,7 @@ class TypeCheckerTest extends FunSuite {
         |  ret void
         |}
         |
-        |def main = \ ->
+        |def main =
         |  'こんにちは、世界!'.print
       """.stripMargin)
   }
