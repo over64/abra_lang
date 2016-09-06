@@ -11,7 +11,7 @@ Research platform for design language with new memory management and modularity 
   - val / var
   - if-else expressions
   - while loops
-  - Rich function call syntax: infix calls, unary calls, apply calls, self calls, usual calls
+  - Rich function call syntax: infix calls, unary calls, apply calls, get/set calls, self calls, usual calls
   - types: scalar and struct types (no arrays and ATD yet
   - function pointers
   - natural operator overloading (no 'operators' in language syntax)
@@ -128,6 +128,7 @@ Yes, it is unicode, baby! If you have UTF8 locale...
     1.twice # self call
     +(1, 1) # usual call
     1() # apply call
+    # see get/set calls example in tl/arrays.abra
   ```
 #### If-else expressions
 No parantheses, bro!
