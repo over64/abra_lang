@@ -37,7 +37,7 @@ Yes, it is unicode, baby! If you have UTF8 locale...
     ret void
   }
   
-  def main = \ ->
+  def main =
     'こんにちは、世界!'.print
 ```
 #### Uniform declaration sytax
