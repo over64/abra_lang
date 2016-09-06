@@ -30,7 +30,7 @@ expression : literal #exprLiteral
            | 'while' NL* cond=expression NL* then_block=block #exprWhile
            ;
 
-store : head=realdId ('.' tail+=realdId)* '=' expression ;
+store : realdId ('.' realdId)* tuple? '=' expression ;
 
 fnArg: ('self' | Id) (':' typeHint)? ;
 block : '{' (fnArg (',' fnArg)* '->')? NL* (blockBody ((NL* | ';') blockBody)*)? NL* '}' ;

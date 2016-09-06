@@ -138,10 +138,22 @@ class Visitor(fname: String) extends AbstractParseTreeVisitor[ParseNode] with M2
       ctx.expression().accept(this).asInstanceOf[Expression]
     ))
 
-  override def visitStore(ctx: StoreContext): Store =
-    emit(ctx, Store(
-      ctx.realdId().map(id => visitRealdId(id)),
-      ctx.expression().accept(this).asInstanceOf[Expression]))
+  override def visitStore(ctx: StoreContext): BlockExpression = {
+    val expr = ctx.expression().accept(this).asInstanceOf[Expression]
+
+    if (ctx.tuple() != null) {
+      val indecies = visitTuple(ctx.tuple()).seq
+      val to: Expression = ctx.realdId.drop(1).headOption.map { second =>
+        val firstProp = Prop(visitRealdId(ctx.realdId.head), visitRealdId(second))
+        ctx.realdId.drop(2).foldLeft(firstProp) {
+          case (prop, id) => Prop(prop, visitRealdId(id))
+        }
+      }.getOrElse(visitRealdId(ctx.realdId.head))
+
+      emit(ctx, Call("set", emit(ctx.tuple(), Tuple(to +: indecies :+ expr))))
+    } else
+      emit(ctx, Store(ctx.realdId().map(id => visitRealdId(id)), expr))
+  }
 
   def visitExpr(ctx: ExpressionContext) = ctx.accept(this).asInstanceOf[Expression]
 
@@ -208,7 +220,7 @@ class Visitor(fname: String) extends AbstractParseTreeVisitor[ParseNode] with M2
   override def visitFunction(ctx: FunctionContext): Fn = {
     val (block, retType) =
       if (ctx.expression() != null)
-        (Block(Seq(), Seq(visitExpr(ctx.expression()))), None)
+        (emit(ctx.expression(), Block(Seq(), Seq(visitExpr(ctx.expression())))), None)
       else if (ctx.lambdaBlock() != null)
         (visitLambdaBlock(ctx.lambdaBlock()), None)
       else {

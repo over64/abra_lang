@@ -222,7 +222,6 @@ class TypeCheckerTest extends FunSuite {
         |type Unit = llvm { void }
         |type Boolean = llvm { i1 }
         |type Int = llvm { i32 }
-        |type IntArray = llvm { i32* }
         |
         |def +: (self: Int, other: Int) -> Int = llvm {
         |  %1 = add nsw i32 %other, %self
@@ -237,44 +236,67 @@ class TypeCheckerTest extends FunSuite {
         |  ret i1 %1
         |}
         |
-        |def allocIntArray : (size: Int) -> IntArray = llvm {
+        |type IntPtr = llvm { i32* }
+        |
+        |def allocIntPtr : (size: Int) -> IntArray = llvm {
         |  %1 = mul nsw i32 %size, 4
         |  %2 = call i8* @malloc(i32 %1)
         |  %3 = bitcast i8* %2 to i32*
         |  ret i32* %3
         |}
         |
-        |def set: (self: IntArray, index: Int, value: Int) -> Unit = llvm {
+        |def set: (self: IntPtr, index: Int, value: Int) -> Unit = llvm {
         |  %1 = getelementptr i32, i32* %self, i32 %index
         |  store i32 %value, i32* %1
         |  ret void
         |}
         |
-        |def apply: (self: IntArray, index: Int) -> Int = llvm {
+        |def get: (self: IntPtr, index: Int) -> Int = llvm {
         |  %1 = getelementptr i32, i32* %self, i32 %index
         |  %2 = load i32, i32* %1
         |  ret i32 %2
         |}
         |
-        |def free : (self: IntArray) -> Unit = llvm {
+        |def free : (self: IntPtr) -> Unit = llvm {
         |  %1 = bitcast i32* %self to i8*
         |  call void @free(i8* %1)
         |  ret void
         |}
         |
-        |def main = {
-        |  val array = allocIntArray(10)
+        |type IntArray = (length: Int, ptr: IntPtr)
+        |
+        |def get = \self: IntArray, index: Int ->
+        |    self.ptr(index)
+        |
+        |def set = { self: IntArray, index: Int, value: Int ->
+        |    self.ptr(index) = value
+        |}: Unit
+        |
+        |def free = { self: IntArray ->
+        |   self.ptr.free
+        |}: Unit
+        |
+        |def mkIntArray = { size: Int, init: (index: Int) -> Int ->
+        |  val ptr = allocIntPtr(size)
         |  var i = 0
-        |  while i < 10 {
-        |    array.set(i, i)
+        |  while i < size {
+        |    ptr(i) = init(i)
         |    i = i + 1
         |  }
-        |  i = 0
+        |
+        |  IntArray(size, ptr)
+        |}: IntArray
+        |
+        |def main = {
+        |  val array = mkIntArray(100, \i -> i + 1)
+        |  var i = 0
         |  var sum = 0
-        |  while i < 10 {
-        |    sum = sum + array.apply(i)
+        |
+        |  while i < array.length {
+        |    sum = sum + array(i)
         |    i = i + 1
         |  }
+        |
         |  array.free
         |  sum
         |}: Int

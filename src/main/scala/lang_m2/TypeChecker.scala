@@ -63,7 +63,22 @@ class TypeChecker {
       case self@Call(fnName, Tuple(args)) =>
         val candidates = scope.findOverloadedFunctions(fnName)
 
-        if (candidates.isEmpty) throw new CompileEx(self, CE.NoFnToCall(fnName))
+        if (candidates.isEmpty)
+          try {
+            // foo(bar) evals to foo(bar) => try as get(foo, bar)
+            return evalBlockExpression(result, scope, forInit, typeAdvice, Call("get", Tuple(Seq(lId(fnName)) ++ args)))
+          } catch {
+            case ex: CompileEx =>
+              try {
+                // x.y.z(indecies...) evals to z(x.y, indecies...) => try as get(x.y.z, indecies...)
+                if (args.length >= 2)
+                  return evalBlockExpression(result, scope, forInit, typeAdvice, Call("get", Tuple(Prop(args.head, lId(fnName)) +: args.drop(1))))
+                else throw new CompileEx(self, CE.NoFnToCall(fnName))
+              } catch {
+                case ex: CompileEx =>
+                  throw new CompileEx(self, CE.NoFnToCall(fnName))
+              }
+          }
 
         val firstArg = args.headOption
         val mappedFirstArgs: Set[(Boolean, Option[InferedExp])] = candidates.map { firstArgTh =>
