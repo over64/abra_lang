@@ -1872,7 +1872,7 @@ public class M2Parser extends Parser {
 			setState(329);
 			((FunctionContext)_localctx).name = _input.LT(1);
 			_la = _input.LA(1);
-			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << MINUS) | (1L << PLUS) | (1L << MUL) | (1L << DIV) | (1L << MORE_) | (1L << MORE_EQ) | (1L << LESS) | (1L << LESS_EQ) | (1L << EQEQ) | (1L << NOTEQ) | (1L << LOGIC_OR) | (1L << LOGIC_AND) | (1L << SELF) | (1L << Id))) != 0)) ) {
+			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << MINUS) | (1L << PLUS) | (1L << MUL) | (1L << DIV) | (1L << EXCL) | (1L << MORE_) | (1L << MORE_EQ) | (1L << LESS) | (1L << LESS_EQ) | (1L << EQEQ) | (1L << NOTEQ) | (1L << LOGIC_OR) | (1L << LOGIC_AND) | (1L << SELF) | (1L << Id))) != 0)) ) {
 				((FunctionContext)_localctx).name = (Token)_errHandler.recoverInline(this);
 			} else {
 				consume();
@@ -2175,7 +2175,7 @@ public class M2Parser extends Parser {
 		"\16\26\u017b\13\26\5\26\u017d\n\26\3\26\2\3\6\27\2\4\6\b\n\f\16\20\22"+
 		"\24\26\30\32\34\36 \"$&(*\2\r\4\2\"\")-\4\2\"\"--\4\2\3\3\7\7\3\2\5\6"+
 		"\4\2\3\4--\3\2\f\17\3\2\21\22\3\2\31\32\7\2\3\6\f\17\21\22\31\32--\3\2"+
-		"\34\35\b\2\3\6\f\17\21\22\31\32\"\"--\u01a8\2,\3\2\2\2\4.\3\2\2\2\6w\3"+
+		"\34\35\b\2\3\7\f\17\21\22\31\32\"\"--\u01a8\2,\3\2\2\2\4.\3\2\2\2\6w\3"+
 		"\2\2\2\b\u0092\3\2\2\2\n\u00a0\3\2\2\2\f\u00a5\3\2\2\2\16\u00d5\3\2\2"+
 		"\2\20\u00d7\3\2\2\2\22\u00eb\3\2\2\2\24\u00f8\3\2\2\2\26\u00fa\3\2\2\2"+
 		"\30\u00fe\3\2\2\2\32\u010f\3\2\2\2\34\u0111\3\2\2\2\36\u012c\3\2\2\2 "+

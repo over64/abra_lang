@@ -42,6 +42,8 @@ object Ast1 {
   case class lString(value: String, enc: HexUtil.EncodeResult) extends Literal
 
   def escapeFnName(value: String) = value
+    .replace("!=", "$noteq")
+    .replace("!", "$not")
     .replace("+", "$plus")
     .replace("-", "$minus")
     .replace("/", "$div")
@@ -59,7 +61,6 @@ object Ast1 {
   case class lParam(value: String) extends lId
   case class lGlobal(value: String) extends lId
 
-
   case class Var(name: String, _type: Type) extends Stat {
     def irName = "%" + name
   }
@@ -67,7 +68,11 @@ object Ast1 {
   case class Access(from: Init, fromType: Type, prop: String) extends Init
   case class Store(toVar: lId, fields: Seq[String], varType: Type, init: Init) extends Stat
   case class Call(fn: lId, _type: FnPointer, args: Seq[Init]) extends Init with Stat
+
+  case class BoolAnd(left: Init, right: Init) extends Init with Stat
+  case class BoolOr(left: Init, right: Init) extends Init with Stat
   case class Cond(init: Init, _if: Seq[Stat], _else: Seq[Stat]) extends Stat
+
   case class While(init: Init, seq: Seq[Stat]) extends Stat
   case class Ret(_type: Type, init: Init) extends Stat
   case class RetVoid() extends Stat

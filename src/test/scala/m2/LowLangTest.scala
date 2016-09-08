@@ -2,7 +2,7 @@ package m2
 
 import java.io.PrintStream
 
-import lang_m2.Ast1.{Store, _}
+import lang_m2.Ast1.{Store, Var, _}
 import lang_m2.IrGen
 import org.scalatest.FunSuite
 
@@ -142,6 +142,44 @@ class LowLangTest extends FunSuite {
             Call(lLocal("a"), tFnPtrIntInt, Seq()),
             Call(lGlobal("foo"), tFnPtrFoo, Seq(lLocal("a")))
           )))
+        )))
+      )
+    ))
+  }
+
+  test("boolean && lazy evaluation test") {
+    new IrGen(new PrintStream(System.out)).gen(Module(
+      structs = Seq(),
+      functions = Seq(
+        fMore,
+        Fn("main", FnPointer(args = Seq(), ret = tBool), Block(Seq(
+          Var("a", tInt),
+          Store(lLocal("a"), Seq(), tInt, lInt("4")),
+          Var("b", tInt),
+          Store(lLocal("b"), Seq(), tInt, lInt("5")),
+
+          Ret(tBool, BoolAnd(
+            Call(lGlobal(">_for_Int"), tFnMore, Seq(lLocal("a"), lInt("3"))),
+            Call(lGlobal(">_for_Int"), tFnMore, Seq(lLocal("b"), lInt("3")))))
+        )))
+      )
+    ))
+  }
+
+  test("boolean || lazy evaluation test") {
+    new IrGen(new PrintStream(System.out)).gen(Module(
+      structs = Seq(),
+      functions = Seq(
+        fMore,
+        Fn("main", FnPointer(args = Seq(), ret = tBool), Block(Seq(
+          Var("a", tInt),
+          Store(lLocal("a"), Seq(), tInt, lInt("2")),
+          Var("b", tInt),
+          Store(lLocal("b"), Seq(), tInt, lInt("5")),
+
+          Ret(tBool, BoolOr(
+            Call(lGlobal(">_for_Int"), tFnMore, Seq(lLocal("a"), lInt("3"))),
+            Call(lGlobal(">_for_Int"), tFnMore, Seq(lLocal("b"), lInt("3")))))
         )))
       )
     ))

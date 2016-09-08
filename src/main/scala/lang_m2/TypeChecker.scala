@@ -63,7 +63,7 @@ class TypeChecker {
       case self@Call(fnName, Tuple(args)) =>
         val candidates = scope.findOverloadedFunctions(fnName)
 
-        if (candidates.isEmpty)
+        if (candidates.isEmpty && fnName != "get")
           try {
             // foo(bar) evals to foo(bar) => try as get(foo, bar)
             return evalBlockExpression(result, scope, forInit, typeAdvice, Call("get", Tuple(Seq(lId(fnName)) ++ args)))
@@ -106,7 +106,7 @@ class TypeChecker {
             evalBlockExpression(result, scope, forInit = true, Some(argTh.typeHint), arg)
         }
 
-        infLastArgs.zip(fnTh.seq).drop(1).foreach {
+        infLastArgs.zip(fnTh.seq.drop(1)).foreach {
           case (infArg, argTh) => if (infArg.th != argTh.typeHint) throw new CompileEx(self, CE.NoFnToCall(fnName))
         }
 
@@ -181,7 +181,7 @@ class TypeChecker {
           InferedExp(field.typeHint, Seq(), Some(Ast1.Access(infFrom.init.get, lowFromType, field.name)))
         } else {
           // Fixme: no cheats, bro. Test that needed function exists
-          evalBlockExpression(result, scope, forInit = true, typeAdvice, Call(prop.value, Tuple(Seq(from))))
+          evalBlockExpression(result, scope, forInit, typeAdvice, Call(prop.value, Tuple(Seq(from))))
         }
       case Store(to, what) =>
         // FIXME: validate fields and ret
@@ -242,12 +242,32 @@ class TypeChecker {
 
         if (forInit) {
           if (ifTh != elseTh) throw new CompileEx(self, CE.BranchTypesNotEqual())
-
           val lowType = scope.toLow(ifTh)
           InferedExp(ifTh, Seq(Ast1.Var(anonVarName, lowType)) :+ lowIf, Some(Ast1.lLocal(anonVarName)))
         }
         else InferedExp(ifTh, Seq(lowIf), None)
 
+      case BoolAnd(left, right) =>
+        val leftInf = evalBlockExpression(result, scope, forInit = true, Some(thBool), left)
+        assertTypeEquals(left, thBool, leftInf.th)
+        val rightInf = evalBlockExpression(result, scope, forInit = true, Some(thBool), right)
+        assertTypeEquals(left, thBool, rightInf.th)
+
+        if (forInit)
+          InferedExp(thBool, Seq(), Some(Ast1.BoolAnd(leftInf.init.get, rightInf.init.get)))
+        else
+          InferedExp(thBool, Seq(Ast1.BoolAnd(leftInf.init.get, rightInf.init.get)), None)
+      case BoolOr(left, right) =>
+        //FIXME: deduplicate code
+        val leftInf = evalBlockExpression(result, scope, forInit = true, Some(thBool), left)
+        assertTypeEquals(left, thBool, leftInf.th)
+        val rightInf = evalBlockExpression(result, scope, forInit = true, Some(thBool), right)
+        assertTypeEquals(left, thBool, rightInf.th)
+
+        if (forInit)
+          InferedExp(thBool, Seq(), Some(Ast1.BoolOr(leftInf.init.get, rightInf.init.get)))
+        else
+          InferedExp(thBool, Seq(Ast1.BoolOr(leftInf.init.get, rightInf.init.get)), None)
       case While(cond, _then) =>
         val condExp = evalBlockExpression(result, scope, forInit = true, Some(thBool), cond)
 
@@ -397,13 +417,18 @@ class TypeChecker {
     val functions = src.seq.filter(_.isInstanceOf[Fn]).map(_.asInstanceOf[Fn])
 
     try {
-      val constructors = typeDefs.filter(_.isInstanceOf[FactorType]).map { td =>
+      val typeMap = typeDefs.map(td => (td.name, td)).toMap
+
+      val preScope = new Scope(None, typeMap, Map(), new mutable.HashMap())
+      val macroFunctions = typeDefs.filter(_.isInstanceOf[FactorType]).flatMap { td =>
         val factorType = td.asInstanceOf[FactorType]
-        Macro.genConstructor(factorType)
+        Seq(
+          Macro.genConstructor(preScope, factorType),
+          Macro.genEquals(preScope, factorType),
+          Macro.genNotEquals(preScope, factorType))
       }
 
-      val typeMap = typeDefs.map(td => (td.name, td)).toMap
-      val fnMap = (functions ++ constructors).groupBy(fn => fn.name)
+      val fnMap = (functions ++ macroFunctions).groupBy(fn => fn.name)
 
       val globalScope = new Scope(None, typeMap, fnMap)
 

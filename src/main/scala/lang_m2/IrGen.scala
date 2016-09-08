@@ -43,6 +43,16 @@ case class IrGen(val out: PrintStream) {
     (res, resType)
   }
 
+  def zalloc(varName: String, varType: Type): Unit = {
+    val (_size, size, memsetDest) = (nextTmpVar(), nextTmpVar(), nextTmpVar())
+
+    out.println(s"\t$varName = alloca ${varType.name}, align 4")
+    out.println(s"\t${_size} = getelementptr ${varType.name}, ${varType.name}* null, i32 1")
+    out.println(s"\t$size = ptrtoint ${varType.name}* ${_size} to i64")
+    out.println(s"\t$memsetDest = bitcast ${varType.name}* $varName to i8*")
+    out.println(s"\tcall void @llvm.memset.p0i8.i64(i8* $memsetDest, i8 0, i64 $size, i32 4, i1 false)")
+  }
+
   def genInit(_type: Type, init: Init, needPtr: Boolean = false): String = init match {
     case lInt(value) =>
       if (needPtr) throw new Exception("not implemented in current ABI") else value
@@ -79,7 +89,7 @@ case class IrGen(val out: PrintStream) {
         case (false, false) => "%" + paramName
         case (true, false) =>
           val tmp = nextTmpVar()
-          out.println(s"\t%$tmp = alloca ${_type.name}, align 4")
+          zalloc(tmp, _type)
           out.println(s"\tstore ${_type.name} %$paramName, ${_type.name}* $tmp")
           tmp
         case (false, true) =>
@@ -108,7 +118,7 @@ case class IrGen(val out: PrintStream) {
           val newArgs = Seq(lLocal(newVar)) ++ args
           val newSignArgs = _type.realArgs
 
-          out.println(s"\t%$newVar = alloca ${struct.name}, align 4")
+          zalloc("%" + newVar, struct)
 
           val calculatedArgs = newArgs.zip(newSignArgs).map {
             case (arg, argType) =>
@@ -148,12 +158,56 @@ case class IrGen(val out: PrintStream) {
           if (needPtr) throw new Exception("not implemented in current ABI")
           else tmp
       }
+    case BoolAnd(left, right) =>
+      val (beginLabel, secondLabel, endLabel) = (nextLabel, nextLabel, nextLabel)
+      println(s"\tbr label %$beginLabel")
+      println(s"$beginLabel:")
+      val leftRes = genInit(Scalar("i1"), left, needPtr = false)
+      out.println(s"\tbr i1 $leftRes, label %$secondLabel, label %$endLabel")
+
+      println(s"$secondLabel:")
+      val rightRes = genInit(Scalar("i1"), right, needPtr = false)
+      out.println(s"\tbr label %$endLabel")
+
+      println(s"$endLabel:")
+      val tmp1 = nextTmpVar()
+      out.println(s"\t$tmp1 = phi i1 [false, %$beginLabel], [$rightRes, %$secondLabel]")
+
+      if (needPtr) {
+        val tmp2 = nextTmpVar()
+        out.println(s"\t$tmp2 = alloca i1")
+        out.println(s"\tstore i1 $tmp1, i1* $tmp2")
+        tmp2
+      } else tmp1
+
+    case BoolOr(left, right) =>
+      //FIXME: deduplicate code
+      val (beginLabel, secondLabel, endLabel) = (nextLabel, nextLabel, nextLabel)
+      println(s"\tbr label %$beginLabel")
+      println(s"$beginLabel:")
+      val leftRes = genInit(Scalar("i1"), left, needPtr = false)
+      out.println(s"\tbr i1 $leftRes, label %$endLabel, label %$secondLabel")
+
+      println(s"$secondLabel:")
+      val rightRes = genInit(Scalar("i1"), right, needPtr = false)
+      out.println(s"\tbr label %$endLabel")
+
+      println(s"$endLabel:")
+      val tmp1 = nextTmpVar()
+      out.println(s"\t$tmp1 = phi i1 [true, %$beginLabel], [$rightRes, %$secondLabel]")
+
+      if (needPtr) {
+        val tmp2 = nextTmpVar()
+        out.println(s"\t$tmp2 = alloca i1")
+        out.println(s"\tstore i1 $tmp1, i1* $tmp2")
+        tmp2
+      } else tmp1
   }
 
   def genStat(seq: Seq[Stat]): Unit =
     seq.foreach {
       case v: Var =>
-        out.println(s"\t${v.irName} = alloca ${v._type.name}, align 4")
+        zalloc(v.irName, v._type)
       case Store(to, fields, varType, init) =>
         val base = to match {
           case p: lParam => genInit(varType, p, true)
@@ -168,6 +222,10 @@ case class IrGen(val out: PrintStream) {
         out.println(s"\tstore ${resType.name} $forStore, ${resType.name}* $res")
       case call: Call =>
         genInit(call._type.ret, call)
+      case boolAnd: BoolAnd =>
+        genInit(Scalar("i1"), boolAnd, needPtr = false)
+      case boolOr: BoolOr =>
+        genInit(Scalar("i1"), boolOr, needPtr = false)
       case Cond(init, _if, _else) =>
         val condVar = genInit(Scalar("i1"), init, needPtr = false)
         val (ifLabel, elseLabel, endLabel) = (nextLabel, nextLabel, nextLabel)
@@ -239,6 +297,8 @@ case class IrGen(val out: PrintStream) {
         Ret(_type, mapInit(init))
       case v: Var => v
       case rv: RetVoid => rv
+      case boolAnd: BoolAnd => boolAnd
+      case boolOr: BoolOr => boolOr
     }
 
     val mapped = functions.map { fn =>
@@ -251,6 +311,8 @@ case class IrGen(val out: PrintStream) {
   }
 
   def gen(module: Module): Unit = {
+    out.println("declare i32 @memcmp(i8*, i8*, i64)")
+    out.println("declare void @llvm.memset.p0i8.i64(i8* nocapture, i8, i64, i32, i1)")
     out.println("declare i32 @puts(i8* nocapture readonly)")
     out.println("declare noalias i8* @malloc(i32)")
     out.println("declare void @free(i8*)")

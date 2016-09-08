@@ -180,9 +180,12 @@ class Visitor(fname: String) extends AbstractParseTreeVisitor[ParseNode] with M2
     emit(ctx, res)
   }
 
-  override def visitExprInfixCall(ctx: ExprInfixCallContext): Call =
-    emit(ctx, Call(ctx.op.getText, Tuple(ctx.expression().map { e => visitExpr(e) })))
-
+  override def visitExprInfixCall(ctx: ExprInfixCallContext): Expression =
+    ctx.op.getText match {
+      case "&&" => emit(ctx, BoolAnd(visitExpr(ctx.expression(0)), visitExpr(ctx.expression(1))))
+      case "||" => emit(ctx, BoolOr(visitExpr(ctx.expression(0)), visitExpr(ctx.expression(1))))
+      case _ => emit(ctx, Call(ctx.op.getText, Tuple(ctx.expression().map { e => visitExpr(e) })))
+    }
 
   override def visitExprParen(ctx: ExprParenContext): Expression = visitExpr(ctx.expression())
 

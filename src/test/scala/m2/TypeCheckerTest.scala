@@ -238,7 +238,7 @@ class TypeCheckerTest extends FunSuite {
         |
         |type IntPtr = llvm { i32* }
         |
-        |def allocIntPtr : (size: Int) -> IntArray = llvm {
+        |def allocIntPtr : (size: Int) -> IntPtr = llvm {
         |  %1 = mul nsw i32 %size, 4
         |  %2 = call i8* @malloc(i32 %1)
         |  %3 = bitcast i8* %2 to i32*
@@ -300,6 +300,58 @@ class TypeCheckerTest extends FunSuite {
         |  array.free
         |  sum
         |}: Int
+      """.stripMargin)
+  }
+
+  test("macro: equals gen test") {
+    dotypeCheck(
+      """
+        |type Boolean = llvm { i1 }
+        |type Float = llvm { float }
+        |type Int = llvm { i32 }
+        |
+        |def !: (self: Boolean) -> Boolean = llvm {
+        |   %1 = xor i1 %self, 1
+        |   ret i1 %1
+        |}
+        |
+        |type Foo = (a: Int, b: Float, c: Int)
+        |
+        |def main = {
+        |   val foo1 = Foo(1, 1.0, 1)
+        |   val foo2 = Foo(1, 1.0, 0)
+        |   foo1 != foo2
+        |}: Boolean
+      """.stripMargin)
+  }
+
+  test("lazy && and || boolean test") {
+    dotypeCheck(
+      """
+        |type Unit = llvm { void }
+        |type Boolean = llvm { i1 }
+        |type Int = llvm { i32 }
+        |type String = llvm { i8* }
+        |
+        |def print: (self: String) -> Unit = llvm  {
+        |  %1 = call i32 @puts(i8* %self)
+        |  ret void
+        |}
+        |
+        |def foo = {
+        |   'foo evaluated'.print
+        |   false
+        |}: Boolean
+        |
+        |def bar = {
+        |   'bar evaluated'.print
+        |   true
+        |}: Boolean
+        |
+        |def main = {
+        |   foo() && bar()
+        |   foo() || bar()
+        |}: Unit
       """.stripMargin)
   }
 }

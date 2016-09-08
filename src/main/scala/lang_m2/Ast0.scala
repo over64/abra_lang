@@ -44,7 +44,11 @@ object Ast0 {
   case class Tuple(seq: Seq[Expression]) extends Expression
   case class Call(fnName: String, args: Tuple) extends Expression
   case class Block(args: Seq[FnArg], seq: Seq[BlockExpression]) extends Expression with FnBody
+
+  case class BoolAnd(left: Expression, right: Expression) extends Expression
+  case class BoolOr(left: Expression, right: Expression) extends Expression
   case class Cond(ifCond: Expression, _then: Block, _else: Option[Block]) extends Expression
+
   case class While(cond: Expression, _then: Block) extends Expression with BlockExpression
   case class Store(to: Seq[lId], what: Expression) extends BlockExpression
   case class Val(mutable: Boolean, name: String, typeHint: Option[TypeHint], init: Expression) extends BlockExpression
