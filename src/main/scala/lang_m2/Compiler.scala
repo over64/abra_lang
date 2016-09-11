@@ -58,15 +58,14 @@ object Compiler {
 
         val llc = Runtime.getRuntime.exec(Array("llc-3.8", llFname))
         llc.waitFor()
-        if (llc.exitValue() != 0) {
+        if (llc.waitFor() != 0) {
           println("llc exited with " + llc.exitValue())
           System.exit(1)
           return
         }
 
         val gcc = Runtime.getRuntime.exec(Array("gcc", fnameNoExt + ".s", "-o", fnameNoExt))
-        gcc.waitFor()
-        if (gcc.exitValue() != 0) {
+        if (gcc.waitFor() != 0) {
           println("gcc exited with " + gcc.exitValue())
           System.exit(1)
         }

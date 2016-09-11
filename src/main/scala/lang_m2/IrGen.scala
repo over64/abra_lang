@@ -160,16 +160,16 @@ case class IrGen(val out: PrintStream) {
       }
     case BoolAnd(left, right) =>
       val (beginLabel, secondLabel, endLabel) = (nextLabel, nextLabel, nextLabel)
-      println(s"\tbr label %$beginLabel")
-      println(s"$beginLabel:")
+      out.println(s"\tbr label %$beginLabel")
+      out.println(s"$beginLabel:")
       val leftRes = genInit(Scalar("i1"), left, needPtr = false)
       out.println(s"\tbr i1 $leftRes, label %$secondLabel, label %$endLabel")
 
-      println(s"$secondLabel:")
+      out.println(s"$secondLabel:")
       val rightRes = genInit(Scalar("i1"), right, needPtr = false)
       out.println(s"\tbr label %$endLabel")
 
-      println(s"$endLabel:")
+      out.println(s"$endLabel:")
       val tmp1 = nextTmpVar()
       out.println(s"\t$tmp1 = phi i1 [false, %$beginLabel], [$rightRes, %$secondLabel]")
 
@@ -183,16 +183,16 @@ case class IrGen(val out: PrintStream) {
     case BoolOr(left, right) =>
       //FIXME: deduplicate code
       val (beginLabel, secondLabel, endLabel) = (nextLabel, nextLabel, nextLabel)
-      println(s"\tbr label %$beginLabel")
-      println(s"$beginLabel:")
+      out.println(s"\tbr label %$beginLabel")
+      out.println(s"$beginLabel:")
       val leftRes = genInit(Scalar("i1"), left, needPtr = false)
       out.println(s"\tbr i1 $leftRes, label %$endLabel, label %$secondLabel")
 
-      println(s"$secondLabel:")
+      out.println(s"$secondLabel:")
       val rightRes = genInit(Scalar("i1"), right, needPtr = false)
       out.println(s"\tbr label %$endLabel")
 
-      println(s"$endLabel:")
+      out.println(s"$endLabel:")
       val tmp1 = nextTmpVar()
       out.println(s"\t$tmp1 = phi i1 [true, %$beginLabel], [$rightRes, %$secondLabel]")
 

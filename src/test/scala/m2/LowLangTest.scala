@@ -1,12 +1,16 @@
 package m2
 
-import java.io.PrintStream
+import java.io.{FileOutputStream, InputStream, PrintStream}
+import java.util.Scanner
 
 import lang_m2.Ast1.{Store, Var, _}
 import lang_m2.IrGen
 import org.scalatest.FunSuite
 
-class LowLangTest extends FunSuite {
+
+class LowLangTest extends FunSuite with LowUtil {
+  override val testBase: String = System.getProperty("java.io.tmpdir")
+
   val tVoid = Scalar("void")
   val tBool = Scalar("i1")
   val tInt = Scalar("i32")
@@ -24,88 +28,141 @@ class LowLangTest extends FunSuite {
       |    ret i1 %1 """.stripMargin))
 
 
-  test("simple test") {
-    new IrGen(new PrintStream(System.out)).gen(Module(
-      structs = Seq(tVec3),
+  test("return scalar type") {
+    Module(
       functions = Seq(
-        fPlus,
+        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(Seq(
+          Ret(tInt, lInt("42"))
+        )))
+      )).assertRunEquals(42)
+  }
+
+  test("local var store") {
+    Module(
+      functions = Seq(
         Fn("main", FnPointer(args = Seq(), ret = tInt), Block(Seq(
           Var("a", tInt),
-          Store(lLocal("a"), Seq(), tInt, lInt("10")),
-          Var("b", tInt),
-          Store(lLocal("b"), Seq(), tInt, lInt("11")),
-          Var("c", tInt),
-          Store(lLocal("c"), Seq(), tInt, Call(lGlobal("+_for_Int"), tFnPlus,
-            Seq(lLocal("a"), Call(lGlobal("+_for_Int"), tFnPlus,
-              Seq(lLocal("b"), lInt("10")))))),
-          Ret(tInt, lLocal("c"))
+          Store(lLocal("a"), Seq(), tInt, lInt("42")),
+          Ret(tInt, lLocal("a"))
         )))
-      )
-    ))
+      )).assertRunEquals(42)
   }
 
-  test("structs test") {
-    val tVec3Init = FnPointer(
-      args = Seq(Field("x", tInt), Field("y", tInt), Field("z", tInt)),
-      ret = tVec3)
-
-    val tVec3Dot = FnPointer(
-      args = Seq(Field("self", tVec3)),
-      ret = tInt)
-
-    new IrGen(new PrintStream(System.out)).gen(Module(
-      structs = Seq(
-        tVec3
-      ),
+  test("call global") {
+    Module(
       functions = Seq(
         fPlus,
-        Fn("Vec3", tVec3Init, Block(Seq(
-          Store(lParam("ret"), Seq("x"), tVec3, lParam("x")),
-          Store(lParam("ret"), Seq("y"), tVec3, lParam("y")),
-          Store(lParam("ret"), Seq("z"), tVec3, lParam("z")),
-          RetVoid()
-        ))),
-        Fn("dot_for_Vec3", tVec3Dot, Block(Seq(
-          Var("i", tInt),
-          Store(lLocal("i"), Seq(), tInt, Call(lGlobal("+_for_Int"), tFnPlus, Seq(
-            Access(lParam("self"), tVec3, "x"), Call(lGlobal("+_for_Int"), tFnPlus, Seq(
-              Access(lParam("self"), tVec3, "y"), Access(lParam("self"), tVec3, "z")))))),
-          Ret(tInt, lLocal("i"))
-        ))),
         Fn("main", FnPointer(args = Seq(), ret = tInt), Block(Seq(
-          Var("v1", tVec3),
-          Store(lLocal("v1"), Seq(), tVec3, Call(lGlobal("Vec3"), tVec3Init, Seq(lInt("1"), lInt("2"), lInt("3")))),
-          Var("i", tInt),
-          Store(lLocal("i"), Seq(), tInt, Call(lGlobal("dot_for_Vec3"), tVec3Dot, Seq(lLocal("v1")))),
-          Ret(tInt, lLocal("i"))
+          Ret(tInt, Call(lGlobal("+_for_Int"), tFnPlus, Seq(lInt("1"), lInt("2"))))
         )))
-      )))
+      )).assertRunEquals(3)
   }
 
-  test("cond test") {
-    new IrGen(new PrintStream(System.out)).gen(Module(
-      structs = Seq(),
+  test("call local") {
+    Module(
+      functions = Seq(
+        fPlus,
+        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(Seq(
+          Var("a", tFnPlus),
+          Store(lLocal("a"), Seq(), tFnPlus, lGlobal("$plus_for_Int")),
+          Ret(tInt, Call(lLocal("a"), tFnPlus, Seq(lInt("1"), lInt("2"))))
+        )))
+      )).assertRunEquals(3)
+  }
+
+  test("call param") {
+    val tFnFoo = FnPointer(Seq(Field("self", tFnPlus)), tInt)
+    Module(
+      functions = Seq(
+        fPlus,
+        Fn("foo", tFnFoo, Block(Seq(
+          Ret(tInt, Call(lParam("self"), tFnPlus, Seq(lInt("1"), lInt("2"))))
+        ))),
+        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(Seq(
+          Ret(tInt, Call(lGlobal("foo"), tFnFoo, Seq(lGlobal("$plus_for_Int"))))
+        )))
+      )).assertRunEquals(3)
+  }
+
+  test("return scalar value from function") {
+    val tFnBar = FnPointer(Seq(), tInt)
+    Module(
+      functions = Seq(
+        Fn("bar", tFnBar, Block(Seq(
+          Ret(tInt, lInt("42"))
+        ))),
+        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(Seq(
+          Ret(tInt, Call(lGlobal("bar"), tFnBar, Seq()))
+        )))
+      )).assertRunEquals(42)
+  }
+
+  test("store / access on struct field") {
+    val tFoo = Struct("Foo", Seq(Field("x", tInt)))
+    Module(
+      structs = Seq(tFoo),
+      functions = Seq(
+        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(Seq(
+          Var("foo", tFoo),
+          Store(lLocal("foo"), Seq("x"), tFoo, lInt("42")),
+          Ret(tInt, Access(lLocal("foo"), tFoo, "x"))
+        )))
+      )).assertRunEquals(42)
+  }
+
+  test("pass struct value to function") {
+    val tFoo = Struct("Foo", Seq(Field("x", tInt)))
+    val tFnFooX = FnPointer(Seq(Field("self", tFoo)), tInt)
+    Module(
+      structs = Seq(tFoo),
+      functions = Seq(
+        Fn("f_x", tFnFooX, Block(Seq(
+          Ret(tInt, Access(lParam("self"), tFoo, "x"))
+        ))),
+        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(Seq(
+          Var("foo", tFoo),
+          Store(lLocal("foo"), Seq("x"), tFoo, lInt("42")),
+          Ret(tInt, Call(lGlobal("f_x"), tFnFooX, Seq(lLocal("foo"))))
+        )))
+      )).assertRunEquals(42)
+  }
+
+  //FIXME: too bad IR
+  test("return struct value from function") {
+    val tFoo = Struct("Foo", Seq(Field("x", tInt)))
+    val tFnFoo = FnPointer(Seq(), tFoo)
+    Module(
+      structs = Seq(tFoo),
+      functions = Seq(
+        Fn("Foo", tFnFoo, Block(Seq(
+          Store(lParam("ret"), Seq("x"), tFoo, lInt("42")),
+          RetVoid()
+        ))),
+        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(Seq(
+          Var("foo", tFoo),
+          Store(lLocal("foo"), Seq(), tFoo, Call(lGlobal("Foo"), tFnFoo, Seq())),
+          Ret(tInt, Access(lLocal("foo"), tFoo, "x"))
+        )))
+      )).assertRunEquals(42)
+  }
+
+  test("conditions") {
+    Module(
       functions = Seq(
         fMore,
         Fn("main", FnPointer(args = Seq(), ret = tInt), Block(Seq(
-          Var("a", tInt),
-          Store(lLocal("a"), Seq(), tInt, lInt("11")),
-          Var("b", tInt),
-          Store(lLocal("b"), Seq(), tInt, lInt("10")),
           Var("c", tInt),
-          Cond(Call(lGlobal(">_for_Int"), tFnMore, Seq(lLocal("a"), lLocal("b"))),
+          Cond(Call(lGlobal(">_for_Int"), tFnMore, Seq(lInt("1"), lInt("2"))),
             _if = Seq(Store(lLocal("c"), Seq(), tInt, lInt("1"))),
             _else = Seq(Store(lLocal("c"), Seq(), tInt, lInt("2")))
           ),
           Ret(tInt, lLocal("c"))
         )))
-      )
-    ))
+      )).assertRunEquals(2)
   }
 
-  test("loop test") {
-    new IrGen(new PrintStream(System.out)).gen(Module(
-      structs = Seq(),
+  test("while loop") {
+    Module(
       functions = Seq(
         fPlus, fMore,
         Fn("main", FnPointer(args = Seq(), ret = tInt), Block(Seq(
@@ -116,72 +173,38 @@ class LowLangTest extends FunSuite {
           )),
           Ret(tInt, lLocal("a"))
         )))
-      )
-    ))
+      )).assertRunEquals(255)
   }
 
-  test("fn pointer test") {
-    val tFnPtrIntInt = FnPointer(args = Seq(), ret = tInt)
-    val tFnPtrFoo = FnPointer(args = Seq(Field("fn", tFnPtrIntInt)), ret = tInt)
+  def toBoolean(i: Int): Boolean = i match {
+    case 0 => false
+    case 1 => true
+    case _ => throw new Exception("oops")
+  }
 
-    new IrGen(new PrintStream(System.out)).gen(Module(
-      structs = Seq(),
-      functions = Seq(
-        fPlus,
-        Fn("main_def_anon1", tFnPtrIntInt, Block(Seq(
-          Ret(tInt, lInt("1"))
-        ))),
-        Fn("foo", tFnPtrFoo, Block(Seq(
-          Ret(tInt, Call(lParam("fn"), tFnPtrIntInt, Seq()))
-        ))),
-        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(Seq(
-          Var("a", tFnPtrIntInt),
-          Store(lLocal("a"), Seq(), tFnPtrIntInt, lGlobal("main_def_anon1")),
+  def toInt(b: Boolean) = if (b) 1 else 0
 
-          Ret(tInt, Call(lGlobal("+_for_Int"), tFnPlus, Seq(
-            Call(lLocal("a"), tFnPtrIntInt, Seq()),
-            Call(lGlobal("foo"), tFnPtrFoo, Seq(lLocal("a")))
+  test("boolean || lazy evaluation test") {
+    for (i <- 0 to 1; j <- 0 to 1) {
+      //println(i, j)
+      Module(
+        functions = Seq(
+          Fn("main", FnPointer(args = Seq(), ret = tBool), Block(Seq(
+            Ret(tBool, BoolAnd(lInt(i.toString), lInt(j.toString)))
           )))
-        )))
-      )
-    ))
+        )).assertRunEquals(toInt(toBoolean(i) && toBoolean(j)))
+    }
   }
 
   test("boolean && lazy evaluation test") {
-    new IrGen(new PrintStream(System.out)).gen(Module(
-      structs = Seq(),
-      functions = Seq(
-        fMore,
-        Fn("main", FnPointer(args = Seq(), ret = tBool), Block(Seq(
-          Var("a", tInt),
-          Store(lLocal("a"), Seq(), tInt, lInt("4")),
-          Var("b", tInt),
-          Store(lLocal("b"), Seq(), tInt, lInt("5")),
-
-          Ret(tBool, BoolAnd(
-            Call(lGlobal(">_for_Int"), tFnMore, Seq(lLocal("a"), lInt("3"))),
-            Call(lGlobal(">_for_Int"), tFnMore, Seq(lLocal("b"), lInt("3")))))
-        )))
-      )
-    ))
-  }
-
-  test("boolean || lazy evaluation test") {
-    new IrGen(new PrintStream(System.out)).gen(Module(
-      structs = Seq(),
-      functions = Seq(
-        fMore,
-        Fn("main", FnPointer(args = Seq(), ret = tBool), Block(Seq(
-          Var("a", tInt),
-          Store(lLocal("a"), Seq(), tInt, lInt("2")),
-          Var("b", tInt),
-          Store(lLocal("b"), Seq(), tInt, lInt("5")),
-
-          Ret(tBool, BoolOr(
-            Call(lGlobal(">_for_Int"), tFnMore, Seq(lLocal("a"), lInt("3"))),
-            Call(lGlobal(">_for_Int"), tFnMore, Seq(lLocal("b"), lInt("3")))))
-        )))
-      )
-    ))
+    for (i <- 0 to 1; j <- 0 to 1) {
+      //println(i, j)
+      Module(
+        functions = Seq(
+          Fn("main", FnPointer(args = Seq(), ret = tBool), Block(Seq(
+            Ret(tBool, BoolOr(lInt(i.toString), lInt(j.toString)))
+          )))
+        )).assertRunEquals(toInt(toBoolean(i) || toBoolean(j)))
+    }
   }
 }
