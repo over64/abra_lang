@@ -95,36 +95,6 @@ class TypeCheckerTest extends FunSuite {
       """.stripMargin)
   }
 
-  test("float test") {
-    dotypeCheck(
-      """
-        |type Unit = llvm { void }
-        |type Float = llvm { float }
-        |type Int = llvm { i32 }
-        |
-        |def +: (self: Float, other: Float) -> Float = llvm {
-        |  %1 = fadd float %other, %self
-        |  ret float %1
-        |}
-        |def *: (self: Float, other: Float) -> Float = llvm {
-        |  %1 = fmul float %other, %self
-        |  ret float %1
-        |}
-        |
-        |def toInt: (self: Float) -> Int = llvm {
-        |  %1 = fptosi float %self to i32
-        |  ret i32 %1
-        |}
-        |
-        |def main = {
-        | val pi = 3.14
-        | val a = pi * pi + 2.1
-        |
-        | a.toInt
-        |}: Int
-      """.stripMargin)
-  }
-
   test("strings test (Hello, world)") {
     dotypeCheck(
       """
@@ -190,118 +160,8 @@ class TypeCheckerTest extends FunSuite {
       """.stripMargin)
   }
 
-  test("fn pointer test") {
-    dotypeCheck(
-      """
-        |type Unit = llvm { void }
-        |type Int = llvm { i32 }
-        |
-        |def +: (self: Int, other: Int) -> Int = llvm {
-        |  %1 = add nsw i32 %other, %self
-        |  ret i32 %1
-        |}
-        |
-        |def foo = { fn: (x: Int) -> Int, x: Int ->
-        |  fn(x)
-        |}: Int
-        |
-        |def main = {
-        |  val fn = \i: Int -> i + 1
-        |  val a = foo(\i -> i + 1, 1)
-        |  val b = foo({ i -> i + 1 }, 2)
-        |  val c = foo(fn, 3)
-        |
-        |  fn(0) + c + a + b
-        |}: Int
-      """.stripMargin)
-  }
 
-  test("a cheat arrays test") {
-    dotypeCheck(
-      """
-        |type Unit = llvm { void }
-        |type Boolean = llvm { i1 }
-        |type Int = llvm { i32 }
-        |
-        |def +: (self: Int, other: Int) -> Int = llvm {
-        |  %1 = add nsw i32 %other, %self
-        |  ret i32 %1
-        |}
-        |def *: (self: Int, other: Int) -> Int = llvm {
-        |  %1 = mul nsw i32 %other, %self
-        |  ret i32 %1
-        |}
-        |def <: (self: Int, other: Int) -> Boolean = llvm {
-        |  %1 = icmp slt i32 %self, %other
-        |  ret i1 %1
-        |}
-        |
-        |type IntPtr = llvm { i32* }
-        |
-        |def allocIntPtr : (size: Int) -> IntPtr = llvm {
-        |  %1 = mul nsw i32 %size, 4
-        |  %2 = call i8* @malloc(i32 %1)
-        |  %3 = bitcast i8* %2 to i32*
-        |  ret i32* %3
-        |}
-        |
-        |def set: (self: IntPtr, index: Int, value: Int) -> Unit = llvm {
-        |  %1 = getelementptr i32, i32* %self, i32 %index
-        |  store i32 %value, i32* %1
-        |  ret void
-        |}
-        |
-        |def get: (self: IntPtr, index: Int) -> Int = llvm {
-        |  %1 = getelementptr i32, i32* %self, i32 %index
-        |  %2 = load i32, i32* %1
-        |  ret i32 %2
-        |}
-        |
-        |def free : (self: IntPtr) -> Unit = llvm {
-        |  %1 = bitcast i32* %self to i8*
-        |  call void @free(i8* %1)
-        |  ret void
-        |}
-        |
-        |type IntArray = (length: Int, ptr: IntPtr)
-        |
-        |def get = \self: IntArray, index: Int ->
-        |    self.ptr(index)
-        |
-        |def set = { self: IntArray, index: Int, value: Int ->
-        |    self.ptr(index) = value
-        |}: Unit
-        |
-        |def free = { self: IntArray ->
-        |   self.ptr.free
-        |}: Unit
-        |
-        |def mkIntArray = { size: Int, init: (index: Int) -> Int ->
-        |  val ptr = allocIntPtr(size)
-        |  var i = 0
-        |  while i < size {
-        |    ptr(i) = init(i)
-        |    i = i + 1
-        |  }
-        |
-        |  IntArray(size, ptr)
-        |}: IntArray
-        |
-        |def main = {
-        |  val array = mkIntArray(100, \i -> i + 1)
-        |  var i = 0
-        |  var sum = 0
-        |
-        |  while i < array.length {
-        |    sum = sum + array(i)
-        |    i = i + 1
-        |  }
-        |
-        |  array.free
-        |  sum
-        |}: Int
-      """.stripMargin)
-  }
+
 
   test("macro: equals gen test") {
     dotypeCheck(
