@@ -121,14 +121,17 @@ class Visitor(fname: String) extends AbstractParseTreeVisitor[ParseNode] with M2
     else
       visitVariable(ctx.variable())
 
-  override def visitLambdaBlock(ctx: LambdaBlockContext): Block =
-    emit(ctx, Block(
-      if (ctx.fnArg() != null)
-        ctx.fnArg().map { fa =>
-          visitFnArg(fa)
-        }
-      else Seq(),
-      Seq(ctx.expression().accept(this).asInstanceOf[Expression])))
+  override def visitLambdaBlock(ctx: LambdaBlockContext): Block = {
+    val args =
+      if (ctx.fnArg() != null) ctx.fnArg().map { fa => visitFnArg(fa) }
+      else Seq()
+
+    val body =
+      if (ctx.expression() != null) ctx.expression().accept(this).asInstanceOf[Expression]
+      else visitStore(ctx.store())
+
+    emit(ctx, Block(args, Seq(body)))
+  }
 
   override def visitVariable(ctx: VariableContext): Val =
     emit(ctx, Val(

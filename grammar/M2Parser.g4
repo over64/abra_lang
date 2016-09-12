@@ -35,7 +35,7 @@ store : realdId ('.' realdId)* tuple? '=' expression ;
 fnArg: ('self' | Id) (':' typeHint)? ;
 block : '{' (fnArg (',' fnArg)* '->')? NL* (blockBody ((NL* | ';') blockBody)*)? NL* '}' ;
 blockBody : (variable | store | expression)  ;
-lambdaBlock : '\\' (fnArg (',' fnArg)*)? '->' NL* expression ;
+lambdaBlock : '\\' (fnArg (',' fnArg)*)? '->' NL* (expression | store) ;
 
 tuple : '(' (expression (',' expression)*)? ')' ;
 

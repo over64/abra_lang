@@ -44,16 +44,11 @@ def free : (self: IntPtr) -> Unit = llvm {
 
 type IntArray = (length: Int, ptr: IntPtr)
 
-def get = \self: IntArray, index: Int ->
-    self.ptr(index)
+def get = \self: IntArray, index: Int -> self.ptr(index)
 
-def set = { self: IntArray, index: Int, value: Int ->
-    self.ptr(index) = value
-}: Unit
+def set = \self: IntArray, index: Int, value: Int -> self.ptr(index) = value
 
-def free = { self: IntArray ->
-   self.ptr.free
-}: Unit
+def free = \self: IntArray -> self.ptr.free
 
 def mkIntArray = { size: Int, init: (index: Int) -> Int ->
   val ptr = allocIntPtr(size)
