@@ -1,6 +1,7 @@
 package m2
 
-import java.io.{File, FileOutputStream, PrintStream}
+import java.io.{File, FileInputStream, FileOutputStream, PrintStream}
+import java.nio.file.{Files, Path, Paths}
 
 import grammar2.{M2Lexer, M2Parser}
 import lang_m2._
@@ -25,7 +26,16 @@ class IntegrationTests extends FunSuite with LowUtil {
     val typeCheckResult = new TypeChecker().transform(ast0.asInstanceOf[Ast0.Module], visitor.sourceMap)
 
     typeCheckResult match {
-      case TypeCheckSuccess(ast1) => ast1.assertRunEquals(exit, stdout, stderr)
+      case TypeCheckSuccess(ast1) =>
+        val fnameNoExt = fname.split("\\.").dropRight(1).mkString(".")
+        val llMixinFile = new File(fnameNoExt + ".ll")
+        val additionalLL =
+          if (llMixinFile.exists()) {
+            val bytes = Files.readAllBytes(Paths.get(llMixinFile.getPath))
+            Some(new String(bytes))
+          } else None
+
+        ast1.assertRunEquals(exit, stdout, stderr, additionalLL)
       case TypeCheckFail(at, error) => throw new Exception(s"at ${at.fname}:${at.line}:${at.col} -> \n\t$error")
     }
   }

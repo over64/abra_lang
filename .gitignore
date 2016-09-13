@@ -1,6 +1,6 @@
 .idea/
 *.elf
-*.ll
+*.out.ll
 *.s
 project/project
 project/target

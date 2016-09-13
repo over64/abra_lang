@@ -13,7 +13,7 @@ trait LowUtil {
   val testBase: String
 
   implicit class TestModule(module: Module) {
-    def assertRunEquals(exit: Int, stdout: Option[String] = None, stderr: Option[String] = None) = {
+    def assertRunEquals(exit: Int, stdout: Option[String] = None, stderr: Option[String] = None, additionalLL: Option[String] = None) = {
       def run(args: String*)(onRun: (Int, String, String) => Unit): Unit = {
         def outToString(stream: InputStream): String = {
           val buff = new StringBuffer()
@@ -32,17 +32,20 @@ trait LowUtil {
         onRun(exitCode, stdout, stderr)
       }
 
-      val file = new FileOutputStream(s"$testBase/test.ll")
+      val file = new FileOutputStream(s"$testBase/test.out.ll")
+
+      additionalLL.map(ll => file.write(ll.getBytes))
+
       new IrGen(new PrintStream(file)).gen(module)
       file.close()
 
-      run("llc-3.8", s"$testBase/test.ll") { (exit, stdout, stderr) =>
+      run("llc-3.8", s"$testBase/test.out.ll") { (exit, stdout, stderr) =>
         if (exit != 0) {
           print(stderr)
           throw new Exception("llc error")
         }
       }
-      run("gcc", s"$testBase/test.s", "-o", s"$testBase/test") { (exit, stdout, stderr) =>
+      run("gcc", s"$testBase/test.out.s", "-o", s"$testBase/test") { (exit, stdout, stderr) =>
         if (exit != 0) {
           print(stderr)
           throw new Exception("gcc error")

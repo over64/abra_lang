@@ -1,6 +1,6 @@
 package lang_m2
 
-import java.io.{File, FileOutputStream, PrintStream}
+import java.io.{File, FileInputStream, FileOutputStream, PrintStream}
 
 import grammar2.{M2Lexer, M2Parser}
 import org.antlr.v4.runtime.{ANTLRFileStream, CommonTokenStream}
@@ -47,10 +47,17 @@ object Compiler {
       case TypeCheckSuccess(ast1) =>
         val fnameNoExt = fname.split("\\.").dropRight(1).mkString(".")
 
-        val llFname = fnameNoExt + ".ll"
+        val llFname = fnameNoExt + ".out.ll"
         val llFile = new File(llFname)
         llFile.createNewFile()
         val llOut = new FileOutputStream(llFile)
+
+        val llMixinFile = new File(fnameNoExt + ".ll")
+        if (llMixinFile.exists()) {
+          val llMixin = new FileInputStream(llMixinFile).getChannel
+          llMixin.transferTo(0, llMixin.size(), llOut.getChannel)
+          llMixin.close()
+        }
 
         new IrGen(new PrintStream(llOut)).gen(ast1)
 
@@ -64,7 +71,7 @@ object Compiler {
           return
         }
 
-        val gcc = Runtime.getRuntime.exec(Array("gcc", fnameNoExt + ".s", "-o", fnameNoExt))
+        val gcc = Runtime.getRuntime.exec(Array("gcc", fnameNoExt + ".out.s", "-o", fnameNoExt))
         if (gcc.waitFor() != 0) {
           println("gcc exited with " + gcc.exitValue())
           System.exit(1)

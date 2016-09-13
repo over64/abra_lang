@@ -313,10 +313,6 @@ case class IrGen(val out: PrintStream) {
   def gen(module: Module): Unit = {
     out.println("declare i32 @memcmp(i8*, i8*, i64)")
     out.println("declare void @llvm.memset.p0i8.i64(i8* nocapture, i8, i64, i32, i1)")
-    out.println("declare i32 @puts(i8* nocapture readonly)")
-    out.println("declare noalias i8* @malloc(i32)")
-    out.println("declare void @free(i8*)")
-
 
     module.structs.foreach { struct =>
       out.println(s"${struct.name} = type { ${struct.fields.map { f => f._type.name }.mkString(", ")} }")
