@@ -1,12 +1,3 @@
-type Unit = llvm { void }
-type Boolean = llvm { i1 }
-type Int = llvm { i32 }
-
-def !: (self: Boolean) -> Boolean = llvm {
-   %1 = xor i1 %self, 1
-   ret i1 %1
-}
-
 def +: (self: Int, other: Int) -> Int = llvm {
   %1 = add nsw i32 %other, %self
   ret i32 %1

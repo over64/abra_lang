@@ -30,9 +30,9 @@ case class HeaderFn(th: FnTypeHint) extends FnInfo
 case class InferedFn(th: FnTypeHint, lowFn: Ast1.Fn) extends FnInfo
 
 case class FnContainer(var fnInfo: FnInfo)
-case class TypeInfo(_type: Type, _package: String, selfFunctions: Map[String, FnContainer])
+case class TypeInfo(_type: Type, _package: String, selfFunctions: mutable.HashMap[String, FnContainer])
 class GlobalScope(val types: Map[String, TypeInfo],
-                  val functions: Map[String, FnContainer],
+                  val functions: mutable.HashMap[String, FnContainer],
                   val imports: Map[String, HeaderFn],
                   val anonFunctions: mutable.HashMap[String, InferedFn] = mutable.HashMap())
 
@@ -65,6 +65,10 @@ class LocalScope(parent: Option[LocalScope], val vars: mutable.HashMap[String, S
 class Scope(global: GlobalScope, local: LocalScope = new LocalScope(None)) {
   def mkChild() = new Scope(global, local.mkChild)
   def toLow(th: TypeHint) = TypeCheckerUtil.toLow(global.types, th)
+
+  def types = global.types
+  def functions = global.functions
+  def anonFunctions = global.anonFunctions
 
   def addVar(node: ParseNode, name: String, th: TypeHint, isMutable: Boolean, location: SymbolLocation) =
     local.addVar(node, name, th, isMutable, location)

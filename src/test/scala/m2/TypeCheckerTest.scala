@@ -32,36 +32,15 @@ class TypeCheckerTest extends FunSuite {
   test("type def test") {
     dotypeCheck(
       """
-        |type Unit = llvm { void }
-        |type Boolean = llvm { i1 }
-        |type Int = llvm { i32 }
-        |type Float = llvm { f32 }
-        |type String = llvm { i8* }
         |type Vec3 = (x: Float, y: Float, z: Float)
         |type Fd = (self handle: Int)
         |type FnPtr = (name: String, ptr: () -> Unit)
-        |
-        |def !: (self: Boolean) -> Boolean = llvm {
-        |   %1 = xor i1 %self, 1
-        |   ret i1 %1
-        |}
-        |
       """.stripMargin)
   }
 
   test("simple test") {
     dotypeCheck(
       """
-        |type Unit = llvm { void }
-        |type Boolean = llvm { i1 }
-        |type Float = llvm { float }
-        |type Int = llvm { i32 }
-        |
-        |def !: (self: Boolean) -> Boolean = llvm {
-        |   %1 = xor i1 %self, 1
-        |   ret i1 %1
-        |}
-        |
         |def +: (self: Int, other: Int) -> Int = llvm {
         |  %1 = add nsw i32 %other, %self
         |  ret i32 %1
@@ -90,14 +69,7 @@ class TypeCheckerTest extends FunSuite {
   test("a store and access test") {
     dotypeCheck(
       """
-        |type Int = llvm { i32 }
         |type Vec3 = (x: Int, y: Int, z: Int)
-        |type Boolean = llvm { i1 }
-        |
-        |def !: (self: Boolean) -> Boolean = llvm {
-        |   %1 = xor i1 %self, 1
-        |   ret i1 %1
-        |}
         |
         |def +: (self: Int, other: Int) -> Int = llvm {
         |  %1 = add nsw i32 %other, %self
@@ -115,9 +87,6 @@ class TypeCheckerTest extends FunSuite {
   test("strings test (Hello, world)") {
     dotypeCheck(
       """
-        |type Unit = llvm { void }
-        |type String = llvm { i8* }
-        |
         |def print: (self: String) -> Unit = llvm  {
         |  %1 = call i32 @puts(i8* %self)
         |  ret void
@@ -131,10 +100,6 @@ class TypeCheckerTest extends FunSuite {
   test("a conditions test") {
     dotypeCheck(
       """
-        |type Unit = llvm { void }
-        |type Boolean = llvm { i1 }
-        |type Int = llvm { i32 }
-        |
         |def >: (self: Int, other: Int) -> Boolean = llvm {
         |  %1 = icmp sgt i32 %self, %other
         |  ret i1 %1
@@ -156,10 +121,6 @@ class TypeCheckerTest extends FunSuite {
   test("a while loop test") {
     dotypeCheck(
       """
-        |type Unit = llvm { void }
-        |type Boolean = llvm { i1 }
-        |type Int = llvm { i32 }
-        |
         |def +: (self: Int, other: Int) -> Int = llvm {
         |  %1 = add nsw i32 %other, %self
         |  ret i32 %1
@@ -183,15 +144,6 @@ class TypeCheckerTest extends FunSuite {
   test("macro: equals gen test") {
     dotypeCheck(
       """
-        |type Boolean = llvm { i1 }
-        |type Float = llvm { float }
-        |type Int = llvm { i32 }
-        |
-        |def !: (self: Boolean) -> Boolean = llvm {
-        |   %1 = xor i1 %self, 1
-        |   ret i1 %1
-        |}
-        |
         |type Foo = (a: Int, b: Float, c: Int)
         |
         |def main = {
@@ -205,11 +157,6 @@ class TypeCheckerTest extends FunSuite {
   test("lazy && and || boolean test") {
     dotypeCheck(
       """
-        |type Unit = llvm { void }
-        |type Boolean = llvm { i1 }
-        |type Int = llvm { i32 }
-        |type String = llvm { i8* }
-        |
         |def print: (self: String) -> Unit = llvm  {
         |  %1 = call i32 @puts(i8* %self)
         |  ret void

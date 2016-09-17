@@ -13,7 +13,7 @@ trait LowUtil {
   val testBase: String
 
   implicit class TestModule(module: Module) {
-    def assertRunEquals(exit: Int, stdout: Option[String] = None, stderr: Option[String] = None, additionalLL: Option[String] = None) = {
+    def assertRunEquals(exit: Option[Int], stdout: Option[String] = None, stderr: Option[String] = None, additionalLL: Option[String] = None) = {
       def run(args: String*)(onRun: (Int, String, String) => Unit): Unit = {
         def outToString(stream: InputStream): String = {
           val buff = new StringBuffer()
@@ -52,7 +52,9 @@ trait LowUtil {
         }
       }
       run(s"$testBase/test") { (realExit, realStdout, realStderr) =>
-        if (exit != realExit) throw new Exception(s"expected exit code $exit has $realExit")
+        exit.map { exit =>
+          if (exit != realExit) throw new Exception(s"expected exit code $exit has $realExit")
+        }
 
         stdout.map { stdout =>
           if (stdout != realStdout) throw new Exception(s"expected stdout: $stdout has $realStdout")

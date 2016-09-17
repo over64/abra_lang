@@ -1,7 +1,3 @@
-type Unit = llvm { void }
-type Float = llvm { float }
-type Int = llvm { i32 }
-
 def +: (self: Float, other: Float) -> Float = llvm {
   %1 = fadd float %other, %self
   ret float %1

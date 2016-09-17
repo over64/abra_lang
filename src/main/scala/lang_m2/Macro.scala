@@ -49,4 +49,13 @@ object Macro {
       SelfCall("!", SelfCall("==", lId("self"), Seq(lId("other"))), Seq())
     )), thBool)
   }
+
+  def booleanNot(): Fn = {
+    val th = FnTypeHint(Seq(FnTypeHintField("self", ScalarTypeHint("Boolean"))), ScalarTypeHint("Boolean"))
+    Fn("!", Some(th), LlInline(
+      """
+        |   %1 = xor i1 %self, 1
+        |   ret i1 %1
+      """.stripMargin), None)
+  }
 }

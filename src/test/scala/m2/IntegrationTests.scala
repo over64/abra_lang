@@ -14,7 +14,7 @@ import org.scalatest.FunSuite
 class IntegrationTests extends FunSuite with LowUtil {
   override val testBase: String = "tl/integration"
 
-  def assertRunEquals(fname: String)(exit: Int, stdout: Option[String] = None, stderr: Option[String] = None) = {
+  def assertRunEquals(fname: String)(exit: Option[Int], stdout: Option[String] = None, stderr: Option[String] = None) = {
     val reader = new ANTLRFileStream(fname)
     val lexer = new M2Lexer(reader)
     val tokens = new CommonTokenStream(lexer)
@@ -41,17 +41,17 @@ class IntegrationTests extends FunSuite with LowUtil {
   }
 
   test("hello, world") {
-    assertRunEquals("tl/integration/hw.abra")(exit = 0, stdout = Some("Привет, мир!"))
+    assertRunEquals("tl/integration/hw.abra")(exit = None, stdout = Some("Привет, мир!"))
   }
 
   test("floats") {
-    assertRunEquals("tl/integration/floats.abra")(exit = 11)
+    assertRunEquals("tl/integration/floats.abra")(exit = Some(11))
   }
 
   test("fn pointer") {
-    assertRunEquals("tl/integration/fnpointer.abra")(exit = 10)
+    assertRunEquals("tl/integration/fnpointer.abra")(exit = Some(10))
   }
   test("fake arrays") {
-    assertRunEquals("tl/integration/arrays.abra")(exit = 186)
+    assertRunEquals("tl/integration/arrays.abra")(exit = Some(186))
   }
 }

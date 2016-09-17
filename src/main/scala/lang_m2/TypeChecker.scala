@@ -455,62 +455,38 @@ class TypeChecker {
   }
 
   def transform(module: Module, sourceMap: SourceMap): TypeCheckResult = {
-    val typeInfoList = module.types.map { _type =>
-      val selfFunctions = module.functions.filter { function =>
-        val firstArg = TypeCheckerUtil.inferFnArgs(function).headOption
-
-        firstArg.map { arg =>
-          arg.name == "self" && arg.typeHint.name == _type.name
-        }.getOrElse(false)
-      }
-
-      val selfFnMap = selfFunctions.map { fn => (fn.name, FnContainer(RawFn(fn))) }.toMap
-      TypeInfo(_type, _package = "", selfFnMap)
-    }
-
-    val typeInfoMap = typeInfoList.map { ti => (ti._type.name, ti) }.toMap
-
     try {
-      // list of all no-self functions
-      val fnList = module.functions.filter { function =>
-        val firstArg = TypeCheckerUtil.inferFnArgs(function).headOption
-        firstArg.headOption.map { arg =>
-          if (arg.name == "self") {
-            val typeName = arg.typeHint.name
-            typeInfoMap.getOrElse(typeName, throw new CompileEx(arg, CE.TypeNotFound(typeName)))
-            false
-          } else true
-        }.getOrElse(true)
-      }
+      val scope = {
+        val types = module.types ++ Seq(ScalarType("Unit", "void"), ScalarType("Int", "i32"),
+          ScalarType("Float", "float"), ScalarType("Boolean", "i1"), ScalarType("String", "i8*"))
 
-      val fnMap = fnList.map { fn => (fn.name, FnContainer(RawFn(fn))) }.toMap
-      val fnMapWithMacro = fnMap ++ module.types.filter(_.isInstanceOf[FactorType]).map { case ft: FactorType =>
-        (ft.name, FnContainer(RawFn(Macro.genConstructor(typeInfoMap, ft))))
-      }.toMap
+        val typeMap = types.map { td => (td.name, TypeInfo(td, "", mutable.HashMap())) }.toMap
+        val fnMap = mutable.HashMap[String, FnContainer]()
 
-      val typeInfoMapWithMacro = typeInfoMap.map {
-        case (typeName, typeInfo) =>
-          val newTypeInfo =
-            typeInfo._type match {
-              case ft: FactorType =>
-                typeInfo.copy(selfFunctions = typeInfo.selfFunctions ++ Map(
-                  "==" -> FnContainer(RawFn(Macro.genEquals(typeInfoMap, ft))),
-                  "!=" -> FnContainer(RawFn(Macro.genNotEquals(typeInfoMap, ft)))
-                ))
-              case _ => typeInfo
-            }
-          (typeName, newTypeInfo)
+        val functions = module.functions ++ module.types.filter(_.isInstanceOf[FactorType]).flatMap { case ft: FactorType =>
+          Seq(Macro.genConstructor(typeMap, ft), Macro.genEquals(typeMap, ft), Macro.genNotEquals(typeMap, ft))
+        } :+ Macro.booleanNot()
+
+        // FIXME: validate duplications
+        functions.foreach { fn =>
+          val firstArg = TypeCheckerUtil.inferFnArgs(fn).headOption
+
+          firstArg match {
+            case Some(FnTypeHintField(name, th)) if name == "self" =>
+              typeMap.getOrElse(th.name, throw new CompileEx(th, CE.TypeNotFound(th.name)))
+                .selfFunctions += (fn.name -> FnContainer(RawFn(fn)))
+            case _ => fnMap += (fn.name -> FnContainer(RawFn(fn)))
+          }
+        }
+        new Scope(new GlobalScope(typeMap, fnMap, imports = Map()))
       }
 
       val structs = module.types.filter(_.isInstanceOf[FactorType]).map { td =>
         val factorType = td.asInstanceOf[FactorType]
-        TypeCheckerUtil.toLow(typeInfoMap, ScalarTypeHint(factorType.name)).asInstanceOf[Ast1.Struct]
+        scope.toLow(ScalarTypeHint(factorType.name)).asInstanceOf[Ast1.Struct]
       }
 
-      val globalScope = new GlobalScope(typeInfoMapWithMacro, fnMapWithMacro, imports = Map())
-      val scope = new Scope(globalScope)
-
-      val selfFunctions: Seq[Ast1.Fn] = typeInfoMapWithMacro.values.flatMap { ti =>
+      val selfFunctions: Seq[Ast1.Fn] = scope.types.values.flatMap { ti =>
         ti.selfFunctions.values.map { selfFn =>
           selfFn match {
             case FnContainer(RawFn(fn)) => evalFunction(scope, fn, kind = Self).lowFn
@@ -521,12 +497,12 @@ class TypeChecker {
       }.toSeq
 
 
-      val nonSelfFunctions = fnMapWithMacro.values.map {
+      val nonSelfFunctions = scope.functions.values.map {
         case FnContainer(RawFn(fn)) => evalFunction(scope, fn, kind = NonSelf).lowFn
         case FnContainer(InferedFn(th, lowFn)) => lowFn
       }
 
-      val anonFunctions = globalScope.anonFunctions.values.map(_.lowFn)
+      val anonFunctions = scope.anonFunctions.values.map(_.lowFn)
 
       TypeCheckSuccess(Ast1.Module(structs, selfFunctions ++ nonSelfFunctions ++ anonFunctions))
     }

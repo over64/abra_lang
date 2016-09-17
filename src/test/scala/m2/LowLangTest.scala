@@ -34,7 +34,7 @@ class LowLangTest extends FunSuite with LowUtil {
         Fn("main", FnPointer(args = Seq(), ret = tInt), Block(Seq(
           Ret(tInt, lInt("42"))
         )))
-      )).assertRunEquals(42)
+      )).assertRunEquals(Some(42))
   }
 
   test("local var store") {
@@ -45,7 +45,7 @@ class LowLangTest extends FunSuite with LowUtil {
           Store(lLocal("a"), Seq(), tInt, lInt("42")),
           Ret(tInt, lLocal("a"))
         )))
-      )).assertRunEquals(42)
+      )).assertRunEquals(Some(42))
   }
 
   test("call global") {
@@ -55,7 +55,7 @@ class LowLangTest extends FunSuite with LowUtil {
         Fn("main", FnPointer(args = Seq(), ret = tInt), Block(Seq(
           Ret(tInt, Call(lGlobal("+_for_Int"), tFnPlus, Seq(lInt("1"), lInt("2"))))
         )))
-      )).assertRunEquals(3)
+      )).assertRunEquals(Some(3))
   }
 
   test("call local") {
@@ -67,7 +67,7 @@ class LowLangTest extends FunSuite with LowUtil {
           Store(lLocal("a"), Seq(), tFnPlus, lGlobal("$plus_for_Int")),
           Ret(tInt, Call(lLocal("a"), tFnPlus, Seq(lInt("1"), lInt("2"))))
         )))
-      )).assertRunEquals(3)
+      )).assertRunEquals(Some(3))
   }
 
   test("call param") {
@@ -81,7 +81,7 @@ class LowLangTest extends FunSuite with LowUtil {
         Fn("main", FnPointer(args = Seq(), ret = tInt), Block(Seq(
           Ret(tInt, Call(lGlobal("foo"), tFnFoo, Seq(lGlobal("$plus_for_Int"))))
         )))
-      )).assertRunEquals(3)
+      )).assertRunEquals(Some(3))
   }
 
   test("return scalar value from function") {
@@ -94,7 +94,7 @@ class LowLangTest extends FunSuite with LowUtil {
         Fn("main", FnPointer(args = Seq(), ret = tInt), Block(Seq(
           Ret(tInt, Call(lGlobal("bar"), tFnBar, Seq()))
         )))
-      )).assertRunEquals(42)
+      )).assertRunEquals(Some(42))
   }
 
   test("store / access on struct field") {
@@ -107,7 +107,7 @@ class LowLangTest extends FunSuite with LowUtil {
           Store(lLocal("foo"), Seq("x"), tFoo, lInt("42")),
           Ret(tInt, Access(lLocal("foo"), tFoo, "x"))
         )))
-      )).assertRunEquals(42)
+      )).assertRunEquals(Some(42))
   }
 
   test("pass struct value to function") {
@@ -124,7 +124,7 @@ class LowLangTest extends FunSuite with LowUtil {
           Store(lLocal("foo"), Seq("x"), tFoo, lInt("42")),
           Ret(tInt, Call(lGlobal("f_x"), tFnFooX, Seq(lLocal("foo"))))
         )))
-      )).assertRunEquals(42)
+      )).assertRunEquals(Some(42))
   }
 
   //FIXME: too bad IR
@@ -143,7 +143,7 @@ class LowLangTest extends FunSuite with LowUtil {
           Store(lLocal("foo"), Seq(), tFoo, Call(lGlobal("Foo"), tFnFoo, Seq())),
           Ret(tInt, Access(lLocal("foo"), tFoo, "x"))
         )))
-      )).assertRunEquals(42)
+      )).assertRunEquals(Some(42))
   }
 
   test("conditions") {
@@ -158,7 +158,7 @@ class LowLangTest extends FunSuite with LowUtil {
           ),
           Ret(tInt, lLocal("c"))
         )))
-      )).assertRunEquals(2)
+      )).assertRunEquals(Some(2))
   }
 
   test("while loop") {
@@ -173,7 +173,7 @@ class LowLangTest extends FunSuite with LowUtil {
           )),
           Ret(tInt, lLocal("a"))
         )))
-      )).assertRunEquals(255)
+      )).assertRunEquals(Some(255))
   }
 
   def toBoolean(i: Int): Boolean = i match {
@@ -192,7 +192,7 @@ class LowLangTest extends FunSuite with LowUtil {
           Fn("main", FnPointer(args = Seq(), ret = tBool), Block(Seq(
             Ret(tBool, BoolAnd(lInt(i.toString), lInt(j.toString)))
           )))
-        )).assertRunEquals(toInt(toBoolean(i) && toBoolean(j)))
+        )).assertRunEquals(Some(toInt(toBoolean(i) && toBoolean(j))))
     }
   }
 
@@ -204,7 +204,7 @@ class LowLangTest extends FunSuite with LowUtil {
           Fn("main", FnPointer(args = Seq(), ret = tBool), Block(Seq(
             Ret(tBool, BoolOr(lInt(i.toString), lInt(j.toString)))
           )))
-        )).assertRunEquals(toInt(toBoolean(i) || toBoolean(j)))
+        )).assertRunEquals(Some(toInt(toBoolean(i) || toBoolean(j))))
     }
   }
 }
