@@ -29,9 +29,6 @@ Research platform for design language with new memory management and modularity 
 #### Hello, world
 Yes, it is unicode, baby! If you have UTF8 locale...
 ```scala
-  type Unit = llvm { void }
-  type String = llvm { i8* }
-  
   def print: (self: String) -> Unit = llvm  {
     %1 = call i32 @puts(i8* %self)
     ret void
