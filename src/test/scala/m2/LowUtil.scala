@@ -1,6 +1,6 @@
 package m2
 
-import java.io.{FileOutputStream, InputStream, PrintStream}
+import java.io._
 import java.util.Scanner
 
 import lang_m2.Ast1.Module
@@ -36,7 +36,7 @@ trait LowUtil {
 
       additionalLL.map(ll => file.write(ll.getBytes))
 
-      new IrGen(new PrintStream(file)).gen(module)
+      new IrGen(file).gen(module)
       file.close()
 
       run("llc-3.8", s"$testBase/test.out.ll") { (exit, stdout, stderr) =>

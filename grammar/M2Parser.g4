@@ -16,7 +16,8 @@ realdId: Id | 'self' ;
 expression : literal #exprLiteral
            | '(' expression ')' #exprParen
            | tuple #exprTuple
-           | expression '.' op=(Id | '*' | '/' | '+' | '-' | '>' | '<' | '<=' | '>=' | '==' | '!=' | '||' | '&&') #exprProp
+           | expression '.' op=(Id | '*' | '/' | '+' | '-' | '>' | '<' | '<=' | '>=' | '==' | '!=' | '||' | '&&') tuple #exprSelfCall
+           | expression '.' op=Id #exprProp
            | expression tuple #exprApply
            | block #exprBlock
            | lambdaBlock #exprLambda

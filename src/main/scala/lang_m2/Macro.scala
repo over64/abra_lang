@@ -1,12 +1,13 @@
 package lang_m2
 
 import lang_m2.Ast0._
+import TypeCheckerUtil.toLow
 
 /**
   * Created by over on 23.08.16.
   */
 object Macro {
-  def genConstructor(scope: Scope, td: FactorType): Fn = {
+  def genConstructor(typeMap: Map[String, TypeInfo], td: FactorType): Fn = {
     var nextId = 0
     val th = FnTypeHint(td.fields.map { field =>
       FnTypeHintField(field.name, field.typeHint)
@@ -15,7 +16,7 @@ object Macro {
     Fn(td.name, Some(th), LlInline(
       (td.fields.map { field =>
         nextId += 1
-        val lowTh = scope.toLow(field.typeHint).name
+        val lowTh = toLow(typeMap, field.typeHint).name
 
         s"\t%$nextId = getelementptr %struct.${td.name}, %struct.${td.name}* %ret, i32 0, i32 ${nextId - 1}\n" +
           s"\tstore $lowTh %${field.name}, $lowTh* %$nextId"
@@ -23,10 +24,10 @@ object Macro {
     ), None)
   }
 
-  def genEquals(scope: Scope, td: FactorType): Fn = {
+  def genEquals(typeMap: Map[String, TypeInfo], td: FactorType): Fn = {
     val th = FnTypeHint(Seq(FnTypeHintField("self", ScalarTypeHint(td.name)), FnTypeHintField("other", ScalarTypeHint(td.name))),
       ScalarTypeHint("Boolean"))
-    val lowTh = scope.toLow(ScalarTypeHint(td.name)).name
+    val lowTh = toLow(typeMap, ScalarTypeHint(td.name)).name
 
     Fn("==", Some(th), LlInline(
       s"""
@@ -40,12 +41,12 @@ object Macro {
       """.stripMargin
     ), None)
   }
-  def genNotEquals(scope: Scope, td: FactorType): Fn = {
+  def genNotEquals(typeMap: Map[String, TypeInfo], td: FactorType): Fn = {
     val thBool = Some(ScalarTypeHint("Boolean"))
     val thSelf = Some(ScalarTypeHint(td.name))
 
     Fn("!=", None, Block(Seq(FnArg("self", thSelf), FnArg("other", thSelf)), Seq(
-      Call("!", Tuple(Seq(Call("==", Tuple(Seq(lId("self"), lId("other")))))))
+      SelfCall("!", SelfCall("==", lId("self"), Seq(lId("other"))), Seq())
     )), thBool)
   }
 }

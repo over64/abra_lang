@@ -153,7 +153,7 @@ class Visitor(fname: String) extends AbstractParseTreeVisitor[ParseNode] with M2
         }
       }.getOrElse(visitRealdId(ctx.realdId.head))
 
-      emit(ctx, Call("set", emit(ctx.tuple(), Tuple(to +: indecies :+ expr))))
+      emit(ctx, SelfCall("set", to, indecies :+ expr))
     } else
       emit(ctx, Store(ctx.realdId().map(id => visitRealdId(id)), expr))
   }
@@ -162,41 +162,39 @@ class Visitor(fname: String) extends AbstractParseTreeVisitor[ParseNode] with M2
 
   override def visitExprLiteral(ctx: ExprLiteralContext): Literal = visitLiteral(ctx.literal())
 
-  override def visitExprApply(ctx: ExprApplyContext): Call = {
-    val oldArgs = visitTuple(ctx.tuple())
-    val firstArg = visitExpr(ctx.expression())
-    val res = firstArg match {
-      case Prop(from, prop) =>
-        val all = Seq(from) ++ Seq(prop)
-        all.last match {
-          case id: lId =>
-            Call(id.value, Tuple(all.dropRight(1) ++ oldArgs.seq))
-          case _ =>
-            Call("apply", Tuple(all ++ oldArgs.seq))
-        }
-      case id: lId =>
-        Call(id.value, Tuple(oldArgs.seq))
+  override def visitExprSelfCall(ctx: ExprSelfCallContext): ParseNode =
+    emit(ctx, SelfCall(ctx.op.getText, visitExpr(ctx.expression()), visitTuple(ctx.tuple()).seq))
 
-      case other@_ =>
-        Call("apply", Tuple(Seq(firstArg) ++ oldArgs.seq))
+
+  override def visitExprApply(ctx: ExprApplyContext): Expression = {
+    val args = visitTuple(ctx.tuple()).seq
+    val firstArg = visitExpr(ctx.expression())
+
+    val res = firstArg match {
+      case lId(id) => Call(fnName = id, args)
+      case expr@_ =>
+        if (args.isEmpty) ApplyCall(firstArg)
+        else GetCall(firstArg, args)
     }
+
     emit(ctx, res)
   }
 
-  override def visitExprInfixCall(ctx: ExprInfixCallContext): Expression =
+  override def visitExprInfixCall(ctx: ExprInfixCallContext): Expression = {
     ctx.op.getText match {
       case "&&" => emit(ctx, BoolAnd(visitExpr(ctx.expression(0)), visitExpr(ctx.expression(1))))
       case "||" => emit(ctx, BoolOr(visitExpr(ctx.expression(0)), visitExpr(ctx.expression(1))))
-      case _ => emit(ctx, Call(ctx.op.getText, Tuple(ctx.expression().map { e => visitExpr(e) })))
+      case _ => emit(ctx, SelfCall(ctx.op.getText, visitExpr(ctx.expression(0)), Seq(visitExpr(ctx.expression(1)))))
     }
+  }
 
   override def visitExprParen(ctx: ExprParenContext): Expression = visitExpr(ctx.expression())
 
   override def visitExprTuple(ctx: ExprTupleContext): Tuple = visitTuple(ctx.tuple())
 
-  override def visitExprUnaryCall(ctx: ExprUnaryCallContext): Call =
-    emit(ctx, Call(ctx.op.getText,
-      Tuple(Seq(visitExpr(ctx.expression())))
+  override def visitExprUnaryCall(ctx: ExprUnaryCallContext): Expression =
+    emit(ctx, SelfCall(ctx.op.getText,
+      visitExpr(ctx.expression()), Seq()
     ))
 
   override def visitExprBlock(ctx: ExprBlockContext): Block = visitBlock(ctx.block())
@@ -257,9 +255,15 @@ class Visitor(fname: String) extends AbstractParseTreeVisitor[ParseNode] with M2
       visitType(ctx.`type`())
     else visitFunction(ctx.function())
 
-  override def visitModule(ctx: ModuleContext): Module =
-    emit(ctx, Module(ctx.level1().map { l1 => visitLevel1(l1) }))
+  override def visitModule(ctx: ModuleContext): Module = {
+    val all = ctx.level1().map { l1 => visitLevel1(l1) }
+    val types = all.filter(_.isInstanceOf[Type]).map(_.asInstanceOf[Type])
+    val functions = all.filter(_.isInstanceOf[Fn]).map(_.asInstanceOf[Fn])
+
+    emit(ctx, Module(types, functions))
+  }
 
   override def visitExprProp(ctx: ExprPropContext): Prop =
     Prop(ctx.expression().accept(this).asInstanceOf[Expression], emit(ctx.op, lId(ctx.op.getText)))
+
 }

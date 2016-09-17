@@ -1,12 +1,19 @@
 package lang_m2
 
-import java.io.{PrintStream}
+import java.io.{OutputStream, PrintStream}
 
 import Ast1._
 
 import scala.collection.mutable
 
-case class IrGen(val out: PrintStream) {
+case class IrGen(val out: OutputStream) {
+  implicit class Printer(out: OutputStream) {
+    def println(line: String) = {
+      out.write(line.getBytes)
+      out.write(10) // \n
+    }
+  }
+
   var tmpVars = 0
   var labelId = 0
 

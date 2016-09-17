@@ -9,12 +9,24 @@ sealed trait TypeCheckResult
 case class TypeCheckSuccess(module: Ast1.Module) extends TypeCheckResult
 case class TypeCheckFail(at: AstInfo, error: CompileError) extends TypeCheckResult
 
-case class InferedFn(th: FnTypeHint, lowFn: Ast1.Fn)
 case class InferedExp(th: TypeHint, stats: Seq[Ast1.Stat], init: Option[Ast1.Init])
 
 class CompileEx(val node: ParseNode, val error: CompileError) extends Exception
 
 object TypeCheckerUtil {
+
+  def toLow(typeMap: Map[String, TypeInfo], th: TypeHint): Ast1.Type =
+    th match {
+      case ScalarTypeHint(typeName) =>
+        typeMap.getOrElse(typeName, throw new CompileEx(th, CE.TypeNotFound(typeName)))._type match {
+          case ScalarType(_, llType) => Ast1.Scalar(llType)
+          case FactorType(name, fields) => Ast1.Struct(name, fields.map { field =>
+            Ast1.Field(field.name, toLow(typeMap, field.typeHint))
+          })
+        }
+      case FnTypeHint(seq, ret) =>
+        Ast1.FnPointer(seq.map(arg => Ast1.Field(arg.name, toLow(typeMap, arg.typeHint))), toLow(typeMap, ret))
+    }
 
   def assertTypeDefined(typeHint: TypeHint, typeMap: Map[String, Type]): Unit =
     typeHint match {

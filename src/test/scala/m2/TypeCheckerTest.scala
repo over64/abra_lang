@@ -40,6 +40,12 @@ class TypeCheckerTest extends FunSuite {
         |type Vec3 = (x: Float, y: Float, z: Float)
         |type Fd = (self handle: Int)
         |type FnPtr = (name: String, ptr: () -> Unit)
+        |
+        |def !: (self: Boolean) -> Boolean = llvm {
+        |   %1 = xor i1 %self, 1
+        |   ret i1 %1
+        |}
+        |
       """.stripMargin)
   }
 
@@ -50,6 +56,11 @@ class TypeCheckerTest extends FunSuite {
         |type Boolean = llvm { i1 }
         |type Float = llvm { float }
         |type Int = llvm { i32 }
+        |
+        |def !: (self: Boolean) -> Boolean = llvm {
+        |   %1 = xor i1 %self, 1
+        |   ret i1 %1
+        |}
         |
         |def +: (self: Int, other: Int) -> Int = llvm {
         |  %1 = add nsw i32 %other, %self
@@ -81,6 +92,12 @@ class TypeCheckerTest extends FunSuite {
       """
         |type Int = llvm { i32 }
         |type Vec3 = (x: Int, y: Int, z: Int)
+        |type Boolean = llvm { i1 }
+        |
+        |def !: (self: Boolean) -> Boolean = llvm {
+        |   %1 = xor i1 %self, 1
+        |   ret i1 %1
+        |}
         |
         |def +: (self: Int, other: Int) -> Int = llvm {
         |  %1 = add nsw i32 %other, %self

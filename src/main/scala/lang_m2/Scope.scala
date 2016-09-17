@@ -8,6 +8,35 @@ import TypeCheckerUtil._
 /**
   * Created by over on 01.09.16.
   */
+/*
+  for Ast1:
+  Ast1Fn = LocalFn | ExternFn
+
+  Правила оверлоадинга:
+   - add var - проверить что в локальном scope нет переменной с таким именем
+   - add anon function - no problems
+   - add type - в typeMap нет типа с таким именем
+   - add self function - функции с таким именем нет для данного типа
+   - add function - нет функции с таким именем в functions и нет self функции с таким именем
+  Правила поиска:
+   - find self function - ищем тип self-аргумента -> ищем по имени
+   - find function - рекурсивно ищем в локальных scope символы с типом FnTypeHint иначе ищем в globalScope.functions
+   - find var - рекурсивно ищем в локальных scope
+ */
+
+sealed trait FnInfo
+case class RawFn(fn: Fn) extends FnInfo
+case class HeaderFn(th: FnTypeHint) extends FnInfo
+case class InferedFn(th: FnTypeHint, lowFn: Ast1.Fn) extends FnInfo
+
+case class FnContainer(var fnInfo: FnInfo)
+case class TypeInfo(_type: Type, _package: String, selfFunctions: Map[String, FnContainer])
+class GlobalScope(val types: Map[String, TypeInfo],
+                  val functions: Map[String, FnContainer],
+                  val imports: Map[String, HeaderFn],
+                  val anonFunctions: mutable.HashMap[String, InferedFn] = mutable.HashMap())
+
+
 case class SymbolInfo(isMutable: Boolean, location: SymbolLocation, th: TypeHint)
 case class SymbolKey(name: String, classifier: Option[TypeHint])
 
@@ -16,86 +45,59 @@ case object LocalSymbol extends SymbolLocation
 case object ParamSymbol extends SymbolLocation
 case object GlobalSymbol extends SymbolLocation
 
-class Scope(parent: Option[Scope],
-            types: Map[String, Type] = Map(),
-            rawFunctions: Map[String, Seq[Fn]] = Map(),
-            symbols: mutable.Map[SymbolKey, SymbolInfo] = mutable.HashMap()) {
+class LocalScope(parent: Option[LocalScope], val vars: mutable.HashMap[String, SymbolInfo] = mutable.HashMap()) {
+  def mkChild = new LocalScope(parent = Some(this))
 
-  def global: Scope = parent.getOrElse(this)
-  def mkChild(): Scope = new Scope(Some(this))
-
-  def findType(typeName: String): Option[Type] = {
-    val found = types.get(typeName)
-
-    if (found != None) found
-    else parent.flatMap(_.findType(typeName))
+  def addVar(node: ParseNode, name: String, th: TypeHint, isMutable: Boolean, location: SymbolLocation): Unit = {
+    if (vars.contains(name)) throw new CompileEx(node, CE.AlreadyDefined(name))
+    vars += (name -> SymbolInfo(isMutable, location, th))
   }
-
-  def resolveType(th: TypeHint): Type =
-    findType(th.name).getOrElse(throw new CompileEx(th, CE.TypeNotFound(th.name)))
-
-
-  def toLow(th: TypeHint): Ast1.Type =
-    th match {
-      case ScalarTypeHint(typeName) =>
-        findType(typeName).getOrElse(throw new CompileEx(th, CE.TypeNotFound(typeName))) match {
-          case ScalarType(_, llType) => Ast1.Scalar(llType)
-          case FactorType(name, fields) => Ast1.Struct(name, fields.map { field =>
-            Ast1.Field(field.name, toLow(field.typeHint))
-          })
-        }
-      case FnTypeHint(seq, ret) =>
-        Ast1.FnPointer(seq.map(arg => Ast1.Field(arg.name, toLow(arg.typeHint))), toLow(ret))
-    }
-
-  def findFn(name: String, firstArgTh: Option[TypeHint]): Option[FnTypeHint] = {
-    val found = symbols.get(SymbolKey(name, firstArgTh))
-
-    if (found != None) found.map(_.th.asInstanceOf[FnTypeHint])
-    else parent.flatMap(_.findFn(name, firstArgTh))
-  }
-
-  def findRawFn(name: String, firstArgTh: Option[TypeHint]): Option[Fn] = {
-    val found = rawFunctions.get(name).getOrElse(Seq()).find { fn =>
-      inferFnArgs(fn).headOption.map(_.typeHint) == firstArgTh
-    }
-    if (found != None) found
-    else parent.flatMap(_.findRawFn(name, firstArgTh))
-  }
-
-  def findOverloadedFunctions(name: String): Set[Option[TypeHint]] = {
-    val infered = symbols.toSeq.filter {
-      case (key, value) => key.name == name && value.th.isInstanceOf[FnTypeHint]
-    }.map {
-      case (key, value) => value.th.asInstanceOf[FnTypeHint].seq.headOption.map(_.typeHint)
-    } ++ parent.map(_.findOverloadedFunctions(name)).getOrElse(Seq())
-
-    val raw = rawFunctions.getOrElse(name, Seq()).map { fn =>
-      inferFnArgs(fn).headOption.map(_.typeHint)
-    }
-
-    (infered ++ raw).toSet
-  }
-
-  def addSymbol(node: ParseNode, name: String, classifier: Option[TypeHint], th: TypeHint, location: SymbolLocation, isMutable: Boolean = false): Unit = {
-    val key = SymbolKey(name, classifier)
-    symbols.get(key).map { symbol =>
-      throw new CompileEx(node, CE.AlreadyDefined(name))
-    }
-
-    symbols += ((key, SymbolInfo(isMutable, location, th)))
-  }
-
-  def addGlobalFn(node: ParseNode, name: String, classifier: Option[TypeHint], th: TypeHint): Unit =
-    if (parent != None) parent.get.addGlobalFn(node, name, classifier, th)
-    else addSymbol(node, name, classifier, th, GlobalSymbol, isMutable = false)
 
   def findVar(name: String): Option[SymbolInfo] = {
-    val found = symbols.find {
-      case (key, value) => key.name == name
-    }.map(_._2)
+    var found: Option[SymbolInfo] = vars.get(name)
+    if (found == None)
+      parent.map(parent => found = parent.findVar(name))
 
-    if (found != None) found
-    else parent.flatMap(_.findVar(name))
+    found
   }
+}
+
+class Scope(global: GlobalScope, local: LocalScope = new LocalScope(None)) {
+  def mkChild() = new Scope(global, local.mkChild)
+  def toLow(th: TypeHint) = TypeCheckerUtil.toLow(global.types, th)
+
+  def addVar(node: ParseNode, name: String, th: TypeHint, isMutable: Boolean, location: SymbolLocation) =
+    local.addVar(node, name, th, isMutable, location)
+
+  def findVar(name: String) = local.findVar(name)
+
+  def resolveType(th: TypeHint): Type =
+    global.types.getOrElse(th.name, throw new CompileEx(th, CE.TypeNotFound(th.name)))._type
+
+  def findSelfFn(name: String, selfType: TypeHint, inferCallback: Fn => FnTypeHint): Option[FnTypeHint] =
+    global.types.get(selfType.name).flatMap { ti =>
+      ti.selfFunctions.get(name).map(_.fnInfo)
+    }.map {
+      case RawFn(fn) => inferCallback(fn)
+      case HeaderFn(th) => th
+      case InferedFn(th, _) => th
+    }
+
+  def findFn(name: String, inferCallback: Fn => FnTypeHint): Option[FnTypeHint] =
+    global.functions.get(name).map { fnContainer =>
+      fnContainer.fnInfo match {
+        case RawFn(fn) => inferCallback(fn)
+        case HeaderFn(th) => th
+        case InferedFn(th, _) => th
+      }
+    }
+
+  def inferSelfFn(name: String, selfType: TypeHint, inferedFn: InferedFn) =
+    global.types(selfType.name).selfFunctions(name).fnInfo = inferedFn
+
+  def inferFn(name: String, inferedFn: InferedFn) =
+    global.functions(name).fnInfo = inferedFn
+
+  def inferAnonFn(name: String, inferedFn: InferedFn) =
+    global.anonFunctions += (name -> inferedFn)
 }

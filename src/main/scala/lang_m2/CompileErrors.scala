@@ -17,7 +17,10 @@ object CE {
     override def toString = s"expected expression of type ${expected.name} has ${has.name}"
   }
   case class NoFnToCall(fnName: String) extends CompileError {
-    override def toString = s"cannot find candidato for call $fnName"
+    override def toString = s"cannot find candidate for call $fnName"
+  }
+  case class NotCallable(fnName: String) extends CompileError {
+    override def toString = s"$fnName is not callable"
   }
   case class ReassignToVal() extends CompileError {
     override def toString = s"reassignment to val"

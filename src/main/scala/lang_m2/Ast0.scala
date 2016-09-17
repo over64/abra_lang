@@ -42,7 +42,12 @@ object Ast0 {
 
   case class Prop(from: Expression, prop: lId) extends Expression
   case class Tuple(seq: Seq[Expression]) extends Expression
-  case class Call(fnName: String, args: Tuple) extends Expression
+
+  case class GetCall(self: Expression, args: Seq[Expression]) extends Expression
+  case class ApplyCall(self: Expression) extends Expression
+  case class SelfCall(fnName: String, self: Expression, args: Seq[Expression]) extends Expression
+  case class Call(fnName: String, args: Seq[Expression]) extends Expression
+
   case class Block(args: Seq[FnArg], seq: Seq[BlockExpression]) extends Expression with FnBody
 
   case class BoolAnd(left: Expression, right: Expression) extends Expression
@@ -55,5 +60,5 @@ object Ast0 {
   case class FnArg(name: String, typeHint: Option[TypeHint]) extends ParseNode
   case class LlInline(value: String) extends FnBody with ParseNode
   case class Fn(name: String, typeHint: Option[FnTypeHint], body: FnBody, retTypeHint: Option[TypeHint]) extends Level1Declaration
-  case class Module(seq: Seq[Level1Declaration]) extends ParseNode
+  case class Module(types: Seq[Type], functions: Seq[Fn]) extends ParseNode
 }

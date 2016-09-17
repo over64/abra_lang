@@ -65,6 +65,13 @@ public interface M2ParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitExprInfixCall(M2Parser.ExprInfixCallContext ctx);
 	/**
+	 * Visit a parse tree produced by the {@code exprSelfCall}
+	 * labeled alternative in {@link M2Parser#expression}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitExprSelfCall(M2Parser.ExprSelfCallContext ctx);
+	/**
 	 * Visit a parse tree produced by the {@code exprLiteral}
 	 * labeled alternative in {@link M2Parser#expression}.
 	 * @param ctx the parse tree

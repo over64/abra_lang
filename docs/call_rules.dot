@@ -1,0 +1,81 @@
+digraph {
+    rankdir=TB
+
+    subgraph cluster_2 {
+        label = "Prop & Call evaluation"
+
+
+
+
+        subgraph cluster_2 {
+            label = "Call evaluation: typechecker stage"
+
+            Calls -> "Call(fnName, args...)"
+            Calls -> "GetCall(expr, args)"
+            Calls -> "ApplyCall(obj)"
+            Calls -> "SelfCall(fnName, a, args...)"
+
+            "Call(fnName, args...)" -> "fnName defined ?" -> "argsOf(fnName) == args...?"
+            "argsOf(fnName) == args...?" -> "fail"[color=red]
+            "argsOf(fnName) == args...?" -> "fnName(args...)"[color=green3]
+
+            "fnName defined ?" -> "args... isEmpty?"[color=blue]
+
+            "ApplyCall(obj)" -> "apply(self: Typeof[expr]) is defined?"
+            "apply(self: Typeof[expr]) is defined?" -> "apply(expr)"[color=green3]
+            "apply(self: Typeof[expr]) is defined?" -> "fail"[color=red]
+
+
+            "GetCall(expr, args)" -> "get(self: Typeof[expr], last...) is defined?" -> "last... == args...?"
+            "last... == args...?" -> "get(expr, args...)"[color=green3]
+            "get(self: Typeof[expr], last...) is defined?" -> "fail"[color=red]
+            "last... == args...?" -> "fail"[color=red]
+
+            "SelfCall(fnName, a, args...)" -> "a is imported module?"
+            "a is imported module?" -> "Call(fnName, args...)"[label="where fnName = a.fullModName + fnName"]
+            "a is imported module?" -> "fnName(self: Typeof[a], last...) defined ?" -> "last... == args... ?"[color=blue]
+            "last... == args... ?" -> "fail"[color=red]
+            "last... == args... ?" -> "fnName(a, args...)"[color=green3]
+
+            "fnName(self: Typeof[a], last...) defined ?" -> "args... isEmpty?"[color=blue]
+
+            "args... isEmpty?" -> "ApplyCall(obj)"
+            "args... isEmpty?" -> "GetCall(expr, args)"[color=blue]
+        }
+
+
+
+        subgraph cluster_3 {
+            label="Call evaluation: parser stage"
+
+            "call expression" -> "infix(fn, a, b)"
+            "infix(fn, a, b)" -> "SelfCall(fn, a, Seq(b))"[color=green]
+
+            "call expression" -> "unary(fn, a)"
+            "unary(fn, a)" -> "SelfCall(fn, a, Seq())"[color=green]
+
+            "call expression" -> "expr.fnName(args...)"
+            "call expression" -> "expr(args...)"
+
+            "expr.fnName(args...)" -> "SelfCall(fnName, expr, args)"[color=green]
+
+            "expr(args...)" -> "expr == lId"
+            "expr == lId" -> "Call(fnName=expr, args)"[label=" true", color=green]
+            "expr == lId" -> "args.isEmpty?"[label=" false"]
+            "args.isEmpty?" -> "ApplyCall(obj=expr)"[color=green, label=" true"]
+            "args.isEmpty?" -> "GetCall(obj=expr, args)"[color=green, label=" false"]
+        }
+
+        subgraph cluster_1 {
+            label = "Prop evaluation: typechecker stage"
+
+            "Prop(foo: Expr, bar: lId)" -> "foo is lId of imported module?"
+            "foo is lId of imported module?" -> "Call(foo.fullModName + bar, args=Seq())"
+            "foo is lId of imported module?" -> "Typeof[foo] == Struct with bar field?"[color=blue]
+            "Typeof[foo] == Struct with bar field?" -> "foo.bar"
+            "Typeof[foo] == Struct with bar field?" -> "SelfCall(bar, foo, Seq())"[color=blue]
+        }
+
+        "fnName(args...)" -> "foo is lId of imported module?"[style=invis]
+    }
+}

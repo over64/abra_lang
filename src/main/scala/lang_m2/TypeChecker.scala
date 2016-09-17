@@ -26,14 +26,18 @@ class TypeChecker {
     s"anonFn$annoVars"
   }
 
-  def evalBlockExpression(result: mutable.ListBuffer[InferedFn],
-                          scope: Scope,
+  sealed trait FnKind
+  case object Anon extends FnKind
+  case object Self extends FnKind
+  case object NonSelf extends FnKind
+
+  def evalBlockExpression(scope: Scope,
                           forInit: Boolean,
                           typeAdvice: Option[TypeHint],
                           expression: BlockExpression): InferedExp =
     expression match {
       case v: Val =>
-        val initExp = evalBlockExpression(result, scope, forInit = true, v.typeHint, v.init)
+        val initExp = evalBlockExpression(scope, forInit = true, v.typeHint, v.init)
         v.typeHint.map { th => assertTypeEquals(v.init, th, initExp.th) }
 
         val classifier = initExp.th match {
@@ -41,7 +45,7 @@ class TypeChecker {
           case _ => None
         }
 
-        scope.addSymbol(v, v.name, classifier, initExp.th, LocalSymbol, v.mutable)
+        scope.addVar(v, v.name, initExp.th, v.mutable, LocalSymbol)
 
         val lowType = scope.toLow(initExp.th)
         val infExp = InferedExp(thUnit,
@@ -58,67 +62,37 @@ class TypeChecker {
         }.getOrElse(None)
 
         val fnName = nextAnonFn
-        val infFn = evalFunction(result, scope, Fn(fnName, th, block, None))
+        val infFn = evalFunction(scope, Fn(fnName, th, block, None), kind = Anon)
         InferedExp(infFn.th, Seq(), Some(Ast1.lGlobal(fnName)))
-      case self@Call(fnName, Tuple(args)) =>
-        val candidates = scope.findOverloadedFunctions(fnName)
+      case call@ApplyCall(self) =>
+        val inferedSelf = evalBlockExpression(scope, forInit = true, None, self)
+        val fnTh = scope.findSelfFn("apply", inferedSelf.th, inferCallback = fn => evalFunction(scope, fn, kind = Self).th)
+          .getOrElse(throw new CompileEx(call, CE.NoFnToCall("apply")))
 
-        if (candidates.isEmpty && fnName != "get")
-          try {
-            // foo(bar) evals to foo(bar) => try as get(foo, bar)
-            return evalBlockExpression(result, scope, forInit, typeAdvice, Call("get", Tuple(Seq(lId(fnName)) ++ args)))
-          } catch {
-            case ex: CompileEx =>
-              try {
-                // x.y.z(indecies...) evals to z(x.y, indecies...) => try as get(x.y.z, indecies...)
-                if (args.length >= 2)
-                  return evalBlockExpression(result, scope, forInit, typeAdvice, Call("get", Tuple(Prop(args.head, lId(fnName)) +: args.drop(1))))
-                else throw new CompileEx(self, CE.NoFnToCall(fnName))
-              } catch {
-                case ex: CompileEx =>
-                  throw new CompileEx(self, CE.NoFnToCall(fnName))
-              }
-          }
+        val infArgs = Seq(inferedSelf)
+        val literal = lowLiteral(GlobalSymbol, s"apply_for_${inferedSelf.th.name}")
+        val lowCall = Ast1.Call(literal, scope.toLow(fnTh).asInstanceOf[FnPointer], infArgs.map(_.init.get))
 
-        val firstArg = args.headOption
-        val mappedFirstArgs: Set[(Boolean, Option[InferedExp])] = candidates.map { firstArgTh =>
-          (firstArgTh, firstArg) match {
-            case (None, None) => (true, None)
-            case (Some(firstArgTh), Some(firstArg)) =>
-              val argExp = evalBlockExpression(result, scope, forInit = true, Some(firstArgTh), firstArg)
-              if (argExp.th == firstArgTh) (true, Some(argExp))
-              else (false, None)
-            case _ => (false, None)
-          }
+        val (stats, init) =
+          if (forInit) (infArgs.flatMap(_.stats), Some(lowCall))
+          else (infArgs.flatMap(_.stats) :+ lowCall, None)
+
+        InferedExp(fnTh.ret, stats, init)
+      case call@GetCall(self, args) =>
+        val inferedSelf = evalBlockExpression(scope, forInit = true, None, self)
+        val fnTh = scope.findSelfFn("get", inferedSelf.th, inferCallback = fn => evalFunction(scope, fn, kind = Self).th)
+          .getOrElse(throw new CompileEx(call, CE.NoFnToCall("get")))
+
+        val inferedLastArgs = fnTh.seq.drop(1).zip(args).map {
+          case (argTh, argExpr) => evalBlockExpression(scope, forInit = true, Some(argTh.typeHint), argExpr)
         }
 
-        val inferedFirstArg: Option[InferedExp] = mappedFirstArgs.find(_._1 == true).map(_._2)
-          .getOrElse(throw new CompileEx(self, CE.NoFnToCall(fnName)))
-
-        val fnTh = scope.findFn(fnName, inferedFirstArg.map(_.th)).getOrElse {
-          scope.findRawFn(fnName, inferedFirstArg.map(_.th)).map { fn =>
-            evalFunction(result, scope.global, fn).th
-          }.getOrElse(throw new CompileEx(self, CE.NoFnToCall(fnName)))
+        inferedLastArgs.zip(fnTh.seq.drop(1)).foreach {
+          case (infArg, argTh) => if (infArg.th != argTh.typeHint) throw new CompileEx(self, CE.NoFnToCall("get"))
         }
 
-        val infLastArgs = args.zip(fnTh.seq).drop(1).map {
-          case (arg, argTh) =>
-            evalBlockExpression(result, scope, forInit = true, Some(argTh.typeHint), arg)
-        }
-
-        infLastArgs.zip(fnTh.seq.drop(1)).foreach {
-          case (infArg, argTh) => if (infArg.th != argTh.typeHint) throw new CompileEx(self, CE.NoFnToCall(fnName))
-        }
-
-        val infArgs = inferedFirstArg.map(arg => Seq(arg)).getOrElse(Seq()) ++ infLastArgs
-        val location = scope.findVar(fnName).map(_.location).getOrElse(GlobalSymbol)
-
-        val lowFnName = fnTh.seq.headOption.map { arg =>
-          if (arg.name == "self") s"${fnName}_for_${arg.typeHint.name}"
-          else fnName
-        }.getOrElse(fnName)
-
-        val literal = lowLiteral(location, lowFnName)
+        val infArgs = inferedSelf +: inferedLastArgs
+        val literal = lowLiteral(GlobalSymbol, s"get_for_${inferedSelf.th.name}")
 
         val lowCall = Ast1.Call(literal, scope.toLow(fnTh).asInstanceOf[FnPointer], infArgs.map(_.init.get))
         val (stats, init) =
@@ -126,6 +100,74 @@ class TypeChecker {
           else (infArgs.flatMap(_.stats) :+ lowCall, None)
 
         InferedExp(fnTh.ret, stats, init)
+      case call@SelfCall(fnName, self, args) =>
+        val inferedSelf = evalBlockExpression(scope, forInit = true, None, self)
+        val fnTh = scope.findSelfFn(fnName, inferedSelf.th, inferCallback = fn => evalFunction(scope, fn, kind = Self).th)
+
+        fnTh.map { fnTh =>
+          val inferedLastArgs = fnTh.seq.drop(1).zip(args).map {
+            case (argTh, argExpr) => evalBlockExpression(scope, forInit = true, Some(argTh.typeHint), argExpr)
+          }
+
+          inferedLastArgs.zip(fnTh.seq.drop(1)).foreach {
+            case (infArg, argTh) => if (infArg.th != argTh.typeHint) throw new CompileEx(self, CE.NoFnToCall("get"))
+          }
+
+          val infArgs = inferedSelf +: inferedLastArgs
+          val literal = lowLiteral(GlobalSymbol, s"${fnName}_for_${inferedSelf.th.name}")
+
+          val lowCall = Ast1.Call(literal, scope.toLow(fnTh).asInstanceOf[FnPointer], infArgs.map(_.init.get))
+          val (stats, init) =
+            if (forInit) (infArgs.flatMap(_.stats), Some(lowCall))
+            else (infArgs.flatMap(_.stats) :+ lowCall, None)
+
+          InferedExp(fnTh.ret, stats, init)
+        }.getOrElse {
+          scope.resolveType(inferedSelf.th) match {
+            case ft: FactorType =>
+              val fieldExists = ft.fields.find(_.name == fnName).isDefined
+              if (!fieldExists) throw new CompileEx(call, CE.NoFnToCall(fnName))
+
+              if (args.isEmpty)
+                evalBlockExpression(scope, forInit, typeAdvice, ApplyCall(Prop(self, lId(fnName))))
+              else
+                evalBlockExpression(scope, forInit, typeAdvice, GetCall(Prop(self, lId(fnName)), args))
+            case _ => throw new CompileEx(call, CE.NoFnToCall(fnName))
+          }
+        }
+      case self@Call(fnName, args) =>
+        var found: Option[(SymbolLocation, FnTypeHint)] = None
+        scope.findVar(fnName).map { si =>
+          if (si.th.isInstanceOf[FnTypeHint])
+            found = Some((si.location, si.th.asInstanceOf[FnTypeHint]))
+        }
+        scope.findFn(fnName, inferCallback = fn => evalFunction(scope, fn, kind = NonSelf).th).map { fnTh =>
+          found = Some((GlobalSymbol, fnTh))
+        }
+
+        found.map { case (location, fnTh) =>
+          val infArgs = fnTh.seq.zip(args).map {
+            case (argTh, argExpr) => evalBlockExpression(scope, forInit = true, Some(argTh.typeHint), argExpr)
+          }
+
+          infArgs.zip(fnTh.seq).foreach {
+            case (infArg, argTh) => if (infArg.th != argTh.typeHint) throw new CompileEx(self, CE.NoFnToCall(fnName))
+          }
+
+          val literal = lowLiteral(location, fnName)
+
+          val lowCall = Ast1.Call(literal, scope.toLow(fnTh).asInstanceOf[FnPointer], infArgs.map(_.init.get))
+          val (stats, init) =
+            if (forInit) (infArgs.flatMap(_.stats), Some(lowCall))
+            else (infArgs.flatMap(_.stats) :+ lowCall, None)
+
+          InferedExp(fnTh.ret, stats, init)
+        }.getOrElse {
+          if (args.isEmpty)
+            evalBlockExpression(scope, forInit, typeAdvice, ApplyCall(lId(fnName)))
+          else
+            evalBlockExpression(scope, forInit, typeAdvice, GetCall(lId(fnName), args))
+        }
       case lInt(value) =>
         val infTh = typeAdvice.map {
           case sth: ScalarTypeHint =>
@@ -163,7 +205,7 @@ class TypeChecker {
 
         InferedExp(vi.th, Seq(), Some(literal))
       case Prop(from, prop) =>
-        val infFrom = evalBlockExpression(result, scope, forInit = true, None, from)
+        val infFrom = evalBlockExpression(scope, forInit = true, None, from)
 
         val realField = infFrom.th match {
           case sth: ScalarTypeHint =>
@@ -181,11 +223,11 @@ class TypeChecker {
           InferedExp(field.typeHint, Seq(), Some(Ast1.Access(infFrom.init.get, lowFromType, field.name)))
         } else {
           // Fixme: no cheats, bro. Test that needed function exists
-          evalBlockExpression(result, scope, forInit, typeAdvice, Call(prop.value, Tuple(Seq(from))))
+          evalBlockExpression(scope, forInit, typeAdvice, SelfCall(prop.value, from, Seq()))
         }
       case Store(to, what) =>
         // FIXME: validate fields and ret
-        val whatExp = evalBlockExpression(result, scope, forInit = true, Some(thBool), what)
+        val whatExp = evalBlockExpression(scope, forInit = true, Some(thBool), what)
         val varName = to.head.value
         val _var = scope.findVar(varName).getOrElse(throw new CompileEx(to.head, CE.VarNotFound(varName)))
 
@@ -230,12 +272,12 @@ class TypeChecker {
             }
           }.getOrElse(InferedExp(thUnit, Seq(), None))
 
-        val condExp = evalBlockExpression(result, scope, forInit = true, Some(thBool), ifCond)
+        val condExp = evalBlockExpression(scope, forInit = true, Some(thBool), ifCond)
         assertTypeEquals(ifCond, thBool, condExp.th)
 
-        val (ifTh, ifBranch) = evalBlock2(result, scope, typeAdvice, _then.seq, retMapper)
+        val (ifTh, ifBranch) = evalBlock2(scope, typeAdvice, _then.seq, retMapper)
         val (elseTh, elseBranch) = _else.map { _else =>
-          evalBlock2(result, scope, typeAdvice, _else.seq, retMapper)
+          evalBlock2(scope, typeAdvice, _else.seq, retMapper)
         }.getOrElse(thUnit, Ast1.Block(Seq()))
 
         val lowIf = Ast1.Cond(condExp.init.get, ifBranch.seq, elseBranch.seq)
@@ -248,9 +290,9 @@ class TypeChecker {
         else InferedExp(ifTh, Seq(lowIf), None)
 
       case BoolAnd(left, right) =>
-        val leftInf = evalBlockExpression(result, scope, forInit = true, Some(thBool), left)
+        val leftInf = evalBlockExpression(scope, forInit = true, Some(thBool), left)
         assertTypeEquals(left, thBool, leftInf.th)
-        val rightInf = evalBlockExpression(result, scope, forInit = true, Some(thBool), right)
+        val rightInf = evalBlockExpression(scope, forInit = true, Some(thBool), right)
         assertTypeEquals(left, thBool, rightInf.th)
 
         if (forInit)
@@ -259,9 +301,9 @@ class TypeChecker {
           InferedExp(thBool, Seq(Ast1.BoolAnd(leftInf.init.get, rightInf.init.get)), None)
       case BoolOr(left, right) =>
         //FIXME: deduplicate code
-        val leftInf = evalBlockExpression(result, scope, forInit = true, Some(thBool), left)
+        val leftInf = evalBlockExpression(scope, forInit = true, Some(thBool), left)
         assertTypeEquals(left, thBool, leftInf.th)
-        val rightInf = evalBlockExpression(result, scope, forInit = true, Some(thBool), right)
+        val rightInf = evalBlockExpression(scope, forInit = true, Some(thBool), right)
         assertTypeEquals(left, thBool, rightInf.th)
 
         if (forInit)
@@ -269,11 +311,11 @@ class TypeChecker {
         else
           InferedExp(thBool, Seq(Ast1.BoolOr(leftInf.init.get, rightInf.init.get)), None)
       case While(cond, _then) =>
-        val condExp = evalBlockExpression(result, scope, forInit = true, Some(thBool), cond)
+        val condExp = evalBlockExpression(scope, forInit = true, Some(thBool), cond)
 
         assertTypeEquals(cond, thBool, condExp.th)
 
-        val (th, block) = evalBlock2(result, scope, typeAdvice, _then.seq, retMapper = {
+        val (th, block) = evalBlock2(scope, typeAdvice, _then.seq, retMapper = {
           case (scope, infExp) =>
             if (infExp.isDefined) infExp.get
             else InferedExp(thUnit, Seq(), None)
@@ -282,18 +324,17 @@ class TypeChecker {
         InferedExp(thUnit, Seq(Ast1.While(condExp.init.get, block.seq)), None)
     }
 
-  def evalBlock2(result: mutable.ListBuffer[InferedFn],
-                 scope: Scope,
+  def evalBlock2(scope: Scope,
                  typeAdvice: Option[TypeHint],
                  expressions: Seq[BlockExpression],
                  retMapper: (Scope, Option[InferedExp]) => InferedExp): (TypeHint, Ast1.Block) = {
     val childScope = scope.mkChild()
     val stats = expressions.dropRight(1).flatMap { blockExpr =>
-      evalBlockExpression(result, childScope, forInit = false, None, blockExpr).stats
+      evalBlockExpression(childScope, forInit = false, None, blockExpr).stats
     }
 
     val lastInfExp = expressions.lastOption.map { blockExpr =>
-      evalBlockExpression(result, childScope, forInit = true, None, blockExpr)
+      evalBlockExpression(childScope, forInit = true, None, blockExpr)
     }
 
     val lastExp = retMapper(scope, lastInfExp)
@@ -310,13 +351,10 @@ class TypeChecker {
     InferedExp(thUnit, infExp.stats ++ lastStats ++ Seq(Ast1.RetVoid()), None)
   }
 
-  def evalFunction(result: mutable.ListBuffer[InferedFn], scope: Scope, fn: Fn): InferedFn = {
-    val infArgs: Seq[FnTypeHintField] = inferFnArgs(fn)
+  def evalFunction(scope: Scope, fn: Fn, kind: FnKind): InferedFn = {
+    val infArgs = inferFnArgs(fn)
     val firstArgTh = infArgs.headOption.map(_.typeHint)
 
-    //    val myTh = scope.findFn(fn.name, firstArgTh)
-    //    if (myTh != None)
-    //      return result.find(_.th == myTh).get
 
     val expectedRet: Option[TypeHint] = fn.typeHint match {
       case Some(FnTypeHint(_, retTh)) =>
@@ -346,10 +384,10 @@ class TypeChecker {
             case FnTypeHint(seq, _) => seq.headOption.map(_.typeHint)
             case _ => None
           }
-          childScope.addSymbol(arg, arg.name, classifier, arg.typeHint, ParamSymbol, isMutable = false)
+          childScope.addVar(arg, arg.name, arg.typeHint, isMutable = false, ParamSymbol)
         }
 
-        val (th, body) = evalBlock2(result, childScope, expectedRet, seq, retMapper = {
+        val (th, body) = evalBlock2(childScope, expectedRet, seq, retMapper = {
           case (scope, Some(infExp)) =>
             if (infExp.th == thUnit)
               genVoid(infExp)
@@ -407,44 +445,92 @@ class TypeChecker {
     val lowFn = Ast1.Fn(lowFnName, lowSignature, lowBody)
     val infFn = InferedFn(th, lowFn)
 
-    result += infFn
-    scope.addGlobalFn(fn, fn.name, firstArgTh, th)
+    kind match {
+      case Self => scope.inferSelfFn(fn.name, infArgs.head.typeHint, infFn)
+      case NonSelf => scope.inferFn(fn.name, infFn)
+      case Anon => scope.inferAnonFn(fn.name, infFn)
+    }
+
     infFn
   }
 
-  def transform(src: Module, sourceMap: SourceMap): TypeCheckResult = {
-    val typeDefs = src.seq.filter(_.isInstanceOf[Type]).map(_.asInstanceOf[Type])
-    val functions = src.seq.filter(_.isInstanceOf[Fn]).map(_.asInstanceOf[Fn])
+  def transform(module: Module, sourceMap: SourceMap): TypeCheckResult = {
+    val typeInfoList = module.types.map { _type =>
+      val selfFunctions = module.functions.filter { function =>
+        val firstArg = TypeCheckerUtil.inferFnArgs(function).headOption
+
+        firstArg.map { arg =>
+          arg.name == "self" && arg.typeHint.name == _type.name
+        }.getOrElse(false)
+      }
+
+      val selfFnMap = selfFunctions.map { fn => (fn.name, FnContainer(RawFn(fn))) }.toMap
+      TypeInfo(_type, _package = "", selfFnMap)
+    }
+
+    val typeInfoMap = typeInfoList.map { ti => (ti._type.name, ti) }.toMap
 
     try {
-      val typeMap = typeDefs.map(td => (td.name, td)).toMap
-
-      val preScope = new Scope(None, typeMap, Map(), new mutable.HashMap())
-      val macroFunctions = typeDefs.filter(_.isInstanceOf[FactorType]).flatMap { td =>
-        val factorType = td.asInstanceOf[FactorType]
-        Seq(
-          Macro.genConstructor(preScope, factorType),
-          Macro.genEquals(preScope, factorType),
-          Macro.genNotEquals(preScope, factorType))
+      // list of all no-self functions
+      val fnList = module.functions.filter { function =>
+        val firstArg = TypeCheckerUtil.inferFnArgs(function).headOption
+        firstArg.headOption.map { arg =>
+          if (arg.name == "self") {
+            val typeName = arg.typeHint.name
+            typeInfoMap.getOrElse(typeName, throw new CompileEx(arg, CE.TypeNotFound(typeName)))
+            false
+          } else true
+        }.getOrElse(true)
       }
 
-      val fnMap = (functions ++ macroFunctions).groupBy(fn => fn.name)
+      val fnMap = fnList.map { fn => (fn.name, FnContainer(RawFn(fn))) }.toMap
+      val fnMapWithMacro = fnMap ++ module.types.filter(_.isInstanceOf[FactorType]).map { case ft: FactorType =>
+        (ft.name, FnContainer(RawFn(Macro.genConstructor(typeInfoMap, ft))))
+      }.toMap
 
-      val globalScope = new Scope(None, typeMap, fnMap)
+      val typeInfoMapWithMacro = typeInfoMap.map {
+        case (typeName, typeInfo) =>
+          val newTypeInfo =
+            typeInfo._type match {
+              case ft: FactorType =>
+                typeInfo.copy(selfFunctions = typeInfo.selfFunctions ++ Map(
+                  "==" -> FnContainer(RawFn(Macro.genEquals(typeInfoMap, ft))),
+                  "!=" -> FnContainer(RawFn(Macro.genNotEquals(typeInfoMap, ft)))
+                ))
+              case _ => typeInfo
+            }
+          (typeName, newTypeInfo)
+      }
 
-      val structs = typeMap.values.filter(_.isInstanceOf[FactorType]).map { td =>
+      val structs = module.types.filter(_.isInstanceOf[FactorType]).map { td =>
         val factorType = td.asInstanceOf[FactorType]
-        globalScope.toLow(ScalarTypeHint(factorType.name)).asInstanceOf[Ast1.Struct]
+        TypeCheckerUtil.toLow(typeInfoMap, ScalarTypeHint(factorType.name)).asInstanceOf[Ast1.Struct]
+      }
+
+      val globalScope = new GlobalScope(typeInfoMapWithMacro, fnMapWithMacro, imports = Map())
+      val scope = new Scope(globalScope)
+
+      val selfFunctions: Seq[Ast1.Fn] = typeInfoMapWithMacro.values.flatMap { ti =>
+        ti.selfFunctions.values.map { selfFn =>
+          selfFn match {
+            case FnContainer(RawFn(fn)) => evalFunction(scope, fn, kind = Self).lowFn
+            case FnContainer(HeaderFn(th)) => null
+            case FnContainer(InferedFn(th, lowFn)) => lowFn
+          }
+        }
       }.toSeq
 
-      val result = mutable.ListBuffer[InferedFn]()
 
-      functions.foreach { fn =>
-        evalFunction(result, globalScope, fn)
+      val nonSelfFunctions = fnMapWithMacro.values.map {
+        case FnContainer(RawFn(fn)) => evalFunction(scope, fn, kind = NonSelf).lowFn
+        case FnContainer(InferedFn(th, lowFn)) => lowFn
       }
 
-      TypeCheckSuccess(Ast1.Module(structs, result.map(_.lowFn)))
-    } catch {
+      val anonFunctions = globalScope.anonFunctions.values.map(_.lowFn)
+
+      TypeCheckSuccess(Ast1.Module(structs, selfFunctions ++ nonSelfFunctions ++ anonFunctions))
+    }
+    catch {
       case ex: CompileEx =>
         val at = sourceMap.find(ex.node).getOrElse(AstInfo("__no_source", 0, 0))
         TypeCheckFail(at, ex.error)
