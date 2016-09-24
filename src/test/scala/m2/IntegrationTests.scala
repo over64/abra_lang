@@ -23,7 +23,7 @@ class IntegrationTests extends FunSuite with LowUtil {
     val tree = parser.module()
     val visitor = new Visitor(fname)
     val ast0 = visitor.visit(tree)
-    val typeCheckResult = new TypeChecker().transform(ast0.asInstanceOf[Ast0.Module], visitor.sourceMap)
+    val typeCheckResult = new TypeChecker().transform("", ast0.asInstanceOf[Ast0.Module], visitor.sourceMap)
 
     typeCheckResult match {
       case TypeCheckSuccess(ast1) =>

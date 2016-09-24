@@ -18,7 +18,7 @@ class TypeCheckerTest extends FunSuite {
     println(ast0)
 
     val typeChecker = new TypeChecker()
-    val typeCheckerResult = typeChecker.transform(ast0, sourceMap)
+    val typeCheckerResult = typeChecker.transform("", ast0, sourceMap)
     typeCheckerResult match {
       case TypeCheckSuccess(ast1) =>
         println(ast1)

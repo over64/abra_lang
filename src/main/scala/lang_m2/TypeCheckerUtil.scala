@@ -14,6 +14,11 @@ case class InferedExp(th: TypeHint, stats: Seq[Ast1.Stat], init: Option[Ast1.Ini
 class CompileEx(val node: ParseNode, val error: CompileError) extends Exception
 
 object TypeCheckerUtil {
+  val thUnit = ScalarTypeHint("Unit")
+  val thBool = ScalarTypeHint("Boolean")
+  val thInt = ScalarTypeHint("Int")
+  val thFloat = ScalarTypeHint("Float")
+  val thString = ScalarTypeHint("String")
 
   def toLow(typeMap: Map[String, TypeInfo], th: TypeHint): Ast1.Type =
     th match {

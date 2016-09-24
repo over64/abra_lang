@@ -1,0 +1,53 @@
+# import abra.io # need abra.io import?
+import lines
+
+def main = {
+    val iterator = lines.mkLinesIterator('/tmp/foo.txt')
+    iterator.readLine()
+    iterator.readLine()
+    iterator.fd.dup() # ok
+    iterator.fd.close() # function close not found for abra.io.Fd. Import abra.io?
+
+    # Flat scopes
+    Scope {
+        types = {}
+        functions = [main]
+        extensions = {
+            # 'abra.io.Fd' -> [dup]
+        }
+        imports = {
+            'lines' -> Scope {
+                types: {LinesIterator -> [nextLine]}
+                functions: [mkLinesIterator]
+                extensions: {
+                    'abra.io.Fd' -> [dup]
+                }
+                imports = {
+                    'abra.io' -> Scope {
+                        types = {Fd -> [readLine, close]}
+                        functions = [open]
+                        extensions = {}
+                    }
+                }
+                transitiveImports = {}
+            },
+#            'abra.io' -> Scope {
+#                types = {Fd -> [readLine, close]}
+#                functions = [open]
+#                extensions = {}
+#            }
+        }
+        transitiveImports = {
+            'abra.io' -> Scope {
+                types = {Fd -> [dup]}
+                functions = {}
+                extensions = {}
+            }
+        }
+    }
+
+    # Правила импортов:
+    # 0. транзитивный импорт образуется из рекурсивного сжатия импортов
+    # 1. транзитивный импорт заменяется на простой импорт где types = types с суммированием self functions
+    # 2. сумма транзитивных импортов равна сумме extension функций
+}

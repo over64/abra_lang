@@ -1,0 +1,4 @@
+def print: (self: String) -> Unit = llvm  {
+  %1 = call i32 @puts(i8* %self)
+  ret void
+}

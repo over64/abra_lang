@@ -1,0 +1,13 @@
+def +: (self: Float, other: Float) -> Float = llvm {
+  %1 = fadd float %other, %self
+  ret float %1
+}
+def *: (self: Float, other: Float) -> Float = llvm {
+  %1 = fmul float %other, %self
+  ret float %1
+}
+
+def toInt: (self: Float) -> Int = llvm {
+  %1 = fptosi float %self to i32
+  ret i32 %1
+}

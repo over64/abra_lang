@@ -221,6 +221,9 @@ class Visitor(fname: String) extends AbstractParseTreeVisitor[ParseNode] with M2
       _then = visitBlock(ctx.then_block)
     ))
 
+  override def visitExprProp(ctx: ExprPropContext): Prop =
+    Prop(ctx.expression().accept(this).asInstanceOf[Expression], emit(ctx.op, lId(ctx.op.getText)))
+
   override def visitFunction(ctx: FunctionContext): Fn = {
     val (block, retType) =
       if (ctx.expression() != null)
@@ -250,6 +253,9 @@ class Visitor(fname: String) extends AbstractParseTreeVisitor[ParseNode] with M2
     emit(ctx, Fn(ctx.name.getText, typeHint, block, retType))
   }
 
+  override def visitImport_(ctx: Import_Context): ParseNode =
+    emit(ctx, Import(ctx.Id().map { id => emit(id.getSymbol, lId(id.getText)) }))
+
   override def visitLevel1(ctx: Level1Context): Level1Declaration =
     if (ctx.`type`() != null)
       visitType(ctx.`type`())
@@ -257,13 +263,10 @@ class Visitor(fname: String) extends AbstractParseTreeVisitor[ParseNode] with M2
 
   override def visitModule(ctx: ModuleContext): Module = {
     val all = ctx.level1().map { l1 => visitLevel1(l1) }
+    val imports = all.filter(_.isInstanceOf[Import]).map(_.asInstanceOf[Import])
     val types = all.filter(_.isInstanceOf[Type]).map(_.asInstanceOf[Type])
     val functions = all.filter(_.isInstanceOf[Fn]).map(_.asInstanceOf[Fn])
 
-    emit(ctx, Module(types, functions))
+    emit(ctx, Module(imports, types, functions))
   }
-
-  override def visitExprProp(ctx: ExprPropContext): Prop =
-    Prop(ctx.expression().accept(this).asInstanceOf[Expression], emit(ctx.op, lId(ctx.op.getText)))
-
 }

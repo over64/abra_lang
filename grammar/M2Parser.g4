@@ -63,5 +63,7 @@ type : scalarType
 function : 'def' name=('self' | Id | '!' | '*' | '/' | '+' | '-' | '>' | '<' | '<=' | '>=' | '==' | '!=' | '||' | '&&')
     (':' fnTypeHint)? '=' NL* (lambdaBlock | (block ':' typeHint) | LlLiteral | expression) ;
 
-level1: type | function;
+import_ : 'import' Id ('.' Id)* ;
+
+level1: import_ | type | function;
 module: NL* (level1 (NL+ level1)* NL*)? ;

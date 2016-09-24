@@ -25,9 +25,13 @@ import TypeCheckerUtil._
  */
 
 sealed trait FnInfo
-case class RawFn(fn: Fn) extends FnInfo
-case class HeaderFn(th: FnTypeHint) extends FnInfo
-case class InferedFn(th: FnTypeHint, lowFn: Ast1.Fn) extends FnInfo
+sealed trait CallableFn {
+  val _package: String
+  val th: FnTypeHint
+}
+case class RawFn(_package: String, fn: Fn) extends FnInfo
+case class HeaderFn(_package: String, th: FnTypeHint) extends FnInfo with CallableFn
+case class InferedFn(_package: String, th:FnTypeHint, lowFn: Ast1.Fn) extends FnInfo with CallableFn
 
 case class FnContainer(var fnInfo: FnInfo)
 case class TypeInfo(_type: Type, _package: String, selfFunctions: mutable.HashMap[String, FnContainer])
@@ -78,21 +82,21 @@ class Scope(global: GlobalScope, local: LocalScope = new LocalScope(None)) {
   def resolveType(th: TypeHint): Type =
     global.types.getOrElse(th.name, throw new CompileEx(th, CE.TypeNotFound(th.name)))._type
 
-  def findSelfFn(name: String, selfType: TypeHint, inferCallback: Fn => FnTypeHint): Option[FnTypeHint] =
+  def findSelfFn(name: String, selfType: TypeHint, inferCallback: RawFn => CallableFn): Option[CallableFn] =
     global.types.get(selfType.name).flatMap { ti =>
       ti.selfFunctions.get(name).map(_.fnInfo)
     }.map {
-      case RawFn(fn) => inferCallback(fn)
-      case HeaderFn(th) => th
-      case InferedFn(th, _) => th
+      case fn: RawFn => inferCallback(fn)
+      case fn: HeaderFn => fn
+      case fn: InferedFn => fn
     }
 
-  def findFn(name: String, inferCallback: Fn => FnTypeHint): Option[FnTypeHint] =
+  def findFn(name: String, inferCallback: RawFn => CallableFn): Option[CallableFn] =
     global.functions.get(name).map { fnContainer =>
       fnContainer.fnInfo match {
-        case RawFn(fn) => inferCallback(fn)
-        case HeaderFn(th) => th
-        case InferedFn(th, _) => th
+        case fn: RawFn => inferCallback(fn)
+        case fn: HeaderFn => fn
+        case fn: InferedFn => fn
       }
     }
 

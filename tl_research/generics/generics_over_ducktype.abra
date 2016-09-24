@@ -1,0 +1,81 @@
+type Option[X] = Some of (x: X) | None of Unit
+def map[U] = \self: Option[T], fn: (value: T) -> U ->
+    match self
+        of Some(x) -> Some(fn(x))
+        else None
+
+# vs scala
+sealed trait Option[T] {
+    def map[U](fn: (T) => U) = this match {
+        case Some(x) => Some(fn(x))
+        case None => None
+    }
+}
+case class Some[T](value: T) extends Option[T]
+case object None extends Option[_]
+
+type IOResult[X] = Success(value: X) | Error(msg: String)
+
+def unwrap[T] = \self: IOResult[T] ->
+    match self
+        of Success(x) -> x
+        of Error(msg) -> panic(msg)
+
+def orElse[T] = \self: IOResult[T], another: T ->
+    match self of Success(x) -> x else another
+
+def open: (path: String) -> IOResult[Fd] = llvm {
+}
+
+import abra.io
+
+val file = io.open('/tmp/text.txt').unwrap
+val line = file.readLine().orElse('hello')
+
+
+def map(self: Option[T], fn: (value: T) -> U ->
+    match self {
+        of value: T ->
+            foo()
+            Some(fn(value))
+        of None -> None
+        else
+            doSome1()
+            doSome2()
+    }
+
+import abra.option
+
+val a = Some(1) # Option[Int]
+val b = a.map(\x -> x.toFloat) # Option[Float]
+val c = None
+
+# literal types?
+# literal of Unit type is 'Unit' - haha
+type BazStruct = (a: Int, b: Int, c: Int)
+type FooBarBaz = Foo of 1
+               | Bar of 2
+               | Baz of BazStruct(1, 2, 3)
+
+# more real example
+type GlTextureType = GL_TEXTURE_1D of 0x265
+                   | GL_TEXTURE_2D of 0x266
+                   | GL_TEXTURE_3D of 0x267
+
+def glDrawTexture = { texType: GlTextureType, ... -> }: Unit
+#usage
+glDrawTexture(GL_TEXTURE_1D, ...)
+
+# scala way
+sealed trait GlTextureType {
+    value: Int
+}
+case object GL_TEXTURE_1D extends GlTextureType {
+    value = 0x265
+}
+case object GL_TEXTURE_2D extends GlTextureType {
+    value = 0x266
+}
+case object GL_TEXTURE_3D extends GlTextureType {
+    value = 0x267
+}

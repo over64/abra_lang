@@ -60,5 +60,6 @@ object Ast0 {
   case class FnArg(name: String, typeHint: Option[TypeHint]) extends ParseNode
   case class LlInline(value: String) extends FnBody with ParseNode
   case class Fn(name: String, typeHint: Option[FnTypeHint], body: FnBody, retTypeHint: Option[TypeHint]) extends Level1Declaration
-  case class Module(types: Seq[Type], functions: Seq[Fn]) extends ParseNode
+  case class Import(seq: Seq[lId]) extends Level1Declaration
+  case class Module(imports: Seq[Import], types: Seq[Type], functions: Seq[Fn]) extends ParseNode
 }

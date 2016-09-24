@@ -33,6 +33,7 @@ TYPE : 'type' ;
 BACK_SLASH : '\\' ;
 SELF : 'self' ;
 DEF : 'def' ;
+IMPORT : 'import' ;
 
 LlBegin : 'llvm' [ \t\r\n]* '{' -> pushMode(llvm);
 

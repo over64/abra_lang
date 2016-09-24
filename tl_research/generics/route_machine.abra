@@ -1,0 +1,68 @@
+# engine.routes.abra
+
+type YieldUnit[U, T] {
+  def onActivate: (data: U) -> Unit
+  def run: (delta: Float) -> Option[T]
+  def onExit: () -> Unit
+
+  def next: (value: T) -> YieldUnit[T, _]
+}
+
+# game.units.abra
+import engine.routes with YieldUnit
+# Unit1 -> Unit2 or Unit3
+# Unit2 -> Unit1
+# Unit3 -> Unit1
+type Unit1 = ()
+def onActivate = \self: Unit1, data: Int -> #some code
+def run = \self: Unit1, delta: Float): Option[Boolean] -> #some code
+def onExit = {}
+def next:
+
+type Unit2 = () #some state
+def onActivate = \self: Unit1, data: Float -> #some code
+def run = \self: Unit1, delta: Float): Option[Int] -> #some code
+def onExit = {}
+
+type Unit3 = () #some state
+def onActivate = \self: Unit1, data: Float -> #some code
+def run = \self: Unit1, delta: Float): Option[Int] -> #some code
+def onExit = {}
+
+# main.abra
+import engine.routes with YieldUnit
+import game.units with Unit1, Unit2, Unit3
+
+type Route[U, T, V] = {
+    def current: () -> YieldUnit[U, T]
+    def doRoute: (value: T) -> Route[T, V, _]
+}
+
+def run = { self: Route[U, T, V] ->
+    self.current.run
+}
+
+type Route1(u1: Unit1, u2: Unit2, u3: Unit3)
+def current: \self: Route1 -> self.u1
+def doRoute = \self: Route1, value: Boolean -> if value then self.u1 else self.u2
+
+type Route2(u2: Unit2, u1: Unit1)
+def current: \self: Route2 -> self.u2
+def doRoute = \self: Route2, value: Unit -> self.u1
+
+type Route3(u3: Unit3, u1: Unit1)
+def current: \self: Route3 -> self.u3
+def doRoute = \self: Route3, value: Unit -> self.u1
+
+def main = {
+    val u1 = Unit1()
+    val u2 = Unit2()
+    val u3 = Unit3()
+
+    val r1: Route[Int, Boolean, Unit] = Route1(u1, u2, u3)
+    val r2: Route[Boolean, Unit, Int] = Route2(u2, u1)
+    val r3: Route[Boolean, Unit, Int] = Route3(u3, u1)
+
+
+}
+
