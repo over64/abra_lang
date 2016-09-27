@@ -321,6 +321,11 @@ case class IrGen(val out: OutputStream) {
     out.println("declare i32 @memcmp(i8*, i8*, i64)")
     out.println("declare void @llvm.memset.p0i8.i64(i8* nocapture, i8, i64, i32, i1)")
 
+    module.headers.foreach { header =>
+      val signature = header._type
+      out.println(s"declare ${signature.realRet.name} @${escapeFnName(header.name)}(${signature.irArgs.mkString(", ")})")
+    }
+
     module.structs.foreach { struct =>
       out.println(s"${struct.name} = type { ${struct.fields.map { f => f._type.name }.mkString(", ")} }")
     }

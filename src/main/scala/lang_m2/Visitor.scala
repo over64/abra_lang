@@ -7,9 +7,11 @@ import org.antlr.v4.runtime.tree.{AbstractParseTreeVisitor, TerminalNode}
 import Ast0._
 
 import collection.JavaConversions._
+import scala.collection.mutable.HashMap
 
-class Visitor(fname: String) extends AbstractParseTreeVisitor[ParseNode] with M2ParserVisitor[ParseNode] {
+class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[ParseNode] with M2ParserVisitor[ParseNode] {
   val sourceMap = new SourceMap()
+  val importMap = new HashMap[String, String]()
 
   def emit[T <: ParseNode](token: Token, node: T): T = {
     sourceMap.add(node, new AstInfo(fname, token.getLine, token.getCharPositionInLine))
@@ -57,8 +59,18 @@ class Visitor(fname: String) extends AbstractParseTreeVisitor[ParseNode] with M2
     emit(realId.getSymbol, lId(realId.getSymbol.getText))
   }
 
-  override def visitScalarTypeHint(ctx: ScalarTypeHintContext): ScalarTypeHint =
-    emit(ctx, ScalarTypeHint(ctx.Id().getText))
+  val predefTypes = Seq("Unit", "Boolean", "Int", "Float", "String")
+
+  override def visitScalarTypeHint(ctx: ScalarTypeHintContext): ScalarTypeHint = {
+    val typeName = ctx.typeName.getText
+    val pkg =
+      if (ctx.modVar != null)
+        importMap(ctx.modVar.getText)
+      else if (predefTypes.contains(typeName)) "abra"
+      else _package
+
+    emit(ctx, ScalarTypeHint(typeName, pkg))
+  }
 
   override def visitFnTypeHintField(ctx: FnTypeHintFieldContext): FnTypeHintField =
     emit(ctx, FnTypeHintField(
@@ -163,7 +175,12 @@ class Visitor(fname: String) extends AbstractParseTreeVisitor[ParseNode] with M2
   override def visitExprLiteral(ctx: ExprLiteralContext): Literal = visitLiteral(ctx.literal())
 
   override def visitExprSelfCall(ctx: ExprSelfCallContext): ParseNode =
-    emit(ctx, SelfCall(ctx.op.getText, visitExpr(ctx.expression()), visitTuple(ctx.tuple()).seq))
+    visitExpr(ctx.expression()) match {
+      case id: lId if importMap.contains(id.value) =>
+        val pkg = importMap(id.value)
+        emit(ctx, ModCall(pkg, ctx.op.getText, visitTuple(ctx.tuple()).seq))
+      case expr@_ => emit(ctx, SelfCall(ctx.op.getText, expr, visitTuple(ctx.tuple()).seq))
+    }
 
 
   override def visitExprApply(ctx: ExprApplyContext): Expression = {
@@ -253,8 +270,11 @@ class Visitor(fname: String) extends AbstractParseTreeVisitor[ParseNode] with M2
     emit(ctx, Fn(ctx.name.getText, typeHint, block, retType))
   }
 
-  override def visitImport_(ctx: Import_Context): ParseNode =
-    emit(ctx, Import(ctx.Id().map { id => emit(id.getSymbol, lId(id.getText)) }))
+  override def visitImport_(ctx: Import_Context): Import = {
+    val pkgSeq = ctx.pkgName.map { id => emit(id, lId(id.getText)) }
+    importMap.put(pkgSeq.last.toString, pkgSeq.dropRight(1).mkString("."))
+    emit(ctx, Import(pkgSeq))
+  }
 
   override def visitLevel1(ctx: Level1Context): Level1Declaration =
     if (ctx.`type`() != null)
@@ -262,11 +282,12 @@ class Visitor(fname: String) extends AbstractParseTreeVisitor[ParseNode] with M2
     else visitFunction(ctx.function())
 
   override def visitModule(ctx: ModuleContext): Module = {
+    val imports = ctx.import_.map { imp => visitImport_(imp) }
+
     val all = ctx.level1().map { l1 => visitLevel1(l1) }
-    val imports = all.filter(_.isInstanceOf[Import]).map(_.asInstanceOf[Import])
     val types = all.filter(_.isInstanceOf[Type]).map(_.asInstanceOf[Type])
     val functions = all.filter(_.isInstanceOf[Fn]).map(_.asInstanceOf[Fn])
 
-    emit(ctx, Module(imports, types, functions))
+    emit(ctx, Module(_package, imports, types, functions))
   }
 }

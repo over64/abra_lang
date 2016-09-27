@@ -5,25 +5,26 @@ import lang_m2.Ast0._
 /**
   * Created by over on 29.07.16.
   */
-sealed trait TypeCheckResult
-case class TypeCheckSuccess(module: Ast1.Module) extends TypeCheckResult
-case class TypeCheckFail(at: AstInfo, error: CompileError) extends TypeCheckResult
-
-case class InferedExp(th: TypeHint, stats: Seq[Ast1.Stat], init: Option[Ast1.Init])
-
-class CompileEx(val node: ParseNode, val error: CompileError) extends Exception
 
 object TypeCheckerUtil {
-  val thUnit = ScalarTypeHint("Unit")
-  val thBool = ScalarTypeHint("Boolean")
-  val thInt = ScalarTypeHint("Int")
-  val thFloat = ScalarTypeHint("Float")
-  val thString = ScalarTypeHint("String")
+  val thUnit = ScalarTypeHint("Unit", "abra")
+  val thBool = ScalarTypeHint("Boolean", "abra")
+  val thInt = ScalarTypeHint("Int", "abra")
+  val thFloat = ScalarTypeHint("Float", "abra")
+  val thString = ScalarTypeHint("String", "abra")
 
-  def toLow(typeMap: Map[String, TypeInfo], th: TypeHint): Ast1.Type =
+  val predefTypes = Map(
+    thUnit -> ScalarType("Unit", "void"),
+    thBool -> ScalarType("Boolean", "i1"),
+    thInt -> ScalarType("Int", "i32"),
+    thFloat -> ScalarType("Float", "float"),
+    thString -> ScalarType("String", "i8*")
+  )
+
+  def toLow(typeMap: Map[ScalarTypeHint, Type], th: TypeHint): Ast1.Type =
     th match {
-      case ScalarTypeHint(typeName) =>
-        typeMap.getOrElse(typeName, throw new CompileEx(th, CE.TypeNotFound(typeName)))._type match {
+      case sth: ScalarTypeHint =>
+        typeMap.getOrElse(sth, throw new CompileEx(th, CE.TypeNotFound(sth.name))) match {
           case ScalarType(_, llType) => Ast1.Scalar(llType)
           case FactorType(name, fields) => Ast1.Struct(name, fields.map { field =>
             Ast1.Field(field.name, toLow(typeMap, field.typeHint))
@@ -33,18 +34,10 @@ object TypeCheckerUtil {
         Ast1.FnPointer(seq.map(arg => Ast1.Field(arg.name, toLow(typeMap, arg.typeHint))), toLow(typeMap, ret))
     }
 
-  def assertTypeDefined(typeHint: TypeHint, typeMap: Map[String, Type]): Unit =
-    typeHint match {
-      case self@ScalarTypeHint(name) =>
-        if (typeMap.get(name) == None) throw new CompileEx(self, CE.TypeNotFound(name))
-      case FnTypeHint(seq, ret) =>
-        seq.foreach(th => assertTypeDefined(th.typeHint, typeMap))
-        assertTypeDefined(ret, typeMap)
-    }
-
   def assertTypeEquals(node: ParseNode, expected: TypeHint, has: TypeHint): Unit =
     if (expected != has) throw new CompileEx(node, CE.ExprTypeMismatch(expected, has))
 
+  //FIXME: simplify
   def inferFnArgs(fn: Fn) =
     fn.typeHint match {
       case Some(th) =>

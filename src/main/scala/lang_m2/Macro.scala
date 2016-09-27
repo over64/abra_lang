@@ -1,17 +1,17 @@
 package lang_m2
 
 import lang_m2.Ast0._
-import TypeCheckerUtil.toLow
+import TypeCheckerUtil.{thBool, toLow}
 
 /**
   * Created by over on 23.08.16.
   */
 object Macro {
-  def genConstructor(typeMap: Map[String, TypeInfo], td: FactorType): Fn = {
+  def genConstructor(_package: String, typeMap: Map[ScalarTypeHint, Type], td: FactorType): Fn = {
     var nextId = 0
     val th = FnTypeHint(td.fields.map { field =>
       FnTypeHintField(field.name, field.typeHint)
-    }, ScalarTypeHint(td.name))
+    }, ScalarTypeHint(td.name, _package))
 
     Fn(td.name, Some(th), LlInline(
       (td.fields.map { field =>
@@ -24,10 +24,10 @@ object Macro {
     ), None)
   }
 
-  def genEquals(typeMap: Map[String, TypeInfo], td: FactorType): Fn = {
-    val th = FnTypeHint(Seq(FnTypeHintField("self", ScalarTypeHint(td.name)), FnTypeHintField("other", ScalarTypeHint(td.name))),
-      ScalarTypeHint("Boolean"))
-    val lowTh = toLow(typeMap, ScalarTypeHint(td.name)).name
+  def genEquals(_package: String, typeMap: Map[ScalarTypeHint, Type], td: FactorType): Fn = {
+    val th = FnTypeHint(Seq(FnTypeHintField("self", ScalarTypeHint(td.name, _package)), FnTypeHintField("other", ScalarTypeHint(td.name, _package))),
+      thBool)
+    val lowTh = toLow(typeMap, ScalarTypeHint(td.name, _package)).name
 
     Fn("==", Some(th), LlInline(
       s"""
@@ -41,17 +41,17 @@ object Macro {
       """.stripMargin
     ), None)
   }
-  def genNotEquals(typeMap: Map[String, TypeInfo], td: FactorType): Fn = {
-    val thBool = Some(ScalarTypeHint("Boolean"))
-    val thSelf = Some(ScalarTypeHint(td.name))
+  def genNotEquals(_package: String, typeMap: Map[ScalarTypeHint, Type], td: FactorType): Fn = {
+    val _thBool = Some(thBool)
+    val thSelf = Some(ScalarTypeHint(td.name, _package))
 
     Fn("!=", None, Block(Seq(FnArg("self", thSelf), FnArg("other", thSelf)), Seq(
       SelfCall("!", SelfCall("==", lId("self"), Seq(lId("other"))), Seq())
-    )), thBool)
+    )), _thBool)
   }
 
   def booleanNot(): Fn = {
-    val th = FnTypeHint(Seq(FnTypeHintField("self", ScalarTypeHint("Boolean"))), ScalarTypeHint("Boolean"))
+    val th = FnTypeHint(Seq(FnTypeHintField("self", thBool)), thBool)
     Fn("!", Some(th), LlInline(
       """
         |   %1 = xor i1 %self, 1

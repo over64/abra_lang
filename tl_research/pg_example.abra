@@ -1,6 +1,6 @@
 import org.postgresql.pg
 
-type User = (name: String, age: Int, lastName: Option<String> = None)
+type User = (name: String, age: Int, lastName: Option[String] = None)
 
 def main = {
   val (uname, passwd) = ('over', '123')

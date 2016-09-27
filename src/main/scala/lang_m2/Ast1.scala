@@ -82,5 +82,6 @@ object Ast1 {
   case class Block(seq: Seq[Stat]) extends FnBody
 
   case class Fn(name: String, _type: FnPointer, body: FnBody)
-  case class Module(structs: Seq[Struct] = Seq(), functions: Seq[Fn])
+  case class HeaderFn(name: String, _type: FnPointer)
+  case class Module(structs: Seq[Struct] = Seq(), functions: Seq[Fn], headers: Seq[HeaderFn] = Seq())
 }

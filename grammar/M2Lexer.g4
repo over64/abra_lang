@@ -34,6 +34,7 @@ BACK_SLASH : '\\' ;
 SELF : 'self' ;
 DEF : 'def' ;
 IMPORT : 'import' ;
+WITH : 'with' ;
 
 LlBegin : 'llvm' [ \t\r\n]* '{' -> pushMode(llvm);
 

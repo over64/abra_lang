@@ -1,15 +1,4 @@
-def +: (self: Int, other: Int) -> Int = llvm {
-  %1 = add nsw i32 %other, %self
-  ret i32 %1
-}
-def *: (self: Int, other: Int) -> Int = llvm {
-  %1 = mul nsw i32 %other, %self
-  ret i32 %1
-}
-def <: (self: Int, other: Int) -> Boolean = llvm {
-  %1 = icmp slt i32 %self, %other
-  ret i1 %1
-}
+import abra.int
 
 type IntPtr = llvm { i32* }
 

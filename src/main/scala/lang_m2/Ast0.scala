@@ -28,7 +28,7 @@ object Ast0 {
     val name: String
   }
 
-  case class ScalarTypeHint(name: String) extends TypeHint
+  case class ScalarTypeHint(name: String, _package: String) extends TypeHint
   case class FnTypeHintField(name: String, typeHint: TypeHint) extends ParseNode {
     override def hashCode(): Int = typeHint.hashCode()
 
@@ -47,6 +47,7 @@ object Ast0 {
   case class ApplyCall(self: Expression) extends Expression
   case class SelfCall(fnName: String, self: Expression, args: Seq[Expression]) extends Expression
   case class Call(fnName: String, args: Seq[Expression]) extends Expression
+  case class ModCall(_package: String, fnName: String, args: Seq[Expression]) extends Expression
 
   case class Block(args: Seq[FnArg], seq: Seq[BlockExpression]) extends Expression with FnBody
 
@@ -61,5 +62,5 @@ object Ast0 {
   case class LlInline(value: String) extends FnBody with ParseNode
   case class Fn(name: String, typeHint: Option[FnTypeHint], body: FnBody, retTypeHint: Option[TypeHint]) extends Level1Declaration
   case class Import(seq: Seq[lId]) extends Level1Declaration
-  case class Module(imports: Seq[Import], types: Seq[Type], functions: Seq[Fn]) extends ParseNode
+  case class Module(_package: String, imports: Seq[Import], types: Seq[Type], functions: Seq[Fn]) extends ParseNode
 }

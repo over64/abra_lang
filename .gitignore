@@ -2,8 +2,13 @@
 *.elf
 *.out.ll
 *.s
+*.o
 project/project
 project/target
 target/
 grammar/M2Lexer.tokens
 tl/integration/test
+tl/integration/arrays
+tl/integration/floats
+tl/integration/fnpointer
+tl/integration/hw

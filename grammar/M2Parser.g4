@@ -40,7 +40,7 @@ lambdaBlock : '\\' (fnArg (',' fnArg)*)? '->' NL* (expression | store) ;
 
 tuple : '(' (expression (',' expression)*)? ')' ;
 
-scalarTypeHint : Id ;
+scalarTypeHint : (modVar=Id '.')? typeName=Id ;
 fnTypeHintField: ('self' | Id) ':' typeHint ;
 fnTypeHint : '(' (fnTypeHintField (',' fnTypeHintField)*)? ')' '->' typeHint ;
 
@@ -63,7 +63,7 @@ type : scalarType
 function : 'def' name=('self' | Id | '!' | '*' | '/' | '+' | '-' | '>' | '<' | '<=' | '>=' | '==' | '!=' | '||' | '&&')
     (':' fnTypeHint)? '=' NL* (lambdaBlock | (block ':' typeHint) | LlLiteral | expression) ;
 
-import_ : 'import' Id ('.' Id)* ;
+import_ : 'import' pkgName+=Id ('.' pkgName+=Id)* ('with' tid+=Id (',' tid+=Id)*)?;
 
-level1: import_ | type | function;
-module: NL* (level1 (NL+ level1)* NL*)? ;
+level1: type | function;
+module: NL* (import_ (NL+ import_)* NL*)? (level1 (NL+ level1)* NL*)? ;

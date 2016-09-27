@@ -2,52 +2,135 @@
 import lines
 
 def main = {
-    val iterator = lines.mkLinesIterator('/tmp/foo.txt')
-    iterator.readLine()
-    iterator.readLine()
+    val iterator = lines.mkLinesIterator('/tmp/foo.txt') # ModCall('line', mkLinesIterator)
+    # => iterator: lines.LinesIterator
+    iterator.nextLine() # SelfCall
     iterator.fd.dup() # ok
     iterator.fd.close() # function close not found for abra.io.Fd. Import abra.io?
 
-    # Flat scopes
+
+    # types - extensions - functions model
+    # 1 - scope для abra.io.abra
     Scope {
-        types = {}
-        functions = [main]
-        extensions = {
-            # 'abra.io.Fd' -> [dup]
-        }
-        imports = {
-            'lines' -> Scope {
-                types: {LinesIterator -> [nextLine]}
-                functions: [mkLinesIterator]
-                extensions: {
-                    'abra.io.Fd' -> [dup]
-                }
-                imports = {
-                    'abra.io' -> Scope {
-                        types = {Fd -> [readLine, close]}
-                        functions = [open]
-                        extensions = {}
-                    }
-                }
-                transitiveImports = {}
-            },
-#            'abra.io' -> Scope {
-#                types = {Fd -> [readLine, close]}
-#                functions = [open]
-#                extensions = {}
-#            }
-        }
-        transitiveImports = {
-            'abra.io' -> Scope {
-                types = {Fd -> [dup]}
-                functions = {}
-                extensions = {}
+        types : {
+            Sth('abra.io', Fd) -> Fd = llvm {i32}
+        },
+        extensions : {
+            Sth('abra.io', Fd) -> {
+                'readLine' -> RawFn(readLine)
+                'close' -> RawFn(close)
+            }
+        },
+        functions : {
+            Pkg('abra.io') -> {
+                'open' -> RawFn(open)
             }
         }
+    } -> dump : типы, МОИ экстеншены, где pkg = None, functions где pkg = None
+     Dump {
+            types : {
+                Sth('abra.io', Fd) -> Fd = llvm {i32}
+            },
+            extensions : {
+                Sth('abra.io', Fd) -> {
+                    'readLine' -> HeaderFn(readLine)
+                    'close' -> HeaderFn(close)
+                }
+            },
+            functions : {
+                Pkg('abra.io') -> {
+                    'open' -> HeaderFn(open)
+                }
+            }
+        }
+
+    # 2 - scope для lines.abra
+    Scope {
+         types : {
+            Sth('abra.io', Fd) -> Fd = llvm {i32}
+            Sth('lines', LinesIterator) -> LinesIterator = (fd: abra.io.Fd)
+         },
+         extensions : {
+            Sth('abra.io', Fd) -> {
+                'readLine' -> HeaderFn(readLine)
+                'close' -> HeaderFn(close)
+                'dup' -> RawFn(dup)
+            },
+            Sth('lines', LinesIterator) -> {
+                'nextLine' -> RawFn(nextLine)
+            }
+         },
+         functions : {
+            Pkg('abra.io') -> {
+                'open' -> HeaderFn(open)
+            }
+            Pkg('lines') -> {
+                'mkLinesIterator' -> RawFn(mkLinesIterator)
+            }
+         }
+    } -> dump
+
+    Scope {
+         types : {
+            Sth('abra.io', Fd) -> Fd = llvm { i32 }
+            Sth('lines', LinesIterator) -> LinesIterator = (fd: abra.io.Fd)
+         },
+         extensions : {
+            Sth('abra.io', Fd) -> {
+                'dup' -> HeaderFn(dup)
+            },
+            Sth('lines', LinesIterator) -> {
+                'nextLine' -> HeaderFn(nextLine)
+            }
+         },
+         functions : {
+            Pkg('lines') -> {
+                'mkLinesIterator' -> HeaderFn(mkLinesIterator)
+            }
+         }
     }
 
-    # Правила импортов:
-    # 0. транзитивный импорт образуется из рекурсивного сжатия импортов
-    # 1. транзитивный импорт заменяется на простой импорт где types = types с суммированием self functions
-    # 2. сумма транзитивных импортов равна сумме extension функций
+    # 3 - scope для main.abra
+    # 3.1 после импорта lines
+    Scope {
+         types : {
+            Sth('abra.io', Fd) -> Fd = llvm { i32 }
+            Sth('lines', LinesIterator) -> LinesIterator = (fd: abra.io.Fd)
+         },
+         extensions : {
+            Sth('abra.io', Fd) -> {
+                'dup' -> HeaderFn(dup)
+            },
+            Sth('lines', LinesIterator) -> {
+                'nextLine' -> HeaderFn(nextLine)
+            }
+         },
+         functions : {
+            Pkg('lines') -> {
+                'mkLinesIterator' -> HeaderFn(mkLinesIterator)
+            }
+         }
+    }
+    # 3.2 после импорта abra.io
+    Scope {
+         imports: [lines, abra.io] # is it need?
+         types : {
+            Sth('abra.io', Fd) -> Fd = llvm { i32 }
+            Sth('lines', LinesIterator) -> LinesIterator = (fd: abra.io.Fd)
+         },
+         extensions : {
+            Sth('abra.io', Fd) -> {
+                'dup' -> HeaderFn(dup)
+            },
+            Sth('lines', LinesIterator) -> {
+                'nextLine' -> HeaderFn(nextLine)
+            }
+         },
+         functions : {
+            Pkg('lines') -> {
+                'mkLinesIterator' -> HeaderFn(mkLinesIterator)
+            }
+         }
+    }
+
 }

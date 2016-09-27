@@ -18,15 +18,7 @@ class TypeCheckerTest extends FunSuite {
     println(ast0)
 
     val typeChecker = new TypeChecker()
-    val typeCheckerResult = typeChecker.transform("", ast0, sourceMap)
-    typeCheckerResult match {
-      case TypeCheckSuccess(ast1) =>
-        println(ast1)
-        val out = new PrintStream(System.out)
-        new IrGen(out).gen(ast1)
-      case TypeCheckFail(at, error) =>
-        throw new Exception(s"at ${at.fname}:${at.line}:${at.line} -> \n\t$error")
-    }
+    typeChecker.transform(Namespacer.mkNamespace(ast0), sourceMap)
   }
 
   test("type def test") {

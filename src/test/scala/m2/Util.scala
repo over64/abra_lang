@@ -19,7 +19,7 @@ trait Util extends Matchers {
     val parser = new M2Parser(tokens)
 
     val tree = whatToParse(parser)
-    val ast = new Visitor("test.abra").visit(tree)
+    val ast = new Visitor("test.abra", "test").visit(tree)
 
     ast shouldEqual res
   }
@@ -37,7 +37,7 @@ trait Util extends Matchers {
     val parser = new M2Parser(tokens)
 
     val tree = whatToParse(parser)
-    val visitor = new Visitor("test.abra")
+    val visitor = new Visitor("test.abra", "test")
     (visitor.visit(tree).asInstanceOf[T], visitor.sourceMap)
   }
 }

@@ -7,6 +7,19 @@ import lang_m2.Ast0.TypeHint
   */
 sealed trait CompileError
 object CE {
+  case class AssemblyError(msg: String) extends CompileError {
+    override def toString = msg
+  }
+  case class LinkError(msg: String) extends CompileError {
+    override def toString = msg
+  }
+  //FIXME: include dirs
+  case class ImportNotResolved(modPath: String) extends CompileError {
+    override def toString = s"could not resolve import: $modPath"
+  }
+  case class FnlTypeNotEntensible() extends CompileError {
+    override def toString = s"function pointer type cannot have self-functions"
+  }
   case class AlreadyDefined(symbolName: String) extends CompileError {
     override def toString = s"symbol with name $symbolName already defined"
   }
