@@ -29,10 +29,7 @@ Research platform for design language with new memory management and modularity 
 #### Hello, world
 Yes, it is unicode, baby! If you have UTF8 locale...
 ```scala
-  def print: (self: String) -> Unit = llvm  {
-    %1 = call i32 @puts(i8* %self)
-    ret void
-  }
+  import abra.string
   
   def main =
     'こんにちは、世界!'.print
