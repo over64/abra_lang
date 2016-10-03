@@ -1,0 +1,420 @@
+# implicitly to each file
+# import abra.universe with Unit, Boolean, Byte, Short, uShort, Int, uInt, Long, uLong, String, Float, Double
+
+type Unit = llvm { void }
+type Boolean = llvm { i1 }
+type Byte = llvm { i8 }
+type uByte = llvm { i8 }
+type Short = llvm { i16 }
+type uShort = llvm { i16 }
+type Int = llvm { i32 }
+type uInt = llvm { i32 }
+type Long = llvm { i64 }
+type uLong = llvm { i64 }
+type String = llvm { i8* }
+type Float = llvm { float }
+type Double = llvm { double }
+
+# for Boolean
+
+def !: (self: Boolean, other: Boolean) -> Boolean = llvm {
+  %1 = xor i1 %self, 1
+  ret i1 %1
+}
+
+def ==: (self: Boolean, other: Boolean) -> Boolean = llvm {
+  %1 = icmp eq i1 %self, %other
+  ret i1 %1
+}
+
+def !=: (self: Boolean, other: Boolean) -> Boolean = llvm {
+  %1 = icmp ne i1 %self, %other
+  ret i1 %1
+}
+
+def ||: (self: Boolean, other: Boolean) -> Boolean = llvm {
+  %1 = or i1 %other, %self
+  ret i32 %1
+}
+
+def &&: (self: Boolean, other: Boolean) -> Boolean = llvm {
+  %1 = and i1 %other, %self
+  ret i32 %1
+}
+
+# for Byte
+
+def +: (self: Byte, other: Byte) -> Byte = llvm {
+  %1 = add nsw i8 %other, %self
+  ret i8 %1
+}
+
+def *: (self: Byte, other: Byte) -> Byte = llvm {
+  %1 = mul nsw i8 %other, %self
+  ret i8 %1
+}
+
+def ==: (self: Byte, other: Byte) -> Boolean = llvm {
+  %1 = icmp eq i8 %self, %other
+  ret i1 %1
+}
+
+def !=: (self: Byte, other: Byte) -> Boolean = llvm {
+  %1 = icmp ne i8 %self, %other
+  ret i1 %1
+}
+
+def <: (self: Byte, other: Byte) -> Boolean = llvm {
+  %1 = icmp slt i8 %self, %other
+  ret i1 %1
+}
+
+def <=: (self: Byte, other: Byte) -> Boolean = llvm {
+  %1 = icmp sle i8 %self, %other
+  ret i1 %1
+}
+
+def >: (self: Byte, other: Byte) -> Boolean = llvm {
+  %1 = icmp sgt i8 %self, %other
+  ret i1 %1
+}
+
+def >=: (self: Byte, other: Byte) -> Boolean = llvm {
+  %1 = icmp sge i8 %self, %other
+  ret i1 %1
+}
+
+# for uByte
+
+def +: (self: uByte, other: uByte) -> Int = llvm {
+  %1 = add nuw i8 %other, %self
+  ret i8 %1
+}
+
+def *: (self: uByte, other: uByte) -> Int = llvm {
+  %1 = mul nuw i8 %other, %self
+  ret i8 %1
+}
+
+def ==: (self: uByte, other: uByte) -> Boolean = llvm {
+  %1 = icmp eq i8 %self, %other
+  ret i1 %1
+}
+
+def !=: (self: uByte, other: uByte) -> Boolean = llvm {
+  %1 = icmp ne i8 %self, %other
+  ret i1 %1
+}
+
+def <: (self: uByte, other: uByte) -> Boolean = llvm {
+  %1 = icmp slt i8 %self, %other
+  ret i1 %1
+}
+
+def <=: (self: Int, other: uByte) -> Boolean = llvm {
+  %1 = icmp sle i8 %self, %other
+  ret i1 %1
+}
+
+def >: (self: uByte, other: uByte) -> Boolean = llvm {
+  %1 = icmp sgt i8 %self, %other
+  ret i1 %1
+}
+
+def >=: (self: uByte, other: uByte) -> Boolean = llvm {
+  %1 = icmp sge i8 %self, %other
+  ret i1 %1
+}
+
+def or: (self: uByte, other: uByte) -> Int = llvm {
+  %1 = or i8 %other, %self
+  ret i8 %1
+}
+
+def and: (self: uByte, other: uByte) -> Int = llvm {
+  %1 = and i8 %other, %self
+  ret i8 %1
+}
+
+
+# for Short
+
+def +: (self: Short, other: Short) -> Short = llvm {
+  %1 = add nsw i16 %other, %self
+  ret i16 %1
+}
+
+def *: (self: Short, other: Short) -> Short = llvm {
+  %1 = mul nsw i16 %other, %self
+  ret i16 %1
+}
+
+def ==: (self: Short, other: Short) -> Boolean = llvm {
+  %1 = icmp eq i16 %self, %other
+  ret i1 %1
+}
+
+def !=: (self: Short, other: Short) -> Boolean = llvm {
+  %1 = icmp ne i16 %self, %other
+  ret i1 %1
+}
+
+def <: (self: Short, other: Short) -> Boolean = llvm {
+  %1 = icmp slt i16 %self, %other
+  ret i1 %1
+}
+
+def <=: (self: Short, other: Short) -> Boolean = llvm {
+  %1 = icmp sle i16 %self, %other
+  ret i1 %1
+}
+
+def >: (self: Short, other: Short) -> Boolean = llvm {
+  %1 = icmp sgt i16 %self, %other
+  ret i1 %1
+}
+
+def >=: (self: Short, other: Short) -> Boolean = llvm {
+  %1 = icmp sge i16 %self, %other
+  ret i1 %1
+}
+
+# for uShort
+
+def +: (self: uShort, other: uShort) -> Int = llvm {
+  %1 = add nuw i16 %other, %self
+  ret i16 %1
+}
+
+def *: (self: uShort, other: uShort) -> Int = llvm {
+  %1 = mul nuw i16 %other, %self
+  ret i16 %1
+}
+
+def ==: (self: uShort, other: uShort) -> Boolean = llvm {
+  %1 = icmp eq i16 %self, %other
+  ret i1 %1
+}
+
+def !=: (self: uShort, other: uShort) -> Boolean = llvm {
+  %1 = icmp ne i16 %self, %other
+  ret i1 %1
+}
+
+def <: (self: uShort, other: uShort) -> Boolean = llvm {
+  %1 = icmp slt i16 %self, %other
+  ret i1 %1
+}
+
+def <=: (self: Int, other: uShort) -> Boolean = llvm {
+  %1 = icmp sle i16 %self, %other
+  ret i1 %1
+}
+
+def >: (self: uShort, other: uShort) -> Boolean = llvm {
+  %1 = icmp sgt i16 %self, %other
+  ret i1 %1
+}
+
+def >=: (self: uShort, other: uShort) -> Boolean = llvm {
+  %1 = icmp sge i16 %self, %other
+  ret i1 %1
+}
+
+def or: (self: uShort, other: uShort) -> Int = llvm {
+  %1 = or i16 %other, %self
+  ret i16 %1
+}
+
+def and: (self: uShort, other: uShort) -> Int = llvm {
+  %1 = and i16 %other, %self
+  ret i16 %1
+}
+
+# for Int
+
+def +: (self: Int, other: Int) -> Int = llvm {
+  %1 = add nsw i32 %other, %self
+  ret i32 %1
+}
+
+def *: (self: Int, other: Int) -> Int = llvm {
+  %1 = mul nsw i32 %other, %self
+  ret i32 %1
+}
+
+def ==: (self: Int, other: Int) -> Boolean = llvm {
+  %1 = icmp eq i32 %self, %other
+  ret i1 %1
+}
+
+def !=: (self: Int, other: Int) -> Boolean = llvm {
+  %1 = icmp ne i32 %self, %other
+  ret i1 %1
+}
+
+def <: (self: Int, other: Int) -> Boolean = llvm {
+  %1 = icmp slt i32 %self, %other
+  ret i1 %1
+}
+
+def <=: (self: Int, other: Int) -> Boolean = llvm {
+  %1 = icmp sle i32 %self, %other
+  ret i1 %1
+}
+
+def >: (self: Int, other: Int) -> Boolean = llvm {
+  %1 = icmp sgt i32 %self, %other
+  ret i1 %1
+}
+
+def >=: (self: Int, other: Int) -> Boolean = llvm {
+  %1 = icmp sge i32 %self, %other
+  ret i1 %1
+}
+
+# for uInt
+
+def +: (self: uInt, other: uInt) -> Int = llvm {
+  %1 = add nuw i32 %other, %self
+  ret i32 %1
+}
+
+def *: (self: uInt, other: uInt) -> Int = llvm {
+  %1 = mul nuw i32 %other, %self
+  ret i32 %1
+}
+
+def ==: (self: uInt, other: uInt) -> Boolean = llvm {
+  %1 = icmp eq i32 %self, %other
+  ret i1 %1
+}
+
+def !=: (self: uInt, other: uInt) -> Boolean = llvm {
+  %1 = icmp ne i32 %self, %other
+  ret i1 %1
+}
+
+def <: (self: uInt, other: uInt) -> Boolean = llvm {
+  %1 = icmp slt i32 %self, %other
+  ret i1 %1
+}
+
+def <=: (self: Int, other: uInt) -> Boolean = llvm {
+  %1 = icmp sle i32 %self, %other
+  ret i1 %1
+}
+
+def >: (self: uInt, other: uInt) -> Boolean = llvm {
+  %1 = icmp sgt i32 %self, %other
+  ret i1 %1
+}
+
+def >=: (self: uInt, other: uInt) -> Boolean = llvm {
+  %1 = icmp sge i32 %self, %other
+  ret i1 %1
+}
+
+def or: (self: uInt, other: uInt) -> Int = llvm {
+  %1 = or i32 %other, %self
+  ret i32 %1
+}
+
+def and: (self: uInt, other: uInt) -> Int = llvm {
+  %1 = and i32 %other, %self
+  ret i32 %1
+}
+
+# for Long
+
+def +: (self: Long, other: Long) -> Long = llvm {
+  %1 = add nsw i64 %other, %self
+  ret i64 %1
+}
+
+def *: (self: Long, other: Long) -> Long = llvm {
+  %1 = mul nsw i64 %other, %self
+  ret i64 %1
+}
+
+def ==: (self: Long, other: Long) -> Boolean = llvm {
+  %1 = icmp eq i64 %self, %other
+  ret i1 %1
+}
+
+def !=: (self: Long, other: Long) -> Boolean = llvm {
+  %1 = icmp ne i64 %self, %other
+  ret i1 %1
+}
+
+def <: (self: Long, other: Long) -> Boolean = llvm {
+  %1 = icmp slt i64 %self, %other
+  ret i1 %1
+}
+
+def <=: (self: Long, other: Long) -> Boolean = llvm {
+  %1 = icmp sle i64 %self, %other
+  ret i1 %1
+}
+
+def >: (self: Long, other: Long) -> Boolean = llvm {
+  %1 = icmp sgt i64 %self, %other
+  ret i1 %1
+}
+
+def >=: (self: Long, other: Long) -> Boolean = llvm {
+  %1 = icmp sge i64 %self, %other
+  ret i1 %1
+}
+
+# for uLong
+
+def +: (self: uLong, other: uLong) -> Long = llvm {
+  %1 = add nuw i64 %other, %self
+  ret i64 %1
+}
+
+def *: (self: uLong, other: uLong) -> Long = llvm {
+  %1 = mul nuw i64 %other, %self
+  ret i64 %1
+}
+
+def ==: (self: uLong, other: uLong) -> Boolean = llvm {
+  %1 = icmp eq i64 %self, %other
+  ret i1 %1
+}
+
+def !=: (self: uLong, other: uLong) -> Boolean = llvm {
+  %1 = icmp ne i64 %self, %other
+  ret i1 %1
+}
+
+def <: (self: uLong, other: uLong) -> Boolean = llvm {
+  %1 = icmp slt i64 %self, %other
+  ret i1 %1
+}
+
+def <=: (self: Long, other: uLong) -> Boolean = llvm {
+  %1 = icmp sle i64 %self, %other
+  ret i1 %1
+}
+
+def >: (self: uLong, other: uLong) -> Boolean = llvm {
+  %1 = icmp sgt i64 %self, %other
+  ret i1 %1
+}
+
+def >=: (self: uLong, other: uLong) -> Boolean = llvm {
+  %1 = icmp sge i64 %self, %other
+  ret i1 %1
+}
+
+def or: (self: uLong, other: uLong) -> Long = llvm {
+  %1 = or i64 %other, %self
+  ret i64 %1
+}
+
+def and: (self: uLong, other: uLong) -> Long = llvm {
+  %1 = and i64 %other, %self
+  ret i64 %1
+}

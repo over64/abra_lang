@@ -7,7 +7,7 @@ import scala.collection.mutable
 /**
   * Created by over on 25.09.16.
   */
-case class SymbolInfo(isMutable: Boolean, location: SymbolLocation, th: TypeHint)
+case class SymbolInfo(lowName: String, isMutable: Boolean, location: SymbolLocation, th: TypeHint)
 case class SymbolKey(name: String, classifier: Option[TypeHint])
 
 sealed trait SymbolLocation
@@ -15,12 +15,17 @@ case object LocalSymbol extends SymbolLocation
 case object ParamSymbol extends SymbolLocation
 case object GlobalSymbol extends SymbolLocation
 
-class Scope(parent: Option[Scope], val vars: mutable.HashMap[String, SymbolInfo] = mutable.HashMap()) {
-  def mkChild = new Scope(parent = Some(this))
+class Scope(parent: Option[Scope], level: Int = 0, val vars: mutable.HashMap[String, SymbolInfo] = mutable.HashMap()) {
+  def mkChild = new Scope(parent = Some(this), level + 1)
 
-  def addVar(node: ParseNode, name: String, th: TypeHint, isMutable: Boolean, location: SymbolLocation): Unit = {
+  def addVar(node: ParseNode, name: String, th: TypeHint, isMutable: Boolean, location: SymbolLocation): String = {
     if (vars.contains(name)) throw new CompileEx(node, CE.AlreadyDefined(name))
-    vars += (name -> SymbolInfo(isMutable, location, th))
+    val lowName = location match {
+      case LocalSymbol => s"${"_" * level}$name"
+      case _ => name
+    }
+    vars += (name -> SymbolInfo(lowName, isMutable, location, th))
+    lowName
   }
 
   def findVar(name: String): Option[SymbolInfo] = {

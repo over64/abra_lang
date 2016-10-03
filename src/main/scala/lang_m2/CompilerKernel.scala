@@ -24,6 +24,8 @@ class CompilerKernel {
   def message(level: Int, msg: String) = println(s"${"\t" * level}$msg")
 
   def compile(level: Int, include: Seq[Path], currentPkg: Seq[String], sourcePath: Path, isMain: Boolean): CompileResult = {
+    val time1 = System.currentTimeMillis()
+
     message(level, s"compile $sourcePath")
     val modName = sourcePath.iterator().toSeq.last.toString.split("\\.")(0)
     val fullModName = (currentPkg :+ modName).mkString("", ".", ".")
@@ -68,14 +70,15 @@ class CompilerKernel {
     val mixedNamespace = Namespacer.mixNamespaces(thisNamespace, importedModules.map(_.namespace))
     val namespace = new TypeChecker().transform(mixedNamespace, visitor.sourceMap)
 
-
-    val structs = module.types.filter(_.isInstanceOf[FactorType]).map { td =>
-      val factorType = td.asInstanceOf[FactorType]
-      namespace.toLow(ScalarTypeHint(factorType.name, fullModName)).asInstanceOf[Ast1.Struct]
-    }
-
+    val structs = ListBuffer[Ast1.Struct]()
     val lowFunctions = ListBuffer[Ast1.Fn]()
     val lowHeaders = ListBuffer[Ast1.HeaderFn]()
+
+    namespace.types.foreach {
+      case (th, FactorType(name, fields)) =>
+        structs += namespace.toLow(ScalarTypeHint(name, th._package)).asInstanceOf[Ast1.Struct]
+      case _ =>
+    }
 
     namespace.extensions.values.foreach { fnMap =>
       fnMap.values.foreach { fnCont =>
@@ -127,8 +130,8 @@ class CompilerKernel {
     }
 
     val gccArgs =
-      if (isMain) Seq("gcc", fnameNoExt + ".out.s") ++ importedModules.map(_.binLocation.toString) ++ Seq("-o", fnameNoExt)
-      else Seq("gcc", "-c", fnameNoExt + ".out.s", "-o", s"$fnameNoExt.o")
+      if (isMain) Seq("gcc", "-g", "-lSDL2", fnameNoExt + ".out.s") ++ importedModules.map(_.binLocation.toString) ++ Seq("-o", fnameNoExt)
+      else Seq("gcc", "-g", "-c", fnameNoExt + ".out.s", "-o", s"$fnameNoExt.o")
     message(level, gccArgs.mkString("- ", " ", ""))
 
     run(gccArgs: _*) { (realExit, realStdout, realStderr) =>
@@ -139,6 +142,9 @@ class CompilerKernel {
         throw new CompileEx(null, CE.LinkError("gcc exited with non zero"))
       }
     }
+
+    val time2 = System.currentTimeMillis()
+    message(level, s"- done with ${(time2 - time1).toDouble / 1000}s")
 
     CompileResult(Namespacer.dumpHeader(namespace), Paths.get(if (isMain) fnameNoExt else s"$fnameNoExt.o"))
   }

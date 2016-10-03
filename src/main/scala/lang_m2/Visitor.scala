@@ -66,7 +66,7 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
     val pkg =
       if (ctx.modVar != null)
         importMap(ctx.modVar.getText)
-      else if (predefTypes.contains(typeName)) "abra"
+      else if (predefTypes.contains(typeName)) ""
       else _package
 
     emit(ctx, ScalarTypeHint(typeName, pkg))
@@ -174,13 +174,14 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
 
   override def visitExprLiteral(ctx: ExprLiteralContext): Literal = visitLiteral(ctx.literal())
 
-  override def visitExprSelfCall(ctx: ExprSelfCallContext): ParseNode =
+  override def visitExprSelfCall(ctx: ExprSelfCallContext): ParseNode = {
     visitExpr(ctx.expression()) match {
       case id: lId if importMap.contains(id.value) =>
         val pkg = importMap(id.value)
         emit(ctx, ModCall(pkg, ctx.op.getText, visitTuple(ctx.tuple()).seq))
       case expr@_ => emit(ctx, SelfCall(ctx.op.getText, expr, visitTuple(ctx.tuple()).seq))
     }
+  }
 
 
   override def visitExprApply(ctx: ExprApplyContext): Expression = {
@@ -218,16 +219,20 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
 
   override def visitExprLambda(ctx: ExprLambdaContext): Block = visitLambdaBlock(ctx.lambdaBlock())
 
+  override def visitIf_stat(ctx: If_statContext): BlockExpression =
+    if (ctx.expression() != null) visitExpr(ctx.expression())
+    else visitStore(ctx.store())
+
   override def visitExprIfElse(ctx: ExprIfElseContext): Cond =
     emit(ctx, Cond(
       ifCond = ctx.cond.accept(this).asInstanceOf[Expression],
-      _then = (ctx.then_expr, ctx.then_block) match {
-        case (expr, null) => emit(expr.getStart, Block(Seq(), Seq(visitExpr(expr))))
+      _then = (ctx.then_stat, ctx.then_block) match {
+        case (stat, null) => emit(stat.getStart, Block(Seq(), Seq(visitIf_stat(stat))))
         case (null, block) => visitBlock(block)
       },
-      _else = (ctx.else_expr, ctx.else_block) match {
+      _else = (ctx.else_stat, ctx.else_block) match {
         case (null, null) => None
-        case (expr, null) => Some(emit(expr.getStart, Block(Seq(), Seq(visitExpr(expr)))))
+        case (stat, null) => Some(emit(stat.getStart, Block(Seq(), Seq(visitIf_stat(stat)))))
         case (null, block) => Some(visitBlock(block))
       }
     ))
@@ -238,8 +243,13 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
       _then = visitBlock(ctx.then_block)
     ))
 
-  override def visitExprProp(ctx: ExprPropContext): Prop =
-    Prop(ctx.expression().accept(this).asInstanceOf[Expression], emit(ctx.op, lId(ctx.op.getText)))
+  override def visitExprProp(ctx: ExprPropContext): Expression =
+    ctx.expression().accept(this).asInstanceOf[Expression] match {
+      case lId(value) if importMap.contains(value) =>
+        emit(ctx, ModCall(importMap(value), ctx.op.getText, Seq()))
+      case expr@_ =>
+        emit(ctx, Prop(expr, emit(ctx.op, lId(ctx.op.getText))))
+    }
 
   override def visitFunction(ctx: FunctionContext): Fn = {
     val (block, retType) =
@@ -272,7 +282,7 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
 
   override def visitImport_(ctx: Import_Context): Import = {
     val pkgSeq = ctx.pkgName.map { id => emit(id, lId(id.getText)) }
-    importMap.put(pkgSeq.last.toString, pkgSeq.dropRight(1).mkString("."))
+    importMap.put(pkgSeq.last.value, pkgSeq.map(_.value).mkString("", ".", "."))
     emit(ctx, Import(pkgSeq))
   }
 

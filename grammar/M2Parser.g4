@@ -27,9 +27,11 @@ expression : literal #exprLiteral
            | expression op=('>' | '<' | '<=' | '>=') expression #exprInfixCall
            | expression op=('==' | '!=') expression #exprInfixCall
            | expression op=('||' | '&&') expression #exprInfixCall
-           | 'if' NL* cond=expression NL* (('then' NL* then_expr=expression) | then_block=block) (NL* 'else' NL* (else_expr=expression | else_block=block))? #exprIfElse
+           | 'if' NL* cond=expression NL* (('then' NL* then_stat=if_stat) | then_block=block) (NL* 'else' NL* (else_stat=if_stat | else_block=block))? #exprIfElse
            | 'while' NL* cond=expression NL* then_block=block #exprWhile
            ;
+
+if_stat : expression | store ;
 
 store : realdId ('.' realdId)* tuple? '=' expression ;
 

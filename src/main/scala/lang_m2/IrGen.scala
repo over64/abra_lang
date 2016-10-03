@@ -3,6 +3,7 @@ package lang_m2
 import java.io.{OutputStream, PrintStream}
 
 import Ast1._
+import lang_m2.Ast0.LlInline
 
 import scala.collection.mutable
 
@@ -40,16 +41,6 @@ case class IrGen(val out: OutputStream) {
     }
   }
 
-  // (resultName, resultType)
-  def evalAccess(access: Access): (String, Type) = {
-    val base = genInit(access.fromType, access.from, true)
-    val (resType, indicies) = evalGep(access.fromType, Seq(access.prop))
-    val res = nextTmpVar()
-
-    out.println(s"\t$res = getelementptr ${access.fromType.name}, ${access.fromType.name}* $base, ${indicies.map { i => s"i32 $i" } mkString (", ")}")
-    (res, resType)
-  }
-
   def zalloc(varName: String, varType: Type): Unit = {
     val (_size, size, memsetDest) = (nextTmpVar(), nextTmpVar(), nextTmpVar())
 
@@ -60,181 +51,252 @@ case class IrGen(val out: OutputStream) {
     out.println(s"\tcall void @llvm.memset.p0i8.i64(i8* $memsetDest, i8 0, i64 $size, i32 4, i1 false)")
   }
 
-  def genInit(_type: Type, init: Init, needPtr: Boolean = false): String = init match {
-    case lInt(value) =>
-      if (needPtr) throw new Exception("not implemented in current ABI") else value
+  def load(from: String, varType: Type) = {
+    val next = nextTmpVar()
+    out.println(s"\t$next = load ${varType.name}, ${varType.name}* $from")
+    next
+  }
+
+  def store(from: String, to: String, varType: Type) =
+    out.println(s"\tstore ${varType.name} $from, ${varType.name}* $to")
+
+  def loadAndStore(from: String, to: String, varType: Type) = {
+    val next = nextTmpVar()
+    out.println(s"\t$next = load ${varType.name}, ${varType.name}* $from")
+    out.println(s"\tstore ${varType.name} $next, ${varType.name}* $to")
+  }
+
+  def genInitWithStore(_type: Type, to: String, init: Init) = init match {
+    case lInt(value) => store(value, to, _type)
     case lFloat(value) =>
-      if (needPtr) throw new Exception("not implemented in current ABI")
-      else {
+      val _value =
         if (_type.name == "float") {
           val d = (new java.lang.Float(value)).toDouble
           "0x" + java.lang.Long.toHexString(java.lang.Double.doubleToLongBits(d))
-        }
-        else value
-      }
+        } else value
+
+      store(_value, to, _type)
     case lString(name, value) =>
-      if (needPtr) throw new Exception("not implemented in current ABI")
-      else {
-        val tmp = nextTmpVar()
-        out.println(s"\t$tmp = bitcast [${value.bytesLen} x i8]* @.$name to i8*")
-        tmp
-      }
-    case lLocal(varName) =>
-      if (needPtr) "%" + varName
-      else {
-        val tmp = nextTmpVar()
-        out.println(s"\t$tmp = load ${_type.name}, ${_type.name}* %$varName")
-        tmp
-      }
-    case lGlobal(value) =>
-      if (needPtr) throw new Exception("not implemented in current ABI")
-      else "@" + value
+      val tmp1 = nextTmpVar()
+      out.println(s"\t$tmp1 = bitcast [${value.bytesLen} x i8]* @.$name to i8*")
+      store(tmp1, to, _type)
+    case lGlobal(value) => store("@" + value, to, _type)
+    case lLocal(varName) => loadAndStore(s"%$varName", to, _type)
     case lParam(paramName) =>
-      val isPtr = _type.isInstanceOf[Struct]
-      (needPtr, isPtr) match {
-        case (true, true) => "%" + paramName
-        case (false, false) => "%" + paramName
-        case (true, false) =>
-          val tmp = nextTmpVar()
-          zalloc(tmp, _type)
-          out.println(s"\tstore ${_type.name} %$paramName, ${_type.name}* $tmp")
-          tmp
-        case (false, true) =>
-          val tmp = nextTmpVar()
-          out.println(s"\t$tmp = load ${_type.name}, ${_type.name}* %$paramName")
-          tmp
-      }
+      val value =
+        if (_type.isInstanceOf[Struct]) load(s"%$paramName", _type)
+        else s"%$paramName"
+
+      store(value, to, _type)
     case a: Access =>
-      val (tmp, _type) = evalAccess(a)
-      val next = nextTmpVar()
-      out.println(s"\t$next = load ${_type.name}, ${_type.name}* $tmp")
-      next
-    case Call(id, _type, args) =>
+      val (resType, indicies) = evalGep(a.fromType, Seq(a.prop))
+      val res = nextTmpVar()
+      val base = genInitWithPtr(a.fromType, a.from)
+
+      out.println(s"\t$res = getelementptr ${a.fromType.name}, ${a.fromType.name}* $base, ${indicies.map { i => s"i32 $i" } mkString (", ")}")
+      store(res, to, _type)
+    case Call(id, fnPtr, args) =>
       val toCall = id match {
-        case lLocal(value) =>
-          val tmp = nextTmpVar()
-          out.println(s"\t$tmp = load ${_type.name}, ${_type.name}* %$value")
-          tmp
+        case lLocal(value) => load("%" + value, fnPtr)
         case lGlobal(value) => "@" + escapeFnName(value)
         case lParam(value) => "%" + value
       }
 
-      _type.ret match {
+      fnPtr.ret match {
         case struct@Struct(_name, fields) =>
-          val newVar = nextTmpVar(needPercent = false)
-          val newArgs = Seq(lLocal(newVar)) ++ args
-          val newSignArgs = _type.realArgs
+          val lastArgs = args
 
-          zalloc("%" + newVar, struct)
-
-          val calculatedArgs = newArgs.zip(newSignArgs).map {
-            case (arg, argType) =>
-              genInit(argType._type, arg, needPtr = argType._type.isInstanceOf[Struct])
+          val calculatedArgs = to +: lastArgs.zip(fnPtr.args).map { case (arg, field) =>
+            if (field._type.isInstanceOf[Struct]) genInitWithPtr(field._type, arg)
+            else genInitWithValue(field._type, arg)
           }
 
-          val joinedArgs = calculatedArgs.zip(newSignArgs).map {
+          val joinedArgs = calculatedArgs.zip(fnPtr.realArgs).map {
             case (arg, argType) =>
               s"${if (argType._type.isInstanceOf[Struct]) argType._type.name + "*" else argType._type.name} $arg"
           }.mkString(", ")
 
-          out.println(s"\tcall ${_type.realRet.name} ${toCall}($joinedArgs)")
-          if (needPtr) "%" + newVar
-          else {
-            val tmp = nextTmpVar()
-            out.println(s"\t$tmp = load ${_type.ret.name}, ${_type.ret.name}* %$newVar")
-            tmp
-          }
+          out.println(s"\tcall ${fnPtr.realRet.name} ${toCall}($joinedArgs)")
         case _ =>
-          val calculatedArgs = (args).zip(_type.args).map {
-            case (arg, argType) =>
-              genInit(argType._type, arg, needPtr = argType._type.isInstanceOf[Struct])
+          val calculatedArgs = (args).zip(fnPtr.args).map { case (arg, field) =>
+            if (field._type.isInstanceOf[Struct]) genInitWithPtr(field._type, arg)
+            else genInitWithValue(field._type, arg)
           }
 
-          val joinedArgs = calculatedArgs.zip(_type.args).map {
+          val joinedArgs = calculatedArgs.zip(fnPtr.args).map {
             case (arg, argType) =>
               s"${if (argType._type.isInstanceOf[Struct]) argType._type.name + "*" else argType._type.name} $arg"
           }.mkString(", ")
 
-          if (_type.ret == Scalar("void")) {
-            out.println(s"\tcall ${_type.ret.name} ${toCall}($joinedArgs)")
-            return null
-          }
+          if (fnPtr.ret == Scalar("void"))
+            throw new Exception("cannot store void value")
+
 
           val tmp = nextTmpVar()
-          out.println(s"\t$tmp = call ${_type.ret.name} ${toCall}($joinedArgs)")
-          if (needPtr) throw new Exception("not implemented in current ABI")
-          else tmp
+          out.println(s"\t$tmp = call ${fnPtr.ret.name} ${toCall}($joinedArgs)")
+          store(tmp, to, _type)
       }
     case BoolAnd(left, right) =>
       val (beginLabel, secondLabel, endLabel) = (nextLabel, nextLabel, nextLabel)
       out.println(s"\tbr label %$beginLabel")
       out.println(s"$beginLabel:")
-      val leftRes = genInit(Scalar("i1"), left, needPtr = false)
+      val leftRes = genInitWithValue(Scalar("i1"), left)
       out.println(s"\tbr i1 $leftRes, label %$secondLabel, label %$endLabel")
 
       out.println(s"$secondLabel:")
-      val rightRes = genInit(Scalar("i1"), right, needPtr = false)
+      val rightRes = genInitWithValue(Scalar("i1"), right)
       out.println(s"\tbr label %$endLabel")
 
       out.println(s"$endLabel:")
       val tmp1 = nextTmpVar()
       out.println(s"\t$tmp1 = phi i1 [false, %$beginLabel], [$rightRes, %$secondLabel]")
 
-      if (needPtr) {
-        val tmp2 = nextTmpVar()
-        out.println(s"\t$tmp2 = alloca i1")
-        out.println(s"\tstore i1 $tmp1, i1* $tmp2")
-        tmp2
-      } else tmp1
-
+      store(tmp1, to, _type)
     case BoolOr(left, right) =>
       //FIXME: deduplicate code
       val (beginLabel, secondLabel, endLabel) = (nextLabel, nextLabel, nextLabel)
       out.println(s"\tbr label %$beginLabel")
       out.println(s"$beginLabel:")
-      val leftRes = genInit(Scalar("i1"), left, needPtr = false)
+      val leftRes = genInitWithValue(Scalar("i1"), left)
       out.println(s"\tbr i1 $leftRes, label %$endLabel, label %$secondLabel")
 
       out.println(s"$secondLabel:")
-      val rightRes = genInit(Scalar("i1"), right, needPtr = false)
+      val rightRes = genInitWithValue(Scalar("i1"), right)
       out.println(s"\tbr label %$endLabel")
 
       out.println(s"$endLabel:")
       val tmp1 = nextTmpVar()
       out.println(s"\t$tmp1 = phi i1 [true, %$beginLabel], [$rightRes, %$secondLabel]")
 
-      if (needPtr) {
-        val tmp2 = nextTmpVar()
-        out.println(s"\t$tmp2 = alloca i1")
-        out.println(s"\tstore i1 $tmp1, i1* $tmp2")
-        tmp2
-      } else tmp1
+      store(tmp1, to, _type)
   }
+
+  def genInitWithValue(_type: Type, init: Init): String = init match {
+    case lInt(value) => value
+    case lFloat(value) =>
+      if (_type.name == "float") {
+        val d = (new java.lang.Float(value)).toDouble
+        "0x" + java.lang.Long.toHexString(java.lang.Double.doubleToLongBits(d))
+      } else value
+    case lString(name, value) =>
+      val tmp1 = nextTmpVar()
+      out.println(s"\t$tmp1 = bitcast [${value.bytesLen} x i8]* @.$name to i8*")
+      tmp1
+    case lGlobal(value) => "@" + value
+    case lLocal(varName) => load(s"%$varName", _type)
+    case lParam(paramName) =>
+      if (_type.isInstanceOf[Struct]) load(s"%$paramName", _type)
+      else s"%$paramName"
+    case a: Access =>
+      val (resType, indicies) = evalGep(a.fromType, Seq(a.prop))
+      val res = nextTmpVar()
+      val base = genInitWithPtr(a.fromType, a.from)
+
+      out.println(s"\t$res = getelementptr ${a.fromType.name}, ${a.fromType.name}* $base, ${indicies.map { i => s"i32 $i" } mkString (", ")}")
+      load(res, _type)
+    case Call(id, fnPtr, args) =>
+      val toCall = id match {
+        case lLocal(value) => load("%" + value, fnPtr)
+        case lGlobal(value) => "@" + escapeFnName(value)
+        case lParam(value) => "%" + value
+      }
+
+      fnPtr.ret match {
+        case struct@Struct(_name, fields) => throw new Exception("not implemented in ABI")
+        case _ =>
+          val calculatedArgs = (args).zip(fnPtr.args).map { case (arg, field) =>
+            if (field._type.isInstanceOf[Struct]) genInitWithPtr(field._type, arg)
+            else genInitWithValue(field._type, arg)
+          }
+
+          val joinedArgs = calculatedArgs.zip(fnPtr.args).map {
+            case (arg, argType) =>
+              s"${if (argType._type.isInstanceOf[Struct]) argType._type.name + "*" else argType._type.name} $arg"
+          }.mkString(", ")
+
+          if (fnPtr.ret == Scalar("void")) {
+            out.println(s"\tcall ${fnPtr.ret.name} ${toCall}($joinedArgs)")
+            null
+          } else {
+            val tmp = nextTmpVar()
+            out.println(s"\t$tmp = call ${fnPtr.ret.name} ${toCall}($joinedArgs)")
+            tmp
+          }
+      }
+    case BoolAnd(left, right) =>
+      val (beginLabel, secondLabel, endLabel) = (nextLabel, nextLabel, nextLabel)
+      out.println(s"\tbr label %$beginLabel")
+      out.println(s"$beginLabel:")
+      val leftRes = genInitWithValue(Scalar("i1"), left)
+      out.println(s"\tbr i1 $leftRes, label %$secondLabel, label %$endLabel")
+
+      out.println(s"$secondLabel:")
+      val rightRes = genInitWithValue(Scalar("i1"), right)
+      out.println(s"\tbr label %$endLabel")
+
+      out.println(s"$endLabel:")
+      val tmp1 = nextTmpVar()
+      out.println(s"\t$tmp1 = phi i1 [false, %$beginLabel], [$rightRes, %$secondLabel]")
+
+      tmp1
+    case BoolOr(left, right) =>
+      //FIXME: deduplicate code
+      val (beginLabel, secondLabel, endLabel) = (nextLabel, nextLabel, nextLabel)
+      out.println(s"\tbr label %$beginLabel")
+      out.println(s"$beginLabel:")
+      val leftRes = genInitWithValue(Scalar("i1"), left)
+      out.println(s"\tbr i1 $leftRes, label %$endLabel, label %$secondLabel")
+
+      out.println(s"$secondLabel:")
+      val rightRes = genInitWithValue(Scalar("i1"), right)
+      out.println(s"\tbr label %$endLabel")
+
+      out.println(s"$endLabel:")
+      val tmp1 = nextTmpVar()
+      out.println(s"\t$tmp1 = phi i1 [true, %$beginLabel], [$rightRes, %$secondLabel]")
+
+      tmp1
+  }
+
+  def genInitWithPtr(_type: Type, init: Init): String = init match {
+    case lInt(value) => throw new Exception("not implemented in ABI")
+    case lFloat(value) => throw new Exception("not implemented in ABI")
+    case lString(name, value) => throw new Exception("not implemented in ABI")
+    case lGlobal(value) => throw new Exception("not implemented in ABI")
+    case lLocal(varName) => s"%$varName"
+    case lParam(paramName) =>
+      if (_type.isInstanceOf[Struct]) "%" + paramName
+      else throw new Exception("not implemented in ABI")
+    case a: Access =>
+      val (resType, indicies) = evalGep(a.fromType, Seq(a.prop))
+      val res = nextTmpVar()
+      val base = genInitWithPtr(a.fromType, a.from)
+      out.println(s"\t$res = getelementptr ${a.fromType.name}, ${a.fromType.name}* $base, ${indicies.map { i => s"i32 $i" } mkString (", ")}")
+      res
+    case Call(id, fnPtr, args) => throw new Exception("not implemented in ABI")
+    case BoolAnd(left, right) => throw new Exception("not implemented in ABI")
+    case BoolOr(left, right) => throw new Exception("not implemented in ABI")
+  }
+
 
   def genStat(seq: Seq[Stat]): Unit =
     seq.foreach {
       case v: Var =>
         zalloc(v.irName, v._type)
       case Store(to, fields, varType, init) =>
-        val base = to match {
-          case p: lParam => genInit(varType, p, true)
-          case v: lId => genInit(varType, v, true)
-        }
-
+        val base = genInitWithPtr(varType, to)
+        val ptr = nextTmpVar()
         val (resType, indicies) = evalGep(varType, fields)
-        val forStore = genInit(resType, init, needPtr = false)
-        val res = nextTmpVar()
-
-        out.println(s"\t$res = getelementptr ${varType.name}, ${varType.name}* ${base}, ${indicies.map { i => s"i32 $i" } mkString (", ")}")
-        out.println(s"\tstore ${resType.name} $forStore, ${resType.name}* $res")
+        out.println(s"\t$ptr = getelementptr ${varType.name}, ${varType.name}* ${base}, ${indicies.map { i => s"i32 $i" } mkString (", ")}")
+        genInitWithStore(resType, ptr, init)
       case call: Call =>
-        genInit(call._type.ret, call)
+        genInitWithValue(call._type.ret, call)
       case boolAnd: BoolAnd =>
-        genInit(Scalar("i1"), boolAnd, needPtr = false)
+        genInitWithValue(Scalar("i1"), boolAnd)
       case boolOr: BoolOr =>
-        genInit(Scalar("i1"), boolOr, needPtr = false)
+        genInitWithValue(Scalar("i1"), boolOr)
       case Cond(init, _if, _else) =>
-        val condVar = genInit(Scalar("i1"), init, needPtr = false)
+        val condVar = genInitWithValue(Scalar("i1"), init)
         val (ifLabel, elseLabel, endLabel) = (nextLabel, nextLabel, nextLabel)
 
         out.println(s"\tbr i1 $condVar, label %$ifLabel, label %$elseLabel")
@@ -251,7 +313,7 @@ case class IrGen(val out: OutputStream) {
         out.println(s"\tbr label %$beginLabel")
         out.println(s"$beginLabel:")
 
-        val condVar = genInit(Scalar("i1"), init, needPtr = false)
+        val condVar = genInitWithValue(Scalar("i1"), init)
         out.println(s"\tbr i1 $condVar, label %$bodyLabel, label %$endLabel")
         out.println(s"$bodyLabel:")
 
@@ -261,8 +323,7 @@ case class IrGen(val out: OutputStream) {
         out.println(s"$endLabel:")
 
       case Ret(_type, init) =>
-        val tmp = genInit(_type, init)
-        out.println(s"\tret ${_type.name} $tmp")
+        out.println(s"\tret ${_type.name} ${genInitWithValue(_type, init)}")
       case RetVoid() =>
         out.println(s"\tret void")
     }
@@ -273,8 +334,7 @@ case class IrGen(val out: OutputStream) {
 
     fn.body match {
       case IrInline(ir) => out.println(s"$ir")
-      case Block(seq) =>
-        genStat(seq)
+      case Block(seq) => genStat(seq)
     }
     out.println("}")
   }
@@ -308,13 +368,44 @@ case class IrGen(val out: OutputStream) {
       case boolOr: BoolOr => boolOr
     }
 
-    val mapped = functions.map { fn =>
-      Fn(fn.name, fn._type, fn.body match {
-        case ir: IrInline => ir
-        case Block(seq) => Block(seq.map { stat => mapStat(stat) })
-      })
+    val mapped = functions.map {
+      fn =>
+        Fn(fn.name, fn._type, fn.body match {
+          case ir: IrInline => ir
+          case Block(seq) => Block(seq.map {
+            stat => mapStat(stat)
+          })
+        })
     }
     (consts, mapped)
+  }
+
+  def ghoistVars(functions: Seq[Fn]): Seq[Fn] = {
+    def ghoistBlockVars(seq: Seq[Stat]): (Seq[Var], Seq[Stat]) = {
+      val varsAndStats: Seq[(Seq[Var], Seq[Stat])] = seq.map {
+        case v: Var => (Seq(v), Seq())
+        case Cond(init, _if, _else) =>
+          val __if = ghoistBlockVars(_if)
+          val __else = ghoistBlockVars(_else)
+          val vars = __if._1 ++ __else._1
+          val cond = Cond(init, __if._2, __else._2)
+          (vars, Seq(cond))
+        case While(init, seq) =>
+          val _seq = ghoistBlockVars(seq)
+          (_seq._1, Seq(While(init, _seq._2)))
+        case other: Stat => (Seq(), Seq(other))
+      }
+      varsAndStats.foldLeft((Seq[Var](), Seq[Stat]())) {
+        case ((vars1, stats1), (vars2, stats2)) => (vars1 ++ vars2, stats1 ++ stats2)
+      }
+    }
+
+    functions.map {
+      case Fn(name, _type, Block(seq)) =>
+        val reordered = ghoistBlockVars(seq)
+        Fn(name, _type, Block(reordered._1 ++ reordered._2))
+      case fn@_ => fn
+    }
   }
 
   def gen(module: Module): Unit = {
@@ -329,11 +420,15 @@ case class IrGen(val out: OutputStream) {
     module.structs.foreach { struct =>
       out.println(s"${struct.name} = type { ${struct.fields.map { f => f._type.name }.mkString(", ")} }")
     }
-    val (consts, functions) = inferStringConsts(module.functions)
+
+    val (consts, functions1) = inferStringConsts(module.functions)
+    val functions = ghoistVars(functions1)
 
     consts.foreach { const =>
       out.println(s"@.${const.name} = constant [${const.value.bytesLen} x i8] ${"c\"" + const.value.str + "\""}, align 1")
     }
-    functions.foreach { fn => tmpVars = 0; genFunction(fn) }
+    functions.foreach {
+      fn => tmpVars = 0; genFunction(fn)
+    }
   }
 }

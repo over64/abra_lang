@@ -1,4 +1,4 @@
-import abra.string
+import abra.io
 
 def main =
   'Привет, мир!'.print

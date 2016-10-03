@@ -1,0 +1,10 @@
+def panic: (msg: String) -> Unit = llvm {
+     %1 = call i32 @puts(i8* %msg)
+     call void @exit(i32 1)
+     ret void
+}
+
+def sleep: (seconds: Int) -> Unit = llvm {
+    %1 = call i32 @sleep(i32 %seconds)
+    ret void
+}

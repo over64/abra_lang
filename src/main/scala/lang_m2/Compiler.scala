@@ -32,13 +32,13 @@ object Compiler {
 
     argsParser.parse(args.toSeq, Config()) match {
       case Some(config) =>
-//        currentDir.iterator().foreach { dir =>
-//          println(dir)
-//        }
-//        println("->")
-//        config.file.iterator().foreach { dir =>
-//          println(dir)
-//        }
+        //        currentDir.iterator().foreach { dir =>
+        //          println(dir)
+        //        }
+        //        println("->")
+        //        config.file.iterator().foreach { dir =>
+        //          println(dir)
+        //        }
         val basePackage =
           currentDir.iterator().map(_.toString).zipAll(config.file.iterator().map(_.toString), "", "").dropWhile {
             case (p1, p2) => p1 == p2
@@ -47,6 +47,7 @@ object Compiler {
         //println(s"base package = $basePackage")
 
         new CompilerKernel().compile(level = 0, config.include, basePackage, config.file, isMain = true)
+
       case None => System.exit(1)
     }
   }

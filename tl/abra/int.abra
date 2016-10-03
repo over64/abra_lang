@@ -6,7 +6,18 @@ def *: (self: Int, other: Int) -> Int = llvm {
   %1 = mul nsw i32 %other, %self
   ret i32 %1
 }
+
+def ==: (self: Int, other: Int) -> Boolean = llvm {
+  %1 = icmp eq i32 %self, %other
+  ret i1 %1
+}
+
 def <: (self: Int, other: Int) -> Boolean = llvm {
   %1 = icmp slt i32 %self, %other
   ret i1 %1
+}
+
+def or: (self: Int, other: Int) -> Int = llvm {
+  %1 = or i32 %other, %self
+  ret i32 %1
 }

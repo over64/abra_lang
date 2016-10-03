@@ -18,7 +18,7 @@ object Macro {
         nextId += 1
         val lowTh = toLow(typeMap, field.typeHint).name
 
-        s"\t%$nextId = getelementptr %struct.${td.name}, %struct.${td.name}* %ret, i32 0, i32 ${nextId - 1}\n" +
+        s"\t%$nextId = getelementptr %struct.${_package + td.name}, %struct.${_package + td.name}* %ret, i32 0, i32 ${nextId - 1}\n" +
           s"\tstore $lowTh %${field.name}, $lowTh* %$nextId"
       } :+ "\tret void").mkString("\n")
     ), None)

@@ -1,0 +1,190 @@
+compile /home/over/build/test_lang/tl/integration/arrays.abra
+- import abra.int
+	compile ../abra/int.abra
+	- llc-3.8 /home/over/build/test_lang/tl/integration/../abra/int.out.ll
+	- gcc -c /home/over/build/test_lang/tl/integration/../abra/int.out.s -o /home/over/build/test_lang/tl/integration/../abra/int.o
+	- done with 0.153s
+- import abra.arrays
+	compile ../abra/arrays.abra
+	- import abra.int
+		compile ../abra/int.abra
+		- llc-3.8 /home/over/build/test_lang/tl/integration/../abra/int.out.ll
+		- gcc -c /home/over/build/test_lang/tl/integration/../abra/int.out.s -o /home/over/build/test_lang/tl/integration/../abra/int.o
+		- done with 0.027s
+	- llc-3.8 /home/over/build/test_lang/tl/integration/../abra/arrays.out.ll
+	- gcc -c /home/over/build/test_lang/tl/integration/../abra/arrays.out.s -o /home/over/build/test_lang/tl/integration/../abra/arrays.o
+	- done with 0.148s
+- llc-3.8 /home/over/build/test_lang/tl/integration/arrays.out.ll
+- gcc /home/over/build/test_lang/tl/integration/arrays.out.s /home/over/build/test_lang/tl/integration/../abra/int.o /home/over/build/test_lang/tl/integration/../abra/arrays.o -o /home/over/build/test_lang/tl/integration/arrays
+- done with 0.518s
+compile /home/over/build/test_lang/tl/integration/arrays.abra
+- import abra.int
+	compile ../abra/int.abra
+	- llc-3.8 /home/over/build/test_lang/tl/integration/../abra/int.out.ll
+	- gcc -c /home/over/build/test_lang/tl/integration/../abra/int.out.s -o /home/over/build/test_lang/tl/integration/../abra/int.o
+	- done with 0.028s
+- import abra.arrays
+	compile ../abra/arrays.abra
+	- import abra.int
+		compile ../abra/int.abra
+		- llc-3.8 /home/over/build/test_lang/tl/integration/../abra/int.out.ll
+		- gcc -c /home/over/build/test_lang/tl/integration/../abra/int.out.s -o /home/over/build/test_lang/tl/integration/../abra/int.o
+		- done with 0.042s
+	- llc-3.8 /home/over/build/test_lang/tl/integration/../abra/arrays.out.ll
+	- gcc -c /home/over/build/test_lang/tl/integration/../abra/arrays.out.s -o /home/over/build/test_lang/tl/integration/../abra/arrays.o
+	- done with 0.105s
+- llc-3.8 /home/over/build/test_lang/tl/integration/arrays.out.ll
+- gcc /home/over/build/test_lang/tl/integration/arrays.out.s /home/over/build/test_lang/tl/integration/../abra/int.o /home/over/build/test_lang/tl/integration/../abra/arrays.o -o /home/over/build/test_lang/tl/integration/arrays
+- done with 0.196s
+compile /home/over/build/test_lang/tl/integration/arrays.abra
+- import abra.int
+	compile ../abra/int.abra
+	- llc-3.8 /home/over/build/test_lang/tl/integration/../abra/int.out.ll
+	- gcc -c /home/over/build/test_lang/tl/integration/../abra/int.out.s -o /home/over/build/test_lang/tl/integration/../abra/int.o
+	- done with 0.025s
+- import abra.arrays
+	compile ../abra/arrays.abra
+	- import abra.int
+		compile ../abra/int.abra
+		- llc-3.8 /home/over/build/test_lang/tl/integration/../abra/int.out.ll
+		- gcc -c /home/over/build/test_lang/tl/integration/../abra/int.out.s -o /home/over/build/test_lang/tl/integration/../abra/int.o
+		- done with 0.027s
+	- llc-3.8 /home/over/build/test_lang/tl/integration/../abra/arrays.out.ll
+	- gcc -c /home/over/build/test_lang/tl/integration/../abra/arrays.out.s -o /home/over/build/test_lang/tl/integration/../abra/arrays.o
+	- done with 0.084s
+- llc-3.8 /home/over/build/test_lang/tl/integration/arrays.out.ll
+- gcc /home/over/build/test_lang/tl/integration/arrays.out.s /home/over/build/test_lang/tl/integration/../abra/int.o /home/over/build/test_lang/tl/integration/../abra/arrays.o -o /home/over/build/test_lang/tl/integration/arrays
+- done with 0.173s
+compile /home/over/build/test_lang/tl/integration/arrays.abra
+- import abra.int
+	compile ../abra/int.abra
+	- llc-3.8 /home/over/build/test_lang/tl/integration/../abra/int.out.ll
+	- gcc -c /home/over/build/test_lang/tl/integration/../abra/int.out.s -o /home/over/build/test_lang/tl/integration/../abra/int.o
+	- done with 0.023s
+- import abra.arrays
+	compile ../abra/arrays.abra
+	- import abra.int
+		compile ../abra/int.abra
+		- llc-3.8 /home/over/build/test_lang/tl/integration/../abra/int.out.ll
+		- gcc -c /home/over/build/test_lang/tl/integration/../abra/int.out.s -o /home/over/build/test_lang/tl/integration/../abra/int.o
+		- done with 0.024s
+	- llc-3.8 /home/over/build/test_lang/tl/integration/../abra/arrays.out.ll
+	- gcc -c /home/over/build/test_lang/tl/integration/../abra/arrays.out.s -o /home/over/build/test_lang/tl/integration/../abra/arrays.o
+	- done with 0.072s
+- llc-3.8 /home/over/build/test_lang/tl/integration/arrays.out.ll
+- gcc /home/over/build/test_lang/tl/integration/arrays.out.s /home/over/build/test_lang/tl/integration/../abra/int.o /home/over/build/test_lang/tl/integration/../abra/arrays.o -o /home/over/build/test_lang/tl/integration/arrays
+- done with 0.154s
+compile /home/over/build/test_lang/tl/integration/arrays.abra
+- import abra.int
+	compile ../abra/int.abra
+	- llc-3.8 /home/over/build/test_lang/tl/integration/../abra/int.out.ll
+	- gcc -c /home/over/build/test_lang/tl/integration/../abra/int.out.s -o /home/over/build/test_lang/tl/integration/../abra/int.o
+	- done with 0.024s
+- import abra.arrays
+	compile ../abra/arrays.abra
+	- import abra.int
+		compile ../abra/int.abra
+		- llc-3.8 /home/over/build/test_lang/tl/integration/../abra/int.out.ll
+		- gcc -c /home/over/build/test_lang/tl/integration/../abra/int.out.s -o /home/over/build/test_lang/tl/integration/../abra/int.o
+		- done with 0.034s
+	- llc-3.8 /home/over/build/test_lang/tl/integration/../abra/arrays.out.ll
+	- gcc -c /home/over/build/test_lang/tl/integration/../abra/arrays.out.s -o /home/over/build/test_lang/tl/integration/../abra/arrays.o
+	- done with 0.087s
+- llc-3.8 /home/over/build/test_lang/tl/integration/arrays.out.ll
+- gcc /home/over/build/test_lang/tl/integration/arrays.out.s /home/over/build/test_lang/tl/integration/../abra/int.o /home/over/build/test_lang/tl/integration/../abra/arrays.o -o /home/over/build/test_lang/tl/integration/arrays
+- done with 0.171s
+compile /home/over/build/test_lang/tl/integration/arrays.abra
+- import abra.int
+	compile ../abra/int.abra
+	- llc-3.8 /home/over/build/test_lang/tl/integration/../abra/int.out.ll
+	- gcc -c /home/over/build/test_lang/tl/integration/../abra/int.out.s -o /home/over/build/test_lang/tl/integration/../abra/int.o
+	- done with 0.026s
+- import abra.arrays
+	compile ../abra/arrays.abra
+	- import abra.int
+		compile ../abra/int.abra
+		- llc-3.8 /home/over/build/test_lang/tl/integration/../abra/int.out.ll
+		- gcc -c /home/over/build/test_lang/tl/integration/../abra/int.out.s -o /home/over/build/test_lang/tl/integration/../abra/int.o
+		- done with 0.026s
+	- llc-3.8 /home/over/build/test_lang/tl/integration/../abra/arrays.out.ll
+	- gcc -c /home/over/build/test_lang/tl/integration/../abra/arrays.out.s -o /home/over/build/test_lang/tl/integration/../abra/arrays.o
+	- done with 0.079s
+- llc-3.8 /home/over/build/test_lang/tl/integration/arrays.out.ll
+- gcc /home/over/build/test_lang/tl/integration/arrays.out.s /home/over/build/test_lang/tl/integration/../abra/int.o /home/over/build/test_lang/tl/integration/../abra/arrays.o -o /home/over/build/test_lang/tl/integration/arrays
+- done with 0.172s
+compile /home/over/build/test_lang/tl/integration/arrays.abra
+- import abra.int
+	compile ../abra/int.abra
+	- llc-3.8 /home/over/build/test_lang/tl/integration/../abra/int.out.ll
+	- gcc -c /home/over/build/test_lang/tl/integration/../abra/int.out.s -o /home/over/build/test_lang/tl/integration/../abra/int.o
+	- done with 0.029s
+- import abra.arrays
+	compile ../abra/arrays.abra
+	- import abra.int
+		compile ../abra/int.abra
+		- llc-3.8 /home/over/build/test_lang/tl/integration/../abra/int.out.ll
+		- gcc -c /home/over/build/test_lang/tl/integration/../abra/int.out.s -o /home/over/build/test_lang/tl/integration/../abra/int.o
+		- done with 0.027s
+	- llc-3.8 /home/over/build/test_lang/tl/integration/../abra/arrays.out.ll
+	- gcc -c /home/over/build/test_lang/tl/integration/../abra/arrays.out.s -o /home/over/build/test_lang/tl/integration/../abra/arrays.o
+	- done with 0.077s
+- llc-3.8 /home/over/build/test_lang/tl/integration/arrays.out.ll
+- gcc /home/over/build/test_lang/tl/integration/arrays.out.s /home/over/build/test_lang/tl/integration/../abra/int.o /home/over/build/test_lang/tl/integration/../abra/arrays.o -o /home/over/build/test_lang/tl/integration/arrays
+- done with 0.165s
+compile /home/over/build/test_lang/tl/integration/arrays.abra
+- import abra.int
+	compile ../abra/int.abra
+	- llc-3.8 /home/over/build/test_lang/tl/integration/../abra/int.out.ll
+	- gcc -c /home/over/build/test_lang/tl/integration/../abra/int.out.s -o /home/over/build/test_lang/tl/integration/../abra/int.o
+	- done with 0.026s
+- import abra.arrays
+	compile ../abra/arrays.abra
+	- import abra.int
+		compile ../abra/int.abra
+		- llc-3.8 /home/over/build/test_lang/tl/integration/../abra/int.out.ll
+		- gcc -c /home/over/build/test_lang/tl/integration/../abra/int.out.s -o /home/over/build/test_lang/tl/integration/../abra/int.o
+		- done with 0.025s
+	- llc-3.8 /home/over/build/test_lang/tl/integration/../abra/arrays.out.ll
+	- gcc -c /home/over/build/test_lang/tl/integration/../abra/arrays.out.s -o /home/over/build/test_lang/tl/integration/../abra/arrays.o
+	- done with 0.071s
+- llc-3.8 /home/over/build/test_lang/tl/integration/arrays.out.ll
+- gcc /home/over/build/test_lang/tl/integration/arrays.out.s /home/over/build/test_lang/tl/integration/../abra/int.o /home/over/build/test_lang/tl/integration/../abra/arrays.o -o /home/over/build/test_lang/tl/integration/arrays
+- done with 0.165s
+compile /home/over/build/test_lang/tl/integration/arrays.abra
+- import abra.int
+	compile ../abra/int.abra
+	- llc-3.8 /home/over/build/test_lang/tl/integration/../abra/int.out.ll
+	- gcc -c /home/over/build/test_lang/tl/integration/../abra/int.out.s -o /home/over/build/test_lang/tl/integration/../abra/int.o
+	- done with 0.027s
+- import abra.arrays
+	compile ../abra/arrays.abra
+	- import abra.int
+		compile ../abra/int.abra
+		- llc-3.8 /home/over/build/test_lang/tl/integration/../abra/int.out.ll
+		- gcc -c /home/over/build/test_lang/tl/integration/../abra/int.out.s -o /home/over/build/test_lang/tl/integration/../abra/int.o
+		- done with 0.024s
+	- llc-3.8 /home/over/build/test_lang/tl/integration/../abra/arrays.out.ll
+	- gcc -c /home/over/build/test_lang/tl/integration/../abra/arrays.out.s -o /home/over/build/test_lang/tl/integration/../abra/arrays.o
+	- done with 0.074s
+- llc-3.8 /home/over/build/test_lang/tl/integration/arrays.out.ll
+- gcc /home/over/build/test_lang/tl/integration/arrays.out.s /home/over/build/test_lang/tl/integration/../abra/int.o /home/over/build/test_lang/tl/integration/../abra/arrays.o -o /home/over/build/test_lang/tl/integration/arrays
+- done with 0.165s
+compile /home/over/build/test_lang/tl/integration/arrays.abra
+- import abra.int
+	compile ../abra/int.abra
+	- llc-3.8 /home/over/build/test_lang/tl/integration/../abra/int.out.ll
+	- gcc -c /home/over/build/test_lang/tl/integration/../abra/int.out.s -o /home/over/build/test_lang/tl/integration/../abra/int.o
+	- done with 0.025s
+- import abra.arrays
+	compile ../abra/arrays.abra
+	- import abra.int
+		compile ../abra/int.abra
+		- llc-3.8 /home/over/build/test_lang/tl/integration/../abra/int.out.ll
+		- gcc -c /home/over/build/test_lang/tl/integration/../abra/int.out.s -o /home/over/build/test_lang/tl/integration/../abra/int.o
+		- done with 0.029s
+	- llc-3.8 /home/over/build/test_lang/tl/integration/../abra/arrays.out.ll
+	- gcc -c /home/over/build/test_lang/tl/integration/../abra/arrays.out.s -o /home/over/build/test_lang/tl/integration/../abra/arrays.o
+	- done with 0.089s
+- llc-3.8 /home/over/build/test_lang/tl/integration/arrays.out.ll
+- gcc /home/over/build/test_lang/tl/integration/arrays.out.s /home/over/build/test_lang/tl/integration/../abra/int.o /home/over/build/test_lang/tl/integration/../abra/arrays.o -o /home/over/build/test_lang/tl/integration/arrays
+- done with 0.176s

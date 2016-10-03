@@ -127,7 +127,7 @@ class LowLangTest extends FunSuite with LowUtil {
       )).assertRunEquals(Some(42))
   }
 
-  //FIXME: too bad IR
+  //FIXME: too bad IR, Optimize store!
   test("return struct value from function") {
     val tFoo = Struct("Foo", Seq(Field("x", tInt)))
     val tFnFoo = FnPointer(Seq(), tFoo)

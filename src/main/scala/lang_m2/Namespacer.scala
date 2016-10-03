@@ -114,7 +114,10 @@ object Namespacer {
         hm
       })
       fnMap.foreach {
-        case (fnName, fnCont) => byPkg.put(fnName, fnCont)
+        case (fnName, fnCont) => fnCont.fnInfo match  {
+          case InferedFn(_package, th, lowFn) => byPkg.put(fnName, FnContainer(HeaderFn(_package, th, Ast1.HeaderFn(lowFn.name, lowFn._type))))
+          case _ =>
+        }
       }
     }
 

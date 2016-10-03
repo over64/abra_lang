@@ -34,13 +34,13 @@ class TypeChecker {
         val initExp = evalBlockExpression(namespace, scope, forInit = true, v.typeHint, v.init)
         v.typeHint.map { th => assertTypeEquals(v.init, th, initExp.th) }
 
-        scope.addVar(v, v.name, initExp.th, v.mutable, LocalSymbol)
+        val lowName = scope.addVar(v, v.name, initExp.th, v.mutable, LocalSymbol)
 
         val lowType = namespace.toLow(initExp.th)
         val infExp = InferedExp(thUnit,
-          Seq(Ast1.Var(v.name, lowType))
+          Seq(Ast1.Var(lowName, lowType))
             ++ initExp.stats
-            :+ Ast1.Store(Ast1.lLocal(v.name), Seq(), lowType, initExp.init.get),
+            :+ Ast1.Store(Ast1.lLocal(lowName), Seq(), lowType, initExp.init.get),
           None)
 
         infExp
@@ -126,17 +126,41 @@ class TypeChecker {
             case _ => throw new CompileEx(call, CE.NoFnToCall(fnName))
           }
         }
+      case self@ModCall(_package, fnName, args) =>
+        val found =
+          namespace.findFn(fnName, inferCallback = fn => evalFunction(namespace, fn, kind = NonSelf), _package)
+
+        found.map { fn =>
+          val infArgs = fn.th.seq.zip(args).map {
+            case (argTh, argExpr) => evalBlockExpression(namespace, scope, forInit = true, Some(argTh.typeHint), argExpr)
+          }
+
+          infArgs.zip(fn.th.seq).foreach {
+            case (infArg, argTh) => if (infArg.th != argTh.typeHint) throw new CompileEx(self, CE.NoFnToCall(fnName))
+          }
+
+          val literal = lowLiteral(GlobalSymbol, s"${_package}$fnName")
+
+          val lowCall = Ast1.Call(literal, namespace.toLow(fn.th).asInstanceOf[FnPointer], infArgs.map(_.init.get))
+          val (stats, init) =
+            if (forInit) (infArgs.flatMap(_.stats), Some(lowCall))
+            else (infArgs.flatMap(_.stats) :+ lowCall, None)
+
+          InferedExp(fn.th.ret, stats, init)
+        }.getOrElse {
+          throw new CompileEx(self, CE.NoFnToCall(fnName))
+        }
       case self@Call(fnName, args) =>
-        var found: Option[(SymbolLocation, (String, FnTypeHint))] = None
+        var found: Option[(String, SymbolLocation, (String, FnTypeHint))] = None
         scope.findVar(fnName).map { si =>
           if (si.th.isInstanceOf[FnTypeHint])
-            found = Some((si.location, ("", si.th.asInstanceOf[FnTypeHint])))
+            found = Some((si.lowName, si.location, ("", si.th.asInstanceOf[FnTypeHint])))
         }
         namespace.findFn(fnName, inferCallback = fn => evalFunction(namespace, fn, kind = NonSelf)).map { callableFn =>
-          found = Some((GlobalSymbol, (callableFn._package, callableFn.th)))
+          found = Some((fnName, GlobalSymbol, (callableFn._package, callableFn.th)))
         }
 
-        found.map { case (location, (_package, fnTh)) =>
+        found.map { case (fnName, location, (_package, fnTh)) =>
           val infArgs = fnTh.seq.zip(args).map {
             case (argTh, argExpr) => evalBlockExpression(namespace, scope, forInit = true, Some(argTh.typeHint), argExpr)
           }
@@ -191,7 +215,7 @@ class TypeChecker {
         InferedExp(thString, Seq(), Some(Ast1.lString(s"${nextAnonVar}", HexUtil.singleByteNullTerminated(value.getBytes))))
       case self@lId(varName) =>
         val vi = scope.findVar(varName).getOrElse(throw new CompileEx(self, CE.VarNotFound(varName)))
-        val literal = lowLiteral(vi.location, varName)
+        val literal = lowLiteral(vi.location, vi.lowName)
 
         InferedExp(vi.th, Seq(), Some(literal))
       case Prop(from, prop) =>
@@ -240,7 +264,7 @@ class TypeChecker {
         }
 
         val lowVarType = namespace.toLow(_var.th)
-        val lowTo = lowLiteral(_var.location, varName)
+        val lowTo = lowLiteral(_var.location, _var.lowName)
         val lowStore = Ast1.Store(lowTo, to.drop(1).map(_.value), lowVarType, whatExp.init.get)
 
         InferedExp(thUnit, whatExp.stats :+ lowStore, None)
@@ -306,7 +330,7 @@ class TypeChecker {
 
         assertTypeEquals(cond, thBool, condExp.th)
 
-        val (th, block) = evalBlock2(namespace, scope, typeAdvice, _then.seq, retMapper = {
+        val (th, block) = evalBlock2(namespace, scope, Some(thUnit), _then.seq, retMapper = {
           case (scope, infExp) =>
             if (infExp.isDefined) infExp.get
             else InferedExp(thUnit, Seq(), None)
@@ -326,7 +350,7 @@ class TypeChecker {
     }
 
     val lastInfExp = expressions.lastOption.map { blockExpr =>
-      evalBlockExpression(namespace, childScope, forInit = true, None, blockExpr)
+      evalBlockExpression(namespace, childScope, forInit = typeAdvice != Some(thUnit), None, blockExpr)
     }
 
     val lastExp = retMapper(namespace, lastInfExp)

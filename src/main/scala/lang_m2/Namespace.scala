@@ -59,9 +59,9 @@ class Namespace(val _package: String,
       }
     }
 
-  def findFn(name: String, inferCallback: RawFn => CallableFn): Option[CallableFn] =
-    functions.get(_package).flatMap { pkg =>
-      pkg.get(name)
+  def findFn(name: String, inferCallback: RawFn => CallableFn, pkg: String = _package): Option[CallableFn] =
+    functions.get(pkg).flatMap { byPkg =>
+      byPkg.get(name)
     }.map { fnContainer =>
       fnContainer.fnInfo match {
         case fn: RawFn => inferCallback(fn)

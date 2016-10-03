@@ -107,6 +107,12 @@ public interface M2ParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitExprApply(M2Parser.ExprApplyContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link M2Parser#if_stat}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitIf_stat(M2Parser.If_statContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link M2Parser#store}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

@@ -1,8 +1,7 @@
 import abra.float
 
 def main = {
- val pi = 3.14
- val a = pi * pi + 2.1
+ val a = float.PI * float.PI + 2.1
 
  a.toInt
 }: Int

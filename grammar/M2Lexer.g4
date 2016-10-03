@@ -40,7 +40,7 @@ LlBegin : 'llvm' [ \t\r\n]* '{' -> pushMode(llvm);
 
 WS : [ \t]+ -> skip ; // skip spaces, tabs
 NL : '\r'? '\n' ;
-COMMENT : '#' .*? NL -> skip ;
+COMMENT : '#' ~[\r\n]* -> skip ;
 
 LlLiteral : LlBegin IrInline LlEnd;
 

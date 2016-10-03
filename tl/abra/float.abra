@@ -1,3 +1,5 @@
+def PI = 3.14159265359
+
 def +: (self: Float, other: Float) -> Float = llvm {
   %1 = fadd float %other, %self
   ret float %1

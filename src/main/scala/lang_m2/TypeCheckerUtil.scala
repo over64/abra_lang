@@ -7,11 +7,11 @@ import lang_m2.Ast0._
   */
 
 object TypeCheckerUtil {
-  val thUnit = ScalarTypeHint("Unit", "abra")
-  val thBool = ScalarTypeHint("Boolean", "abra")
-  val thInt = ScalarTypeHint("Int", "abra")
-  val thFloat = ScalarTypeHint("Float", "abra")
-  val thString = ScalarTypeHint("String", "abra")
+  val thUnit = ScalarTypeHint("Unit", "")
+  val thBool = ScalarTypeHint("Boolean", "")
+  val thInt = ScalarTypeHint("Int", "")
+  val thFloat = ScalarTypeHint("Float", "")
+  val thString = ScalarTypeHint("String", "")
 
   val predefTypes = Map(
     thUnit -> ScalarType("Unit", "void"),
@@ -26,7 +26,7 @@ object TypeCheckerUtil {
       case sth: ScalarTypeHint =>
         typeMap.getOrElse(sth, throw new CompileEx(th, CE.TypeNotFound(sth.name))) match {
           case ScalarType(_, llType) => Ast1.Scalar(llType)
-          case FactorType(name, fields) => Ast1.Struct(name, fields.map { field =>
+          case FactorType(name, fields) => Ast1.Struct(sth._package + name, fields.map { field =>
             Ast1.Field(field.name, toLow(typeMap, field.typeHint))
           })
         }
