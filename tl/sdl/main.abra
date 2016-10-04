@@ -29,4 +29,7 @@ def main = {
         render()
         window.glSwap()
     }
+    val str = '
+        shader code
+    '
 }: Unit
