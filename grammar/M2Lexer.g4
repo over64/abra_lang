@@ -44,11 +44,8 @@ COMMENT : '#' ~[\r\n]* -> skip ;
 
 LlLiteral : LlBegin IrInline LlEnd;
 
-IntLiteral   :  '0' | NonZeroDigit Digit* ;
-FloatLiteral
-    : Digit+ '.' Digit+ ExponentPart?
-    | Digit+ ExponentPart
-    ;
+IntLiteral   : '-'?  '0' | NonZeroDigit Digit* ;
+FloatLiteral : '-'? Digit+ '.' Digit+ ExponentPart? | Digit+ ExponentPart ;
 BooleanLiteral   :  'true' | 'false';
 StringLiteral    : '\'' StringElement* '\'' ;
 Id  : ('a'..'z' | 'A'..'Z')+ ('a'..'z' | 'A'..'Z' | '_' | Digit)* ;

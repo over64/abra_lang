@@ -1,4 +1,10 @@
+import abra.arrays
+
 def COLOR_BUFFER_BIT = 16384
+def ARRAY_BUFFER = 34962
+def STATIC_DRAW = 35044
+def TRIANGLES = 4
+def FLOAT = 5126
 
 def clearColor: (red: Float, green: Float, blue: Float) -> Unit = llvm {
     call void @glClearColor(float %red, float %green, float %blue)
@@ -7,5 +13,64 @@ def clearColor: (red: Float, green: Float, blue: Float) -> Unit = llvm {
 
 def clear: (mask: Int) -> Unit = llvm {
     call void @glClear(i32 %mask)
+    ret void
+}
+
+#; GLAPI void APIENTRY glVertexAttribPointer (GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void *pointer)
+#declare void @glVertexAttribPointer(i32, i32, i32, i8, i32, i8*)
+
+# FIXME: use offset
+def vertexAttribPointer: (location: Int, size: Int, dataType: Int, normalized: Boolean, stride: Int, offset: Int) -> Unit = llvm {
+    %1 = zext i1 %normalized to i8
+    call void @glVertexAttribPointer(i32 %location, i32 %size, i32 %dataType, i8 %1, i32 %stride, i8* null)
+    ret void
+}
+
+def enableVertexAttribArray: (location: Int) -> Unit = llvm {
+    call void @glEnableVertexAttribArray(i32 %location)
+    ret void
+}
+
+def drawArrays: (mode: Int, first: Int, count: Int) -> Unit = llvm {
+    call void @glDrawArrays(i32 %mode, i32 %first, i32 %count)
+    ret void
+}
+
+
+type Buffer = llvm { i32 }
+
+def genBuffer: () -> Buffer = llvm {
+    %1 = alloca i32, align 4
+    call void @glGenBuffers(i32 1, i32* %1)
+    %2 = load i32, i32* %1
+    ret i32 %2
+}
+
+def bind: (self: Buffer, target: Int) -> Unit = llvm {
+    call void @glBindBuffer(i32 %target, i32 %self)
+    ret void
+}
+
+def data: (self: Buffer, target: Int, array: arrays.FloatArray, usage: Int) -> Unit = llvm {
+    %1 = getelementptr %struct.abra.arrays.FloatArray, %struct.abra.arrays.FloatArray* %array, i32 0, i32 1 ; array.ptr
+    %ptr = load i8*, i8** %1
+    %2 = getelementptr %struct.abra.arrays.FloatArray, %struct.abra.arrays.FloatArray* %array, i32 0, i32 0 ; array.length
+    %length = load i32, i32* %2
+    call void @glBufferData(i32 %target, i32 %length, i8* %ptr, i32 %usage)
+    ret void
+}
+
+
+type VertexArray = llvm { i32 }
+
+def genVertexArray: () -> VertexArray = llvm {
+    %1 = alloca i32, align 4
+    call void @glGenVertexArrays(i32 1, i32* %1)
+    %2 = load i32, i32* %1
+    ret i32 %2
+}
+
+def bind: (self: VertexArray) -> Unit = llvm {
+    call void @glBindVertexArray(i32 %self)
     ret void
 }

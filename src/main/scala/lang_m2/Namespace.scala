@@ -46,7 +46,7 @@ class Namespace(val _package: String,
   def toLow(th: TypeHint) = TypeCheckerUtil.toLow(types, th)
 
   def resolveType(th: ScalarTypeHint): Type =
-    types.getOrElse(th, throw new CompileEx(th, CE.TypeNotFound(th.name)))
+    types.getOrElse(th, throw new CompileEx(th, CE.TypeNotFound(th)))
 
   def findSelfFn(name: String, selfType: ScalarTypeHint, inferCallback: RawFn => CallableFn): Option[CallableFn] =
     extensions.get(selfType).flatMap { fnMap =>

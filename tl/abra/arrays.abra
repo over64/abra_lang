@@ -1,47 +1,80 @@
 import abra.int
 
-type IntPtr = llvm { i32* }
+type MemPtr = llvm { i8* }
 
-def allocIntPtr : (size: Int) -> IntPtr = llvm {
-  %1 = mul nsw i32 %size, 4
-  %2 = call i8* @malloc(i32 %1)
-  %3 = bitcast i8* %2 to i32*
-  ret i32* %3
+def allocMemPtr : (size: Int) -> MemPtr = llvm {
+  %1 = call i8* @malloc(i32 %size)
+  ret i8* %1
 }
 
-def set: (self: IntPtr, index: Int, value: Int) -> Unit = llvm {
-  %1 = getelementptr i32, i32* %self, i32 %index
-  store i32 %value, i32* %1
+def free : (self: MemPtr) -> Unit = llvm {
+  call void @free(i8* %self)
   ret void
 }
 
-def get: (self: IntPtr, index: Int) -> Int = llvm {
-  %1 = getelementptr i32, i32* %self, i32 %index
-  %2 = load i32, i32* %1
-  ret i32 %2
+def getInt: (self: MemPtr, index: Int) -> Int = llvm {
+  %1 = bitcast i8* %self to i32*
+  %2 = getelementptr i32, i32* %1, i32 %index
+  %3 = load i32, i32* %2
+  ret i32 %3
 }
 
-def free : (self: IntPtr) -> Unit = llvm {
-  %1 = bitcast i32* %self to i8*
-  call void @free(i8* %1)
+def setInt: (self: MemPtr, index: Int, value: Int) -> Unit = llvm {
+  %1 = bitcast i8* %self to i32*
+  %2 = getelementptr i32, i32* %1, i32 %index
+  store i32 %value, i32* %2
   ret void
 }
 
-type IntArray = (length: Int, ptr: IntPtr)
+def getFloat: (self: MemPtr, index: Int) -> Float = llvm {
+  %1 = bitcast i8* %self to float*
+  %2 = getelementptr float, float* %1, i32 %index
+  %3 = load float, float* %2
+  ret float %3
+}
 
-def get = \self: IntArray, index: Int -> self.ptr(index)
+def setFloat: (self: MemPtr, index: Int, value: Float) -> Unit = llvm {
+  %1 = bitcast i8* %self to float*
+  %2 = getelementptr float, float* %1, i32 %index
+  store float %value, float* %2
+  ret void
+}
 
-def set = \self: IntArray, index: Int, value: Int -> self.ptr(index) = value
-
+type IntArray = (length: Int, ptr: MemPtr)
+def get  = \self: IntArray, index: Int -> self.ptr.getInt(index)
+def set  = \self: IntArray, index: Int, value: Int -> self.ptr.setInt(index, value)
 def free = \self: IntArray -> self.ptr.free
 
-def mkIntArray = { size: Int, init: (index: Int) -> Int ->
-  val ptr = allocIntPtr(size)
+type FloatArray = (length: Int, ptr: MemPtr)
+def get  = \self: FloatArray, index: Int -> self.ptr.getFloat(index)
+def set  = \self: FloatArray, index: Int, value: Float -> self.ptr.setFloat(index, value)
+def free = \self: FloatArray -> self.ptr.free
+
+def mkInt = { size: Int, init: (index: Int) -> Int ->
+  val ptr = allocMemPtr(size * 4)
   var i = 0
   while i < size {
-    ptr(i) = init(i)
+    ptr.setInt(i, init(i))
     i = i + 1
   }
 
   IntArray(size, ptr)
 }: IntArray
+
+def mkFloat = { size: Int, init: (index: Int) -> Float ->
+  val ptr = allocMemPtr(size * 4)
+  var i = 0
+  while i < size {
+    ptr.setFloat(i, init(i))
+    i = i + 1
+  }
+
+  FloatArray(size, ptr)
+}: FloatArray
+
+def mkFloatAndInit = { size: Int, init: (array: FloatArray) -> Unit ->
+  val ptr = allocMemPtr(size * 4)
+  val array = FloatArray(size, ptr)
+  init(array)
+  array
+}: FloatArray

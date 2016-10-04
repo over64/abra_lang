@@ -1,12 +1,63 @@
 import abra.int
+import abra.float
 import abra.io
 import abra.sys
+import abra.arrays
 import lib.sdl
 import lib.gl
 
-def render = {
+def VERTEX_SHADER = '
+    #version 330 core
+    out vec3 color;
+    uniform vec3 c;
+
+    void main() {
+        color = c;
+    }
+'
+
+def FRAGMENT_SHADER = '
+    #version 330
+    layout(location = 0) in vec3 vertexPos;
+
+    void main() {
+        gl_Position = vec4(vertexPos.xyz, 1.0)
+    }
+'
+
+def VERTEX_LOCATION = 0
+
+type RenderData = (vb: gl.Buffer, vao: gl.VertexArray)
+
+def mkRenderData = {
     gl.clearColor(0.0, 1.0, 0.0)
+
+    # there is no arrays in language now. It's emulated via powerful language syntax
+    val mesh = arrays.mkFloatAndInit(3 * 3, { m ->
+        m(0) = -1.0; m(1) = -1.0; m(2) = 0.0;
+        m(3) =  1.0; m(4) = -1.0; m(5) = 0.0;
+        m(6) =  0.0; m(7) =  1.0; m(8) = 0.0;
+    })
+
+    val vb = gl.genBuffer()
+    vb.bind(gl.ARRAY_BUFFER)
+    vb.data(gl.ARRAY_BUFFER, mesh, gl.STATIC_DRAW)
+    mesh.free()
+
+    val vao = gl.genVertexArray()
+    vao.bind()
+    vb.bind(gl.ARRAY_BUFFER)
+    gl.vertexAttribPointer(VERTEX_LOCATION(), 3, gl.FLOAT, false, 0, 0)
+
+    RenderData(vb, vao)
+}: RenderData
+
+def render = { rd: RenderData ->
     gl.clear(gl.COLOR_BUFFER_BIT)
+
+    rd.vao.bind()
+    gl.enableVertexAttribArray(VERTEX_LOCATION())
+    gl.drawArrays(gl.TRIANGLES, 0 , 3)
 }: Unit
 
 def main = {
@@ -16,6 +67,7 @@ def main = {
 
     val window = sdl.createWindow('SDL Hello World!', 100, 100, 640, 480, sdl.WINDOW_SHOWN or sdl.WINDOW_OPENGL)
     val glContext = window.glCreateContext()
+    val rd = mkRenderData()
 
     var running = true
     while running {
@@ -26,10 +78,7 @@ def main = {
             if event.eventType == sdl.EVENT_QUIT then running = false
         }
 
-        render()
+        render(rd)
         window.glSwap()
     }
-    val str = '
-        shader code
-    '
 }: Unit

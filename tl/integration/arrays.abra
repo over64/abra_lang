@@ -2,7 +2,7 @@ import abra.int
 import abra.arrays
 
 def main = {
-  val array = arrays.mkIntArray(100, \i -> i + 1)
+  val array = arrays.mkInt(100, \i -> i + 1)
   var i = 0
   var sum = 0
 

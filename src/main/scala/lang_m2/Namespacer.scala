@@ -9,54 +9,21 @@ import TypeCheckerUtil._
   * Created by over on 27.09.16.
   */
 object Namespacer {
-  def mkNamespace(module: Module) = {
+  def mixNamespaces(module: Module, imports: Seq[Namespace]): Namespace = {
     val fullModName = module._package
     val types = module.types.map { td =>
       ScalarTypeHint(td.name, fullModName) -> td
     }.toMap
-
-    val typeMap: Map[ScalarTypeHint, Type] = predefTypes ++ types
-    val functions = HashMap[String, HashMap[String, FnContainer]]()
-    val extensions = HashMap[ScalarTypeHint, HashMap[String, FnContainer]]()
-
-    val definedFunctions = module.functions ++ module.types.filter(_.isInstanceOf[FactorType]).flatMap { case ft: FactorType =>
-      Seq(Macro.genConstructor(fullModName, typeMap, ft), Macro.genEquals(fullModName, typeMap, ft), Macro.genNotEquals(fullModName, typeMap, ft))
-    } :+ Macro.booleanNot()
-
-    // FIXME: validate duplications
-    definedFunctions.foreach { fn =>
-      val firstArg = TypeCheckerUtil.inferFnArgs(fn).headOption
-
-      firstArg match {
-        case Some(FnTypeHintField(name, th)) if name == "self" =>
-          th match {
-            case sth: ScalarTypeHint =>
-              val byPkg = extensions.getOrElse(sth, {
-                val hm = HashMap[String, FnContainer]()
-                extensions.put(sth, hm)
-                hm
-              })
-              byPkg.put(fn.name, FnContainer(RawFn(fullModName, fn)))
-            case fth: FnTypeHint => throw new CompileEx(fth, CE.FnlTypeNotEntensible())
-          }
-        case _ =>
-          val byPkg = functions.getOrElse(fullModName, {
-            val hm = HashMap[String, FnContainer]()
-            functions.put(fullModName, hm)
-            hm
-          })
-          byPkg.put(fn.name, FnContainer(RawFn(fullModName, fn)))
-      }
-    }
-    new Namespace(fullModName, typeMap, extensions, functions)
-  }
-
-  def mixNamespaces(to: Namespace, imports: Seq[Namespace]): Namespace = {
     val typeMap = HashMap[ScalarTypeHint, Type]()
+
+    (predefTypes ++ types).foreach { tuple =>
+      typeMap += tuple
+    }
+
     val extensions = HashMap[ScalarTypeHint, HashMap[String, FnContainer]]()
     val functions = HashMap[String, HashMap[String, FnContainer]]()
 
-    (imports :+ to).foreach { namespace =>
+    imports.foreach { namespace =>
       namespace.types.foreach {
         case (sth, _type) => typeMap.put(sth, _type)
       }
@@ -85,7 +52,42 @@ object Namespacer {
       }
     }
 
-    new Namespace(to._package, typeMap.toMap, extensions, functions)
+    // macro generation
+    val definedFunctions = module.functions ++ module.types.filter(_.isInstanceOf[FactorType]).flatMap { case ft: FactorType =>
+      val tm = typeMap.toMap
+      Seq(
+        Macro.genConstructor(fullModName, tm, ft),
+        Macro.genEquals(fullModName, tm, ft),
+        Macro.genNotEquals(fullModName, tm, ft))
+    } :+ Macro.booleanNot()
+
+    // FIXME: validate duplications
+    definedFunctions.foreach { fn =>
+      val firstArg = TypeCheckerUtil.inferFnArgs(fn).headOption
+
+      firstArg match {
+        case Some(FnTypeHintField(name, th)) if name == "self" =>
+          th match {
+            case sth: ScalarTypeHint =>
+              val byPkg = extensions.getOrElse(sth, {
+                val hm = HashMap[String, FnContainer]()
+                extensions.put(sth, hm)
+                hm
+              })
+              byPkg.put(fn.name, FnContainer(RawFn(fullModName, fn)))
+            case fth: FnTypeHint => throw new CompileEx(fth, CE.FnlTypeNotEntensible())
+          }
+        case _ =>
+          val byPkg = functions.getOrElse(fullModName, {
+            val hm = HashMap[String, FnContainer]()
+            functions.put(fullModName, hm)
+            hm
+          })
+          byPkg.put(fn.name, FnContainer(RawFn(fullModName, fn)))
+      }
+    }
+
+    new Namespace(fullModName, typeMap.toMap, extensions, functions)
   }
 
   def dumpHeader(namespace: Namespace) = {
@@ -114,7 +116,7 @@ object Namespacer {
         hm
       })
       fnMap.foreach {
-        case (fnName, fnCont) => fnCont.fnInfo match  {
+        case (fnName, fnCont) => fnCont.fnInfo match {
           case InferedFn(_package, th, lowFn) => byPkg.put(fnName, FnContainer(HeaderFn(_package, th, Ast1.HeaderFn(lowFn.name, lowFn._type))))
           case _ =>
         }

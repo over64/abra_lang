@@ -18,7 +18,7 @@ class TypeCheckerTest extends FunSuite {
     println(ast0)
 
     val typeChecker = new TypeChecker()
-    typeChecker.transform(Namespacer.mkNamespace(ast0), sourceMap)
+    typeChecker.transform(Namespacer.mixNamespaces(ast0, Seq()), sourceMap)
   }
 
   test("type def test") {

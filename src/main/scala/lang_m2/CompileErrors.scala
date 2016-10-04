@@ -1,6 +1,6 @@
 package lang_m2
 
-import lang_m2.Ast0.TypeHint
+import lang_m2.Ast0.{ScalarTypeHint, TypeHint}
 
 /**
   * Created by over on 25.08.16.
@@ -47,7 +47,7 @@ object CE {
   case class NeedExplicitTypeDefinition() extends CompileError {
     override def toString = "function with llvm body definition must have explicit return type declaration"
   }
-  case class TypeNotFound(typeName: String) extends CompileError {
-    override def toString = s"type with name $typeName not found"
+  case class TypeNotFound(sth: ScalarTypeHint) extends CompileError {
+    override def toString = s"type with name ${sth.name} not found (${sth._package}${sth.name})"
   }
 }

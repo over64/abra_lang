@@ -24,7 +24,10 @@ object TypeCheckerUtil {
   def toLow(typeMap: Map[ScalarTypeHint, Type], th: TypeHint): Ast1.Type =
     th match {
       case sth: ScalarTypeHint =>
-        typeMap.getOrElse(sth, throw new CompileEx(th, CE.TypeNotFound(sth.name))) match {
+        typeMap.getOrElse(sth, {
+          println(typeMap)
+          throw new CompileEx(th, CE.TypeNotFound(sth))
+        }) match {
           case ScalarType(_, llType) => Ast1.Scalar(llType)
           case FactorType(name, fields) => Ast1.Struct(sth._package + name, fields.map { field =>
             Ast1.Field(field.name, toLow(typeMap, field.typeHint))
@@ -39,32 +42,32 @@ object TypeCheckerUtil {
 
   //FIXME: simplify
   def inferFnArgs(fn: Fn) =
-    fn.typeHint match {
-      case Some(th) =>
-        fn.body match {
-          case Block(args, _) =>
-            th.seq.zip(args).foreach {
-              case (protoHint, blockArg) =>
-                blockArg.typeHint.map { th =>
-                  if (th.name != protoHint.typeHint.name)
-                    throw new CompileEx(th, CE.ExprTypeMismatch(protoHint.typeHint, th))
-                }
-            }
-            th.seq.zip(args).map {
-              case (th, arg) => FnTypeHintField(arg.name, th.typeHint)
-            }
-          case _ => th.seq
-        }
-      case None =>
-        fn.body match {
-          case inline: LlInline => throw new CompileEx(fn, CE.NeedExplicitTypeDefinition())
-          case Block(args, _) => // все аргументы должны быть с типами
-            args.map { arg =>
-              val th = arg.typeHint.getOrElse(throw new CompileEx(fn, CE.NeedExplicitTypeDefinition()))
-              FnTypeHintField(arg.name, th)
-            }
-        }
-    }
+  fn.typeHint match {
+    case Some(th) =>
+      fn.body match {
+        case Block(args, _) =>
+          th.seq.zip(args).foreach {
+            case (protoHint, blockArg) =>
+              blockArg.typeHint.map { th =>
+                if (th.name != protoHint.typeHint.name)
+                  throw new CompileEx(th, CE.ExprTypeMismatch(protoHint.typeHint, th))
+              }
+          }
+          th.seq.zip(args).map {
+            case (th, arg) => FnTypeHintField(arg.name, th.typeHint)
+          }
+        case _ => th.seq
+      }
+    case None =>
+      fn.body match {
+        case inline: LlInline => throw new CompileEx(fn, CE.NeedExplicitTypeDefinition())
+        case Block(args, _) => // все аргументы должны быть с типами
+          args.map { arg =>
+            val th = arg.typeHint.getOrElse(throw new CompileEx(fn, CE.NeedExplicitTypeDefinition()))
+            FnTypeHintField(arg.name, th)
+          }
+      }
+  }
 
   def lowLiteral(location: SymbolLocation, literal: String) =
     location match {

@@ -21,7 +21,7 @@ expression : literal #exprLiteral
            | expression tuple #exprApply
            | block #exprBlock
            | lambdaBlock #exprLambda
-           | op=('!' | '-') expression #exprUnaryCall
+           | op='!' expression #exprUnaryCall
            | expression op=('*' | '/') expression #exprInfixCall
            | expression op=('+' | '-' | Id) expression #exprInfixCall
            | expression op=('>' | '<' | '<=' | '>=') expression #exprInfixCall
@@ -36,8 +36,8 @@ if_stat : expression | store ;
 store : realdId ('.' realdId)* tuple? '=' expression ;
 
 fnArg: ('self' | Id) (':' typeHint)? ;
-block : '{' (fnArg (',' fnArg)* '->')? NL* (blockBody ((NL* | ';') blockBody)*)? NL* '}' ;
-blockBody : (variable | store | expression)  ;
+block : '{' (fnArg (',' fnArg)* '->')? NL* blockBody* NL* '}' ;
+blockBody : (variable | store | expression) ';'? NL* ;
 lambdaBlock : '\\' (fnArg (',' fnArg)*)? '->' NL* (expression | store) ;
 
 tuple : '(' (expression (',' expression)*)? ')' ;

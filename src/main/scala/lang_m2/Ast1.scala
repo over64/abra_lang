@@ -12,7 +12,14 @@ object Ast1 {
     override val name: String = s"%struct.${_name}"
   }
   case class FnPointer(args: Seq[Field], ret: Type) extends Type {
-    override val name: String = s"${ret.name} (${args.map { a => a._type.name }.mkString(" ,")})*"
+    override val name: String = s"${ret.name} (${
+      args.map { a =>
+        a._type match {
+          case struct: Struct => struct.name + "*"
+          case other@_ => other.name
+        }
+      }.mkString(" ,")
+    })*"
 
     def realRet = ret match {
       case s: Struct => Scalar("void")

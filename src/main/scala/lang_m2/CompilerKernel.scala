@@ -66,9 +66,8 @@ class CompilerKernel {
       }
     }
 
-    val thisNamespace = Namespacer.mkNamespace(module)
-    val mixedNamespace = Namespacer.mixNamespaces(thisNamespace, importedModules.map(_.namespace))
-    val namespace = new TypeChecker().transform(mixedNamespace, visitor.sourceMap)
+    val thisNamespace = Namespacer.mixNamespaces(module, importedModules.map(_.namespace))
+    val namespace = new TypeChecker().transform(thisNamespace, visitor.sourceMap)
 
     val structs = ListBuffer[Ast1.Struct]()
     val lowFunctions = ListBuffer[Ast1.Fn]()
