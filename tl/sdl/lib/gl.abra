@@ -1,0 +1,11 @@
+def COLOR_BUFFER_BIT = 16384
+
+def clearColor: (red: Float, green: Float, blue: Float) -> Unit = llvm {
+    call void @glClearColor(float %red, float %green, float %blue)
+    ret void
+}
+
+def clear: (mask: Int) -> Unit = llvm {
+    call void @glClear(i32 %mask)
+    ret void
+}

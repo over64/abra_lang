@@ -58,7 +58,8 @@ IrInline : ~[{}]+ ;
 LlEnd: CBC -> popMode;
 
 fragment StringElement    :  Char
-                          |  CharEscapeSeq ;
+                          |  CharEscapeSeq
+                          |  NL ;
 fragment Char             :  ~[\\\'\n];
 fragment CharEscapeSeq    : '\\' ('b' | 't' | 'n' | 'f' | 'r' | '\'' | '\\') ;
 fragment ExponentPart     :  ('E' | 'e') ('+' | '-')? Digit+ ;

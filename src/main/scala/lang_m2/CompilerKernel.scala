@@ -130,7 +130,7 @@ class CompilerKernel {
     }
 
     val gccArgs =
-      if (isMain) Seq("gcc", "-g", "-lSDL2", fnameNoExt + ".out.s") ++ importedModules.map(_.binLocation.toString) ++ Seq("-o", fnameNoExt)
+      if (isMain) Seq("gcc", "-g", "-lSDL2", "-lGL", fnameNoExt + ".out.s") ++ importedModules.map(_.binLocation.toString) ++ Seq("-o", fnameNoExt)
       else Seq("gcc", "-g", "-c", fnameNoExt + ".out.s", "-o", s"$fnameNoExt.o")
     message(level, gccArgs.mkString("- ", " ", ""))
 

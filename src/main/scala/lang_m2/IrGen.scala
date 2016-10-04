@@ -342,15 +342,17 @@ case class IrGen(val out: OutputStream) {
   case class StringConst(name: String, value: HexUtil.EncodeResult)
 
   def inferStringConsts(functions: Seq[Fn]): (Seq[StringConst], Seq[Fn]) = {
-    var idSeq = 0
     val consts = mutable.ListBuffer[StringConst]()
 
     def mapInit(init: Init): Init = init match {
       case ls@lString(name, value) =>
         consts += StringConst(name, value)
         ls
+      case Call(name, ptr, args: Seq[Init]) =>
+        Call(name, ptr, args.map(arg => mapInit(arg)))
       case some@_ => some
     }
+
     def mapStat(stat: Stat): Stat = stat match {
       case Store(toVar: lId, fields: Seq[String], varType: Type, init: Init) =>
         Store(toVar, fields, varType, mapInit(init))
@@ -368,14 +370,13 @@ case class IrGen(val out: OutputStream) {
       case boolOr: BoolOr => boolOr
     }
 
-    val mapped = functions.map {
-      fn =>
-        Fn(fn.name, fn._type, fn.body match {
-          case ir: IrInline => ir
-          case Block(seq) => Block(seq.map {
-            stat => mapStat(stat)
-          })
+    val mapped = functions.map { fn =>
+      Fn(fn.name, fn._type, fn.body match {
+        case ir: IrInline => ir
+        case Block(seq) => Block(seq.map {
+          stat => mapStat(stat)
         })
+      })
     }
     (consts, mapped)
   }

@@ -2,21 +2,22 @@ import abra.int
 import abra.io
 import abra.sys
 import lib.sdl
+import lib.gl
 
-def init = {
+def render = {
+    gl.clearColor(0.0, 1.0, 0.0)
+    gl.clear(gl.COLOR_BUFFER_BIT)
+}: Unit
+
+def main = {
     if sdl.init(sdl.INIT_VIDEO) < 0
         then sys.panic('unable to init SDL')
         else 'SDL init ok'.print
 
-    sdl.createWindow('SDL Hello World!', 100, 100, 640, 480, sdl.WINDOW_SHOWN or sdl.WINDOW_OPENGL)
-}: Unit
+    val window = sdl.createWindow('SDL Hello World!', 100, 100, 640, 480, sdl.WINDOW_SHOWN or sdl.WINDOW_OPENGL)
+    val glContext = window.glCreateContext()
 
-def main = {
     var running = true
-    val a: int.uByte = 15
-
-    init()
-
     while running {
         var hasEvent = true
         while hasEvent {
@@ -24,27 +25,8 @@ def main = {
             if event.eventType == sdl.NO_EVENT then hasEvent = false
             if event.eventType == sdl.EVENT_QUIT then running = false
         }
+
+        render()
+        window.glSwap()
     }
-
 }: Unit
-
-
-#TODO:
-#def init = {
-#    sdl.init(sdl.INIT_VIDEO).orDie
-#    sdl.createWindow('SDL Hello World!', 100, 100, 640, 480, sdl.WINDOW_SHOWN or sdl.WINDOW_OPENGL).orDie
-#}: Unit
-#
-#def main = {
-#    init()
-#
-#    var running = true
-#
-#    while running {
-#        sdl.pollEvent({ event ->
-#            match event
-#                of Event.Quit -> running = false
-#                of Event.Keydown(key) -> key.print
-#        })
-#    }
-#}: Unit
