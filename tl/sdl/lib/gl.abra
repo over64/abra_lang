@@ -172,6 +172,12 @@ def use: (self: ShaderProgram) -> Unit = llvm {
     ret void
 }
 
+def attribLocation: (self: ShaderProgram, name: String) -> Int = llvm {
+    ; declare i32 @glGetAttribLocation(i32, i8*)
+    %1 = call i32 @glGetAttribLocation(i32 %self, i8* %name)
+    ret i32 %1
+}
+
 def uniformLocation: (self: ShaderProgram, name: String) -> Int = llvm {
     %1 = call i32 @glGetUniformLocation(i32 %self, i8* %name)
     ret i32 %1

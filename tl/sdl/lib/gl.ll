@@ -68,7 +68,10 @@ declare void @glGetProgramInfoLog(i32, i32, i32*, i8*)
 ; GLAPI void APIENTRY glUseProgram (GLuint program);
 declare void @glUseProgram(i32)
 
-; # Uniforms
+; # Uniforms & Attribs
+
+; GLint glGetAttribLocation(GLuint program, const GLchar *name)
+declare i32 @glGetAttribLocation(i32, i8*)
 
 ; GLAPI GLint APIENTRY glGetUniformLocation (GLuint program, const GLchar *name);
 declare i32 @glGetUniformLocation(i32, i8*)

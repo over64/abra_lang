@@ -11,10 +11,6 @@ import lib.objLoader
 import lib.kazmath
 import lib.soil
 
-def VERTEX_LOCATION = 0
-def UV_LOCATION = 1
-def NORMAL_LOCATION = 2
-
 type Renderer = (
     vb: gl.Buffer,
     vao: gl.VertexArray,
@@ -56,11 +52,10 @@ def mkRenderer = {
     gl.clearColor(0.2117, 0.0823, 0.2784)
     val mesh = objLoader.load('cube.obj')
     val program = mkProgram('
-        #version 330
-        #extension GL_ARB_separate_shader_objects : enable
-        layout(location = 0) in vec3 vertexPos;
-        layout(location = 1) in vec2 uv;
-        layout(location = 2) in vec3 normal;
+        #version 130
+        in vec3 vertexPos;
+        in vec2 uv;
+        in vec3 normal;
         out vec2 texCoord;
 
         uniform mat4 P;
@@ -72,7 +67,7 @@ def mkRenderer = {
             gl_Position = P * V * M * vec4(vertexPos.xyz, 1.0);
         }
     ','
-        #version 330 core
+        #version 130
         in vec2 texCoord;
         out vec4 color;
 
@@ -90,10 +85,15 @@ def mkRenderer = {
     val vao = gl.genVertexArray()
     vao.bind()
     vb.bind(gl.ARRAY_BUFFER)
+
+    val attribVertexPos = program.attribLocation('vertexPos')
+    val attribUV = program.attribLocation('uv')
+    val attribNormal = program.attribLocation('normal')
+
     val stride = (3 + 2 + 3) * float.SIZE # 3 vertex coords + 2 uv coords + 3 normal coords
-    gl.vertexAttribPointer(VERTEX_LOCATION(), 3, gl.FLOAT, false, stride, 0)
-    gl.vertexAttribPointer(UV_LOCATION(), 2, gl.FLOAT, false, stride, 3 * float.SIZE)
-    gl.vertexAttribPointer(NORMAL_LOCATION(), 3, gl.FLOAT, false, stride, (3 + 2) * float.SIZE)
+    gl.vertexAttribPointer(attribVertexPos, 3, gl.FLOAT, false, stride, 0)
+    gl.vertexAttribPointer(attribUV, 2, gl.FLOAT, false, stride, 3 * float.SIZE)
+    gl.vertexAttribPointer(attribNormal, 3, gl.FLOAT, false, stride, (3 + 2) * float.SIZE)
 
     val texture = gl.genTexture()
     texture.bind(gl.TEXTURE_2D)
@@ -118,6 +118,10 @@ def render = { self: Renderer ->
 
     self.program.use()
 
+    val attribVertexPos = self.program.attribLocation('vertexPos')
+    val attribUV = self.program.attribLocation('uv')
+    val attribNormal = self.program.attribLocation('normal')
+
     val locationP = self.program.uniformLocation('P')
     val locationV = self.program.uniformLocation('V')
     val locationM = self.program.uniformLocation('M')
@@ -128,9 +132,9 @@ def render = { self: Renderer ->
     self.program.uniformMatrix4(locationM, mMatrix)
 
     self.vao.bind()
-    gl.enableVertexAttribArray(VERTEX_LOCATION())
-    gl.enableVertexAttribArray(UV_LOCATION())
-    gl.enableVertexAttribArray(NORMAL_LOCATION())
+    gl.enableVertexAttribArray(attribVertexPos)
+    gl.enableVertexAttribArray(attribUV)
+    gl.enableVertexAttribArray(attribNormal)
 
     gl.activeTexture(gl.TEXTURE0)
     self.texture.bind(gl.TEXTURE_2D)
