@@ -1,10 +1,27 @@
 import abra.arrays
+import lib.kazmath
 
+def FALSE = 0
 def COLOR_BUFFER_BIT = 16384
+def DEPTH_BUFFER_BIT = 256
 def ARRAY_BUFFER = 34962
 def STATIC_DRAW = 35044
 def TRIANGLES = 4
 def FLOAT = 5126
+def VERTEX_SHADER = 35633
+def FRAGMENT_SHADER = 35632
+def COMPILE_STATUS = 35713
+def LINK_STATUS = 35714
+def TEXTURE_2D = 3553
+def TEXTURE0 = 33984
+def DEPTH_TEST = 2929
+
+def enable: (caps: Int) -> Unit = llvm {
+;GLAPI void GLAPIENTRY glEnable( GLenum cap );
+;declare void @glEnable(i32)
+    call void @glEnable(i32 %caps)
+    ret void
+}
 
 def clearColor: (red: Float, green: Float, blue: Float) -> Unit = llvm {
     call void @glClearColor(float %red, float %green, float %blue)
@@ -22,7 +39,8 @@ def clear: (mask: Int) -> Unit = llvm {
 # FIXME: use offset
 def vertexAttribPointer: (location: Int, size: Int, dataType: Int, normalized: Boolean, stride: Int, offset: Int) -> Unit = llvm {
     %1 = zext i1 %normalized to i8
-    call void @glVertexAttribPointer(i32 %location, i32 %size, i32 %dataType, i8 %1, i32 %stride, i8* null)
+    %ptrOffset = inttoptr i32 %offset to i8*
+    call void @glVertexAttribPointer(i32 %location, i32 %size, i32 %dataType, i8 %1, i32 %stride, i8* %ptrOffset)
     ret void
 }
 
@@ -56,10 +74,10 @@ def data: (self: Buffer, target: Int, array: arrays.FloatArray, usage: Int) -> U
     %ptr = load i8*, i8** %1
     %2 = getelementptr %struct.abra.arrays.FloatArray, %struct.abra.arrays.FloatArray* %array, i32 0, i32 0 ; array.length
     %length = load i32, i32* %2
-    call void @glBufferData(i32 %target, i32 %length, i8* %ptr, i32 %usage)
+    %size = mul i32 %length, 4
+    call void @glBufferData(i32 %target, i32 %size, i8* %ptr, i32 %usage)
     ret void
 }
-
 
 type VertexArray = llvm { i32 }
 
@@ -72,5 +90,119 @@ def genVertexArray: () -> VertexArray = llvm {
 
 def bind: (self: VertexArray) -> Unit = llvm {
     call void @glBindVertexArray(i32 %self)
+    ret void
+}
+
+type Shader = llvm { i32 }
+
+def createShader: (shaderType: Int) -> Shader = llvm {
+    %1 = call i32 @glCreateShader(i32 %shaderType)
+    ret i32 %1
+}
+
+def setSource: (self: Shader, source: String) -> Unit = llvm {
+    %1 = alloca i8*
+    store i8* %source, i8** %1
+    call void @glShaderSource(i32 %self, i32 1, i8** %1, i32* null)
+    ret void
+}
+
+def compile: (self: Shader) -> Unit = llvm {
+    call void @glCompileShader(i32 %self)
+    ret void
+}
+
+def getInfo: (self: Shader, paramName: Int) -> Int = llvm {
+    %1 = alloca i32
+    call void @glGetShaderiv(i32 %self, i32 %paramName, i32* %1)
+    %2 = load i32, i32* %1
+    ret i32 %2
+}
+
+def getInfoLog: (self: Shader) -> String = llvm {
+; #define GL_INFO_LOG_LENGTH                0x8B84 = 35716
+    %1 = alloca i32
+    call void @glGetShaderiv(i32 %self, i32 35716, i32* %1)
+    %length = load i32, i32* %1
+
+    %unused = alloca i32
+    %str = call i8* @malloc(i32 %length)
+    call void @glGetShaderInfoLog(i32 %self, i32 %length, i32* %unused, i8* %str)
+    ret i8* %str
+}
+
+type ShaderProgram = llvm { i32 }
+
+def createProgram: () -> ShaderProgram = llvm {
+    %1 = call i32 @glCreateProgram()
+    ret i32 %1
+}
+
+def attachShader: (self: ShaderProgram, shader: Shader) -> Unit = llvm  {
+    call void @glAttachShader(i32 %self, i32 %shader)
+    ret void
+}
+
+def link: (self: ShaderProgram) -> Unit = llvm  {
+    call void @glLinkProgram(i32 %self)
+    ret void
+}
+
+def getInfo: (self: ShaderProgram, paramName: Int) -> Int = llvm {
+    %1 = alloca i32
+    call void @glGetProgramiv(i32 %self, i32 %paramName, i32* %1)
+    %2 = load i32, i32* %1
+    ret i32 %2
+}
+
+def getInfoLog: (self: ShaderProgram) -> String = llvm {
+; #define GL_INFO_LOG_LENGTH                0x8B84 = 35716
+    %1 = alloca i32
+    call void @glGetProgramiv(i32 %self, i32 35716, i32* %1)
+    %length = load i32, i32* %1
+
+    %unused = alloca i32
+    %str = call i8* @malloc(i32 %length)
+    call void @glGetProgramInfoLog(i32 %self, i32 %length, i32* %unused, i8* %str)
+    ret i8* %str
+}
+
+def use: (self: ShaderProgram) -> Unit = llvm {
+    call void @glUseProgram(i32 %self)
+    ret void
+}
+
+def uniformLocation: (self: ShaderProgram, name: String) -> Int = llvm {
+    %1 = call i32 @glGetUniformLocation(i32 %self, i8* %name)
+    ret i32 %1
+}
+
+# FIXME: transpose
+def uniformMatrix4: (self: ShaderProgram, location: Int, mat: kazmath.Mat4) -> Unit = llvm {
+    call void @glUniformMatrix4fv(i32 %location, i32 1, i8 0, %struct.lib.kazmath.Mat4* %mat)
+    ret void
+}
+
+def uniform1i: (self: ShaderProgram, location: Int, i: Int) -> Unit = llvm {
+    call void @glUniform1i(i32 %location, i32 %i)
+    ret void
+}
+
+type Texture = llvm { i32 }
+
+def genTexture: () -> Texture = llvm {
+    %texPtr = alloca i32
+    call void @glGenTextures(i32 1, i32* %texPtr)
+    %tex = load i32, i32* %texPtr
+    ret i32 %tex
+}
+
+def activeTexture: (texUnit: Int) -> Unit = llvm {
+    call void @glActiveTexture(i32 %texUnit)
+    ret void
+}
+
+def bind: (self: Texture, texType: Int) -> Unit = llvm {
+    call void @glBindTexture(i32 %texType, i32 %self)
     ret void
 }

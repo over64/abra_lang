@@ -1,9 +1,13 @@
 def +: (self: Int, other: Int) -> Int = llvm {
-  %1 = add nsw i32 %other, %self
+  %1 = add nsw i32 %self, %other
+  ret i32 %1
+}
+def -: (self: Int, other: Int) -> Int = llvm {
+  %1 = sub nsw i32 %self, %other
   ret i32 %1
 }
 def *: (self: Int, other: Int) -> Int = llvm {
-  %1 = mul nsw i32 %other, %self
+  %1 = mul nsw i32 %self, %other
   ret i32 %1
 }
 
@@ -14,6 +18,11 @@ def ==: (self: Int, other: Int) -> Boolean = llvm {
 
 def <: (self: Int, other: Int) -> Boolean = llvm {
   %1 = icmp slt i32 %self, %other
+  ret i1 %1
+}
+
+def >: (self: Int, other: Int) -> Boolean = llvm {
+  %1 = icmp sgt i32 %self, %other
   ret i1 %1
 }
 

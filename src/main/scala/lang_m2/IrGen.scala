@@ -90,9 +90,9 @@ case class IrGen(val out: OutputStream) {
       store(value, to, _type)
     case a: Access =>
       val (resType, indicies) = evalGep(a.fromType, Seq(a.prop))
-      val res = nextTmpVar()
       val base = genInitWithPtr(a.fromType, a.from)
 
+      val res = nextTmpVar()
       out.println(s"\t$res = getelementptr ${a.fromType.name}, ${a.fromType.name}* $base, ${indicies.map { i => s"i32 $i" } mkString (", ")}")
       store(res, to, _type)
     case Call(id, fnPtr, args) =>
@@ -189,8 +189,8 @@ case class IrGen(val out: OutputStream) {
       else s"%$paramName"
     case a: Access =>
       val (resType, indicies) = evalGep(a.fromType, Seq(a.prop))
-      val res = nextTmpVar()
       val base = genInitWithPtr(a.fromType, a.from)
+      val res = nextTmpVar()
 
       out.println(s"\t$res = getelementptr ${a.fromType.name}, ${a.fromType.name}* $base, ${indicies.map { i => s"i32 $i" } mkString (", ")}")
       load(res, _type)
@@ -269,8 +269,8 @@ case class IrGen(val out: OutputStream) {
       else throw new Exception("not implemented in ABI")
     case a: Access =>
       val (resType, indicies) = evalGep(a.fromType, Seq(a.prop))
-      val res = nextTmpVar()
       val base = genInitWithPtr(a.fromType, a.from)
+      val res = nextTmpVar()
       out.println(s"\t$res = getelementptr ${a.fromType.name}, ${a.fromType.name}* $base, ${indicies.map { i => s"i32 $i" } mkString (", ")}")
       res
     case Call(id, fnPtr, args) => throw new Exception("not implemented in ABI")
@@ -426,7 +426,7 @@ case class IrGen(val out: OutputStream) {
     val functions = ghoistVars(functions1)
 
     consts.foreach { const =>
-      out.println(s"@.${const.name} = constant [${const.value.bytesLen} x i8] ${"c\"" + const.value.str + "\""}, align 1")
+      out.println(s"@.${const.name} = private constant [${const.value.bytesLen} x i8] ${"c\"" + const.value.str + "\""}, align 1")
     }
     functions.foreach {
       fn => tmpVars = 0; genFunction(fn)

@@ -1,0 +1,98 @@
+import abra.buffers
+import abra.io
+import abra.int
+
+type Mesh = (vertexBuffer: buffers.FloatBuffer, indexBuffer: buffers.FloatBuffer)
+
+# bug by syntax design
+def load = { fname: String ->
+    val objFile = io.open(fname, 'r')
+    val vertexBuffer = buffers.mkFloat(4)
+    val textureBuffer = buffers.mkFloat(4)
+    val normalBuffer = buffers.mkFloat(4)
+    val meshBuffer = buffers.mkFloat(4)
+    var hasLine = true
+
+    while hasLine {
+        val line = objFile.readLine()
+
+        if line.isNullLine then hasLine = false
+        else {
+            if line.startsWith('v ') {
+                val reader = line.toReader
+                reader.drop('v '.length)
+                vertexBuffer.push(reader.readFloat) # x
+                vertexBuffer.push(reader.readFloat) # y
+                vertexBuffer.push(reader.readFloat) # z
+                1
+            } else {
+                1
+            }
+
+            if line.startsWith('vt ') {
+                val reader3 = line.toReader
+                reader3.drop('vt '.length)
+                textureBuffer.push(reader3.readFloat) # u
+                textureBuffer.push(reader3.readFloat)  # v
+                1
+            } else {
+                1
+            }
+
+            if line.startsWith('vn ') {
+                val reader4 = line.toReader
+                reader4.drop('vn '.length)
+                normalBuffer.push(reader4.readFloat) # nx
+                normalBuffer.push(reader4.readFloat) # ny
+                normalBuffer.push(reader4.readFloat) # nz
+                1
+            } else {
+                1
+            }
+
+            # если для блока с переменными одного имени, но разного типа?
+            if line.startsWith('f ') {
+                line.print
+                val reader2 = line.toReader
+                reader2.drop('f '.length)
+                var i = 0
+                while i < 3 {
+                    val vertexId = reader2.readInt - 1
+                    vertexId.print ; ''.print
+                    meshBuffer.push(vertexBuffer(vertexId * 3))     # x
+                    meshBuffer.push(vertexBuffer(vertexId * 3 + 1)) # y
+                    meshBuffer.push(vertexBuffer(vertexId * 3 + 2)) # z
+                    reader2.drop('/'.length)
+
+                    val uvId = reader2.readInt - 1
+                    meshBuffer.push(textureBuffer(uvId * 2))     # u
+                    meshBuffer.push(textureBuffer(uvId * 2 + 1)) # v
+                    reader2.drop('/'.length)
+
+                    val normalId = reader2.readInt - 1
+                    meshBuffer.push(normalBuffer(normalId * 3))     # nx
+                    meshBuffer.push(normalBuffer(normalId * 3 + 1)) # ny
+                    meshBuffer.push(normalBuffer(normalId * 3 + 2)) # nz
+
+                    i = i + 1
+                }
+                1
+            } else {
+                1
+            }
+        }
+    }
+    vertexBuffer.free()
+    var i = 0
+    while i < meshBuffer.length {
+        meshBuffer(i).print
+        i = i + 1
+    }
+    'obj load success'.print
+    meshBuffer
+#    var i = 0
+#    while i < vertexBuffer.length {
+#        vertexBuffer(i).print
+#        i = i + 1
+#    }
+}: buffers.FloatBuffer

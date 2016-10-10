@@ -15,7 +15,7 @@ case object LocalSymbol extends SymbolLocation
 case object ParamSymbol extends SymbolLocation
 case object GlobalSymbol extends SymbolLocation
 
-class Scope(parent: Option[Scope], level: Int = 0, val vars: mutable.HashMap[String, SymbolInfo] = mutable.HashMap()) {
+case class Scope(parent: Option[Scope], level: Int = 0, val vars: mutable.HashMap[String, SymbolInfo] = mutable.HashMap()) {
   def mkChild = new Scope(parent = Some(this), level + 1)
 
   def addVar(node: ParseNode, name: String, th: TypeHint, isMutable: Boolean, location: SymbolLocation): String = {

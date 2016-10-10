@@ -1,0 +1,29 @@
+import abra.int
+import abra.arrays
+
+type FloatBuffer = (array: arrays.FloatArray, length: Int)
+
+def get = \self: FloatBuffer, index: Int -> self.array(index)
+def set = \self: FloatBuffer, index: Int, value: Float -> self.array(index) = value
+def free = \self: FloatBuffer -> self.array.free()
+
+def push = { self: FloatBuffer, value: Float ->
+    if self.length + 1 > self.array.length {
+        val newArray = arrays.mkFloat(self.length * 2, \i -> 0.0)
+        var i = 0
+        while i < self.array.length {
+            newArray(i) = self.array(i)
+            i = i + 1
+        }
+        self.array.free()
+        self.array = newArray
+    }
+    self.array(self.length) = value
+    self.length = self.length + 1
+}: Unit
+
+def mkFloat = { size: Int ->
+    # FloatBuffer(arrays.mkFloat(size, \i -> 0.0), 0) FIXME: IrGen.276
+    val array = arrays.mkFloat(size, \i -> 0.0)
+    FloatBuffer(array, 0)
+}: FloatBuffer

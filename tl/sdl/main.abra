@@ -3,61 +3,140 @@ import abra.float
 import abra.io
 import abra.sys
 import abra.arrays
+# FIXME: transitive objects(.o) dependencies not applied?
+import abra.buffers
 import lib.sdl
 import lib.gl
-
-def VERTEX_SHADER = '
-    #version 330 core
-    out vec3 color;
-    uniform vec3 c;
-
-    void main() {
-        color = c;
-    }
-'
-
-def FRAGMENT_SHADER = '
-    #version 330
-    layout(location = 0) in vec3 vertexPos;
-
-    void main() {
-        gl_Position = vec4(vertexPos.xyz, 1.0)
-    }
-'
+import lib.objLoader
+import lib.kazmath
+import lib.soil
 
 def VERTEX_LOCATION = 0
+def UV_LOCATION = 1
+def NORMAL_LOCATION = 2
 
-type RenderData = (vb: gl.Buffer, vao: gl.VertexArray)
+type Renderer = (
+    vb: gl.Buffer,
+    vao: gl.VertexArray,
+    program: gl.ShaderProgram,
+    pMatrix: kazmath.Mat4,
+    vMatrix: kazmath.Mat4,
+    texture: gl.Texture,
+    rot: Float
+)
 
-def mkRenderData = {
-    gl.clearColor(0.0, 1.0, 0.0)
+def mkShader = { shaderType: Int, source: String ->
+    val shader = gl.createShader(shaderType)
+    shader.setSource(source)
+    shader.compile()
 
-    # there is no arrays in language now. It's emulated via powerful language syntax
-    val mesh = arrays.mkFloatAndInit(3 * 3, { m ->
-        m(0) = -1.0; m(1) = -1.0; m(2) = 0.0;
-        m(3) =  1.0; m(4) = -1.0; m(5) = 0.0;
-        m(6) =  0.0; m(7) =  1.0; m(8) = 0.0;
-    })
+    if shader.getInfo(gl.COMPILE_STATUS) == gl.FALSE
+        then sys.panic(shader.getInfoLog())
+
+    shader
+}: gl.Shader
+
+def mkProgram = { vertexSource: String, fragmentSource: String ->
+    val vertex = mkShader(gl.VERTEX_SHADER, vertexSource)
+    val fragment = mkShader(gl.FRAGMENT_SHADER, fragmentSource)
+    val program = gl.createProgram()
+
+    program.attachShader(vertex)
+    program.attachShader(fragment)
+    program.link()
+
+    if program.getInfo(gl.LINK_STATUS) == gl.FALSE
+        then sys.panic(program.getInfoLog())
+
+    program
+}: gl.ShaderProgram
+
+def mkRenderer = {
+    gl.enable(gl.DEPTH_TEST)
+    gl.clearColor(0.2117, 0.0823, 0.2784)
+    val mesh = objLoader.load('cube.obj')
+    val program = mkProgram('
+        #version 330
+        #extension GL_ARB_separate_shader_objects : enable
+        layout(location = 0) in vec3 vertexPos;
+        layout(location = 1) in vec2 uv;
+        layout(location = 2) in vec3 normal;
+        out vec2 texCoord;
+
+        uniform mat4 P;
+        uniform mat4 V;
+        uniform mat4 M;
+
+        void main() {
+            texCoord = uv;
+            gl_Position = P * V * M * vec4(vertexPos.xyz, 1.0);
+        }
+    ','
+        #version 330 core
+        in vec2 texCoord;
+        out vec4 color;
+
+        uniform sampler2D tex;
+        void main() {
+            color = texture2D(tex, texCoord);
+        }
+    ')
 
     val vb = gl.genBuffer()
     vb.bind(gl.ARRAY_BUFFER)
-    vb.data(gl.ARRAY_BUFFER, mesh, gl.STATIC_DRAW)
+    vb.data(gl.ARRAY_BUFFER, mesh.array, gl.STATIC_DRAW)
     mesh.free()
 
     val vao = gl.genVertexArray()
     vao.bind()
     vb.bind(gl.ARRAY_BUFFER)
-    gl.vertexAttribPointer(VERTEX_LOCATION(), 3, gl.FLOAT, false, 0, 0)
+    val stride = (3 + 2 + 3) * float.SIZE # 3 vertex coords + 2 uv coords + 3 normal coords
+    gl.vertexAttribPointer(VERTEX_LOCATION(), 3, gl.FLOAT, false, stride, 0)
+    gl.vertexAttribPointer(UV_LOCATION(), 2, gl.FLOAT, false, stride, 3 * float.SIZE)
+    gl.vertexAttribPointer(NORMAL_LOCATION(), 3, gl.FLOAT, false, stride, (3 + 2) * float.SIZE)
 
-    RenderData(vb, vao)
-}: RenderData
+    val texture = gl.genTexture()
+    texture.bind(gl.TEXTURE_2D)
+    texture.loadFromFile('tex.png', soil.LOAD_AUTO, soil.FLAG_INVERT_Y)
 
-def render = { rd: RenderData ->
-    gl.clear(gl.COLOR_BUFFER_BIT)
+    val pMatrix = kazmath.perspective(45.0, 640.0 / 480.0, 0.01, 100.0)
 
-    rd.vao.bind()
+    # должны импортироваться конструкторы!
+    val eye = kazmath.Vec3(0.0, 1.0, 5.0)
+    val center = kazmath.Vec3(0.0, 0.0, 0.0)
+    val up = kazmath.Vec3(0.0, 1.0, 0.0)
+    val vMatrix = kazmath.lookAt(eye, center, up)
+
+    Renderer(vb, vao, program, pMatrix, vMatrix, texture, 0.0)
+}: Renderer
+
+def render = { self: Renderer ->
+    gl.clear(gl.COLOR_BUFFER_BIT or gl.DEPTH_BUFFER_BIT)
+    val identity = kazmath.identity4
+    val mMatrix = identity.rotateY(self.rot)
+    self.rot = self.rot + 0.03
+
+    self.program.use()
+
+    val locationP = self.program.uniformLocation('P')
+    val locationV = self.program.uniformLocation('V')
+    val locationM = self.program.uniformLocation('M')
+    val locationTex = self.program.uniformLocation('tex')
+
+    self.program.uniformMatrix4(locationP, self.pMatrix)
+    self.program.uniformMatrix4(locationV, self.vMatrix)
+    self.program.uniformMatrix4(locationM, mMatrix)
+
+    self.vao.bind()
     gl.enableVertexAttribArray(VERTEX_LOCATION())
-    gl.drawArrays(gl.TRIANGLES, 0 , 3)
+    gl.enableVertexAttribArray(UV_LOCATION())
+    gl.enableVertexAttribArray(NORMAL_LOCATION())
+
+    gl.activeTexture(gl.TEXTURE0)
+    self.texture.bind(gl.TEXTURE_2D)
+    self.program.uniform1i(locationTex, 0)
+
+    gl.drawArrays(gl.TRIANGLES, 0 , 36)
 }: Unit
 
 def main = {
@@ -65,9 +144,9 @@ def main = {
         then sys.panic('unable to init SDL')
         else 'SDL init ok'.print
 
-    val window = sdl.createWindow('SDL Hello World!', 100, 100, 640, 480, sdl.WINDOW_SHOWN or sdl.WINDOW_OPENGL)
+    val window = sdl.createWindow('ABRA Lang Demo 0!', 100, 100, 640, 480, sdl.WINDOW_SHOWN or sdl.WINDOW_OPENGL)
     val glContext = window.glCreateContext()
-    val rd = mkRenderData()
+    val renderer = mkRenderer()
 
     var running = true
     while running {
@@ -78,7 +157,7 @@ def main = {
             if event.eventType == sdl.EVENT_QUIT then running = false
         }
 
-        render(rd)
+        renderer.render()
         window.glSwap()
     }
 }: Unit

@@ -8,18 +8,31 @@ import TypeCheckerUtil.{thBool, toLow}
   */
 object Macro {
   def genConstructor(_package: String, typeMap: Map[ScalarTypeHint, Type], td: FactorType): Fn = {
-    var nextId = 0
+    var (nextId, fieldId) = (0, -1)
     val th = FnTypeHint(td.fields.map { field =>
       FnTypeHintField(field.name, field.typeHint)
     }, ScalarTypeHint(td.name, _package))
 
     Fn(td.name, Some(th), LlInline(
       (td.fields.map { field =>
-        nextId += 1
         val lowTh = toLow(typeMap, field.typeHint).name
+        fieldId += 1
 
-        s"\t%$nextId = getelementptr %struct.${_package + td.name}, %struct.${_package + td.name}* %ret, i32 0, i32 ${nextId - 1}\n" +
-          s"\tstore $lowTh %${field.name}, $lowTh* %$nextId"
+        field.typeHint match {
+          case sth: ScalarTypeHint if typeMap(sth).isInstanceOf[FactorType] =>
+            nextId += 2
+            s"""
+               |    %${nextId - 1} = getelementptr %struct.${_package + td.name}, %struct.${_package + td.name}* %ret, i32 0, i32 ${fieldId}
+               |    %${nextId} = load $lowTh, $lowTh* %${field.name}
+               |    store $lowTh %${nextId}, $lowTh* %${nextId - 1}
+            """.stripMargin
+          case _ =>
+            nextId += 1
+            s"""
+               |    %$nextId = getelementptr %struct.${_package + td.name}, %struct.${_package + td.name}* %ret, i32 0, i32 ${fieldId}
+               |    store $lowTh %${field.name}, $lowTh* %$nextId
+            """.stripMargin
+        }
       } :+ "\tret void").mkString("\n")
     ), None)
   }

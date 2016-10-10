@@ -1,0 +1,25 @@
+import lib.gl
+
+def LOAD_AUTO = 0
+def FLAG_INVERT_Y = 16
+# def SOIL_FLAG_MIPMAPS
+
+#GLuint tex_2d = SOIL_load_OGL_texture
+#	(
+#		"img.png",
+#		SOIL_LOAD_AUTO,
+#		SOIL_CREATE_NEW_ID,
+#		SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y | SOIL_FLAG_NTSC_SAFE_RGB | SOIL_FLAG_COMPRESS_TO_DXT
+#	);
+
+
+def loadFromFile: (self: gl.Texture, fname: String, channels: Int, flags: Int) -> Unit = llvm {
+;unsigned int SOIL_load_OGL_texture (
+;   const char *filename,
+;   int force_channels,
+;	unsigned int reuse_texture_ID,
+;	unsigned int flags
+;)
+    call void @SOIL_load_OGL_texture(i8* %fname, i32 %channels, i32 %self, i32 %flags)
+    ret void
+}

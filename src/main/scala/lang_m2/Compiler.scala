@@ -7,6 +7,7 @@ import java.util.Scanner
 import scala.collection.JavaConversions._
 import grammar2.{M2Lexer, M2Parser}
 import org.antlr.v4.runtime.{ANTLRFileStream, CommonTokenStream}
+import scala.collection.mutable
 
 /**
   * Created by over on 14.08.16.
@@ -18,8 +19,13 @@ object Compiler {
     val argsParser = new scopt.OptionParser[Config]("kadabra") {
       head("kadabra", "0.0.1")
 
-      opt[Seq[String]]('I', "include dir").valueName("<dir1>, <dir2>...").action {
-        case (files, config) => config.copy(include = files.map { file => Paths.get(file) })
+      opt[String]('I', "include").valueName("source base dir").action {
+        case (files, config) =>
+          println("here")
+          config.copy(include = files.split(",").map { file =>
+            println(s"file - $file")
+            Paths.get(file).normalize().toRealPath().toAbsolutePath
+          })
       }
 
       arg[String]("<file>").action {
@@ -44,7 +50,8 @@ object Compiler {
             case (p1, p2) => p1 == p2
           }.map { case (p1, p2) => p2 }.toSeq.dropRight(1)
 
-        //println(s"base package = $basePackage")
+        println(s"includes = ${config.include}")
+
 
         new CompilerKernel().compile(level = 0, config.include, basePackage, config.file, isMain = true)
 

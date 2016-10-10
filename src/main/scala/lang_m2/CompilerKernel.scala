@@ -47,23 +47,19 @@ class CompilerKernel {
 
       message(level, s"- import ${_import.seq.map(_.value).mkString(".")}")
 
-      // try to make relative import
-      if (Files.exists(relativePath)) {
-        compile(level + 1, include, currentPkg ++ modPkg, relativePath, isMain = false)
-      } else {
-        // try to find in include dirs
-        val includePaths = include.map { path =>
-          (path, path.resolve(modPath))
-        }
-
-        val foundModule = includePaths.find {
-          case (include, fullModPath) => Files.exists(fullModPath)
-        }
-
-        foundModule.map {
-          case (include, foundModule) => compile(level + 1, include = Seq(include), currentPkg = modPkg, foundModule, isMain = false)
-        }.getOrElse(throw new CompileEx(_import, CE.ImportNotResolved(modPath.toString)))
+      // try to find in include dirs
+      val includePaths = include.map { path =>
+        (path, path.resolve(modPath))
       }
+
+      val foundModule = includePaths.find {
+        case (include, fullModPath) => Files.exists(fullModPath)
+      }
+
+      foundModule.map {
+        case (_, foundModule) => compile(level + 1, include = include, currentPkg = modPkg, foundModule, isMain = false)
+      }.getOrElse(throw new CompileEx(_import, CE.ImportNotResolved(modPath.toString, include.map(_.toString))))
+
     }
 
     val thisNamespace = Namespacer.mixNamespaces(module, importedModules.map(_.namespace))
@@ -129,7 +125,7 @@ class CompilerKernel {
     }
 
     val gccArgs =
-      if (isMain) Seq("gcc", "-g", "-lSDL2", "-lGL", fnameNoExt + ".out.s") ++ importedModules.map(_.binLocation.toString) ++ Seq("-o", fnameNoExt)
+      if (isMain) Seq("gcc", "-g", "-lSDL2", "-lGL", "-lkazmath", "-lSOIL", fnameNoExt + ".out.s") ++ importedModules.map(_.binLocation.toString) ++ Seq("-o", fnameNoExt)
       else Seq("gcc", "-g", "-c", fnameNoExt + ".out.s", "-o", s"$fnameNoExt.o")
     message(level, gccArgs.mkString("- ", " ", ""))
 

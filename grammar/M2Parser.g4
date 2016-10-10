@@ -27,7 +27,7 @@ expression : literal #exprLiteral
            | expression op=('>' | '<' | '<=' | '>=') expression #exprInfixCall
            | expression op=('==' | '!=') expression #exprInfixCall
            | expression op=('||' | '&&') expression #exprInfixCall
-           | 'if' NL* cond=expression NL* (('then' NL* then_stat=if_stat) | then_block=block) (NL* 'else' NL* (else_stat=if_stat | else_block=block))? #exprIfElse
+           | 'if' NL* cond=expression NL* (then_block=block | ('then' NL* then_stat=if_stat)) (NL* 'else' NL* (else_block=block | else_stat=if_stat))? #exprIfElse
            | 'while' NL* cond=expression NL* then_block=block #exprWhile
            ;
 
@@ -40,7 +40,7 @@ block : '{' (fnArg (',' fnArg)* '->')? NL* blockBody* NL* '}' ;
 blockBody : (variable | store | expression) ';'? NL* ;
 lambdaBlock : '\\' (fnArg (',' fnArg)*)? '->' NL* (expression | store) ;
 
-tuple : '(' (expression (',' expression)*)? ')' ;
+tuple : '(' (expression (',' NL* expression)*)? ')' ;
 
 scalarTypeHint : (modVar=Id '.')? typeName=Id ;
 fnTypeHintField: ('self' | Id) ':' typeHint ;
@@ -56,7 +56,7 @@ scalarType : 'type' Id '=' LlLiteral ;
 
 typeField : 'self'? ('self' | Id) ':' typeHint ;
 
-factorType : 'type' Id '=' '(' typeField (',' typeField)* ')' ;
+factorType : 'type' Id '=' '(' NL* typeField (',' NL* typeField)* NL*')' ;
 
 type : scalarType
      | factorType

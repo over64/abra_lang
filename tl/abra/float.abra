@@ -1,13 +1,21 @@
 def PI = 3.14159265359
 
+def SIZE = 4
+
 def +: (self: Float, other: Float) -> Float = llvm {
-  %1 = fadd float %other, %self
+  %1 = fadd float %self, %other
   ret float %1
 }
 def *: (self: Float, other: Float) -> Float = llvm {
-  %1 = fmul float %other, %self
+  %1 = fmul float %self, %other
   ret float %1
 }
+def /: (self: Float, other: Float) -> Float = llvm {
+  %1 = fdiv float %self, %other
+  ret float %1
+}
+
+def toRadians = \self: Float -> self * PI() / 180.0
 
 def toInt: (self: Float) -> Int = llvm {
   %1 = fptosi float %self to i32

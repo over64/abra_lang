@@ -14,8 +14,8 @@ object CE {
     override def toString = msg
   }
   //FIXME: include dirs
-  case class ImportNotResolved(modPath: String) extends CompileError {
-    override def toString = s"could not resolve import: $modPath"
+  case class ImportNotResolved(modPath: String, includes: Seq[String]) extends CompileError {
+    override def toString = s"could not resolve import: $modPath with includes \n ${includes.mkString("\n")}"
   }
   case class FnlTypeNotEntensible() extends CompileError {
     override def toString = s"function pointer type cannot have self-functions"

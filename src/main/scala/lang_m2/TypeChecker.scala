@@ -4,6 +4,8 @@ import lang_m2.Ast0._
 import lang_m2.Ast1.FnPointer
 import lang_m2.TypeCheckerUtil._
 
+import scala.collection.mutable
+
 case class InferedExp(th: TypeHint, stats: Seq[Ast1.Stat], init: Option[Ast1.Init])
 class TypeChecker {
   var annoVars = 0
@@ -96,6 +98,11 @@ class TypeChecker {
         val callableFn = namespace.findSelfFn(fnName, inferedSelf.th.asInstanceOf[ScalarTypeHint], inferCallback = fn => evalFunction(namespace, fn, kind = Self))
 
         callableFn.map { callableFn =>
+          // FIXME: propagate to another call cases
+          if (callableFn.th.seq.drop(1).length != args.length)
+            throw new CompileEx(self, CE.NoFnToCall(fnName))
+
+
           val inferedLastArgs = callableFn.th.seq.drop(1).zip(args).map {
             case (argTh, argExpr) => evalBlockExpression(namespace, scope, forInit = true, Some(argTh.typeHint), argExpr)
           }
@@ -214,7 +221,10 @@ class TypeChecker {
       case lString(value) =>
         InferedExp(thString, Seq(), Some(Ast1.lString(s"${nextAnonVar}", HexUtil.singleByteNullTerminated(value.getBytes))))
       case self@lId(varName) =>
-        val vi = scope.findVar(varName).getOrElse(throw new CompileEx(self, CE.VarNotFound(varName)))
+        val vi = scope.findVar(varName).getOrElse({
+          println(scope)
+          throw new CompileEx(self, CE.VarNotFound(varName))
+        })
         val literal = lowLiteral(vi.location, vi.lowName)
 
         InferedExp(vi.th, Seq(), Some(literal))
@@ -246,7 +256,7 @@ class TypeChecker {
         val varName = to.head.value
         val _var = scope.findVar(varName).getOrElse(throw new CompileEx(to.head, CE.VarNotFound(varName)))
 
-        if (!_var.isMutable)
+        if (to.length == 1 && !_var.isMutable)
           throw new CompileEx(to.head, CE.ReassignToVal())
 
         val srcType = namespace.resolveType(_var.th.asInstanceOf[ScalarTypeHint])
