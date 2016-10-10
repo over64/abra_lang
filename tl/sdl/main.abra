@@ -6,18 +6,18 @@ import abra.arrays
 # FIXME: transitive objects(.o) dependencies not applied?
 import abra.buffers
 import lib.sdl
-import lib.gl
+import lib.gl with VertexArray, Shader, ShaderProgram, Texture
 import lib.objLoader
-import lib.kazmath
+import lib.kazmath with Mat4
 import lib.soil
 
 type Renderer = (
     vb: gl.Buffer,
-    vao: gl.VertexArray,
-    program: gl.ShaderProgram,
-    pMatrix: kazmath.Mat4,
-    vMatrix: kazmath.Mat4,
-    texture: gl.Texture,
+    vao: VertexArray,
+    program: ShaderProgram,
+    pMatrix: Mat4,
+    vMatrix: Mat4,
+    texture: Texture,
     rot: Float
 )
 
@@ -30,7 +30,7 @@ def mkShader = { shaderType: Int, source: String ->
         then sys.panic(shader.getInfoLog())
 
     shader
-}: gl.Shader
+}: Shader
 
 def mkProgram = { vertexSource: String, fragmentSource: String ->
     val vertex = mkShader(gl.VERTEX_SHADER, vertexSource)
@@ -45,7 +45,7 @@ def mkProgram = { vertexSource: String, fragmentSource: String ->
         then sys.panic(program.getInfoLog())
 
     program
-}: gl.ShaderProgram
+}: ShaderProgram
 
 def mkRenderer = {
     gl.enable(gl.DEPTH_TEST)

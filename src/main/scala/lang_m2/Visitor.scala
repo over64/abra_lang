@@ -11,7 +11,8 @@ import scala.collection.mutable.HashMap
 
 class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[ParseNode] with M2ParserVisitor[ParseNode] {
   val sourceMap = new SourceMap()
-  val importMap = new HashMap[String, String]()
+  val importedModules = new HashMap[String, String]()
+  val importedTypes = new HashMap[String, String]()
 
   def emit[T <: ParseNode](token: Token, node: T): T = {
     sourceMap.add(node, new AstInfo(fname, token.getLine, token.getCharPositionInLine))
@@ -65,8 +66,9 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
     val typeName = ctx.typeName.getText
     val pkg =
       if (ctx.modVar != null)
-        importMap(ctx.modVar.getText)
+        importedModules(ctx.modVar.getText)
       else if (predefTypes.contains(typeName)) ""
+      else if (importedTypes.contains(typeName)) importedTypes(typeName)
       else _package
 
     emit(ctx, ScalarTypeHint(typeName, pkg))
@@ -176,8 +178,8 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
 
   override def visitExprSelfCall(ctx: ExprSelfCallContext): ParseNode = {
     visitExpr(ctx.expression()) match {
-      case id: lId if importMap.contains(id.value) =>
-        val pkg = importMap(id.value)
+      case id: lId if importedModules.contains(id.value) =>
+        val pkg = importedModules(id.value)
         emit(ctx, ModCall(pkg, ctx.op.getText, visitTuple(ctx.tuple()).seq))
       case expr@_ => emit(ctx, SelfCall(ctx.op.getText, expr, visitTuple(ctx.tuple()).seq))
     }
@@ -245,8 +247,8 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
 
   override def visitExprProp(ctx: ExprPropContext): Expression =
     ctx.expression().accept(this).asInstanceOf[Expression] match {
-      case lId(value) if importMap.contains(value) =>
-        emit(ctx, ModCall(importMap(value), ctx.op.getText, Seq()))
+      case lId(value) if importedModules.contains(value) =>
+        emit(ctx, ModCall(importedModules(value), ctx.op.getText, Seq()))
       case expr@_ =>
         emit(ctx, Prop(expr, emit(ctx.op, lId(ctx.op.getText))))
     }
@@ -282,7 +284,11 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
 
   override def visitImport_(ctx: Import_Context): Import = {
     val pkgSeq = ctx.pkgName.map { id => emit(id, lId(id.getText)) }
-    importMap.put(pkgSeq.last.value, pkgSeq.map(_.value).mkString("", ".", "."))
+    val fullModName = pkgSeq.map(_.value).mkString("", ".", ".")
+    importedModules.put(pkgSeq.last.value, fullModName)
+    ctx.tid.map { importedType =>
+      importedTypes += ((importedType.getText, fullModName))
+    }
     emit(ctx, Import(pkgSeq))
   }
 

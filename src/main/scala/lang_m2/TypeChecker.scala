@@ -10,6 +10,7 @@ case class InferedExp(th: TypeHint, stats: Seq[Ast1.Stat], init: Option[Ast1.Ini
 class TypeChecker {
   var annoVars = 0
   var anonFns = 0
+  var lowVars = 0
 
   def nextAnonVar = {
     annoVars += 1
@@ -19,6 +20,11 @@ class TypeChecker {
   def nextAnonFn = {
     annoVars += 1
     s"anonFn$annoVars"
+  }
+
+  def nextLowVar = {
+    lowVars += 1
+    lowVars
   }
 
   sealed trait FnKind
@@ -36,7 +42,7 @@ class TypeChecker {
         val initExp = evalBlockExpression(namespace, scope, forInit = true, v.typeHint, v.init)
         v.typeHint.map { th => assertTypeEquals(v.init, th, initExp.th) }
 
-        val lowName = scope.addVar(v, v.name, initExp.th, v.mutable, LocalSymbol)
+        val lowName = scope.addVar(v, v.name, initExp.th, v.mutable, LocalSymbol, nextLowVar)
 
         val lowType = namespace.toLow(initExp.th)
         val infExp = InferedExp(thUnit,
@@ -360,7 +366,7 @@ class TypeChecker {
     }
 
     val lastInfExp = expressions.lastOption.map { blockExpr =>
-      evalBlockExpression(namespace, childScope, forInit = typeAdvice != Some(thUnit), None, blockExpr)
+      evalBlockExpression(namespace, childScope, forInit = if (typeAdvice != Some(thUnit)) true else false, typeAdvice, blockExpr)
     }
 
     val lastExp = retMapper(namespace, lastInfExp)
@@ -408,7 +414,7 @@ class TypeChecker {
         val childScope = new Scope(None)
 
         infArgs.foreach { arg =>
-          childScope.addVar(arg, arg.name, arg.typeHint, isMutable = false, ParamSymbol)
+          childScope.addVar(arg, arg.name, arg.typeHint, isMutable = false, ParamSymbol, nextLowVar)
         }
 
         val (th, body) = evalBlock2(namespace, childScope, expectedRet, seq, retMapper = {

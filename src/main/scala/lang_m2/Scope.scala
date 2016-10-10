@@ -18,10 +18,10 @@ case object GlobalSymbol extends SymbolLocation
 case class Scope(parent: Option[Scope], level: Int = 0, val vars: mutable.HashMap[String, SymbolInfo] = mutable.HashMap()) {
   def mkChild = new Scope(parent = Some(this), level + 1)
 
-  def addVar(node: ParseNode, name: String, th: TypeHint, isMutable: Boolean, location: SymbolLocation): String = {
+  def addVar(node: ParseNode, name: String, th: TypeHint, isMutable: Boolean, location: SymbolLocation, varNumber: Int): String = {
     if (vars.contains(name)) throw new CompileEx(node, CE.AlreadyDefined(name))
     val lowName = location match {
-      case LocalSymbol => s"${"_" * level}$name"
+      case LocalSymbol => s"${name}_$varNumber"
       case _ => name
     }
     vars += (name -> SymbolInfo(lowName, isMutable, location, th))

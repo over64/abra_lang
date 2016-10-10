@@ -1,7 +1,7 @@
 import abra.int
-import abra.arrays
+import abra.arrays with FloatArray
 
-type FloatBuffer = (array: arrays.FloatArray, length: Int)
+type FloatBuffer = (array: FloatArray, length: Int)
 
 def get = \self: FloatBuffer, index: Int -> self.array(index)
 def set = \self: FloatBuffer, index: Int, value: Float -> self.array(index) = value
@@ -22,8 +22,4 @@ def push = { self: FloatBuffer, value: Float ->
     self.length = self.length + 1
 }: Unit
 
-def mkFloat = { size: Int ->
-    # FloatBuffer(arrays.mkFloat(size, \i -> 0.0), 0) FIXME: IrGen.276
-    val array = arrays.mkFloat(size, \i -> 0.0)
-    FloatBuffer(array, 0)
-}: FloatBuffer
+def mkFloat = \size: Int -> FloatBuffer(arrays.mkFloat(size, \i -> 0.0), 0)

@@ -273,7 +273,33 @@ case class IrGen(val out: OutputStream) {
       val res = nextTmpVar()
       out.println(s"\t$res = getelementptr ${a.fromType.name}, ${a.fromType.name}* $base, ${indicies.map { i => s"i32 $i" } mkString (", ")}")
       res
-    case Call(id, fnPtr, args) => throw new Exception("not implemented in ABI")
+    case Call(id, fnPtr, args) =>
+      val toCall = id match {
+        case lLocal(value) => load("%" + value, fnPtr)
+        case lGlobal(value) => "@" + escapeFnName(value)
+        case lParam(value) => "%" + value
+      }
+
+      fnPtr.ret match {
+        case struct@Struct(_name, fields) =>
+          val to = nextTmpVar()
+          zalloc(to, fnPtr.ret)
+          val lastArgs = args
+
+          val calculatedArgs = to +: lastArgs.zip(fnPtr.args).map { case (arg, field) =>
+            if (field._type.isInstanceOf[Struct]) genInitWithPtr(field._type, arg)
+            else genInitWithValue(field._type, arg)
+          }
+
+          val joinedArgs = calculatedArgs.zip(fnPtr.realArgs).map {
+            case (arg, argType) =>
+              s"${if (argType._type.isInstanceOf[Struct]) argType._type.name + "*" else argType._type.name} $arg"
+          }.mkString(", ")
+
+          out.println(s"\tcall ${fnPtr.realRet.name} ${toCall}($joinedArgs)")
+          to
+        case _ => throw new Exception("not implemented in ABI")
+      }
     case BoolAnd(left, right) => throw new Exception("not implemented in ABI")
     case BoolOr(left, right) => throw new Exception("not implemented in ABI")
   }
