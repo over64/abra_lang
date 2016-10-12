@@ -1,4 +1,4 @@
-### test_lang:
+### ABRA lang:
 Research platform for design language with new memory management and modularity concepts
 #### Build compiler
   For build compiler you just need JDK8 and SBT
