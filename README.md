@@ -1,7 +1,7 @@
 ### ABRA lang:
 Research platform for design language with new memory management and modularity concepts
 #### Build compiler
-  For build compiler you just need JDK8 and SBT
+  For build compiler you just need JDK8 and SBT. LLVM 3.8 and GCC also must be available in PATH
   ```bash
     sbt> assembly
   ```
@@ -9,21 +9,24 @@ Research platform for design language with new memory management and modularity 
 #### Status
   Basic C-like expression-based language with type inference based on value types (no reference types yet)
   - val / var
-  - if-else expressions
+  - if-else is expressions
   - while loops
   - Rich function call syntax: infix calls, unary calls, apply calls, get/set calls, self calls, usual calls
   - types: scalar and struct types (no arrays and ATD yet
-  - function pointers
+  - higher order functions
   - natural operator overloading (no 'operators' in language syntax)
   - smooth integration with LLVM via scalar types and inline LLVM IR
   - local type inference
   - uniform declaration syntax
+  - Pyhton and Java-like modules system without any global variables
+  - simple FFI to C via LLVM IR
 
 #### In progress in M2
-  - command-line compiler
-  - tuple initialization
-  - function pointers (no closures yet)
-  - simple FFI to C
+  - integer hex literals
+  - closures
+  - named parameters
+  - early returns
+  - continue / break for while loops
   - refactor / tests
 
 #### Hello, world
@@ -122,7 +125,7 @@ Yes, it is unicode, baby! If you have UTF8 locale...
     1.twice # self call
     +(1, 1) # usual call
     1() # apply call
-    # see get/set calls example in tl/arrays.abra
+    # see get/set calls example in tl/abra/arrays.abra
   ```
 #### If-else expressions
 No parantheses, bro!
