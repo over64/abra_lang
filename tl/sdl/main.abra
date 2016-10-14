@@ -1,3 +1,4 @@
+# -lSDL2 -lGL -lkazmath -lSOIL
 import abra.int
 import abra.float
 import abra.io

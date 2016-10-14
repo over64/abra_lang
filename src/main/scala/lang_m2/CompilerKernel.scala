@@ -6,9 +6,11 @@ import java.nio.file.{Files, Path, Paths}
 import lang_m2.Ast0._
 import grammar2.{M2Lexer, M2Parser}
 import org.antlr.v4.runtime.{ANTLRFileStream, CommonTokenStream}
+
 import scala.collection.JavaConversions._
 import scala.collection.mutable.ListBuffer
 import Utils._
+import lang_m2.Compiler.Config
 
 /**
   * Created by over on 20.09.16.
@@ -23,7 +25,7 @@ class CompilerKernel {
 
   def message(level: Int, msg: String) = println(s"${"\t" * level}$msg")
 
-  def compile(level: Int, include: Seq[Path], currentPkg: Seq[String], sourcePath: Path, isMain: Boolean): CompileResult = {
+  def compile(level: Int, config: Config, currentPkg: Seq[String], sourcePath: Path, isMain: Boolean): CompileResult = {
     val time1 = System.currentTimeMillis()
 
     message(level, s"compile $sourcePath")
@@ -48,7 +50,7 @@ class CompilerKernel {
       message(level, s"- import ${_import.seq.map(_.value).mkString(".")}")
 
       // try to find in include dirs
-      val includePaths = include.map { path =>
+      val includePaths = config.include.map { path =>
         (path, path.resolve(modPath))
       }
 
@@ -57,8 +59,8 @@ class CompilerKernel {
       }
 
       foundModule.map {
-        case (_, foundModule) => compile(level + 1, include = include, currentPkg = modPkg, foundModule, isMain = false)
-      }.getOrElse(throw new CompileEx(_import, CE.ImportNotResolved(modPath.toString, include.map(_.toString))))
+        case (_, foundModule) => compile(level + 1, config, currentPkg = modPkg, foundModule, isMain = false)
+      }.getOrElse(throw new CompileEx(_import, CE.ImportNotResolved(modPath.toString, config.include.map(_.toString))))
 
     }
 
@@ -125,7 +127,7 @@ class CompilerKernel {
     }
 
     val gccArgs =
-      if (isMain) Seq("gcc", "-g", "-lSDL2", "-lGL", "-lkazmath", "-lSOIL", fnameNoExt + ".out.s") ++ importedModules.map(_.binLocation.toString) ++ Seq("-o", fnameNoExt)
+      if (isMain) Seq("gcc", "-g", fnameNoExt + ".out.s") ++ config.libs ++ importedModules.map(_.binLocation.toString) ++ Seq("-o", fnameNoExt)
       else Seq("gcc", "-g", "-c", fnameNoExt + ".out.s", "-o", s"$fnameNoExt.o")
     message(level, gccArgs.mkString("- ", " ", ""))
 

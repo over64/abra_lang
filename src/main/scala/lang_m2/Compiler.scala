@@ -13,20 +13,22 @@ import scala.collection.mutable
   * Created by over on 14.08.16.
   */
 object Compiler {
-  case class Config(include: Seq[Path] = Seq(), file: Path = null)
+  case class Config(include: Seq[Path] = Seq(), libs: Seq[String] = Seq(), file: Path = null)
 
   def main(args: Array[String]): Unit = {
     val argsParser = new scopt.OptionParser[Config]("kadabra") {
       head("kadabra", "0.0.1")
 
-      opt[String]('I', "include").valueName("source base dir").action {
+      opt[Seq[String]]('I', "include").valueName("<dir1>,<dir2>...").action {
         case (files, config) =>
-          println("here")
-          config.copy(include = files.split(",").map { file =>
-            println(s"file - $file")
+          config.copy(include = files.map { file =>
             Paths.get(file).normalize().toRealPath().toAbsolutePath
           })
-      }
+      }.text("include directories")
+
+      opt[Seq[String]]('l', "libs").valueName("<lib1>,<lib2>...").action {
+        case (libs, config) => config.copy(libs = libs.map(lib => "-l" + lib))
+      }.text("link with libs")
 
       arg[String]("<file>").action {
         case (file, config) =>
@@ -51,9 +53,10 @@ object Compiler {
           }.map { case (p1, p2) => p2 }.toSeq.dropRight(1)
 
         println(s"includes = ${config.include}")
+        println(s"libs = ${config.libs}")
 
 
-        new CompilerKernel().compile(level = 0, config.include, basePackage, config.file, isMain = true)
+        new CompilerKernel().compile(level = 0, config, basePackage, config.file, isMain = true)
 
       case None => System.exit(1)
     }

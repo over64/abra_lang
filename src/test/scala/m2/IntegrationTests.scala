@@ -2,9 +2,11 @@ package m2
 
 import java.nio.file.Paths
 
+import lang_m2.Compiler.Config
 import lang_m2.CompilerKernel
 import org.scalatest.FunSuite
 import lang_m2.Utils.{run => binRun}
+
 
 /**
   * Created by over on 11.09.16.
@@ -14,7 +16,8 @@ class IntegrationTests extends FunSuite {
   def assertRunEquals(fname: String)(exit: Option[Int], stdout: Option[String] = None, stderr: Option[String] = None) = {
     val binPath =
       new CompilerKernel()
-        .compile(level = 0, include = Seq(Paths.get("tl")), currentPkg = Seq("tl", "integration"), sourcePath = Paths.get(fname), isMain = true)
+        .compile(level = 0, Config(include = Seq(Paths.get("tl"))), currentPkg = Seq("tl", "integration"),
+          sourcePath = Paths.get(fname), isMain = true)
         .binLocation
 
 
