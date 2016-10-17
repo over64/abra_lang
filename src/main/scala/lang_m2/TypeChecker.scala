@@ -61,19 +61,30 @@ class TypeChecker {
         InferedExp(infFn.ftype, Seq(), Some(Ast1.lGlobal(fnName)))
       case call@ApplyCall(self) =>
         val inferedSelf = evalBlockExpression(namespace, scope, forInit = true, None, self)
-        val callableFn = namespace.findSelfFn("apply", inferedSelf.infType, inferCallback = fn => evalFunction(namespace, fn, kind = Self))
-          .getOrElse(throw new CompileEx(call, CE.NoFnToCall("apply")))
+        inferedSelf.infType match {
+          case fp@FnPointerType(args, ret) =>
+            val lowCall = Ast1.Call(inferedSelf.init.get.asInstanceOf[Ast1.lId], namespace.toLow(fp).asInstanceOf[Ast1.FnPointer], Seq())
 
+            val (stats, init) =
+              if (forInit) (inferedSelf.stats, Some(lowCall))
+              else (inferedSelf.stats :+ lowCall, None)
+            InferedExp(ret, stats, init)
+          case _ =>
+            val callableFn = namespace.findSelfFn("apply", inferedSelf.infType, inferCallback = fn => evalFunction(namespace, fn, kind = Self))
+              .getOrElse(throw new CompileEx(call, CE.NoFnToCall("apply")))
 
-        val infArgs = Seq(inferedSelf)
-        val literal = lowLiteral(GlobalSymbol, s"${callableFn._package}apply_for_${inferedSelf.infType.name}")
-        val lowCall = Ast1.Call(literal, namespace.toLow(callableFn.ftype).asInstanceOf[FnPointer], infArgs.map(_.init.get))
+            val infArgs = Seq(inferedSelf)
+            val literal = lowLiteral(GlobalSymbol, s"${callableFn._package}apply_for_${inferedSelf.infType.name}")
+            val lowCall = Ast1.Call(literal, namespace.toLow(callableFn.ftype).asInstanceOf[FnPointer], infArgs.map(_.init.get))
 
-        val (stats, init) =
-          if (forInit) (infArgs.flatMap(_.stats), Some(lowCall))
-          else (infArgs.flatMap(_.stats) :+ lowCall, None)
+            val (stats, init) =
+              if (forInit) (infArgs.flatMap(_.stats), Some(lowCall))
+              else (infArgs.flatMap(_.stats) :+ lowCall, None)
 
-        InferedExp(callableFn.ftype.ret, stats, init)
+            InferedExp(callableFn.ftype.ret, stats, init)
+        }
+      // FIXME: add support for function application like for apply call
+      // {i: Int, j: Int, k: Int -> i + j + k}(1, 2, 3)
       case call@GetCall(self, args) =>
         val inferedSelf = evalBlockExpression(namespace, scope, forInit = true, None, self)
         val callableFn = namespace.findSelfFn("get", inferedSelf.infType, inferCallback = fn => evalFunction(namespace, fn, kind = Self))

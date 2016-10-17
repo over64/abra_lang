@@ -64,9 +64,16 @@ object Ast1 {
     .replace("&&", "$and")
 
   sealed trait lId extends Literal
-  case class lLocal(value: String) extends lId
-  case class lParam(value: String) extends lId
+  sealed trait Closurable
+  case class lLocal(value: String) extends lId with Closurable
+  case class lParam(value: String) extends lId with Closurable
   case class lGlobal(value: String) extends lId
+  case class lClosure(closured: Closurable) extends lId {
+    override val value: String = closured match {
+      case lLocal(value) => value
+      case lParam(value) => value
+    }
+  }
 
   case class Var(name: String, _type: Type) extends Stat {
     def irName = "%" + name

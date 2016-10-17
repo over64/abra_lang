@@ -12,5 +12,6 @@ tl/integration/arrays
 tl/integration/floats
 tl/integration/fnpointer
 tl/integration/hw
+tl/integration/closures
 tl/sdl/kadabra.jar
 tl/sdl/main
