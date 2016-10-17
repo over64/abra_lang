@@ -93,21 +93,21 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
 
   val re = """llvm\s*\{\s*(.*)\s*\}\s*""".r
 
-  override def visitScalarType(ctx: ScalarTypeContext): ScalarType = {
+  override def visitScalarType(ctx: ScalarTypeContext): ScalarDecl = {
     val llTypeName = re.replaceFirstIn(ctx.LlLiteral().getText, "$1").trim
-    emit(ctx, ScalarType(ctx.Id().getText, llTypeName))
+    emit(ctx, ScalarDecl(ctx.Id().getText, llTypeName))
   }
 
-  override def visitTypeField(ctx: TypeFieldContext): TypeField =
-    emit(ctx, TypeField(ctx.getToken(SELF, 0) != null, ctx.Id().getText, visitTypeHint(ctx.typeHint())))
+  override def visitTypeField(ctx: TypeFieldContext): FieldDecl =
+    emit(ctx, FieldDecl(ctx.getToken(SELF, 0) != null, ctx.Id().getText, visitTypeHint(ctx.typeHint())))
 
-  override def visitFactorType(ctx: FactorTypeContext): FactorType =
-    emit(ctx, FactorType(
+  override def visitFactorType(ctx: FactorTypeContext): FactorDecl =
+    emit(ctx, FactorDecl(
       ctx.Id().getText,
       ctx.typeField().map { f => visitTypeField(f) }
     ))
 
-  override def visitType(ctx: TypeContext): Type =
+  override def visitType(ctx: TypeContext): TypeDecl =
     if (ctx.scalarType() != null)
       visitScalarType(ctx.scalarType())
     else visitFactorType(ctx.factorType())
@@ -301,7 +301,7 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
     val imports = ctx.import_.map { imp => visitImport_(imp) }
 
     val all = ctx.level1().map { l1 => visitLevel1(l1) }
-    val types = all.filter(_.isInstanceOf[Type]).map(_.asInstanceOf[Type])
+    val types = all.filter(_.isInstanceOf[TypeDecl]).map(_.asInstanceOf[TypeDecl])
     val functions = all.filter(_.isInstanceOf[Fn]).map(_.asInstanceOf[Fn])
 
     emit(ctx, Module(_package, imports, types, functions))

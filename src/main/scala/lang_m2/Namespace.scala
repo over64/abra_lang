@@ -31,11 +31,11 @@ case class FnContainer(var fnInfo: FnInfo)
 
 sealed trait CallableFn {
   val _package: String
-  val th: FnTypeHint
+  val ftype: FnPointerType
 }
 case class RawFn(_package: String, fn: Fn) extends FnInfo
-case class HeaderFn(_package: String, th: FnTypeHint, lowFn: Ast1.HeaderFn) extends FnInfo with CallableFn
-case class InferedFn(_package: String, th: FnTypeHint, lowFn: Ast1.Fn) extends FnInfo with CallableFn
+case class HeaderFn(_package: String, ftype: FnPointerType, lowFn: Ast1.HeaderFn) extends FnInfo with CallableFn
+case class InferedFn(_package: String, ftype: FnPointerType, lowFn: Ast1.Fn) extends FnInfo with CallableFn
 
 class Namespace(val _package: String,
                 val types: Map[ScalarTypeHint, Type],
@@ -43,13 +43,20 @@ class Namespace(val _package: String,
                 val functions: HashMap[String, HashMap[String, FnContainer]],
                 val anonFunctions: HashMap[String, InferedFn] = mutable.HashMap()) {
 
-  def toLow(th: TypeHint) = TypeCheckerUtil.toLow(types, th)
+  def toLow(etype: Type) = TypeCheckerUtil.toLow(etype)
 
-  def resolveType(th: ScalarTypeHint): Type =
-    types.getOrElse(th, throw new CompileEx(th, CE.TypeNotFound(th)))
+  //  def resolveType(th: TypeHint): Type = th match {
+  //    case th: ScalarTypeHint => types.getOrElse(th, throw new CompileEx(th, CE.TypeNotFound(th)))
+  //    case fth: FnTypeHint =>
+  //  }
 
-  def findSelfFn(name: String, selfType: ScalarTypeHint, inferCallback: RawFn => CallableFn): Option[CallableFn] =
-    extensions.get(selfType).flatMap { fnMap =>
+  def findSelfFn(name: String, selfType: Type, inferCallback: RawFn => CallableFn): Option[CallableFn] = {
+    val selfTh = selfType match {
+      case ScalarType(fullModName, name, _) => ScalarTypeHint(name, fullModName)
+      case FactorType(fullModName, name, _) => ScalarTypeHint(name, fullModName)
+      case fnPtr: FnPointerType => throw new CompileEx(null, CE.FnlTypeNotEntensible())
+    }
+    extensions.get(selfTh).flatMap { fnMap =>
       fnMap.get(name)
     }.map { fnContainer =>
       fnContainer.fnInfo match {
@@ -58,6 +65,7 @@ class Namespace(val _package: String,
         case fn: InferedFn => fn
       }
     }
+  }
 
   def findFn(name: String, inferCallback: RawFn => CallableFn, pkg: String = _package): Option[CallableFn] =
     functions.get(pkg).flatMap { byPkg =>

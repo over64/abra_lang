@@ -11,6 +11,7 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable.ListBuffer
 import Utils._
 import lang_m2.Compiler.Config
+import lang_m2.TypeCheckerUtil.FactorType
 
 /**
   * Created by over on 20.09.16.
@@ -71,9 +72,9 @@ class CompilerKernel {
     val lowFunctions = ListBuffer[Ast1.Fn]()
     val lowHeaders = ListBuffer[Ast1.HeaderFn]()
 
-    namespace.types.foreach {
-      case (th, FactorType(name, fields)) =>
-        structs += namespace.toLow(ScalarTypeHint(name, th._package)).asInstanceOf[Ast1.Struct]
+    namespace.types.values.foreach {
+      case ft: FactorType =>
+        structs += namespace.toLow(ft).asInstanceOf[Ast1.Struct]
       case _ =>
     }
 

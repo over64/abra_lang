@@ -7,66 +7,101 @@ import lang_m2.Ast0._
   */
 
 object TypeCheckerUtil {
+  sealed trait Type {
+    val name: String
+  }
+  case class ScalarType(fullModName: String, name: String, llType: String) extends Type
+  case class TypeField(isSelf: Boolean, name: String, ftype: Type) {
+    override def hashCode(): Int = ftype.hashCode()
+
+    override def equals(o: scala.Any): Boolean =
+      if (!o.isInstanceOf[TypeField]) false
+      else o.asInstanceOf[TypeField].ftype == ftype
+  }
+  case class FactorType(fullModName: String, name: String, fields: Seq[TypeField]) extends Type
+  case class FnPointerType(args: Seq[TypeField], ret: Type) extends Type {
+    override val name: String = s"(${args.map(_.name).mkString(",")}) -> ${ret.name}"
+  }
+  case class InferedExp(infType: Type, stats: Seq[Ast1.Stat], init: Option[Ast1.Init])
+
   val thUnit = ScalarTypeHint("Unit", "")
   val thBool = ScalarTypeHint("Boolean", "")
   val thInt = ScalarTypeHint("Int", "")
   val thFloat = ScalarTypeHint("Float", "")
   val thString = ScalarTypeHint("String", "")
 
+  val tUnit = ScalarType("", "Unit", "void")
+  val tBool = ScalarType("", "Boolean", "i1")
+  val tInt = ScalarType("", "Int", "i32")
+  val tFloat = ScalarType("", "Float", "float")
+  val tString = ScalarType("", "String", "i8*")
+
   val predefTypes = Map(
-    thUnit -> ScalarType("Unit", "void"),
-    thBool -> ScalarType("Boolean", "i1"),
-    thInt -> ScalarType("Int", "i32"),
-    thFloat -> ScalarType("Float", "float"),
-    thString -> ScalarType("String", "i8*")
+    thUnit -> tUnit,
+    thBool -> tBool,
+    thInt -> tInt,
+    thFloat -> tFloat,
+    thString -> tString
   )
 
-  def toLow(typeMap: Map[ScalarTypeHint, Type], th: TypeHint): Ast1.Type =
-    th match {
-      case sth: ScalarTypeHint =>
-        typeMap.getOrElse(sth, {
-          println(typeMap)
-          throw new CompileEx(th, CE.TypeNotFound(sth))
-        }) match {
-          case ScalarType(_, llType) => Ast1.Scalar(llType)
-          case FactorType(name, fields) => Ast1.Struct(sth._package + name, fields.map { field =>
-            Ast1.Field(field.name, toLow(typeMap, field.typeHint))
-          })
-        }
-      case FnTypeHint(seq, ret) =>
-        Ast1.FnPointer(seq.map(arg => Ast1.Field(arg.name, toLow(typeMap, arg.typeHint))), toLow(typeMap, ret))
+  def typeToTypeHint(etype: Type): TypeHint = etype match {
+    case ScalarType(fullModName, name, _) => ScalarTypeHint(name, fullModName)
+    case FactorType(fullModName, name, _) => ScalarTypeHint(name, fullModName)
+    case FnPointerType(args, ret) => FnTypeHint(args.map { arg =>
+      FnTypeHintField(arg.name, typeToTypeHint(arg.ftype))
+    }, typeToTypeHint(ret))
+  }
+
+  def toLow(etype: Type): Ast1.Type =
+    etype match {
+      case ScalarType(_, _, llType) => Ast1.Scalar(llType)
+      case FactorType(fullModName, name, fields) =>
+        Ast1.Struct(fullModName + name, fields.map { field =>
+          Ast1.Field(field.name, toLow(field.ftype))
+        })
+      case FnPointerType(args, ret) =>
+        Ast1.FnPointer(args.map { arg =>
+          Ast1.Field(arg.name, toLow(arg.ftype))
+        }, toLow(ret))
     }
 
-  def assertTypeEquals(node: ParseNode, expected: TypeHint, has: TypeHint): Unit =
-    if (expected != has) throw new CompileEx(node, CE.ExprTypeMismatch(expected, has))
+
+  implicit class TypeHintWrapper(th: TypeHint) {
+    def toType(implicit namespace: Namespace): Type = {
+      th match {
+        case sth: ScalarTypeHint => namespace.types.getOrElse(sth, throw new CompileEx(sth, CE.TypeNotFound(sth)))
+        case FnTypeHint(args, ret) => FnPointerType(args.map { arg =>
+          TypeField(false, arg.name, arg.typeHint.toType)
+        }, ret.toType)
+      }
+    }
+  }
+
+  def assertTypeEquals(node: ParseNode, expected: Type, has: Type): Unit =
+    if (expected != has) throw new CompileEx(node, CE.ExprTypeMismatch(expected.name, has.name))
 
   //FIXME: simplify
-  def inferFnArgs(fn: Fn) =
-  fn.typeHint match {
-    case Some(th) =>
-      fn.body match {
-        case Block(args, _) =>
-          th.seq.zip(args).foreach {
-            case (protoHint, blockArg) =>
-              blockArg.typeHint.map { th =>
-                if (th.name != protoHint.typeHint.name)
-                  throw new CompileEx(th, CE.ExprTypeMismatch(protoHint.typeHint, th))
-              }
-          }
-          th.seq.zip(args).map {
-            case (th, arg) => FnTypeHintField(arg.name, th.typeHint)
-          }
-        case _ => th.seq
-      }
-    case None =>
-      fn.body match {
-        case inline: LlInline => throw new CompileEx(fn, CE.NeedExplicitTypeDefinition())
-        case Block(args, _) => // все аргументы должны быть с типами
-          args.map { arg =>
-            val th = arg.typeHint.getOrElse(throw new CompileEx(fn, CE.NeedExplicitTypeDefinition()))
-            FnTypeHintField(arg.name, th)
-          }
-      }
+  // Fn -> Seq[Type]
+  // Fn -> Seq[FnTypeHintField]
+  def inferFnArgs(fn: Fn): Seq[FnTypeHintField] = {
+    (fn.typeHint, fn.body) match {
+      case (Some(FnTypeHint(args, ret)), Block(blockArgs, _)) =>
+        // FIXME: check args.length vs blockArgs.length
+        args.zip(blockArgs).map {
+          case (arg, blockArg) =>
+            blockArg.typeHint.map { blockTh =>
+              if (arg.typeHint != blockTh) throw new CompileEx(blockArg, CE.ExprTypeMismatch(arg.typeHint.name, blockTh.name))
+            }
+            FnTypeHintField(blockArg.name, arg.typeHint)
+        }
+      case (Some(FnTypeHint(args, ret)), LlInline(_)) => args
+      case (None, Block(blockArgs, _)) =>
+        blockArgs.map { arg =>
+          val th = arg.typeHint.getOrElse(throw new CompileEx(fn, CE.NeedExplicitTypeDefinition()))
+          FnTypeHintField(arg.name, th)
+        }
+      case (None, LlInline(_)) => throw new CompileEx(fn, CE.NeedExplicitTypeDefinition())
+    }
   }
 
   def lowLiteral(location: SymbolLocation, literal: String) =

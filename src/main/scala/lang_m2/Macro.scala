@@ -1,7 +1,7 @@
 package lang_m2
 
 import lang_m2.Ast0._
-import TypeCheckerUtil.{thBool, toLow}
+import TypeCheckerUtil.{FactorType, FnPointerType, ScalarType, Type, thBool, toLow, typeToTypeHint}
 
 /**
   * Created by over on 23.08.16.
@@ -10,16 +10,16 @@ object Macro {
   def genConstructor(_package: String, typeMap: Map[ScalarTypeHint, Type], td: FactorType): Fn = {
     var (nextId, fieldId) = (0, -1)
     val th = FnTypeHint(td.fields.map { field =>
-      FnTypeHintField(field.name, field.typeHint)
+      FnTypeHintField(field.name, typeToTypeHint(field.ftype))
     }, ScalarTypeHint(td.name, _package))
 
     Fn(td.name, Some(th), LlInline(
       (td.fields.map { field =>
-        val lowTh = toLow(typeMap, field.typeHint).name
+        val lowTh = toLow(field.ftype).name
         fieldId += 1
 
-        field.typeHint match {
-          case sth: ScalarTypeHint if typeMap(sth).isInstanceOf[FactorType] =>
+        field.ftype match {
+          case ft: FactorType =>
             nextId += 2
             s"""
                |    %${nextId - 1} = getelementptr %struct.${_package + td.name}, %struct.${_package + td.name}* %ret, i32 0, i32 ${fieldId}
@@ -40,7 +40,7 @@ object Macro {
   def genEquals(_package: String, typeMap: Map[ScalarTypeHint, Type], td: FactorType): Fn = {
     val th = FnTypeHint(Seq(FnTypeHintField("self", ScalarTypeHint(td.name, _package)), FnTypeHintField("other", ScalarTypeHint(td.name, _package))),
       thBool)
-    val lowTh = toLow(typeMap, ScalarTypeHint(td.name, _package)).name
+    val lowTh = toLow(td).name
 
     Fn("==", Some(th), LlInline(
       s"""

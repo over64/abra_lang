@@ -1,9 +1,8 @@
 package lang_m2
 
-import java.io.{OutputStream, PrintStream}
+import java.io.OutputStream
 
-import Ast1._
-import lang_m2.Ast0.LlInline
+import lang_m2.Ast1._
 
 import scala.collection.mutable
 

@@ -11,22 +11,38 @@ import TypeCheckerUtil._
 object Namespacer {
   def mixNamespaces(module: Module, imports: Seq[Namespace]): Namespace = {
     val fullModName = module._package
-    val types = module.types.map { td =>
-      ScalarTypeHint(td.name, fullModName) -> td
-    }.toMap
-    val typeMap = HashMap[ScalarTypeHint, Type]()
 
-    (predefTypes ++ types).foreach { tuple =>
-      typeMap += tuple
-    }
-
-    val extensions = HashMap[ScalarTypeHint, HashMap[String, FnContainer]]()
-    val functions = HashMap[String, HashMap[String, FnContainer]]()
+    val typeMap = HashMap[ScalarTypeHint, Type](predefTypes.toSeq: _*)
 
     imports.foreach { namespace =>
       namespace.types.foreach {
         case (sth, _type) => typeMap.put(sth, _type)
       }
+    }
+
+    module.typeDecls.foreach { td =>
+      def typeHintToType(th: TypeHint): Type = th match {
+        case sth: ScalarTypeHint => typeMap.getOrElse(sth, throw new CompileEx(sth, CE.TypeNotFound(sth)))
+        case FnTypeHint(args, ret) => FnPointerType(args.map { arg =>
+          TypeField(false, arg.name, typeHintToType(arg.typeHint))
+        }, typeHintToType(ret))
+      }
+      val newType = td match {
+        case ScalarDecl(name, llType) => ScalarType(fullModName, name, llType)
+        case FactorDecl(name, declFields) =>
+          FactorType(fullModName, name, declFields.map { declField =>
+            TypeField(declField.isSelf, declField.name, typeHintToType(declField.th))
+          })
+      }
+
+      typeMap += ScalarTypeHint(td.name, fullModName) -> newType
+    }
+
+
+    val extensions = HashMap[ScalarTypeHint, HashMap[String, FnContainer]]()
+    val functions = HashMap[String, HashMap[String, FnContainer]]()
+
+    imports.foreach { namespace =>
       namespace.extensions.map {
         case (sth, fnMap) =>
           val byPkg = extensions.getOrElse(sth, {
@@ -53,7 +69,11 @@ object Namespacer {
     }
 
     // macro generation
-    val definedFunctions = module.functions ++ module.types.filter(_.isInstanceOf[FactorType]).flatMap { case ft: FactorType =>
+    val localFactorTypes = typeMap.values.filter {
+      case ft: FactorType if ft.fullModName == fullModName => true
+      case _ => false
+    }
+    val definedFunctions = module.functions ++ localFactorTypes.flatMap { case ft: FactorType =>
       val tm = typeMap.toMap
       Seq(
         Macro.genConstructor(fullModName, tm, ft),

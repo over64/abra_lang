@@ -1,6 +1,7 @@
 package lang_m2
 
-import lang_m2.Ast0.{ScalarTypeHint, TypeHint}
+import lang_m2.Ast0.ScalarTypeHint
+import lang_m2.TypeCheckerUtil.Type
 
 /**
   * Created by over on 25.08.16.
@@ -26,8 +27,8 @@ object CE {
   case class VarNotFound(varName: String) extends CompileError {
     override def toString = s"variable with name $varName not found"
   }
-  case class ExprTypeMismatch(expected: TypeHint, has: TypeHint) extends CompileError {
-    override def toString = s"expected expression of type ${expected.name} has ${has.name}"
+  case class ExprTypeMismatch(expected: String, has: String) extends CompileError {
+    override def toString = s"expected expression of type $expected has $has"
   }
   case class NoFnToCall(fnName: String) extends CompileError {
     override def toString = s"cannot find candidate for call $fnName"

@@ -12,7 +12,7 @@ class TypesParse extends FunSuite {
 
   test("parse scalar type") {
     import scalarTypeParser._
-    withInput("type Int = llvm { i32 }", ScalarType("Int", "i32"))
-    withInput("type SimdVec4f = llvm  {   <4 x float>   } ", ScalarType("SimdVec4f", "<4 x float>"))
+    withInput("type Int = llvm { i32 }", ScalarDecl("Int", "i32"))
+    withInput("type SimdVec4f = llvm  {   <4 x float>   } ", ScalarDecl("SimdVec4f", "<4 x float>"))
   }
 }

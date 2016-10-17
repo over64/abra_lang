@@ -16,13 +16,13 @@ object Ast0 {
   case class lString(value: String) extends Literal
   case class lId(value: String) extends Literal
 
-  sealed trait Type extends Level1Declaration {
+  sealed trait TypeDecl extends Level1Declaration {
     val name: String
   }
 
-  case class ScalarType(name: String, llType: String) extends Type
-  case class TypeField(isSelf: Boolean, name: String, typeHint: TypeHint) extends ParseNode
-  case class FactorType(name: String, fields: Seq[TypeField]) extends Type
+  case class ScalarDecl(name: String, llType: String) extends TypeDecl
+  case class FieldDecl(isSelf: Boolean, name: String, th: TypeHint) extends ParseNode
+  case class FactorDecl(name: String, fields: Seq[FieldDecl]) extends TypeDecl
 
   sealed trait TypeHint extends ParseNode {
     val name: String
@@ -62,5 +62,5 @@ object Ast0 {
   case class LlInline(value: String) extends FnBody with ParseNode
   case class Fn(name: String, typeHint: Option[FnTypeHint], body: FnBody, retTypeHint: Option[TypeHint]) extends Level1Declaration
   case class Import(seq: Seq[lId]) extends Level1Declaration
-  case class Module(_package: String, imports: Seq[Import], types: Seq[Type], functions: Seq[Fn]) extends ParseNode
+  case class Module(_package: String, imports: Seq[Import], typeDecls: Seq[TypeDecl], functions: Seq[Fn]) extends ParseNode
 }
