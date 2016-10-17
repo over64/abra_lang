@@ -40,9 +40,7 @@ object Ast1 {
   sealed trait Stat
   sealed trait Init
 
-  sealed trait Literal extends Init {
-    val value: String
-  }
+  sealed trait Literal extends Init
 
   case class lInt(value: String) extends Literal
   case class lFloat(value: String) extends Literal
@@ -68,12 +66,7 @@ object Ast1 {
   case class lLocal(value: String) extends lId with Closurable
   case class lParam(value: String) extends lId with Closurable
   case class lGlobal(value: String) extends lId
-  case class lClosure(closured: Closurable) extends lId {
-    override val value: String = closured match {
-      case lLocal(value) => value
-      case lParam(value) => value
-    }
-  }
+  case class lClosure(value: Closurable) extends lId
 
   case class Var(name: String, _type: Type) extends Stat {
     def irName = "%" + name
