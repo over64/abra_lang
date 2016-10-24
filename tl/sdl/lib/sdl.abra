@@ -1,17 +1,23 @@
 import abra.int
 
-def INIT_TIMER = 1
-def INIT_AUDIO = 16
-def INIT_VIDEO = 32  # SDL_INIT_VIDEO implies SDL_INIT_EVENTS
-def INIT_JOYSTICK = 512 # SDL_INIT_JOYSTICK implies SDL_INIT_EVENTS
-def INIT_HAPTIC = 4096
-def INIT_GAMECONTROLLER = 8192 # SDL_INIT_GAMECONTROLLER implies SDL_INIT_JOYSTICK
-def INIT_EVENTS = 16384
-def INIT_NOPARACHUTE = 1048576  # compatibility; this flag is ignored
+def INIT_TIMER          = 0x00000001
+def INIT_AUDIO          = 0x00000010
+def INIT_VIDEO          = 0x00000020 # SDL_INIT_VIDEO implies SDL_INIT_EVENTS
+def INIT_JOYSTICK       = 0x00000200 # SDL_INIT_JOYSTICK implies SDL_INIT_EVENTS
+def INIT_HAPTIC         = 0x00001000
+def INIT_GAMECONTROLLER = 0x00002000 # SDL_INIT_GAMECONTROLLER implies SDL_INIT_JOYSTICK
+def INIT_EVENTS         = 0x00004000
+def INIT_NOPARACHUTE    = 0x00100000 # compatibility; this flag is ignored
 
-#def INIT_EVERYTHING =
-#                SDL_INIT_TIMER or SDL_INIT_AUDIO or SDL_INIT_VIDEO or SDL_INIT_EVENTS or
-#                or SDL_INIT_JOYSTICK or SDL_INIT_HAPTIC or SDL_INIT_GAMECONTROLLER
+# FIXME 1 - make INIT_TIMER as INIT_TIMER()
+# FIXME 2 - allow \n between operands of infix operator
+#def INIT_EVERYTHING = INIT_TIMER
+#                or INIT_AUDIO
+#                or INIT_VIDEO
+#                or INIT_EVENTS
+#                or INIT_JOYSTICK
+#                or INIT_HAPTIC
+#                or INIT_GAMECONTROLLER
 
 def init: (mode: Int) -> Int = llvm {
     %1 = call i32 @SDL_Init(i32 %mode)
@@ -21,30 +27,30 @@ def init: (mode: Int) -> Int = llvm {
 type Window = llvm { i8* }
 type GLContext = llvm { i8* }
 
-def WINDOW_FULLSCREEN = 1         # fullscreen window
-def WINDOW_OPENGL = 2         # window usable with OpenGL context
-def WINDOW_SHOWN = 4          # window is visible
-def WINDOW_HIDDEN = 8         # window is not visible
-def WINDOW_BORDERLESS = 16     # no window decoration
-def WINDOW_RESIZABLE = 32      # window can be resized
-def WINDOW_MINIMIZED = 64      # window is minimized
-def WINDOW_MAXIMIZED = 128      # window is maximized
-def WINDOW_INPUT_GRABBED = 256  # window has grabbed input focus
-def WINDOW_INPUT_FOCUS = 512    # window has input focus
-def WINDOW_MOUSE_FOCUS = 1024    # window has mouse focus
-def WINDOW_FULLSCREEN_DESKTOP = WINDOW_FULLSCREEN() or 4096
-def WINDOW_FOREIGN = 2048        # window not created by SDL
-def WINDOW_ALLOW_HIGHDPI = 8192  # window should be created in high-DPI mode if supported
-def WINDOW_MOUSE_CAPTURE = 16384  # window has mouse captured (unrelated to INPUT_GRABBED)
+def WINDOW_FULLSCREEN         = 0x00000001 # fullscreen window
+def WINDOW_OPENGL             = 0x00000002 # window usable with OpenGL context
+def WINDOW_SHOWN              = 0x00000004 # window is visible
+def WINDOW_HIDDEN             = 0x00000008 # window is not visible
+def WINDOW_BORDERLESS         = 0x00000010 # no window decoration
+def WINDOW_RESIZABLE          = 0x00000020 # window can be resized
+def WINDOW_MINIMIZED          = 0x00000040 # window is minimized
+def WINDOW_MAXIMIZED          = 0x00000080 # window is maximized
+def WINDOW_INPUT_GRABBED      = 0x00000100 # window has grabbed input focus
+def WINDOW_INPUT_FOCUS        = 0x00000200 # window has input focus
+def WINDOW_MOUSE_FOCUS        = 0x00000400 # window has mouse focus
+def WINDOW_FULLSCREEN_DESKTOP = WINDOW_FULLSCREEN() or 0x00001000
+def WINDOW_FOREIGN            = 0x00000800 # window not created by SDL
+def WINDOW_ALLOW_HIGHDPI      = 0x00002000 # window should be created in high-DPI mode if supported
+def WINDOW_MOUSE_CAPTURE      = 0x00004000 # window has mouse captured (unrelated to INPUT_GRABBED)
 
 def createWindow: (title: String, x: Int, y: Int, w: Int, h: Int, flags: Int) -> Window = llvm {
     %1 = call i8* @SDL_CreateWindow(i8* %title, i32 %x, i32 %y, i32 %w, i32 %h, i32 %flags)
     ret i8* %1
 }
 
-def NO_EVENT = 0
-def EVENT_QUIT = 256
-def EVENT_KEYDOWN = 768
+def NO_EVENT      = 0x000
+def EVENT_QUIT    = 0x100
+def EVENT_KEYDOWN = 0x300
 
 type EventData = llvm { [56 x i8] }
 type Event = (eventType: Int, data: EventData)

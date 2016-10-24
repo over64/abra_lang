@@ -45,6 +45,7 @@ COMMENT : '#' ~[\r\n]* -> skip ;
 LlLiteral : LlBegin IrInline LlEnd;
 
 IntLiteral   : '-'?  '0' | NonZeroDigit Digit* ;
+HexLiteral   : '0' [xX] HexDigit+ ;
 FloatLiteral : '-'? Digit+ '.' Digit+ ExponentPart? | Digit+ ExponentPart ;
 BooleanLiteral   :  'true' | 'false';
 StringLiteral    : '\'' StringElement* '\'' ;
@@ -61,4 +62,5 @@ fragment Char             :  ~[\\\'\n];
 fragment CharEscapeSeq    : '\\' ('b' | 't' | 'n' | 'f' | 'r' | '\'' | '\\') ;
 fragment ExponentPart     :  ('E' | 'e') ('+' | '-')? Digit+ ;
 fragment Digit            :  '0' | NonZeroDigit ;
-fragment NonZeroDigit     :  '1' .. '9';
+fragment NonZeroDigit     :  '1' .. '9' ;
+fragment HexDigit         :   [0-9a-fA-F] ;

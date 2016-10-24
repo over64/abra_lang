@@ -4,6 +4,7 @@ options {
 }
 
 literal           : IntLiteral
+                  | HexLiteral
                   | FloatLiteral
                   | BooleanLiteral
                   | StringLiteral

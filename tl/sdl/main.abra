@@ -149,7 +149,8 @@ def main = {
         then sys.panic('unable to init SDL')
         else 'SDL init ok'.print
 
-    val window = sdl.createWindow('ABRA Lang Demo 0!', 100, 100, 640, 480, sdl.WINDOW_SHOWN or sdl.WINDOW_OPENGL)
+    val window = sdl.createWindow('ABRA Lang Demo 0!', 100, 100, 640, 480,
+        sdl.WINDOW_SHOWN or sdl.WINDOW_OPENGL or sdl.WINDOW_RESIZABLE)
     val glContext = window.glCreateContext()
     val renderer = mkRenderer()
 

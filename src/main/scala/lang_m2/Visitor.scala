@@ -1,5 +1,7 @@
 package lang_m2
 
+import java.math.BigInteger
+
 import grammar2.M2Parser._
 import grammar2.M2ParserVisitor
 import org.antlr.v4.runtime.{ParserRuleContext, Token}
@@ -32,6 +34,8 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
       if (terminal == null)
         terminal = ctx.IntLiteral()
       if (terminal == null)
+        terminal = ctx.HexLiteral()
+      if (terminal == null)
         terminal = ctx.StringLiteral()
       if (terminal == null)
         terminal = ctx.Id()
@@ -49,6 +53,7 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
           lString(text.substring(1, length - 1))
         case FloatLiteral => lFloat(token.getText)
         case IntLiteral => lInt(token.getText)
+        case HexLiteral => lInt(new BigInteger(token.getText.stripPrefix("0x"), 16).toString())
         case BooleanLiteral => lBoolean(token.getText)
         case SELF => lId(token.getText)
       })

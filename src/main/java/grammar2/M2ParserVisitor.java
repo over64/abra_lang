@@ -1,4 +1,4 @@
-// Generated from /home/over/build/test_lang/grammar/M2Parser.g4 by ANTLR 4.5.3
+// Generated from /home/over/build/abra_lang/grammar/M2Parser.g4 by ANTLR 4.5.3
 package grammar2;
 import org.antlr.v4.runtime.tree.ParseTreeVisitor;
 
