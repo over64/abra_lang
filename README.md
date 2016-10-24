@@ -22,7 +22,6 @@ Research platform for design language with new memory management and modularity 
   - simple FFI to C via LLVM IR
 
 #### In progress in M2
-  - integer hex literals
   - closures
   - named parameters
   - early returns
