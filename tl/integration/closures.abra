@@ -1,8 +1,25 @@
+import abra.int
+
+def foo = \fn: () -> Unit ->
+    fn()
+
 def main = {
     var x = 0
+
+    #store and call
+    val closure = {
+        x = x + 1
+    }
+    closure()
+
+    # anon call
     {
         x = x + 1
-        { x = x + 1 }()
     }()
+#
+#    foo({
+#        x = x + 1
+#    })
+
     x
-}: Int # 2 expected
+}: Int # 3 expected

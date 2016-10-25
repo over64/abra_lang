@@ -207,4 +207,30 @@ class LowLangTest extends FunSuite with LowUtil {
         )).assertRunEquals(Some(toInt(toBoolean(i) || toBoolean(j))))
     }
   }
+
+  // def main = {
+  //   var x = 0
+  //   { x = 42 }()
+  // }: Unit
+  test("closure local") {
+    val closureFnType = FnPointer(
+      args = Seq(),
+      ret = Scalar("void"),
+      closure = Some(FnClosure("tclosure1", vals = Seq(ClosureVal(lLocal("x"), tInt)))))
+    Module(
+      functions = Seq(
+        Fn("anonFn1", closureFnType, Block(Seq(
+          Store(lClosure("x"), Seq(), tInt, lInt("42")),
+          RetVoid()
+        ))),
+        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(Seq(
+          Var("x", tInt),
+          Store(lLocal("x"), Seq(), tInt, lInt("0")),
+          Var("fn", closureFnType),
+          Store(lLocal("fn"), Seq(), closureFnType, lGlobal("anonFn1")),
+          Call(lLocal("fn"), closureFnType, args = Seq()),
+          Ret(tInt, lLocal("x"))
+        )))
+      )).assertRunEquals(Some(42))
+  }
 }

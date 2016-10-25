@@ -15,8 +15,8 @@ class TypeChecker {
   }
 
   def nextAnonFn = {
-    annoVars += 1
-    s"anonFn$annoVars"
+    anonFns += 1
+    s"anonFn$anonFns"
   }
 
   def nextLowVar = {
@@ -56,13 +56,18 @@ class TypeChecker {
           case _ => None
         }.getOrElse(None)
 
-        val fnName = nextAnonFn
-        val infFn = evalFunction(namespace, RawFn("", Fn(fnName, fnRet, block, None)), kind = Anon)
-        InferedExp(infFn.ftype, Seq(), Some(Ast1.lGlobal(fnName)))
+        val infFn = evalFunction(namespace, RawFn("", Fn(nextAnonFn, fnRet, block, None)), kind = Anon, closureScope = Some(scope))
+        val lowName = scope.addVar(null, nextAnonVar, infFn.ftype, isMutable = false, LocalSymbol, nextLowVar)
+
+        val lowType = namespace.toLow(infFn.ftype)
+
+        InferedExp(infFn.ftype,
+          Seq(Ast1.Var(lowName, lowType), Ast1.Store(Ast1.lLocal(lowName), Seq(), lowType, Ast1.lGlobal(infFn.lowFn.name))),
+          Some(Ast1.lLocal(lowName)))
       case call@ApplyCall(self) =>
         val inferedSelf = evalBlockExpression(namespace, scope, forInit = true, None, self)
         inferedSelf.infType match {
-          case fp@FnPointerType(args, ret) =>
+          case fp@FnPointerType(name, args, ret, closure) =>
             val lowCall = Ast1.Call(inferedSelf.init.get.asInstanceOf[Ast1.lId], namespace.toLow(fp).asInstanceOf[Ast1.FnPointer], Seq())
 
             val (stats, init) =
@@ -351,7 +356,7 @@ class TypeChecker {
                  typeAdvice: Option[Type],
                  expressions: Seq[BlockExpression],
                  retMapper: (Namespace, Option[InferedExp]) => InferedExp): (Type, Ast1.Block) = {
-    val childScope = scope.mkChild
+    val childScope = new BlockScope(Some(scope))
     val stats = expressions.dropRight(1).flatMap { blockExpr =>
       evalBlockExpression(namespace, childScope, forInit = false, None, blockExpr).stats
     }
@@ -374,7 +379,7 @@ class TypeChecker {
     InferedExp(tUnit, infExp.stats ++ lastStats ++ Seq(Ast1.RetVoid()), None)
   }
 
-  def evalFunction(implicit namespace: Namespace, rawFn: RawFn, kind: FnKind): InferedFn = {
+  def evalFunction(implicit namespace: Namespace, rawFn: RawFn, kind: FnKind, closureScope: Option[Scope] = None): InferedFn = {
     val fn = rawFn.fn
     val infArgs = inferFnArgs(fn)
     val firstArgTh = infArgs.headOption.map(_.typeHint)
@@ -396,14 +401,14 @@ class TypeChecker {
         }
     }
 
+    val childScope = new FnScope(closureScope)
+
     val (inferedRet, lowBody): (Type, Ast1.FnBody) = fn.body match {
       case LlInline(value) => // ret должен быть указан явно
         expectedRet.map { ret =>
           (ret, Ast1.IrInline(value))
         }.getOrElse(throw new CompileEx(fn, CE.NeedExplicitTypeDefinition()))
       case self@Block(args, seq) =>
-        val childScope = new Scope(None)
-
         infArgs.foreach { arg =>
           childScope.addVar(arg, arg.name, arg.typeHint.toType, isMutable = false, ParamSymbol, nextLowVar)
         }
@@ -441,9 +446,16 @@ class TypeChecker {
       case Anon => s"${fn.name}"
     }
 
-    val ftype = FnPointerType(infArgs.map { infArg =>
-      TypeField(false, infArg.name, infArg.typeHint.toType)
-    }, inferedRet)
+    val ftype =
+      if (childScope.closuredVars.isEmpty)
+        FnPointerType(infArgs.map { infArg =>
+          TypeField(false, infArg.name, infArg.typeHint.toType)
+        }, inferedRet)
+      else
+        FnPointerType(s"tclosure$anonFns", infArgs.map { infArg =>
+          TypeField(false, infArg.name, infArg.typeHint.toType)
+        }, inferedRet, childScope.closuredVars)
+
     val lowSignature = namespace.toLow(ftype).asInstanceOf[Ast1.FnPointer]
 
     val lowFn = Ast1.Fn(lowFnName, lowSignature, lowBody)

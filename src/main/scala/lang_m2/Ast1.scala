@@ -11,15 +11,29 @@ object Ast1 {
   case class Struct(_name: String, fields: Seq[Field]) extends Type {
     override val name: String = s"%struct.${_name}"
   }
-  case class FnPointer(args: Seq[Field], ret: Type) extends Type {
-    override val name: String = s"${ret.name} (${
-      args.map { a =>
-        a._type match {
-          case struct: Struct => struct.name + "*"
-          case other@_ => other.name
-        }
-      }.mkString(" ,")
-    })*"
+  case class ClosureVal(closurable: Closurable, varType: Type) {
+    def irType = (varType, closurable) match {
+      case (Scalar(name), lLocal(_)) => s"$name*"
+      case (Scalar(name), lParam(_)) => name
+      case (s: Struct, _) => s"${s.name}*"
+    }
+  }
+  case class FnClosure(closureType: String, vals: Seq[ClosureVal])
+  case class FnPointer(args: Seq[Field], ret: Type, closure: Option[FnClosure] = None) extends Type {
+    val callName: String = {
+      val argsWithClosure = closure match {
+        case Some(fnClosure) => realArgs :+ Field("closure", Scalar("i8*"))
+        case None => realArgs
+      }
+      s"${realRet.name} (${
+        argsWithClosure.map { arg =>
+          arg._type match {
+            case struct: Struct => struct.name + "*"
+            case other@_ => other.name
+          }
+        }.mkString(", ")
+      })*"
+    }
 
     def realRet = ret match {
       case s: Struct => Scalar("void")
@@ -35,6 +49,13 @@ object Ast1 {
       case struct: Struct => s"${arg._type.name}* %${arg.name}"
       case (_: Scalar | _: FnPointer) => s"${arg._type.name} %${arg.name}"
     })
+
+    override val name: String = {
+      closure match {
+        case Some(FnClosure(closureType, _)) => s"%$closureType"
+        case _ => callName
+      }
+    }
   }
 
   sealed trait Stat
@@ -62,11 +83,13 @@ object Ast1 {
     .replace("&&", "$and")
 
   sealed trait lId extends Literal
-  sealed trait Closurable
+  sealed trait Closurable {
+    val value: String
+  }
   case class lLocal(value: String) extends lId with Closurable
   case class lParam(value: String) extends lId with Closurable
   case class lGlobal(value: String) extends lId
-  case class lClosure(value: Closurable) extends lId
+  case class lClosure(value: String) extends lId with Closurable
 
   case class Var(name: String, _type: Type) extends Stat {
     def irName = "%" + name

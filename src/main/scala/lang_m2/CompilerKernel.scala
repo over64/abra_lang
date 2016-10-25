@@ -97,7 +97,7 @@ class CompilerKernel {
     }
 
     val anonFunctions = namespace.anonFunctions.values.map(_.lowFn)
-    val lowModule = Ast1.Module(structs, lowFunctions ++ anonFunctions, lowHeaders)
+    val lowModule = Ast1.Module(structs, anonFunctions.toSeq ++ lowFunctions, lowHeaders)
 
     val fnameNoExt = sourcePath.toAbsolutePath.toString.split("\\.").dropRight(1).mkString(".")
     val llFname = fnameNoExt + ".out.ll"

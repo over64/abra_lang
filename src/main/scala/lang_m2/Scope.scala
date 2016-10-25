@@ -12,12 +12,15 @@ case class SymbolInfo(lowName: String, isMutable: Boolean, location: SymbolLocat
 case class SymbolKey(name: String, classifier: Option[TypeHint])
 
 sealed trait SymbolLocation
-case object LocalSymbol extends SymbolLocation
-case object ParamSymbol extends SymbolLocation
+sealed trait ClosurableLocation
+case object LocalSymbol extends SymbolLocation with ClosurableLocation
+case object ParamSymbol extends SymbolLocation with ClosurableLocation
+case object ClosureSymbol extends SymbolLocation with ClosurableLocation
 case object GlobalSymbol extends SymbolLocation
 
-case class Scope(parent: Option[Scope], level: Int = 0, val vars: mutable.HashMap[String, SymbolInfo] = mutable.HashMap()) {
-  def mkChild = new Scope(parent = Some(this), level + 1)
+sealed trait Scope {
+  val parent: Option[Scope]
+  val vars: mutable.HashMap[String, SymbolInfo]
 
   def addVar(node: ParseNode, name: String, vtype: Type, isMutable: Boolean, location: SymbolLocation, varNumber: Int): String = {
     if (vars.contains(name)) throw new CompileEx(node, CE.AlreadyDefined(name))
@@ -29,6 +32,10 @@ case class Scope(parent: Option[Scope], level: Int = 0, val vars: mutable.HashMa
     lowName
   }
 
+  def findVar(name: String): Option[SymbolInfo]
+}
+
+case class BlockScope(parent: Option[Scope], vars: mutable.HashMap[String, SymbolInfo] = mutable.HashMap()) extends Scope {
   def findVar(name: String): Option[SymbolInfo] = {
     var found: Option[SymbolInfo] = vars.get(name)
     if (found == None)
@@ -36,4 +43,23 @@ case class Scope(parent: Option[Scope], level: Int = 0, val vars: mutable.HashMa
 
     found
   }
+}
+
+case class FnScope(parent: Option[Scope], vars: mutable.HashMap[String, SymbolInfo] = mutable.HashMap()) extends Scope {
+  val closuredVars = mutable.ListBuffer[SymbolInfo]()
+  def findVar(name: String): Option[SymbolInfo] = {
+    var found: Option[SymbolInfo] = vars.get(name)
+    if (found == None)
+      parent.map { parent =>
+        found = parent.findVar(name).map { si =>
+          if (!closuredVars.contains(si))
+            closuredVars += si
+          SymbolInfo(si.lowName, si.isMutable, ClosureSymbol, si.stype)
+        }
+      }
+
+    found
+  }
+
+  def closured(closureTypeName: String): Seq[SymbolInfo] = closuredVars
 }

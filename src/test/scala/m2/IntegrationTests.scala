@@ -48,4 +48,7 @@ class IntegrationTests extends FunSuite {
   test("fake arrays") {
     assertRunEquals("tl/integration/arrays.abra")(exit = Some(186))
   }
+  test("closures") {
+    assertRunEquals("tl/integration/closures.abra")(exit = Some(2))
+  }
 }
