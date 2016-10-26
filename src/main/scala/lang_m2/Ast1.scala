@@ -91,25 +91,21 @@ object Ast1 {
   case class lGlobal(value: String) extends lId
   case class lClosure(value: String) extends lId with Closurable
 
-  case class Var(name: String, _type: Type) extends Stat {
-    def irName = "%" + name
-  }
-
-  case class Access(from: Init, fromType: Type, prop: String) extends Init
-  case class Store(toVar: lId, fields: Seq[String], varType: Type, init: Init) extends Stat
-  case class Call(fn: lId, _type: FnPointer, args: Seq[Init]) extends Init with Stat
+  case class Access(from: lId, prop: String) extends Init
+  case class Store(toVar: lId, fields: Seq[String], init: Init) extends Stat
+  case class Call(fn: lId, args: Seq[Init]) extends Init with Stat
 
   case class BoolAnd(left: Init, right: Init) extends Init with Stat
   case class BoolOr(left: Init, right: Init) extends Init with Stat
   case class Cond(init: Init, _if: Seq[Stat], _else: Seq[Stat]) extends Stat
 
   case class While(init: Init, seq: Seq[Stat]) extends Stat
-  case class Ret(_type: Type, init: Init) extends Stat
+  case class Ret(init: Init) extends Stat
   case class RetVoid() extends Stat
 
   sealed trait FnBody
   case class IrInline(ir: String) extends FnBody
-  case class Block(seq: Seq[Stat]) extends FnBody
+  case class Block(vars: Map[String, Type] = Map(), stats: Seq[Stat]) extends FnBody
 
   case class Fn(name: String, _type: FnPointer, body: FnBody)
   case class HeaderFn(name: String, _type: FnPointer)

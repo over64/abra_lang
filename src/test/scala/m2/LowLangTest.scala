@@ -31,8 +31,8 @@ class LowLangTest extends FunSuite with LowUtil {
   test("return scalar type") {
     Module(
       functions = Seq(
-        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(Seq(
-          Ret(tInt, lInt("42"))
+        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(stats = Seq(
+          Ret(lInt("42"))
         )))
       )).assertRunEquals(Some(42))
   }
@@ -40,11 +40,12 @@ class LowLangTest extends FunSuite with LowUtil {
   test("local var store") {
     Module(
       functions = Seq(
-        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(Seq(
-          Var("a", tInt),
-          Store(lLocal("a"), Seq(), tInt, lInt("42")),
-          Ret(tInt, lLocal("a"))
-        )))
+        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(
+          vars = Map("a" -> tInt),
+          stats = Seq(
+            Store(lLocal("a"), Seq(), lInt("42")),
+            Ret(lLocal("a"))
+          )))
       )).assertRunEquals(Some(42))
   }
 
@@ -52,8 +53,8 @@ class LowLangTest extends FunSuite with LowUtil {
     Module(
       functions = Seq(
         fPlus,
-        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(Seq(
-          Ret(tInt, Call(lGlobal("+_for_Int"), tFnPlus, Seq(lInt("1"), lInt("2"))))
+        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(stats = Seq(
+          Ret(Call(lGlobal("+_for_Int"), Seq(lInt("1"), lInt("2"))))
         )))
       )).assertRunEquals(Some(3))
   }
@@ -62,11 +63,12 @@ class LowLangTest extends FunSuite with LowUtil {
     Module(
       functions = Seq(
         fPlus,
-        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(Seq(
-          Var("a", tFnPlus),
-          Store(lLocal("a"), Seq(), tFnPlus, lGlobal("$plus_for_Int")),
-          Ret(tInt, Call(lLocal("a"), tFnPlus, Seq(lInt("1"), lInt("2"))))
-        )))
+        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(
+          vars = Map("a" -> tFnPlus),
+          stats = Seq(
+            Store(lLocal("a"), Seq(), lGlobal("$plus_for_Int")),
+            Ret(Call(lLocal("a"), Seq(lInt("1"), lInt("2"))))
+          )))
       )).assertRunEquals(Some(3))
   }
 
@@ -75,11 +77,11 @@ class LowLangTest extends FunSuite with LowUtil {
     Module(
       functions = Seq(
         fPlus,
-        Fn("foo", tFnFoo, Block(Seq(
-          Ret(tInt, Call(lParam("self"), tFnPlus, Seq(lInt("1"), lInt("2"))))
+        Fn("foo", tFnFoo, Block(stats = Seq(
+          Ret(Call(lParam("self"), Seq(lInt("1"), lInt("2"))))
         ))),
-        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(Seq(
-          Ret(tInt, Call(lGlobal("foo"), tFnFoo, Seq(lGlobal("$plus_for_Int"))))
+        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(stats = Seq(
+          Ret(Call(lGlobal("foo"), Seq(lGlobal("$plus_for_Int"))))
         )))
       )).assertRunEquals(Some(3))
   }
@@ -88,11 +90,11 @@ class LowLangTest extends FunSuite with LowUtil {
     val tFnBar = FnPointer(Seq(), tInt)
     Module(
       functions = Seq(
-        Fn("bar", tFnBar, Block(Seq(
-          Ret(tInt, lInt("42"))
+        Fn("bar", tFnBar, Block(stats = Seq(
+          Ret(lInt("42"))
         ))),
-        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(Seq(
-          Ret(tInt, Call(lGlobal("bar"), tFnBar, Seq()))
+        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(stats = Seq(
+          Ret(Call(lGlobal("bar"), Seq()))
         )))
       )).assertRunEquals(Some(42))
   }
@@ -102,11 +104,12 @@ class LowLangTest extends FunSuite with LowUtil {
     Module(
       structs = Seq(tFoo),
       functions = Seq(
-        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(Seq(
-          Var("foo", tFoo),
-          Store(lLocal("foo"), Seq("x"), tFoo, lInt("42")),
-          Ret(tInt, Access(lLocal("foo"), tFoo, "x"))
-        )))
+        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(
+          vars = Map("foo", tFoo),
+          stats = Seq(
+            Store(lLocal("foo"), Seq("x"), lInt("42")),
+            Ret(Access(lLocal("foo"), "x"))
+          )))
       )).assertRunEquals(Some(42))
   }
 
@@ -116,14 +119,15 @@ class LowLangTest extends FunSuite with LowUtil {
     Module(
       structs = Seq(tFoo),
       functions = Seq(
-        Fn("f_x", tFnFooX, Block(Seq(
-          Ret(tInt, Access(lParam("self"), tFoo, "x"))
+        Fn("f_x", tFnFooX, Block(stats = Seq(
+          Ret(Access(lParam("self"), "x"))
         ))),
-        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(Seq(
-          Var("foo", tFoo),
-          Store(lLocal("foo"), Seq("x"), tFoo, lInt("42")),
-          Ret(tInt, Call(lGlobal("f_x"), tFnFooX, Seq(lLocal("foo"))))
-        )))
+        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(
+          vars = Map("foo" -> tFoo),
+          stats = Seq(
+            Store(lLocal("foo"), Seq("x"), lInt("42")),
+            Ret(Call(lGlobal("f_x"), Seq(lLocal("foo"))))
+          )))
       )).assertRunEquals(Some(42))
   }
 
@@ -134,15 +138,16 @@ class LowLangTest extends FunSuite with LowUtil {
     Module(
       structs = Seq(tFoo),
       functions = Seq(
-        Fn("Foo", tFnFoo, Block(Seq(
-          Store(lParam("ret"), Seq("x"), tFoo, lInt("42")),
+        Fn("Foo", tFnFoo, Block(stats = Seq(
+          Store(lParam("ret"), Seq("x"), lInt("42")),
           RetVoid()
         ))),
-        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(Seq(
-          Var("foo", tFoo),
-          Store(lLocal("foo"), Seq(), tFoo, Call(lGlobal("Foo"), tFnFoo, Seq())),
-          Ret(tInt, Access(lLocal("foo"), tFoo, "x"))
-        )))
+        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(
+          vars = Map("foo" -> tFoo),
+          stats = Seq(
+            Store(lLocal("foo"), Seq(), Call(lGlobal("Foo"), Seq())),
+            Ret(Access(lLocal("foo"), "x"))
+          )))
       )).assertRunEquals(Some(42))
   }
 
@@ -150,14 +155,15 @@ class LowLangTest extends FunSuite with LowUtil {
     Module(
       functions = Seq(
         fMore,
-        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(Seq(
-          Var("c", tInt),
-          Cond(Call(lGlobal(">_for_Int"), tFnMore, Seq(lInt("1"), lInt("2"))),
-            _if = Seq(Store(lLocal("c"), Seq(), tInt, lInt("1"))),
-            _else = Seq(Store(lLocal("c"), Seq(), tInt, lInt("2")))
-          ),
-          Ret(tInt, lLocal("c"))
-        )))
+        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(
+          vars = Map("c" -> tInt),
+          stats = Seq(
+            Cond(Call(lGlobal(">_for_Int"), Seq(lInt("1"), lInt("2"))),
+              _if = Seq(Store(lLocal("c"), Seq(), lInt("1"))),
+              _else = Seq(Store(lLocal("c"), Seq(), lInt("2")))
+            ),
+            Ret(lLocal("c"))
+          )))
       )).assertRunEquals(Some(2))
   }
 
@@ -165,14 +171,15 @@ class LowLangTest extends FunSuite with LowUtil {
     Module(
       functions = Seq(
         fPlus, fMore,
-        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(Seq(
-          Var("a", tInt),
-          Store(lLocal("a"), Seq(), tInt, lInt("0")),
-          While(Call(lGlobal(">_for_Int"), tFnMore, Seq(lInt("255"), lLocal("a"))), Seq(
-            Store(lLocal("a"), Seq(), tInt, Call(lGlobal("+_for_Int"), tFnPlus, Seq(lLocal("a"), lInt("1"))))
-          )),
-          Ret(tInt, lLocal("a"))
-        )))
+        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(
+          vars = Map("a", tInt),
+          stats = Seq(
+            Store(lLocal("a"), Seq(), lInt("0")),
+            While(Call(lGlobal(">_for_Int"), Seq(lInt("255"), lLocal("a"))), Seq(
+              Store(lLocal("a"), Seq(), Call(lGlobal("+_for_Int"), Seq(lLocal("a"), lInt("1"))))
+            )),
+            Ret(lLocal("a"))
+          )))
       )).assertRunEquals(Some(255))
   }
 
@@ -189,8 +196,8 @@ class LowLangTest extends FunSuite with LowUtil {
       //println(i, j)
       Module(
         functions = Seq(
-          Fn("main", FnPointer(args = Seq(), ret = tBool), Block(Seq(
-            Ret(tBool, BoolAnd(lInt(i.toString), lInt(j.toString)))
+          Fn("main", FnPointer(args = Seq(), ret = tBool), Block(stats = Seq(
+            Ret(BoolAnd(lInt(i.toString), lInt(j.toString)))
           )))
         )).assertRunEquals(Some(toInt(toBoolean(i) && toBoolean(j))))
     }
@@ -201,8 +208,8 @@ class LowLangTest extends FunSuite with LowUtil {
       //println(i, j)
       Module(
         functions = Seq(
-          Fn("main", FnPointer(args = Seq(), ret = tBool), Block(Seq(
-            Ret(tBool, BoolOr(lInt(i.toString), lInt(j.toString)))
+          Fn("main", FnPointer(args = Seq(), ret = tBool), Block(stats = Seq(
+            Ret(BoolOr(lInt(i.toString), lInt(j.toString)))
           )))
         )).assertRunEquals(Some(toInt(toBoolean(i) || toBoolean(j))))
     }
@@ -211,7 +218,8 @@ class LowLangTest extends FunSuite with LowUtil {
   // def main = {
   //   var x = 0
   //   { x = 42 }()
-  // }: Unit
+  //   x
+  // }: Int
   test("closure local") {
     val closureFnType = FnPointer(
       args = Seq(),
@@ -219,18 +227,53 @@ class LowLangTest extends FunSuite with LowUtil {
       closure = Some(FnClosure("tclosure1", vals = Seq(ClosureVal(lLocal("x"), tInt)))))
     Module(
       functions = Seq(
-        Fn("anonFn1", closureFnType, Block(Seq(
-          Store(lClosure("x"), Seq(), tInt, lInt("42")),
+        Fn("anonFn1", closureFnType, Block(stats = Seq(
+          Store(lClosure("x"), Seq(), lInt("42")),
           RetVoid()
         ))),
-        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(Seq(
-          Var("x", tInt),
-          Store(lLocal("x"), Seq(), tInt, lInt("0")),
-          Var("fn", closureFnType),
-          Store(lLocal("fn"), Seq(), closureFnType, lGlobal("anonFn1")),
-          Call(lLocal("fn"), closureFnType, args = Seq()),
-          Ret(tInt, lLocal("x"))
-        )))
+        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(
+          vars = Map("x" -> tInt, "fn" -> closureFnType),
+          stats = Seq(
+            Store(lLocal("x"), Seq(), lInt("0")),
+            Store(lLocal("fn"), Seq(), lGlobal("anonFn1")),
+            Call(lLocal("fn"), Seq()),
+            Ret(lLocal("x"))
+          )))
+      )).assertRunEquals(Some(42))
+  }
+
+  // def foo = \fn: () -> Unit ->
+  //   fn()
+  //
+  // def main = {
+  //   var x = 0
+  //   fn({ x = 42 })
+  //   x
+  // }: Int
+  test("closure param") {
+    val tUnit = Scalar("void")
+    val closureFnType = FnPointer(
+      args = Seq(),
+      ret = Scalar("void"),
+      closure = Some(FnClosure("tclosure1", vals = Seq(ClosureVal(lLocal("x"), tInt)))))
+    Module(
+      functions = Seq(
+        Fn("anonFn1", closureFnType, Block(stats = Seq(
+          Store(lClosure("x"), Seq(), lInt("42")),
+          RetVoid()
+        ))),
+        Fn("foo", FnPointer(args = Seq(Field("fn", FnPointer(args = Seq(), ret = tUnit))), ret = tUnit), Block(stats = Seq(
+          Call(lParam("fn"), Seq()),
+          RetVoid()
+        ))),
+        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(
+          vars = Map("x" -> tInt, "fn" -> closureFnType),
+          stats = Seq(
+            Store(lLocal("x"), Seq(), lInt("0")),
+            Store(lLocal("fn"), Seq(), lGlobal("anonFn1")),
+            Call(lGlobal("foo"), Seq(lLocal("fn"))),
+            Ret(lLocal("x"))
+          )))
       )).assertRunEquals(Some(42))
   }
 }

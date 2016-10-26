@@ -16,10 +16,10 @@ def main = {
     {
         x = x + 1
     }()
-#
-#    foo({
-#        x = x + 1
-#    })
+
+    foo({
+        x = x + 1
+    })
 
     x
 }: Int # 3 expected

@@ -307,7 +307,7 @@ class TypeChecker {
           evalBlock2(namespace, scope, typeAdvice, _else.seq, retMapper)
         }.getOrElse(tUnit, Ast1.Block(Seq()))
 
-        val lowIf = Ast1.Cond(condExp.init.get, ifBranch.seq, elseBranch.seq)
+        val lowIf = Ast1.Cond(condExp.init.get, ifBranch.stats, elseBranch.stats)
 
         if (forInit) {
           if (ifType != elseType) throw new CompileEx(self, CE.BranchTypesNotEqual())
@@ -348,7 +348,7 @@ class TypeChecker {
             else InferedExp(tUnit, Seq(), None)
         })
 
-        InferedExp(tUnit, Seq(Ast1.While(condExp.init.get, block.seq)), None)
+        InferedExp(tUnit, Seq(Ast1.While(condExp.init.get, block.stats)), None)
     }
 
   def evalBlock2(namespace: Namespace,

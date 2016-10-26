@@ -645,6 +645,7 @@ case class IrGen(val out: OutputStream) {
   }
 
   def gen(module: Module): Unit = {
+    println(module)
     out.println("declare i32 @memcmp(i8*, i8*, i64)")
     out.println("declare void @llvm.memset.p0i8.i64(i8* nocapture, i8, i64, i32, i1)")
 
