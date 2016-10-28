@@ -13,6 +13,11 @@ object Ast1 {
     override val name: String = s"%struct.${_name}"
   }
   case class ClosureVal(closurable: Closurable, varType: Type) {
+    def name: String = closurable match {
+      case lLocal(value) => value
+      case lParam(value) => value
+    }
+
     def irType = (varType, closurable) match {
       case (Scalar(name), lLocal(_)) => s"$name*"
       case (Scalar(name), lParam(_)) => name
