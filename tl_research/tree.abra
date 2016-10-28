@@ -1,0 +1,46 @@
+#     -> 1 <-
+#    |  / \ |
+#    \ /  \/
+#     2   3 <-
+#          \ |
+#          \/
+#          4
+
+type Node = (value: Int, parent: Node? = None, left: Node? = None, right: Node? = None)
+
+def appendLeft = { self: Node, out node: Node ->
+    if self.left == None {
+        # self -> self.left
+        # self.left -> node => node is borrowed
+        # node -> node.parent
+        # node.parent weak-> self
+        self.left = node
+        node.parent weak= self
+    } else
+        appendLeft(self.left, node)
+}: Unit
+
+def main = {
+    val root = Node(1)
+    root appendLeft Node(2)
+    root appendRight Node(3)
+    root appendRight Node(4)
+}
+
+type Node = (value: Int, next: Node?)
+
+def addBetween = { node1: Node, node2: Node, out x: Node? ->
+    node1.next = x
+    x.next = node2
+}: Unit
+
+def addAtIndex = { list: Node, index: Int, out newNode: Node ->
+    if index == 0 {
+        val tail = list.next # detach list.next from list
+        list.next = newNode
+        newNode.next = tail
+    } else
+        if list.next != None then
+            addAtIndex(list.next, newNode)
+        else panic('index out of bound')
+}: Unit

@@ -1,10 +1,6 @@
 package m2
 
-import java.io.{FileOutputStream, InputStream, PrintStream}
-import java.util.Scanner
-
-import lang_m2.Ast1.{Store, Var, _}
-import lang_m2.IrGen
+import lang_m2.Ast1._
 import org.scalatest.FunSuite
 
 
@@ -221,18 +217,15 @@ class LowLangTest extends FunSuite with LowUtil {
   //   x
   // }: Int
   test("closure local") {
-    val closureFnType = FnPointer(
-      args = Seq(),
-      ret = Scalar("void"),
-      closure = Some(FnClosure("tclosure1", vals = Seq(ClosureVal(lLocal("x"), tInt)))))
+    val tclosure1 = Closure("tclosure1", FnPointer(args = Seq(), ret = Scalar("void")), vals = Seq(ClosureVal(lLocal("x"), tInt)))
     Module(
       functions = Seq(
-        Fn("anonFn1", closureFnType, Block(stats = Seq(
+        Fn("anonFn1", tclosure1, Block(stats = Seq(
           Store(lClosure("x"), Seq(), lInt("42")),
           RetVoid()
         ))),
         Fn("main", FnPointer(args = Seq(), ret = tInt), Block(
-          vars = Map("x" -> tInt, "fn" -> closureFnType),
+          vars = Map("x" -> tInt, "fn" -> tclosure1),
           stats = Seq(
             Store(lLocal("x"), Seq(), lInt("0")),
             Store(lLocal("fn"), Seq(), lGlobal("anonFn1")),
@@ -247,31 +240,29 @@ class LowLangTest extends FunSuite with LowUtil {
   //
   // def main = {
   //   var x = 0
-  //   fn({ x = 42 })
+  //   foo({ x = 42 })
   //   x
   // }: Int
   test("closure param") {
     val tUnit = Scalar("void")
-    val closureFnType = FnPointer(
-      args = Seq(),
-      ret = Scalar("void"),
-      closure = Some(FnClosure("tclosure1", vals = Seq(ClosureVal(lLocal("x"), tInt)))))
+    val tclosure1 = Closure("tclosure1", FnPointer(args = Seq(), ret = tUnit), vals = Seq(ClosureVal(lLocal("x"), tInt)))
+    val tdisclosure1 = Disclosure("tdisclosure1", FnPointer(args = Seq(), ret = tUnit))
     Module(
       functions = Seq(
-        Fn("anonFn1", closureFnType, Block(stats = Seq(
+        Fn("anonFn1", tclosure1, Block(stats = Seq(
           Store(lClosure("x"), Seq(), lInt("42")),
           RetVoid()
         ))),
-        Fn("foo", FnPointer(args = Seq(Field("fn", FnPointer(args = Seq(), ret = tUnit))), ret = tUnit), Block(stats = Seq(
+        Fn("foo", FnPointer(args = Seq(Field("fn", tdisclosure1)), ret = tUnit), Block(stats = Seq(
           Call(lParam("fn"), Seq()),
           RetVoid()
         ))),
         Fn("main", FnPointer(args = Seq(), ret = tInt), Block(
-          vars = Map("x" -> tInt, "fn" -> closureFnType),
+          vars = Map("x" -> tInt, "anon1" -> tclosure1),
           stats = Seq(
             Store(lLocal("x"), Seq(), lInt("0")),
-            Store(lLocal("fn"), Seq(), lGlobal("anonFn1")),
-            Call(lGlobal("foo"), Seq(lLocal("fn"))),
+            Store(lLocal("anon1"), Seq(), lGlobal("anonFn1")),
+            Call(lGlobal("foo"), Seq(lLocal("anon1"))),
             Ret(lLocal("x"))
           )))
       )).assertRunEquals(Some(42))

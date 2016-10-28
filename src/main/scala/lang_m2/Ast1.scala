@@ -4,6 +4,7 @@ object Ast1 {
   sealed trait Type {
     val name: String
   }
+  sealed trait FnType extends Type
   case class Scalar(name: String) extends Type
   case class Field(name: String, _type: Type) {
     override def toString = s"${_type.name} %${name}"
@@ -18,15 +19,16 @@ object Ast1 {
       case (s: Struct, _) => s"${s.name}*"
     }
   }
-  case class FnClosure(closureType: String, vals: Seq[ClosureVal])
-  case class FnPointer(args: Seq[Field], ret: Type, closure: Option[FnClosure] = None) extends Type {
-    val callName: String = {
-      val argsWithClosure = closure match {
-        case Some(fnClosure) => realArgs :+ Field("closure", Scalar("i8*"))
-        case None => realArgs
-      }
+  case class Closure(typeName: String, fnPointer: FnPointer, vals: Seq[ClosureVal]) extends FnType {
+    override val name: String = typeName
+  }
+  case class Disclosure(typeName: String, fnPointer: FnPointer) extends FnType {
+    override val name: String = typeName
+  }
+  case class FnPointer(args: Seq[Field], ret: Type) extends FnType {
+    override val name: String = {
       s"${realRet.name} (${
-        argsWithClosure.map { arg =>
+        realArgs.map { arg =>
           arg._type match {
             case struct: Struct => struct.name + "*"
             case other@_ => other.name
@@ -49,13 +51,6 @@ object Ast1 {
       case struct: Struct => s"${arg._type.name}* %${arg.name}"
       case (_: Scalar | _: FnPointer) => s"${arg._type.name} %${arg.name}"
     })
-
-    override val name: String = {
-      closure match {
-        case Some(FnClosure(closureType, _)) => s"%$closureType"
-        case _ => callName
-      }
-    }
   }
 
   sealed trait Stat
@@ -107,7 +102,7 @@ object Ast1 {
   case class IrInline(ir: String) extends FnBody
   case class Block(vars: Map[String, Type] = Map(), stats: Seq[Stat]) extends FnBody
 
-  case class Fn(name: String, _type: FnPointer, body: FnBody)
+  case class Fn(name: String, _type: FnType, body: FnBody)
   case class HeaderFn(name: String, _type: FnPointer)
   case class Module(structs: Seq[Struct] = Seq(), functions: Seq[Fn], headers: Seq[HeaderFn] = Seq())
 }

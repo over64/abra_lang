@@ -9,9 +9,31 @@ def main = {
   connFactory.withConnection({ conn ->
     (1 to 10).foreach({ id ->
       # direct entity mapping using macro?
-      val user = conn
-        .execute[User]('select #name, #age from users where id = $id').headOption
-      user.print
+      match conn.select[User]('select #name, #age from users where id = $id').headOption
+        of Some(user) -> user.print
+        else 'user not found'.print
+    })
+  })
+}: Unit
+
+
+
+import org.postgresql.pg
+
+type User = (name: String, age: Int, lastName: String? = None)
+
+def main = {
+  val (uname, passwd) = ('over', '123')
+  val connFactory = pg.mkConnFactory('localhost:5432/test_db', uname, passwd)
+
+  connFactory.withConnection({ conn ->
+    (1 to 10).foreach({ id ->
+      # direct entity mapping using macro?
+      val user = conn.select[User]('select #name, #age from users where id = $id').headOption
+
+      if user != None
+        then user.print
+        else 'user not found'.print
     })
   })
 }: Unit
