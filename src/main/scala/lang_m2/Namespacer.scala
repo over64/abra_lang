@@ -23,7 +23,7 @@ object Namespacer {
     module.typeDecls.foreach { td =>
       def typeHintToType(th: TypeHint): Type = th match {
         case sth: ScalarTypeHint => typeMap.getOrElse(sth, throw new CompileEx(sth, CE.TypeNotFound(sth)))
-        case FnTypeHint(args, ret) => FnPointerType(args.map { arg =>
+        case FnTypeHint(args, ret) => FnType(args.map { arg =>
           TypeField(false, arg.name, typeHintToType(arg.typeHint))
         }, typeHintToType(ret))
       }

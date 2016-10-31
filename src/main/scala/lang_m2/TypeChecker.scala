@@ -43,16 +43,14 @@ class TypeChecker {
         val lowName = scope.addVar(v, v.name, initExp.infType, v.mutable, LocalSymbol, nextLowVar)
 
         val lowType = namespace.toLow(initExp.infType)
-        val infExp = InferedExp(tUnit,
-          Seq(Ast1.Var(lowName, lowType))
-            ++ initExp.stats
+        val infExp = InferedExp(tUnit, initExp.stats
             :+ Ast1.Store(Ast1.lLocal(lowName), Seq(), lowType, initExp.init.get),
           None)
 
         infExp
       case block@Block(args, seq) =>
         val fnRet = typeAdvice.map {
-          case fnPtr: FnPointerType => Some(typeToTypeHint(fnPtr).asInstanceOf[FnTypeHint])
+          case fnPtr: FnType => Some(typeToTypeHint(fnPtr).asInstanceOf[FnTypeHint])
           case _ => None
         }.getOrElse(None)
 
@@ -67,7 +65,7 @@ class TypeChecker {
       case call@ApplyCall(self) =>
         val inferedSelf = evalBlockExpression(namespace, scope, forInit = true, None, self)
         inferedSelf.infType match {
-          case fp@FnPointerType(name, args, ret, closure) =>
+          case fp@FnType(name, args, ret, closure) =>
             val lowCall = Ast1.Call(inferedSelf.init.get.asInstanceOf[Ast1.lId], namespace.toLow(fp).asInstanceOf[Ast1.FnPointer], Seq())
 
             val (stats, init) =
@@ -178,10 +176,10 @@ class TypeChecker {
           throw new CompileEx(self, CE.NoFnToCall(fnName))
         }
       case self@Call(fnName, args) =>
-        var found: Option[(String, SymbolLocation, (String, FnPointerType))] = None
+        var found: Option[(String, SymbolLocation, (String, FnType))] = None
         scope.findVar(fnName).map { si =>
-          if (si.stype.isInstanceOf[FnPointerType])
-            found = Some((si.lowName, si.location, ("", si.stype.asInstanceOf[FnPointerType])))
+          if (si.stype.isInstanceOf[FnType])
+            found = Some((si.lowName, si.location, ("", si.stype.asInstanceOf[FnType])))
         }
         namespace.findFn(fnName, inferCallback = fn => evalFunction(namespace, fn, kind = NonSelf)).map { callableFn =>
           found = Some((fnName, GlobalSymbol, (callableFn._package, callableFn.ftype)))
@@ -423,7 +421,7 @@ class TypeChecker {
               val lowType = scope.toLow(infExp.infType)
               val seq = infExp.infType match {
                 case fact: FactorType => Seq(Ast1.Store(Ast1.lParam("ret"), Seq(), lowType, infExp.init.get), Ast1.RetVoid())
-                case fnPtr: FnPointerType => Seq(Ast1.Ret(scope.toLow(fnPtr), infExp.init.get))
+                case fnPtr: FnType => Seq(Ast1.Ret(scope.toLow(fnPtr), infExp.init.get))
                 case scalar: ScalarType => Seq(Ast1.Ret(scope.toLow(scalar), infExp.init.get))
               }
 
@@ -448,11 +446,11 @@ class TypeChecker {
 
     val ftype =
       if (childScope.closuredVars.isEmpty)
-        FnPointerType(infArgs.map { infArg =>
+        FnType(infArgs.map { infArg =>
           TypeField(false, infArg.name, infArg.typeHint.toType)
         }, inferedRet)
       else
-        FnPointerType(s"tclosure$anonFns", infArgs.map { infArg =>
+        FnType(s"tclosure$anonFns", infArgs.map { infArg =>
           TypeField(false, infArg.name, infArg.typeHint.toType)
         }, inferedRet, childScope.closuredVars)
 

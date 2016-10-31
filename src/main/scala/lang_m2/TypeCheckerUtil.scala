@@ -19,20 +19,19 @@ object TypeCheckerUtil {
       else o.asInstanceOf[TypeField].ftype == ftype
   }
   case class FactorType(fullModName: String, name: String, fields: Seq[TypeField]) extends Type
-  object FnPointerType {
-    def apply(args: Seq[TypeField], ret: Type) = {
-      new FnPointerType(s"(${args.map(_.name).mkString(",")}) -> ${ret.name}", args, ret, Seq())
+  sealed trait FnType
+  case class FnPointer(args: Seq[TypeField], ret: Type) extends Type {
+    override val name: String = {
+      val sArgs = args.map(arg => s"${arg.name}: ${arg.ftype.name}").mkString(", ")
+      val sRet = ret.name
+      s"($sArgs) -> $sRet"
     }
   }
-  case class FnPointerType(name: String, args: Seq[TypeField], ret: Type, closure: Seq[SymbolInfo] = Seq()) extends Type {
-    override def hashCode(): Int = 31 * args.hashCode() + 31 * ret.hashCode()
 
-    override def equals(o: scala.Any): Boolean = o match {
-      case FnPointerType(_, args, ret, _) =>
-        args == this.args && ret == this.ret
-      case _ => false
-    }
-  }
+  case class ClosureVal(closurable: ClosurableLocation, varType: Type)
+  case class Closure(name: String, fnPointer: FnPointer, vals: Seq[ClosureVal]) extends FnType
+  case class Disclosure() extends FnType
+
   case class InferedExp(infType: Type, stats: Seq[Ast1.Stat], init: Option[Ast1.Init])
 
   val thUnit = ScalarTypeHint("Unit", "")
@@ -59,7 +58,7 @@ object TypeCheckerUtil {
   def typeToTypeHint(etype: Type): TypeHint = etype match {
     case ScalarType(fullModName, name, _) => ScalarTypeHint(name, fullModName)
     case FactorType(fullModName, name, _) => ScalarTypeHint(name, fullModName)
-    case FnPointerType(name, args, ret, _) => FnTypeHint(args.map { arg =>
+    case FnType(name, args, ret, _) => FnTypeHint(args.map { arg =>
       FnTypeHintField(arg.name, typeToTypeHint(arg.ftype))
     }, typeToTypeHint(ret))
   }
@@ -71,7 +70,7 @@ object TypeCheckerUtil {
         Ast1.Struct(fullModName + name, fields.map { field =>
           Ast1.Field(field.name, toLow(field.ftype))
         })
-      case FnPointerType(name, args, ret, closure) =>
+      case FnType(name, args, ret, closure) =>
         val lowClosure: Option[Ast1.FnClosure] =
           if (closure.isEmpty) None
           else Some(Ast1.FnClosure(name, closure.map { si =>
@@ -95,7 +94,7 @@ object TypeCheckerUtil {
       th match {
         case sth: ScalarTypeHint => namespace.types.getOrElse(sth, throw new CompileEx(sth, CE.TypeNotFound(sth)))
         case FnTypeHint(args, ret) =>
-          FnPointerType(args.map { arg =>
+          FnType(args.map { arg =>
             TypeField(false, arg.name, arg.typeHint.toType)
           }, ret.toType)
       }

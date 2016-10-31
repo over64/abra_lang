@@ -31,11 +31,11 @@ case class FnContainer(var fnInfo: FnInfo)
 
 sealed trait CallableFn {
   val _package: String
-  val ftype: FnPointerType
+  val ftype: FnType
 }
 case class RawFn(_package: String, fn: Fn) extends FnInfo
-case class HeaderFn(_package: String, ftype: FnPointerType, lowFn: Ast1.HeaderFn) extends FnInfo with CallableFn
-case class InferedFn(_package: String, ftype: FnPointerType, lowFn: Ast1.Fn) extends FnInfo with CallableFn
+case class HeaderFn(_package: String, ftype: FnType, lowFn: Ast1.HeaderFn) extends FnInfo with CallableFn
+case class InferedFn(_package: String, ftype: FnType, lowFn: Ast1.Fn) extends FnInfo with CallableFn
 
 class Namespace(val _package: String,
                 val types: Map[ScalarTypeHint, Type],
@@ -54,7 +54,7 @@ class Namespace(val _package: String,
     val selfTh = selfType match {
       case ScalarType(fullModName, name, _) => ScalarTypeHint(name, fullModName)
       case FactorType(fullModName, name, _) => ScalarTypeHint(name, fullModName)
-      case fnPtr: FnPointerType => throw new CompileEx(null, CE.FnlTypeNotEntensible())
+      case fnPtr: FnType => throw new CompileEx(null, CE.FnlTypeNotEntensible())
     }
     extensions.get(selfTh).flatMap { fnMap =>
       fnMap.get(name)

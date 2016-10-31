@@ -4,9 +4,6 @@ object Ast1 {
   sealed trait Type {
     val name: String
   }
-  sealed trait FnType extends Type {
-    val fnPointer: FnPointer
-  }
   case class Scalar(name: String) extends Type
   case class Field(name: String, _type: Type) {
     override def toString = s"${_type.name} %${name}"
@@ -14,24 +11,11 @@ object Ast1 {
   case class Struct(_name: String, fields: Seq[Field]) extends Type {
     override val name: String = s"%struct.${_name}"
   }
-  case class ClosureVal(closurable: Closurable, varType: Type) {
-    def name: String = closurable match {
-      case lLocal(value) => value
-      case lParam(value) => value
-    }
 
-    def irType = (varType, closurable) match {
-      case (Scalar(name), lLocal(_)) => s"$name*"
-      case (Scalar(name), lParam(_)) => name
-      case (s: Struct, _) => s"${s.name}*"
-    }
+  sealed trait FnType extends Type {
+    val fnPointer: FnPointer
   }
-  case class Closure(typeName: String, fnPointer: FnPointer, vals: Seq[ClosureVal]) extends FnType {
-    override val name: String = typeName
-  }
-  case class Disclosure(typeName: String, fnPointer: FnPointer) extends FnType {
-    override val name: String = typeName
-  }
+
   case class FnPointer(args: Seq[Field], ret: Type) extends FnType {
     override val name: String = {
       s"${realRet.name} (${
@@ -59,6 +43,21 @@ object Ast1 {
       case (_: Scalar | _: FnPointer) => s"${arg._type.name} %${arg.name}"
     })
     override val fnPointer: FnPointer = this
+  }
+
+  case class ClosureVal(closurable: Closurable, varType: Type) {
+    def name: String = closurable match {
+      case lLocal(value) => value
+      case lParam(value) => value
+    }
+  }
+
+  case class Closure(typeName: String, fnPointer: FnPointer, vals: Seq[ClosureVal]) extends FnType {
+    override val name: String = typeName
+  }
+
+  case class Disclosure(typeName: String, fnPointer: FnPointer) extends FnType {
+    override val name: String = typeName
   }
 
   sealed trait Stat

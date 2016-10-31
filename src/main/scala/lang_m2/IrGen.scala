@@ -103,62 +103,59 @@ case class IrGen(val out: OutputStream) {
 
   def genericCallToValue(functions: Seq[Fn], fnType: FnType, vars: Map[String, Type], call: Call) = call match {
     case Call(id, args) =>
-      val (toCall, closureArgs): (String, Seq[String]) = id match {
+      val (toCall, fnPtr, closureArgs): (String, FnPointer, Seq[String]) = id match {
         case lLocal(value) =>
           val ftype = vars(value)
           ftype match {
-            case fnPtr: FnPointer => (load("%" + value, fnPtr), Seq())
+            case fnPtr: FnPointer => (load("%" + value, fnPtr), fnPtr, Seq())
             case closure: Closure =>
               val ptr = nextTmpVar()
               out.println(s"\t$ptr = getelementptr %${closure.typeName}, %${closure.typeName}* %$value, i32 0, i32 0")
-              (load(ptr, closure.fnPointer), Seq(s"${closure.typeName}* %closure"))
+              (load(ptr, closure.fnPointer), closure.fnPointer, Seq(s"${closure.typeName}* %value"))
             case _ => throw new Exception("not implemented in ABI")
           }
         case lParam(value) =>
           val ftype = vars(value)
           ftype match {
-            case fnPtr: FnPointer => (load("%" + value, fnPtr), Seq())
-            case disclosure: Disclosure =>
+            case fnPtr: FnPointer => (load("%" + value, fnPtr), fnPtr, Seq())
+            case Disclosure(typeName, fnPointer) =>
               val ptr = nextTmpVar()
-              out.println(s"\t$ptr = getelementptr %${closure.typeName}, %${closure.typeName}* %$value, i32 0, i32 0")
-              (load(ptr, closure.fnPointer), Seq(s"${closure.typeName}* %closure"))
+              out.println(s"\t$ptr = getelementptr %${typeName}, %${typeName}* %$value, i32 0, i32 0")
+              (load(ptr, fnPointer), fnPointer, Seq(s"${typeName}* %value"))
             case _ => throw new Exception("not implemented in ABI")
           }
-          fnPtr.closure match {
-            case Some(closure) =>
-              val ptr = nextTmpVar()
-              out.println(s"\t$ptr = getelementptr %${closure.closureType}, %${closure.closureType}* %$value, i32 0, i32 0")
-              val loadedFnPtr = load(s"$ptr", FnPointer(fnPtr.args :+ Field("closure", Scalar("i8*")), fnPtr.ret))
-              val closurePtr = nextTmpVar()
-              out.println(s"\t$closurePtr = bitcast %${closure.closureType}* %$value to i8*")
-
-              (loadedFnPtr, Seq(s"i8* $closurePtr"))
-            case _ => (load(s"%$value", fnPtr), Seq())
+        case lGlobal(value) =>
+          val symbol = functions.find(_.name == value).get
+          symbol match {
+            case fnPtr: FnPointer => ("@" + escapeFnName(value), fnPtr, Seq())
+            case _ => throw new Exception("not implemented in ABI")
           }
-        case lGlobal(value) => ("@" + escapeFnName(value), Seq())
       }
 
-      fnPtr.ret match {
-        case struct@Struct(_name, fields) => throw new Exception("not implemented in ABI")
-        case _ =>
-          val calculatedArgs = (args).zip(fnPtr.args).map { case (arg, field) =>
-            if (field._type.isInstanceOf[Struct]) genInitWithPtr(field._type, arg, closure)
-            else genInitWithValue(field._type, arg, closure)
-          }
+      val calculatedArgs = (args).zip(fnPtr.args).map { case (arg, field) =>
+        arg match {
+          case id: lId =>
+            val (ptr, idType) = genericIdToPtr(functions, fnType, vars, id)
+            idType match {
+              case s: Struct => ptr
+              case _ => load(ptr, idType)
+            }
+          case other@_ => genInitWithValue(functions, fnType, vars, field._type, other)
+        }
+      }
 
-          val joinedArgs = (calculatedArgs.zip(fnPtr.args).map {
-            case (arg, argType) =>
-              s"${if (argType._type.isInstanceOf[Struct]) argType._type.name + "*" else argType._type.name} $arg"
-          } ++ closureArgs).mkString(", ")
+      val joinedArgs = (calculatedArgs.zip(fnPtr.args).map {
+        case (arg, argType) =>
+          s"${if (argType._type.isInstanceOf[Struct]) argType._type.name + "*" else argType._type.name} $arg"
+      } ++ closureArgs).mkString(", ")
 
-          if (fnPtr.ret == Scalar("void")) {
-            out.println(s"\tcall ${fnPtr.ret.name} ${toCall}($joinedArgs)")
-            null
-          } else {
-            val tmp = nextTmpVar()
-            out.println(s"\t$tmp = call ${fnPtr.ret.name} ${toCall}($joinedArgs)")
-            tmp
-          }
+      if (fnPtr.ret == Scalar("void")) {
+        out.println(s"\tcall ${fnPtr.ret.name} ${toCall}($joinedArgs)")
+        null
+      } else {
+        val tmp = nextTmpVar()
+        out.println(s"\t$tmp = call ${fnPtr.ret.name} ${toCall}($joinedArgs)")
+        tmp
       }
   }
 
