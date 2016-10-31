@@ -228,7 +228,7 @@ class LowLangTest extends FunSuite with LowUtil {
           vars = Map("x" -> tInt, "fn" -> tclosure1),
           stats = Seq(
             Store(lLocal("x"), Seq(), lInt("0")),
-            Store(lLocal("fn"), Seq(), lGlobal("anonFn1")),
+            StoreEnclosure(lLocal("fn"), lGlobal("anonFn1")),
             Call(lLocal("fn"), Seq()),
             Ret(lLocal("x"))
           )))
@@ -261,8 +261,8 @@ class LowLangTest extends FunSuite with LowUtil {
           vars = Map("x" -> tInt, "anon1" -> tclosure1),
           stats = Seq(
             Store(lLocal("x"), Seq(), lInt("0")),
-            Store(lLocal("anon1"), Seq(), lGlobal("anonFn1")),
-            Call(lGlobal("foo"), Seq(lLocal("anon1"))),
+            StoreEnclosure(lLocal("anon1"), lGlobal("anonFn1")),
+            Call(lGlobal("foo"), Seq(ClosureToDisclosure(lLocal("anon1"), tdisclosure1))),
             Ret(lLocal("x"))
           )))
       )).assertRunEquals(Some(42))

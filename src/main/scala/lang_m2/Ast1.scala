@@ -4,7 +4,9 @@ object Ast1 {
   sealed trait Type {
     val name: String
   }
-  sealed trait FnType extends Type
+  sealed trait FnType extends Type {
+    val fnPointer: FnPointer
+  }
   case class Scalar(name: String) extends Type
   case class Field(name: String, _type: Type) {
     override def toString = s"${_type.name} %${name}"
@@ -56,6 +58,7 @@ object Ast1 {
       case struct: Struct => s"${arg._type.name}* %${arg.name}"
       case (_: Scalar | _: FnPointer) => s"${arg._type.name} %${arg.name}"
     })
+    override val fnPointer: FnPointer = this
   }
 
   sealed trait Stat
@@ -83,16 +86,18 @@ object Ast1 {
     .replace("&&", "$and")
 
   sealed trait lId extends Literal
-  sealed trait Closurable {
+  sealed trait Closurable extends lId {
     val value: String
   }
-  case class lLocal(value: String) extends lId with Closurable
-  case class lParam(value: String) extends lId with Closurable
+  case class lLocal(value: String) extends Closurable
+  case class lParam(value: String) extends Closurable
   case class lGlobal(value: String) extends lId
-  case class lClosure(value: String) extends lId with Closurable
+  case class lClosure(value: String) extends Closurable
 
+  case class ClosureToDisclosure(from: lLocal, disclosure: Disclosure) extends Init
   case class Access(from: lId, prop: String) extends Init
   case class Store(toVar: lId, fields: Seq[String], init: Init) extends Stat
+  case class StoreEnclosure(toVar: lId, init: lGlobal) extends Stat
   case class Call(fn: lId, args: Seq[Init]) extends Init with Stat
 
   case class BoolAnd(left: Init, right: Init) extends Init with Stat

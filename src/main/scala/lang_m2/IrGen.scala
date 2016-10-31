@@ -70,57 +70,60 @@ case class IrGen(val out: OutputStream) {
     out.println(s"\tstore ${varType.name} $next, ${varType.name}* $to")
   }
 
-  def genInitWithValue(functions: Seq[Fn], fn: Fn, _type: Type, init: Init): String = init match {
-    case lInt(value) => value
-    case lFloat(value) =>
-      if (_type.name == "float") {
-        val d = (new java.lang.Float(value)).toDouble
-        "0x" + java.lang.Long.toHexString(java.lang.Double.doubleToLongBits(d))
-      } else value
-    case lString(name, value) =>
-      val tmp1 = nextTmpVar()
-      out.println(s"\t$tmp1 = bitcast [${value.bytesLen} x i8]* @.$name to i8*")
-      tmp1
-    case lGlobal(value) => "@" + value
-    case lLocal(varName) =>
-      load(s"%$varName", _type)
-    case lParam(paramName) =>
-      if (_type.isInstanceOf[Struct]) load(s"%$paramName", _type)
-      else s"%$paramName"
-    case lClosure(value) =>
-      val _closure = closure.get
-      val (closuredVal, index) = _closure.vals.zipWithIndex.find {
-        case (cval, index) => cval.closurable.value == value
-      }.get
-      closuredVal.closurable match {
-        case lLocal(value) =>
-          val (ptr, ptrToVal) = (nextTmpVar(), nextTmpVar())
-          out.println(s"\t$ptr = getelementptr %${_closure.closureType}, %${_closure.closureType}* %1, i32 0, i32 ${index + 1}")
-          out.println(s"\t$ptrToVal = load ${_type.name}*, ${_type.name}** $ptr")
-          load(ptrToVal, _type)
-        case lParam(value) =>
-          val ptr = nextTmpVar()
-          out.println(s"\t$ptr = getelementptr %${_closure.closureType}, %${_closure.closureType}* %1, i32 0, i32 ${index + 1}")
-          val loadedVal =
-            if (_type.isInstanceOf[Struct]) {
-              val ptrToVal = nextTmpVar()
-              out.println(s"\t$ptrToVal = load ${_type.name}*, ${_type.name}** $ptr")
-              load(ptrToVal, _type)
-            } else
-              load(ptr, _type)
-
-          loadedVal
+  def genericIdToPtr(functions: Seq[Fn], fnType: FnType, vars: Map[String, Type], id: lId): (String, Type) = id match {
+    case lLocal(value) => ("%" + value, vars(value))
+    case lParam(value) =>
+      val varType = vars(value)
+      varType match {
+        case s: Struct => ("%" + value, varType)
+        case _ => throw new Exception("not implemented in ABI")
       }
-    case a: Access =>
-      val (resType, indicies) = evalGep(a.fromType, Seq(a.prop))
-      val base = genInitWithPtr(a.fromType, a.from, closure)
-      val res = nextTmpVar()
+    case lClosure(value) => fnType match {
+      case Closure(typeName, _, vals) =>
+        val (closured, index) = vals.zipWithIndex.find {
+          case (cv, _) => cv.name == value
+        }.get
 
-      out.println(s"\t$res = getelementptr ${a.fromType.name}, ${a.fromType.name}* $base, ${indicies.map { i => s"i32 $i" } mkString (", ")}")
-      load(res, _type)
-    case Call(id, fnPtr, args) =>
-      val (toCall, closureArgs) = id match {
+        val fieldPtr = nextTmpVar()
+        out.println(s"\t$fieldPtr = getelementptr %${typeName}, %${typeName}* %closure, i32 0, i32 ${index + 1}")
+
+        closured match {
+          case ClosureVal(lLocal(vName), varType) =>
+            (load(fieldPtr, varType), varType)
+          case ClosureVal(lParam(vName), varType) =>
+            if (varType.isInstanceOf[Struct])
+              (load(fieldPtr, varType), varType)
+            else
+              (fieldPtr, varType)
+        }
+      case _ => throw new Exception("not implemented in ABI")
+    }
+    case _ => throw new Exception("not implemented in ABI")
+  }
+
+  def genericCallToValue(functions: Seq[Fn], fnType: FnType, vars: Map[String, Type], call: Call) = call match {
+    case Call(id, args) =>
+      val (toCall, closureArgs): (String, Seq[String]) = id match {
         case lLocal(value) =>
+          val ftype = vars(value)
+          ftype match {
+            case fnPtr: FnPointer => (load("%" + value, fnPtr), Seq())
+            case closure: Closure =>
+              val ptr = nextTmpVar()
+              out.println(s"\t$ptr = getelementptr %${closure.typeName}, %${closure.typeName}* %$value, i32 0, i32 0")
+              (load(ptr, closure.fnPointer), Seq(s"${closure.typeName}* %closure"))
+            case _ => throw new Exception("not implemented in ABI")
+          }
+        case lParam(value) =>
+          val ftype = vars(value)
+          ftype match {
+            case fnPtr: FnPointer => (load("%" + value, fnPtr), Seq())
+            case disclosure: Disclosure =>
+              val ptr = nextTmpVar()
+              out.println(s"\t$ptr = getelementptr %${closure.typeName}, %${closure.typeName}* %$value, i32 0, i32 0")
+              (load(ptr, closure.fnPointer), Seq(s"${closure.typeName}* %closure"))
+            case _ => throw new Exception("not implemented in ABI")
+          }
           fnPtr.closure match {
             case Some(closure) =>
               val ptr = nextTmpVar()
@@ -133,7 +136,6 @@ case class IrGen(val out: OutputStream) {
             case _ => (load(s"%$value", fnPtr), Seq())
           }
         case lGlobal(value) => ("@" + escapeFnName(value), Seq())
-        case lParam(value) => ("%" + value, Seq())
       }
 
       fnPtr.ret match {
@@ -158,15 +160,46 @@ case class IrGen(val out: OutputStream) {
             tmp
           }
       }
+  }
+
+  def genInitWithValue(functions: Seq[Fn], fnType: FnType, vars: Map[String, Type], vtype: Type, init: Init): String = init match {
+    case lInt(value) => value
+    case lFloat(value) =>
+      if (vtype.name == "float") {
+        val d = (new java.lang.Float(value)).toDouble
+        "0x" + java.lang.Long.toHexString(java.lang.Double.doubleToLongBits(d))
+      } else value
+    case lString(name, value) =>
+      val tmp1 = nextTmpVar()
+      out.println(s"\t$tmp1 = bitcast [${value.bytesLen} x i8]* @.$name to i8*")
+      tmp1
+    case lGlobal(value) => "@" + value
+    case lLocal(varName) =>
+      load(s"%$varName", vtype)
+    case lParam(paramName) =>
+      if (vtype.isInstanceOf[Struct]) load(s"%$paramName", vtype)
+      else s"%$paramName"
+    case closure: lClosure =>
+      val (ptr, vtype) = genericIdToPtr(functions, fnType, vars, closure)
+      load(ptr, vtype)
+    case a: Access =>
+      val (ptr, vtype) = genericIdToPtr(functions, fnType, vars, a.from)
+      val (resType, indicies) = evalGep(vtype, Seq(a.prop))
+      val res = nextTmpVar()
+
+      out.println(s"\t$res = getelementptr ${vtype.name}, ${vtype.name}* $ptr, ${indicies.map { i => s"i32 $i" } mkString (", ")}")
+      load(res, resType)
+    case call: Call =>
+      genericCallToValue(functions, fnType, vars, call)
     case BoolAnd(left, right) =>
       val (beginLabel, secondLabel, endLabel) = (nextLabel, nextLabel, nextLabel)
       out.println(s"\tbr label %$beginLabel")
       out.println(s"$beginLabel:")
-      val leftRes = genInitWithValue(Scalar("i1"), left, closure)
+      val leftRes = genInitWithValue(functions, fnType, vars, Scalar("i1"), left)
       out.println(s"\tbr i1 $leftRes, label %$secondLabel, label %$endLabel")
 
       out.println(s"$secondLabel:")
-      val rightRes = genInitWithValue(Scalar("i1"), right, closure)
+      val rightRes = genInitWithValue(functions, fnType, vars, Scalar("i1"), right)
       out.println(s"\tbr label %$endLabel")
 
       out.println(s"$endLabel:")
@@ -179,11 +212,11 @@ case class IrGen(val out: OutputStream) {
       val (beginLabel, secondLabel, endLabel) = (nextLabel, nextLabel, nextLabel)
       out.println(s"\tbr label %$beginLabel")
       out.println(s"$beginLabel:")
-      val leftRes = genInitWithValue(Scalar("i1"), left, closure)
+      val leftRes = genInitWithValue(functions, fnType, vars, Scalar("i1"), left)
       out.println(s"\tbr i1 $leftRes, label %$endLabel, label %$secondLabel")
 
       out.println(s"$secondLabel:")
-      val rightRes = genInitWithValue(Scalar("i1"), right, closure)
+      val rightRes = genInitWithValue(functions, fnType, vars, Scalar("i1"), right)
       out.println(s"\tbr label %$endLabel")
 
       out.println(s"$endLabel:")
@@ -193,134 +226,57 @@ case class IrGen(val out: OutputStream) {
       tmp1
   }
 
-  def genInitWithPtr(functions: Seq[Fn], fn: Fn, _type: Type, init: Init): String = init match {
-    case lInt(value) => throw new Exception("not implemented in ABI")
-    case lFloat(value) => throw new Exception("not implemented in ABI")
-    case lString(name, value) => throw new Exception("not implemented in ABI")
-    case lGlobal(value) => throw new Exception("not implemented in ABI")
-    case lLocal(varName) => s"%$varName"
-    case lParam(paramName) =>
-      if (_type.isInstanceOf[Struct]) "%" + paramName
-      else throw new Exception("not implemented in ABI")
-    case lClosure(value) =>
-      val _closure = closure.get
-      val (closuredVal, index) = _closure.vals.zipWithIndex.find {
-        case (cval, index) => cval.closurable.value == value
-      }.get
-      closuredVal.closurable match {
-        case lLocal(value) =>
-          val (ptr, ptrToVal) = (nextTmpVar(), nextTmpVar())
-          out.println(s"\t$ptr = getelementptr %${_closure.closureType}, %${_closure.closureType}* %1, i32 0, i32 ${index + 1}")
-          out.println(s"\t$ptrToVal = load ${_type.name}*, ${_type.name}** $ptr")
-          ptrToVal
-        case lParam(value) =>
-          val ptr = nextTmpVar()
-          out.println(s"\t$ptr = getelementptr %${_closure.closureType}, %${_closure.closureType}* %1, i32 0, i32 ${index + 1}")
-
-          if (_type.isInstanceOf[Struct]) {
-            val ptrToVal = nextTmpVar()
-            out.println(s"\t$ptrToVal = load ${_type.name}*, ${_type.name}** $ptr")
-            ptrToVal
-          } else
-            ptr
-      }
-    case Call(id, fnPtr, args) =>
-      val toCall = id match {
-        case lLocal(value) => load("%" + value, fnPtr)
-        case lGlobal(value) => "@" + escapeFnName(value)
-        case lParam(value) => "%" + value
-      }
-
-      fnPtr.ret match {
-        case struct@Struct(_name, fields) =>
-          val to = nextTmpVar()
-          zalloc(to, fnPtr.ret)
-          val lastArgs = args
-
-          val calculatedArgs = to +: lastArgs.zip(fnPtr.args).map { case (arg, field) =>
-            if (field._type.isInstanceOf[Struct]) genInitWithPtr(field._type, arg, closure)
-            else genInitWithValue(field._type, arg, closure)
-          }
-
-          val joinedArgs = calculatedArgs.zip(fnPtr.realArgs).map {
-            case (arg, argType) =>
-              s"${if (argType._type.isInstanceOf[Struct]) argType._type.name + "*" else argType._type.name} $arg"
-          }.mkString(", ")
-
-          out.println(s"\tcall ${fnPtr.realRet.name} ${toCall}($joinedArgs)")
-          to
-        case _ => throw new Exception("not implemented in ABI")
-      }
-    case BoolAnd(left, right) => throw new Exception("not implemented in ABI")
-    case BoolOr(left, right) => throw new Exception("not implemented in ABI")
-  }
-
-
-  def genStat(functions: Seq[Fn], fn: Fn, seq: Seq[Stat]): Unit =
+  def genStat(functions: Seq[Fn], fnType: FnType, vars: Map[String, Type], seq: Seq[Stat]): Unit =
     seq.foreach {
       case Store(to, fields, init) =>
-        val base = to match {
-          case lLocal(value) => "%" + value
-          case lClosure(value) => fn._type match {
-            case Closure(typeName, _, vals) =>
-              val closured = vals.zipWithIndex.find {
-                case (cv, _) => cv.name == value
-                case (cv, _) => cv.name == value
-              }.get
-              closured match {
-                case ClosureVal(lLocal(vName), varType) =>
-                  val ptr = nextTmpVar()
-                  out.println(s"\t$ptr = getelementptr %${typeName}, %${typeName}* ${ptr}, i32 0, i32 0")
-                case _: lParam => throw new Exception("not implemented in ABI")
-              }
-            case _ => throw new Exception("not implemented in ABI")
-          }
-          case _ => throw new Exception("not implemented in ABI")
-        }
-        val base = genInitWithPtr(functions, fn, varType, to)
+        val (base, baseType) = genericIdToPtr(functions, fnType, vars, to)
         val (ptr, resType) =
-          if (fields.length == 0) (base, varType)
+          if (fields.length == 0) (base, baseType)
           else {
             val ptr = nextTmpVar()
-            val (resType, indicies) = evalGep(varType, fields)
-            out.println(s"\t$ptr = getelementptr ${varType.name}, ${varType.name}* ${base}, ${indicies.map { i => s"i32 $i" } mkString (", ")}")
+            val (resType, indicies) = evalGep(baseType, fields)
+            out.println(s"\t$ptr = getelementptr ${baseType.name}, ${baseType.name}* ${base}, ${indicies.map { i => s"i32 $i" } mkString (", ")}")
             (ptr, resType)
           }
-        resType match {
-          case FnPointer(args, ret, Some(FnClosure(closureType, vals))) if init.isInstanceOf[lGlobal] =>
-            val fnPtr = nextTmpVar()
-            out.println(s"\t$fnPtr = getelementptr %${closureType}, %${closureType}* ${ptr}, i32 0, i32 0")
-            genInitWithStore(FnPointer(args :+ Field("closure", Scalar("i8*")), ret), fnPtr, init, closure)
-            vals.zipWithIndex.foreach {
-              case (cval, index) =>
-                val valPtr = nextTmpVar()
-                out.println(s"\t$valPtr = getelementptr %${closureType}, %${closureType}* ${ptr}, i32 0, i32 ${index + 1}")
-                cval.closurable match {
-                  case lLocal(value) =>
-                    val closuredPtr = genInitWithPtr(cval.varType, lLocal(value), closure)
-                    store(closuredPtr, valPtr, Scalar(cval.irType)) //FIXME
 
-                }
+        val forStore = genInitWithValue(functions, fnType, vars, resType, init)
+        store(forStore, ptr, resType)
+      case StoreEnclosure(to, init) =>
+        val (base, baseType) = genericIdToPtr(functions, fnType, vars, to)
+        baseType match {
+          case Closure(typeName, fnPtr, vals) =>
+            // store fn pointer
+            val ptrToFn = nextTmpVar()
+            out.println(s"$ptrToFn = getelementptr $typeName, $typeName* $base, i32 0, i32 0")
+            val fnPtrValue = genInitWithValue(functions, fnType, vars, fnPtr, init)
+            store(fnPtrValue, ptrToFn, fnPtr)
+
+            // store all closured vals
+            vals.zipWithIndex.foreach {
+              case (v, index) =>
+                val ptrToClosureVal = nextTmpVar()
+                out.println(s"$ptrToClosureVal = getelementptr $typeName, $typeName* $base, i32 0, i32 ${index + 1}")
+                val closureVal = genInitWithValue(functions, fnType, vars, v.varType, v.closurable)
+                store(closureVal, ptrToClosureVal, v.varType)
             }
-          case _ =>
-            genInitWithStore(resType, ptr, init, closure)
+          case _ => throw new Exception("not implemented in ABI")
         }
       case call: Call =>
-        genInitWithValue(call._type.ret, call, closure)
+        genericCallToValue(functions, fnType, vars, call)
       case boolAnd: BoolAnd =>
-        genInitWithValue(Scalar("i1"), boolAnd, closure)
+        genInitWithValue(functions, fnType, vars, Scalar("i1"), boolAnd)
       case boolOr: BoolOr =>
-        genInitWithValue(Scalar("i1"), boolOr, closure)
+        genInitWithValue(functions, fnType, vars, Scalar("i1"), boolOr)
       case Cond(init, _if, _else) =>
-        val condVar = genInitWithValue(Scalar("i1"), init, closure)
+        val condVar = genInitWithValue(functions, fnType, vars, Scalar("i1"), init)
         val (ifLabel, elseLabel, endLabel) = (nextLabel, nextLabel, nextLabel)
 
         out.println(s"\tbr i1 $condVar, label %$ifLabel, label %$elseLabel")
         out.println(s"$ifLabel:")
-        genStat(_if, closure)
+        genStat(functions, fnType, vars, _if)
         out.println(s"\tbr label %$endLabel")
         out.println(s"$elseLabel:")
-        genStat(_else, closure)
+        genStat(functions, fnType, vars, _else)
         out.println(s"\tbr label %$endLabel")
         out.println(s"$endLabel:")
       case While(init, seq) =>
@@ -329,17 +285,18 @@ case class IrGen(val out: OutputStream) {
         out.println(s"\tbr label %$beginLabel")
         out.println(s"$beginLabel:")
 
-        val condVar = genInitWithValue(Scalar("i1"), init, closure)
+        val condVar = genInitWithValue(functions, fnType, vars, Scalar("i1"), init)
         out.println(s"\tbr i1 $condVar, label %$bodyLabel, label %$endLabel")
         out.println(s"$bodyLabel:")
 
-        genStat(seq, closure)
+        genStat(functions, fnType, vars, seq)
 
         out.println(s"\tbr label %$beginLabel")
         out.println(s"$endLabel:")
 
-      case Ret(_type, init) =>
-        out.println(s"\tret ${_type.name} ${genInitWithValue(_type, init, closure)}")
+      case Ret(init) =>
+        val retType = fnType.fnPointer.realRet
+        out.println(s"\tret ${retType.name} ${genInitWithValue(functions, fnType, vars, retType, init)}")
       case RetVoid() =>
         out.println(s"\tret void")
     }
@@ -360,7 +317,7 @@ case class IrGen(val out: OutputStream) {
         vars.foreach {
           case (varName, varType) => zalloc("%" + varName, varType)
         }
-        genStat(functions, fn, stats)
+        genStat(functions, fn._type, vars, stats)
     }
 
     out.println("}")
