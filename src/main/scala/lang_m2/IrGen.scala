@@ -126,7 +126,7 @@ case class IrGen(val out: OutputStream) {
           }
         case lGlobal(value) =>
           val symbol = functions.find(_.name == value).get
-          symbol match {
+          symbol._type match {
             case fnPtr: FnPointer => ("@" + escapeFnName(value), fnPtr, Seq())
             case _ => throw new Exception("not implemented in ABI")
           }
@@ -299,7 +299,7 @@ case class IrGen(val out: OutputStream) {
     }
 
   def genFunction(functions: Seq[Fn], fn: Fn): Unit = {
-    fn match {
+    fn._type match {
       case fnPtr@FnPointer(args, ret) =>
         out.println(s"define ${fnPtr.realRet.name} @${escapeFnName(fn.name)}(${fnPtr.realArgs.mkString(", ")}) {")
       case Closure(typeName, fnPtr, _) =>

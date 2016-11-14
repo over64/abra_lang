@@ -101,7 +101,7 @@ class LowLangTest extends FunSuite with LowUtil {
       structs = Seq(tFoo),
       functions = Seq(
         Fn("main", FnPointer(args = Seq(), ret = tInt), Block(
-          vars = Map("foo", tFoo),
+          vars = Map("foo" -> tFoo),
           stats = Seq(
             Store(lLocal("foo"), Seq("x"), lInt("42")),
             Ret(Access(lLocal("foo"), "x"))
@@ -168,7 +168,7 @@ class LowLangTest extends FunSuite with LowUtil {
       functions = Seq(
         fPlus, fMore,
         Fn("main", FnPointer(args = Seq(), ret = tInt), Block(
-          vars = Map("a", tInt),
+          vars = Map("a" -> tInt),
           stats = Seq(
             Store(lLocal("a"), Seq(), lInt("0")),
             While(Call(lGlobal(">_for_Int"), Seq(lInt("255"), lLocal("a"))), Seq(

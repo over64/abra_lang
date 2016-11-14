@@ -1,0 +1,29 @@
+# pkg.bar.abra
+implicit logger: Logger
+
+def doSome = {
+    logger.debug('do some')
+}: Unit
+
+# pkg.foo.abra
+import abra.int
+import abra.logger as _ with Logger
+implicit logger: Logger
+
+def doAdd = { a: Int, b: Int ->
+    import pkg.bar(logger)
+    val c = a + b
+    logger.debug('$a + $b = $c')
+    bar.doSome()
+    c
+}: Unit
+
+# pkg.main.abra
+import abra.logger
+
+def main = {
+    val log = logger.mk('/tmp/log')
+    import pkg.foo(log)
+
+    foo.doAdd(1, 1)
+}

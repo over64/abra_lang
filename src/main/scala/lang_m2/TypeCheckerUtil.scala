@@ -19,18 +19,20 @@ object TypeCheckerUtil {
       else o.asInstanceOf[TypeField].ftype == ftype
   }
   case class FactorType(fullModName: String, name: String, fields: Seq[TypeField]) extends Type
-  sealed trait FnType
-  case class FnPointer(args: Seq[TypeField], ret: Type) extends Type {
+  sealed trait FnType extends Type {
+    val fnPointer: FnPointer
+  }
+  case class FnPointer(args: Seq[TypeField], ret: Type) extends FnType {
     override val name: String = {
       val sArgs = args.map(arg => s"${arg.name}: ${arg.ftype.name}").mkString(", ")
       val sRet = ret.name
       s"($sArgs) -> $sRet"
     }
+    override val fnPointer: FnPointer = this
   }
 
-  case class ClosureVal(closurable: ClosurableLocation, varType: Type)
-  case class Closure(name: String, fnPointer: FnPointer, vals: Seq[ClosureVal]) extends FnType
-  case class Disclosure() extends FnType
+  case class Closure(name: String, fnPointer: FnPointer, vals: Seq[SymbolInfo]) extends FnType
+  case class Disclosure(name: String, fnPointer: FnPointer) extends FnType
 
   case class InferedExp(infType: Type, stats: Seq[Ast1.Stat], init: Option[Ast1.Init])
 
@@ -54,15 +56,6 @@ object TypeCheckerUtil {
     thString -> tString
   )
 
-  //FIXME: Некорректное преобразование
-  def typeToTypeHint(etype: Type): TypeHint = etype match {
-    case ScalarType(fullModName, name, _) => ScalarTypeHint(name, fullModName)
-    case FactorType(fullModName, name, _) => ScalarTypeHint(name, fullModName)
-    case FnType(name, args, ret, _) => FnTypeHint(args.map { arg =>
-      FnTypeHintField(arg.name, typeToTypeHint(arg.ftype))
-    }, typeToTypeHint(ret))
-  }
-
   def toLow(etype: Type): Ast1.Type =
     etype match {
       case ScalarType(_, _, llType) => Ast1.Scalar(llType)
@@ -70,33 +63,49 @@ object TypeCheckerUtil {
         Ast1.Struct(fullModName + name, fields.map { field =>
           Ast1.Field(field.name, toLow(field.ftype))
         })
-      case FnType(name, args, ret, closure) =>
-        val lowClosure: Option[Ast1.FnClosure] =
-          if (closure.isEmpty) None
-          else Some(Ast1.FnClosure(name, closure.map { si =>
-            val lowLocation: Ast1.Closurable = si.location match {
-              case ClosureSymbol => Ast1.lClosure(si.lowName)
-              case LocalSymbol => Ast1.lLocal(si.lowName)
-              case ParamSymbol => Ast1.lParam(si.lowName)
-              case GlobalSymbol => throw new Exception("global symbol cannot be closured!")
-            }
-            Ast1.ClosureVal(lowLocation, toLow(si.stype))
-          }))
-
-        Ast1.FnPointer(args.map { arg =>
-          Ast1.Field(arg.name, toLow(arg.ftype))
-        }, toLow(ret), lowClosure)
+      case FnPointer(args, ret) =>
+        Ast1.FnPointer(
+          args.map { arg => Ast1.Field(arg.name, toLow(arg.ftype)) },
+          toLow(ret)
+        )
+      case Closure(name: String, fnPointer: FnPointer, vals) =>
+        Ast1.Closure(name, toLow(fnPointer).asInstanceOf[Ast1.FnPointer], vals.map { si =>
+          val lowLocation = lowLiteral(si.location).asInstanceOf[Ast1.Closurable]
+          Ast1.ClosureVal(lowLocation, toLow(si.stype))
+        })
+      case Disclosure(name, fnPointer) => Ast1.Disclosure(name, toLow(fnPointer).asInstanceOf[Ast1.FnPointer])
     }
 
+  var disclosureId = 0
+  def nextDisclosureId = {
+    disclosureId += 1
+    s"tdisclosure$disclosureId"
+  }
+
+  def typeToTypeHint(etype: Type): TypeHint = {
+    etype match {
+      case ScalarType(fullModName, name, _) => ScalarTypeHint(name, fullModName)
+      case FactorType(fullModName, name, _) => ScalarTypeHint(name, fullModName)
+      case FnPointer(args, ret) =>
+        FnTypeHint(args.map { arg =>
+          FnTypeHintField(arg.name, typeToTypeHint(arg.ftype))
+        }, typeToTypeHint(ret))
+      case Closure(name, fnPointer, _) => typeToTypeHint(fnPointer)
+      case Disclosure(name, fnPointer) => typeToTypeHint(fnPointer)
+    }
+  }
 
   implicit class TypeHintWrapper(th: TypeHint) {
-    def toType(implicit namespace: Namespace): Type = {
+    def toType(isParam: Boolean)(implicit namespace: Namespace): Type = {
       th match {
         case sth: ScalarTypeHint => namespace.types.getOrElse(sth, throw new CompileEx(sth, CE.TypeNotFound(sth)))
         case FnTypeHint(args, ret) =>
-          FnType(args.map { arg =>
-            TypeField(false, arg.name, arg.typeHint.toType)
-          }, ret.toType)
+          if (isParam)
+            Disclosure(nextDisclosureId, th.toType(isParam = false).asInstanceOf[FnPointer])
+          else
+            FnPointer(args.map { arg =>
+              TypeField(false, arg.name, arg.typeHint.toType(isParam = true))
+            }, ret.toType(isParam = false))
       }
     }
   }
@@ -128,11 +137,11 @@ object TypeCheckerUtil {
     }
   }
 
-  def lowLiteral(location: SymbolLocation, literal: String) =
+  def lowLiteral(location: SymbolLocation) =
     location match {
-      case ClosureSymbol => Ast1.lClosure(literal)
-      case LocalSymbol => Ast1.lLocal(literal)
-      case ParamSymbol => Ast1.lParam(literal)
-      case GlobalSymbol => Ast1.lGlobal(literal)
+      case ClosureSymbol(literal) => Ast1.lClosure(literal)
+      case LocalSymbol(literal) => Ast1.lLocal(literal)
+      case ParamSymbol(literal) => Ast1.lParam(literal)
+      case GlobalSymbol(literal) => Ast1.lGlobal(literal)
     }
 }

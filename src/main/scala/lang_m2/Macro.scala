@@ -1,7 +1,7 @@
 package lang_m2
 
 import lang_m2.Ast0._
-import TypeCheckerUtil.{FactorType, FnType$, ScalarType, Type, thBool, toLow, typeToTypeHint}
+import TypeCheckerUtil.{FactorType, Type, thBool, toLow, typeToTypeHint}
 
 /**
   * Created by over on 23.08.16.
