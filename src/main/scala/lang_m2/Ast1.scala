@@ -40,7 +40,8 @@ object Ast1 {
 
     val irArgs = realArgs.map(arg => arg._type match {
       case struct: Struct => s"${arg._type.name}* %${arg.name}"
-      case (_: Scalar | _: FnPointer) => s"${arg._type.name} %${arg.name}"
+      case ds: Disclosure => s"${arg._type.name}* %${arg.name}"
+      case _ => s"${arg._type.name} %${arg.name}"
     })
     override val fnPointer: FnPointer = this
   }
@@ -53,14 +54,16 @@ object Ast1 {
   }
 
   case class Closure(typeName: String, fnPointer: FnPointer, vals: Seq[ClosureVal]) extends FnType {
-    override val name: String = typeName
+    override val name: String = "%" + typeName
+
+    def realFnPointer = FnPointer(fnPointer.args :+ Field("closure", Scalar(s"%$typeName*")), fnPointer.ret)
   }
 
   case class Disclosure(fnPointer: FnPointer) extends FnType {
-    override val name: String = {
-      val realFnPointer = FnPointer(fnPointer.args :+ Field("closure", Scalar("i8*")), fnPointer.ret)
-      s"{ ${realFnPointer.name} }*"
-    }
+    override val name: String =
+      s"{ ${realFnPointer.name} }"
+
+    def realFnPointer = FnPointer(fnPointer.args :+ Field("closure", Scalar("i8*")), fnPointer.ret)
   }
 
   sealed trait Stat

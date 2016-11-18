@@ -91,8 +91,9 @@ case class IrGen(val out: OutputStream) {
         out.println(s"\t$fieldPtr = getelementptr %${typeName}, %${typeName}* %closure, i32 0, i32 ${index + 1}")
 
         closured match {
+          //FIXME: use varType.ptr instead!
           case ClosureVal(lLocal(vName), varType) =>
-            (load(fieldPtr, varType), varType)
+            (load(fieldPtr, Scalar(varType.name + "*")), varType)
           case ClosureVal(lParam(vName), varType) =>
             if (varType.isInstanceOf[Struct])
               (load(fieldPtr, varType), varType)
@@ -112,9 +113,10 @@ case class IrGen(val out: OutputStream) {
           ftype match {
             case fnPtr: FnPointer => (load("%" + value, fnPtr), fnPtr, Seq())
             case closure: Closure =>
+              val realFnPointer = closure.realFnPointer
               val ptr = nextTmpVar()
               out.println(s"\t$ptr = getelementptr %${closure.typeName}, %${closure.typeName}* %$value, i32 0, i32 0")
-              (load(ptr, closure.fnPointer), closure.fnPointer, Seq(s"${closure.typeName}* %value"))
+              (load(ptr, realFnPointer), realFnPointer, Seq(s"${closure.name}* %$value"))
             case _ => throw new Exception("not implemented in ABI")
           }
         case lParam(value) =>
@@ -125,9 +127,12 @@ case class IrGen(val out: OutputStream) {
           ftype match {
             case fnPtr: FnPointer => ("%" + value, fnPtr, Seq())
             case ds@Disclosure(fnPointer) =>
+              val realFnPtr = ds.realFnPointer
               val ptr = nextTmpVar()
-              out.println(s"\t$ptr = getelementptr %${ds.name}, %${ds.name}* %$value, i32 0, i32 0")
-              (load(ptr, fnPointer), fnPointer, Seq(s"${ds.name}* %value"))
+              out.println(s"\t$ptr = getelementptr ${ds.name}, ${ds.name}* %$value, i32 0, i32 0")
+              val casted = nextTmpVar()
+              out.println(s"\t$casted = bitcast ${ds.name}* %$value to i8*")
+              (load(ptr, realFnPtr), realFnPtr, Seq(s"i8* $casted"))
             case _ => throw new Exception("not implemented in ABI")
           }
         case lGlobal(value) =>
@@ -143,6 +148,9 @@ case class IrGen(val out: OutputStream) {
           case id: lId =>
             field._type match {
               case s: Struct =>
+                val (ptr, idType) = genericIdToPtr(functions, fnType, vars, id)
+                ptr
+              case ds: Disclosure =>
                 val (ptr, idType) = genericIdToPtr(functions, fnType, vars, id)
                 ptr
               case _ => genInitWithValue(functions, fnType, vars, field._type, id)
@@ -166,6 +174,7 @@ case class IrGen(val out: OutputStream) {
       }
   }
 
+  // FIXME: нужен ли vtype?
   def genInitWithValue(functions: Seq[Fn], fnType: FnType, vars: Map[String, Type], vtype: Type, init: Init): String = init match {
     case lInt(value) => value
     case lFloat(value) =>
@@ -179,7 +188,14 @@ case class IrGen(val out: OutputStream) {
       tmp1
     case lGlobal(value) => "@" + value
     case lLocal(varName) =>
-      load(s"%$varName", vtype)
+      vtype match {
+        case ds: Disclosure =>
+          val tmp = nextTmpVar()
+          val sourceType = vars(varName)
+          out.println(s"\t$tmp = bitcast ${sourceType.name}* %$varName to ${vtype.name}*")
+          tmp
+        case _ => load(s"%$varName", vtype)
+      }
     case lParam(paramName) =>
       if (vtype.isInstanceOf[Struct]) load(s"%$paramName", vtype)
       else s"%$paramName"
@@ -248,20 +264,21 @@ case class IrGen(val out: OutputStream) {
       case StoreEnclosure(to, init) =>
         val (base, baseType) = genericIdToPtr(functions, fnType, vars, to)
         baseType match {
-          case Closure(typeName, fnPtr, vals) =>
+          case closure@Closure(typeName, fnPtr, vals) =>
             // store fn pointer
+            val realFnPtr = closure.realFnPointer
             val ptrToFn = nextTmpVar()
-            out.println(s"$ptrToFn = getelementptr $typeName, $typeName* $base, i32 0, i32 0")
+            out.println(s"\t$ptrToFn = getelementptr %$typeName, %$typeName* $base, i32 0, i32 0")
             val fnPtrValue = genInitWithValue(functions, fnType, vars, fnPtr, init)
-            store(fnPtrValue, ptrToFn, fnPtr)
+            store(fnPtrValue, ptrToFn, realFnPtr)
 
             // store all closured vals
             vals.zipWithIndex.foreach {
               case (v, index) =>
                 val ptrToClosureVal = nextTmpVar()
-                out.println(s"$ptrToClosureVal = getelementptr $typeName, $typeName* $base, i32 0, i32 ${index + 1}")
-                val closureVal = genInitWithValue(functions, fnType, vars, v.varType, v.closurable)
-                store(closureVal, ptrToClosureVal, v.varType)
+                out.println(s"\t$ptrToClosureVal = getelementptr %$typeName, %$typeName* $base, i32 0, i32 ${index + 1}")
+                val (closureValPtr, _) = genericIdToPtr(functions, fnType, vars, v.closurable)
+                store(closureValPtr, ptrToClosureVal, Scalar(v.varType.name + "*"))
             }
           case _ => throw new Exception("not implemented in ABI")
         }
@@ -309,9 +326,14 @@ case class IrGen(val out: OutputStream) {
     fn._type match {
       case fnPtr@FnPointer(args, ret) =>
         out.println(s"define ${fnPtr.realRet.name} @${escapeFnName(fn.name)}(${fnPtr.irArgs.mkString(", ")}) {")
-      case Closure(typeName, fnPtr, _) =>
-        val args = fnPtr.realArgs :+ Field("closure", Scalar(typeName))
-        out.println(s"define ${fnPtr.realRet.name} @${fn.name}(${args.mkString(", ")}) {")
+      case Closure(typeName, fnPtr, vals) =>
+        val realFnPtr = FnPointer(fnPtr.args :+ Field("closure", Scalar(s"%$typeName*")), fnPtr.ret)
+        val mappedClosure = (realFnPtr.name +: vals.map { cv =>
+          cv.varType.name + "*"
+        }).mkString(", ")
+
+        out.println(s"%$typeName = type { $mappedClosure }")
+        out.println(s"define ${realFnPtr.ret.name} @${fn.name}(${realFnPtr.irArgs.mkString(", ")}) {")
       case Disclosure(fnPointer) => throw new Exception("not implemented in ABI")
     }
 
