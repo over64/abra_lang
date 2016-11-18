@@ -56,8 +56,11 @@ object Ast1 {
     override val name: String = typeName
   }
 
-  case class Disclosure(typeName: String, fnPointer: FnPointer) extends FnType {
-    override val name: String = typeName
+  case class Disclosure(fnPointer: FnPointer) extends FnType {
+    override val name: String = {
+      val realFnPointer = FnPointer(fnPointer.args :+ Field("closure", Scalar("i8*")), fnPointer.ret)
+      s"{ ${realFnPointer.name} }*"
+    }
   }
 
   sealed trait Stat

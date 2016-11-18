@@ -303,7 +303,9 @@ class TypeChecker {
                  typeAdvice: Option[Type],
                  expressions: Seq[BlockExpression],
                  retMapper: (Namespace, Option[InferedExp]) => InferedExp): (Type, Seq[Ast1.Stat]) = {
-    val childScope = new BlockScope(Some(scope))
+    val childScope = scope.mkChild { parent =>
+      new BlockScope(Some(parent))
+    }
     val stats = expressions.dropRight(1).flatMap { blockExpr =>
       evalBlockExpression(namespace, childScope, forInit = false, None, blockExpr).stats
     }
@@ -339,7 +341,11 @@ class TypeChecker {
         fn.retTypeHint.map { rth => rth.toType(isParam = false) }
     }
 
-    val childScope = new FnScope(closureScope)
+    val childScope = closureScope.map { cs =>
+      cs.mkChild { parent =>
+        new FnScope(Some(parent))
+      }
+    }.getOrElse(new FnScope(closureScope))
 
     val (inferedRet, lowBody): (Type, Ast1.FnBody) = fn.body match {
       case LlInline(value) => // ret должен быть указан явно
@@ -374,8 +380,11 @@ class TypeChecker {
           assertTypeEquals(self, expectedRet, etype)
         }
 
-        // FIXME: put vars
-        (etype, Ast1.Block(vars = Map(), body))
+        val vars = childScope.traceVars.map { si =>
+          (si.location.lowName, toLow(si.stype))
+        }.toMap
+
+        (etype, Ast1.Block(vars, body))
     }
 
     val lowFnName = kind match {

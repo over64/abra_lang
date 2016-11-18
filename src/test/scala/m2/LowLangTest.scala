@@ -130,7 +130,7 @@ class LowLangTest extends FunSuite with LowUtil {
   //FIXME: too bad IR, Optimize store!
   test("return struct value from function") {
     val tFoo = Struct("Foo", Seq(Field("x", tInt)))
-    val tFnFoo = FnPointer(Seq(), tFoo)
+    val tFnFoo = FnPointer(Seq(Field("ret", tFoo)), Scalar("void"))
     Module(
       structs = Seq(tFoo),
       functions = Seq(
@@ -141,7 +141,7 @@ class LowLangTest extends FunSuite with LowUtil {
         Fn("main", FnPointer(args = Seq(), ret = tInt), Block(
           vars = Map("foo" -> tFoo),
           stats = Seq(
-            Store(lLocal("foo"), Seq(), Call(lGlobal("Foo"), Seq())),
+            Call(lGlobal("Foo"), Seq(lLocal("foo"))),
             Ret(Access(lLocal("foo"), "x"))
           )))
       )).assertRunEquals(Some(42))
@@ -246,7 +246,7 @@ class LowLangTest extends FunSuite with LowUtil {
   test("closure param") {
     val tUnit = Scalar("void")
     val tclosure1 = Closure("tclosure1", FnPointer(args = Seq(), ret = tUnit), vals = Seq(ClosureVal(lLocal("x"), tInt)))
-    val tdisclosure1 = Disclosure("tdisclosure1", FnPointer(args = Seq(), ret = tUnit))
+    val tdisclosure1 = Disclosure(FnPointer(args = Seq(), ret = tUnit))
     Module(
       functions = Seq(
         Fn("anonFn1", tclosure1, Block(stats = Seq(
@@ -262,7 +262,7 @@ class LowLangTest extends FunSuite with LowUtil {
           stats = Seq(
             Store(lLocal("x"), Seq(), lInt("0")),
             StoreEnclosure(lLocal("anon1"), lGlobal("anonFn1")),
-            Call(lGlobal("foo"), Seq(ClosureToDisclosure(lLocal("anon1"), tdisclosure1))),
+            Call(lGlobal("foo"), Seq(lLocal("anon1"))),
             Ret(lLocal("x"))
           )))
       )).assertRunEquals(Some(42))

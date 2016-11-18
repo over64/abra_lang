@@ -32,7 +32,9 @@ object TypeCheckerUtil {
   }
 
   case class Closure(name: String, fnPointer: FnPointer, vals: Seq[SymbolInfo]) extends FnType
-  case class Disclosure(name: String, fnPointer: FnPointer) extends FnType
+  case class Disclosure(fnPointer: FnPointer) extends FnType {
+    override val name: String = fnPointer.name
+  }
 
   case class InferedExp(infType: Type, stats: Seq[Ast1.Stat], init: Option[Ast1.Init])
 
@@ -73,7 +75,7 @@ object TypeCheckerUtil {
           val lowLocation = lowLiteral(si.location).asInstanceOf[Ast1.Closurable]
           Ast1.ClosureVal(lowLocation, toLow(si.stype))
         })
-      case Disclosure(name, fnPointer) => Ast1.Disclosure(name, toLow(fnPointer).asInstanceOf[Ast1.FnPointer])
+      case Disclosure(fnPointer) => Ast1.Disclosure(toLow(fnPointer).asInstanceOf[Ast1.FnPointer])
     }
 
   var disclosureId = 0
@@ -91,7 +93,7 @@ object TypeCheckerUtil {
           FnTypeHintField(arg.name, typeToTypeHint(arg.ftype))
         }, typeToTypeHint(ret))
       case Closure(name, fnPointer, _) => typeToTypeHint(fnPointer)
-      case Disclosure(name, fnPointer) => typeToTypeHint(fnPointer)
+      case Disclosure(fnPointer) => typeToTypeHint(fnPointer)
     }
   }
 
@@ -101,7 +103,7 @@ object TypeCheckerUtil {
         case sth: ScalarTypeHint => namespace.types.getOrElse(sth, throw new CompileEx(sth, CE.TypeNotFound(sth)))
         case FnTypeHint(args, ret) =>
           if (isParam)
-            Disclosure(nextDisclosureId, th.toType(isParam = false).asInstanceOf[FnPointer])
+            Disclosure(th.toType(isParam = false).asInstanceOf[FnPointer])
           else
             FnPointer(args.map { arg =>
               TypeField(false, arg.name, arg.typeHint.toType(isParam = true))

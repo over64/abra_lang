@@ -73,7 +73,10 @@ case class IrGen(val out: OutputStream) {
   def genericIdToPtr(functions: Seq[Fn], fnType: FnType, vars: Map[String, Type], id: lId): (String, Type) = id match {
     case lLocal(value) => ("%" + value, vars(value))
     case lParam(value) =>
-      val varType = vars(value)
+      val varType = fnType.fnPointer.args.find { arg =>
+        arg.name == value
+      }.map { arg => arg._type }.get
+
       varType match {
         case s: Struct => ("%" + value, varType)
         case _ => throw new Exception("not implemented in ABI")
@@ -115,13 +118,16 @@ case class IrGen(val out: OutputStream) {
             case _ => throw new Exception("not implemented in ABI")
           }
         case lParam(value) =>
-          val ftype = vars(value)
+          val ftype = fnType.fnPointer.args.find { arg =>
+            arg.name == value
+          }.map { arg => arg._type }.get
+
           ftype match {
-            case fnPtr: FnPointer => (load("%" + value, fnPtr), fnPtr, Seq())
-            case Disclosure(typeName, fnPointer) =>
+            case fnPtr: FnPointer => ("%" + value, fnPtr, Seq())
+            case ds@Disclosure(fnPointer) =>
               val ptr = nextTmpVar()
-              out.println(s"\t$ptr = getelementptr %${typeName}, %${typeName}* %$value, i32 0, i32 0")
-              (load(ptr, fnPointer), fnPointer, Seq(s"${typeName}* %value"))
+              out.println(s"\t$ptr = getelementptr %${ds.name}, %${ds.name}* %$value, i32 0, i32 0")
+              (load(ptr, fnPointer), fnPointer, Seq(s"${ds.name}* %value"))
             case _ => throw new Exception("not implemented in ABI")
           }
         case lGlobal(value) =>
@@ -135,10 +141,11 @@ case class IrGen(val out: OutputStream) {
       val calculatedArgs = (args).zip(fnPtr.args).map { case (arg, field) =>
         arg match {
           case id: lId =>
-            val (ptr, idType) = genericIdToPtr(functions, fnType, vars, id)
-            idType match {
-              case s: Struct => ptr
-              case _ => load(ptr, idType)
+            field._type match {
+              case s: Struct =>
+                val (ptr, idType) = genericIdToPtr(functions, fnType, vars, id)
+                ptr
+              case _ => genInitWithValue(functions, fnType, vars, field._type, id)
             }
           case other@_ => genInitWithValue(functions, fnType, vars, field._type, other)
         }
@@ -301,11 +308,11 @@ case class IrGen(val out: OutputStream) {
   def genFunction(functions: Seq[Fn], fn: Fn): Unit = {
     fn._type match {
       case fnPtr@FnPointer(args, ret) =>
-        out.println(s"define ${fnPtr.realRet.name} @${escapeFnName(fn.name)}(${fnPtr.realArgs.mkString(", ")}) {")
+        out.println(s"define ${fnPtr.realRet.name} @${escapeFnName(fn.name)}(${fnPtr.irArgs.mkString(", ")}) {")
       case Closure(typeName, fnPtr, _) =>
         val args = fnPtr.realArgs :+ Field("closure", Scalar(typeName))
         out.println(s"define ${fnPtr.realRet.name} @${fn.name}(${args.mkString(", ")}) {")
-      case Disclosure(typeName, fnPointer) => throw new Exception("not implemented in ABI")
+      case Disclosure(fnPointer) => throw new Exception("not implemented in ABI")
     }
 
     fn.body match {
