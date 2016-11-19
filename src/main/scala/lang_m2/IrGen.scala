@@ -64,14 +64,9 @@ case class IrGen(val out: OutputStream) {
   def store(from: String, to: String, varType: Type) =
     out.println(s"\tstore ${varType.name} $from, ${varType.name}* $to")
 
-  def loadAndStore(from: String, to: String, varType: Type) = {
-    val next = nextTmpVar()
-    out.println(s"\t$next = load ${varType.name}, ${varType.name}* $from")
-    out.println(s"\tstore ${varType.name} $next, ${varType.name}* $to")
-  }
-
   def genericIdToPtr(functions: Seq[Fn], fnType: FnType, vars: Map[String, Type], id: lId): (String, Type) = id match {
-    case lLocal(value) => ("%" + value, vars(value))
+    case lLocal(value) =>
+      ("%" + value, vars(value))
     case lParam(value) =>
       val varType = fnType.fnPointer.args.find { arg =>
         arg.name == value
@@ -103,6 +98,31 @@ case class IrGen(val out: OutputStream) {
       case _ => throw new Exception("not implemented in ABI")
     }
     case _ => throw new Exception("not implemented in ABI")
+  }
+
+  def genericFnTypeToDisclosure(functions: Seq[Fn], fnType: FnType, vars: Map[String, Type], id: lId, ds: Disclosure): String = {
+    val (idType, idValue) = id match {
+      case lLocal(value) => (vars(value), "%" + value)
+      case lParam(value) => (fnType.fnPointer.args.find { arg => arg.name == value }.map { arg => arg._type }.get, "%" + value)
+      case lGlobal(value) => (functions.find { fn => fn.name == value }.map { fn => fn._type }.get, "@" + escapeFnName(value))
+    }
+
+    idType match {
+      case fnPtr: FnPointer =>
+        val (tmp1, tmp2, tmp3) = (nextTmpVar(), nextTmpVar(), nextTmpVar())
+        out.println(s"\t$tmp1 = alloca ${ds.name}")
+        out.println(s"\t$tmp2 = getelementptr ${ds.name}, ${ds.name}* $tmp1, i32 0, i32 0")
+
+        val realFnPtr = ds.realFnPointer
+        out.println(s"\t$tmp3 = bitcast ${fnPtr.name} $idValue to ${realFnPtr.name}")
+        out.println(s"\tstore ${realFnPtr.name} $tmp3, ${realFnPtr.name}* $tmp2")
+        tmp1
+      case closure: Closure =>
+        val tmp = nextTmpVar()
+        out.println(s"\t$tmp = bitcast ${idType.name}* $idValue to ${ds.name}*")
+        tmp
+      case ds: Disclosure => idValue
+    }
   }
 
   def genericCallToValue(functions: Seq[Fn], fnType: FnType, vars: Map[String, Type], call: Call) = call match {
@@ -144,24 +164,23 @@ case class IrGen(val out: OutputStream) {
       }
 
       val calculatedArgs = (args).zip(fnPtr.args).map { case (arg, field) =>
-        arg match {
-          case id: lId =>
-            field._type match {
-              case s: Struct =>
-                val (ptr, idType) = genericIdToPtr(functions, fnType, vars, id)
-                ptr
-              case ds: Disclosure =>
-                val (ptr, idType) = genericIdToPtr(functions, fnType, vars, id)
-                ptr
-              case _ => genInitWithValue(functions, fnType, vars, field._type, id)
-            }
-          case other@_ => genInitWithValue(functions, fnType, vars, field._type, other)
+        field._type match {
+          case s: Struct =>
+            val (ptr, _) = genericIdToPtr(functions, fnType, vars, arg.asInstanceOf[lId]); ptr
+          case ds: Disclosure =>
+            genericFnTypeToDisclosure(functions, fnType, vars, arg.asInstanceOf[lId], ds)
+          case _ => genInitWithValue(functions, fnType, vars, field._type, arg)
         }
       }
 
       val joinedArgs = (calculatedArgs.zip(fnPtr.args).map {
         case (arg, argType) =>
-          s"${if (argType._type.isInstanceOf[Struct]) argType._type.name + "*" else argType._type.name} $arg"
+          val argTypeName = argType._type match {
+            case s: Struct => s.name + "*"
+            case ds: Disclosure => ds.name + "*"
+            case other@_ => other.name
+          }
+          s"$argTypeName $arg"
       } ++ closureArgs).mkString(", ")
 
       if (fnPtr.ret == Scalar("void")) {
@@ -186,16 +205,9 @@ case class IrGen(val out: OutputStream) {
       val tmp1 = nextTmpVar()
       out.println(s"\t$tmp1 = bitcast [${value.bytesLen} x i8]* @.$name to i8*")
       tmp1
-    case lGlobal(value) => "@" + value
+    case lGlobal(value) => "@" + escapeFnName(value)
     case lLocal(varName) =>
-      vtype match {
-        case ds: Disclosure =>
-          val tmp = nextTmpVar()
-          val sourceType = vars(varName)
-          out.println(s"\t$tmp = bitcast ${sourceType.name}* %$varName to ${vtype.name}*")
-          tmp
-        case _ => load(s"%$varName", vtype)
-      }
+      load(s"%$varName", vtype)
     case lParam(paramName) =>
       if (vtype.isInstanceOf[Struct]) load(s"%$paramName", vtype)
       else s"%$paramName"

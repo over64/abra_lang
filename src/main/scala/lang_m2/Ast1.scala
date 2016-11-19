@@ -75,22 +75,11 @@ object Ast1 {
   case class lFloat(value: String) extends Literal
   case class lString(value: String, enc: HexUtil.EncodeResult) extends Literal
 
-  def escapeFnName(value: String) = value
-    .replace("!=", "$noteq")
-    .replace("!", "$not")
-    .replace("+", "$plus")
-    .replace("-", "$minus")
-    .replace("/", "$div")
-    .replace("*", "$mul")
-    .replace("::", "$cons")
-    .replace("<", "$less")
-    .replace(">", "$more")
-    .replace("==", "$eqeq")
-    .replace("%", "$mod")
-    .replace("||", "$or")
-    .replace("&&", "$and")
+  def escapeFnName(value: String) = "\"" + value + "\""
 
-  sealed trait lId extends Literal
+  sealed trait lId extends Literal {
+    val value: String
+  }
   sealed trait Closurable extends lId {
     val value: String
   }
@@ -99,7 +88,8 @@ object Ast1 {
   case class lGlobal(value: String) extends lId
   case class lClosure(value: String) extends Closurable
 
-  case class ClosureToDisclosure(from: lLocal, disclosure: Disclosure) extends Init
+  //  case class FnPtrToDisclosure(from: lLocal, disclosure: Disclosure) extends Init
+  //  case class ClosureToDisclosure(from: lLocal, disclosure: Disclosure) extends Init
   case class Access(from: lId, prop: String) extends Init
   case class Store(toVar: lId, fields: Seq[String], init: Init) extends Stat
   case class StoreEnclosure(toVar: lId, init: lGlobal) extends Stat

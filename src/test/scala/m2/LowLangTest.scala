@@ -62,14 +62,14 @@ class LowLangTest extends FunSuite with LowUtil {
         Fn("main", FnPointer(args = Seq(), ret = tInt), Block(
           vars = Map("a" -> tFnPlus),
           stats = Seq(
-            Store(lLocal("a"), Seq(), lGlobal("$plus_for_Int")),
+            Store(lLocal("a"), Seq(), lGlobal("+_for_Int")),
             Ret(Call(lLocal("a"), Seq(lInt("1"), lInt("2"))))
           )))
       )).assertRunEquals(Some(3))
   }
 
   test("call param") {
-    val tFnFoo = FnPointer(Seq(Field("self", tFnPlus)), tInt)
+    val tFnFoo = FnPointer(Seq(Field("self", Disclosure(tFnPlus))), tInt)
     Module(
       functions = Seq(
         fPlus,
@@ -77,7 +77,7 @@ class LowLangTest extends FunSuite with LowUtil {
           Ret(Call(lParam("self"), Seq(lInt("1"), lInt("2"))))
         ))),
         Fn("main", FnPointer(args = Seq(), ret = tInt), Block(stats = Seq(
-          Ret(Call(lGlobal("foo"), Seq(lGlobal("$plus_for_Int"))))
+          Ret(Call(lGlobal("foo"), Seq(lGlobal("+_for_Int"))))
         )))
       )).assertRunEquals(Some(3))
   }
