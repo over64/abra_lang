@@ -1,6 +1,7 @@
 package lang_m2
 
 import lang_m2.Ast0._
+import lang_m2.Ast1.Struct
 
 /**
   * Created by over on 29.07.16.
@@ -66,6 +67,10 @@ object TypeCheckerUtil {
           Ast1.Field(field.name, toLow(field.ftype))
         })
       case FnPointer(args, ret) =>
+        //        val (realArgs, realRet) = ret match {
+        //          case s: Struct => (args :+ TypeField(false, "ret", ret), tUnit)
+        //          case _ => (args, ret)
+        //        }
         Ast1.FnPointer(
           args.map { arg => Ast1.Field(arg.name, toLow(arg.ftype)) },
           toLow(ret)
@@ -77,12 +82,6 @@ object TypeCheckerUtil {
         })
       case Disclosure(fnPointer) => Ast1.Disclosure(toLow(fnPointer).asInstanceOf[Ast1.FnPointer])
     }
-
-  var disclosureId = 0
-  def nextDisclosureId = {
-    disclosureId += 1
-    s"tdisclosure$disclosureId"
-  }
 
   def typeToTypeHint(etype: Type): TypeHint = {
     etype match {
@@ -132,7 +131,7 @@ object TypeCheckerUtil {
       case (Some(FnTypeHint(args, ret)), LlInline(_)) => args
       case (None, Block(blockArgs, _)) =>
         blockArgs.map { arg =>
-          val th = arg.typeHint.getOrElse(throw new CompileEx(fn, CE.NeedExplicitTypeDefinition()))
+          val th = arg.typeHint.getOrElse(throw new CompileEx(fn, CE.ExpectedTypeHint()))
           FnTypeHintField(arg.name, th)
         }
       case (None, LlInline(_)) => throw new CompileEx(fn, CE.NeedExplicitTypeDefinition())
@@ -141,7 +140,8 @@ object TypeCheckerUtil {
 
   def lowLiteral(location: SymbolLocation) =
     location match {
-      case ClosureSymbol(literal) => Ast1.lClosure(literal)
+      case ClosureLocalSymbol(literal) => Ast1.lClosureLocal(literal)
+      case ClosureParamSymbol(literal) => Ast1.lClosureParam(literal)
       case LocalSymbol(literal) => Ast1.lLocal(literal)
       case ParamSymbol(literal) => Ast1.lParam(literal)
       case GlobalSymbol(literal) => Ast1.lGlobal(literal)

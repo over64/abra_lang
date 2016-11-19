@@ -18,8 +18,8 @@ object Ast1 {
 
   case class FnPointer(args: Seq[Field], ret: Type) extends FnType {
     override val name: String = {
-      s"${realRet.name} (${
-        realArgs.map { arg =>
+      s"${ret.name} (${
+        args.map { arg =>
           arg._type match {
             case struct: Struct => struct.name + "*"
             case other@_ => other.name
@@ -28,17 +28,7 @@ object Ast1 {
       })*"
     }
 
-    def realRet = ret match {
-      case s: Struct => Scalar("void")
-      case _ => ret
-    }
-
-    def realArgs = ret match {
-      case s: Struct => Seq(Field("ret", s)) ++ args
-      case _ => args
-    }
-
-    val irArgs = realArgs.map(arg => arg._type match {
+    val irArgs = args.map(arg => arg._type match {
       case struct: Struct => s"${arg._type.name}* %${arg.name}"
       case ds: Disclosure => s"${arg._type.name}* %${arg.name}"
       case _ => s"${arg._type.name} %${arg.name}"
@@ -47,10 +37,7 @@ object Ast1 {
   }
 
   case class ClosureVal(closurable: Closurable, varType: Type) {
-    def name: String = closurable match {
-      case lLocal(value) => value
-      case lParam(value) => value
-    }
+    def name: String = closurable.value
   }
 
   case class Closure(typeName: String, fnPointer: FnPointer, vals: Seq[ClosureVal]) extends FnType {
@@ -75,7 +62,7 @@ object Ast1 {
   case class lFloat(value: String) extends Literal
   case class lString(value: String, enc: HexUtil.EncodeResult) extends Literal
 
-  def escapeFnName(value: String) = "\"" + value + "\""
+  def escapeFnName(value: String) = ("\"" + value + "\"").replace("=", "$eq")
 
   sealed trait lId extends Literal {
     val value: String
@@ -86,7 +73,8 @@ object Ast1 {
   case class lLocal(value: String) extends Closurable
   case class lParam(value: String) extends Closurable
   case class lGlobal(value: String) extends lId
-  case class lClosure(value: String) extends Closurable
+  case class lClosureLocal(value: String) extends Closurable
+  case class lClosureParam(value: String) extends Closurable
 
   //  case class FnPtrToDisclosure(from: lLocal, disclosure: Disclosure) extends Init
   //  case class ClosureToDisclosure(from: lLocal, disclosure: Disclosure) extends Init

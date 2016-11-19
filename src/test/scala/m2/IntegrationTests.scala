@@ -34,21 +34,31 @@ class IntegrationTests extends FunSuite {
     }
   }
 
-  test("hello, world") {
-    assertRunEquals("tl/integration/hw.abra")(exit = None, stdout = Some("Привет, мир!"))
+  test("function declarations") {
+    assertRunEquals("tl/integration/function_declarations.abra")(exit = Some(1))
   }
-
-  test("floats") {
-    assertRunEquals("tl/integration/floats.abra")(exit = Some(11))
+  test("literals") {
+    assertRunEquals("tl/integration/literals.abra")(exit = Some(42))
   }
-
-  test("fn pointer") {
-    assertRunEquals("tl/integration/fnpointer.abra")(exit = Some(10))
+  test("usual self and apply calls") {
+    assertRunEquals("tl/integration/usual_self_and_apply_calls.abra")(exit = Some(99))
   }
-  test("fake arrays") {
-    assertRunEquals("tl/integration/arrays.abra")(exit = Some(186))
+  test("type declarations") {
+    assertRunEquals("tl/integration/type_declarations.abra")(exit = Some(1))
   }
-  test("closures") {
-    assertRunEquals("tl/integration/closures.abra")(exit = Some(2))
+  test("get and set") {
+    assertRunEquals("tl/integration/get_and_set.abra")(exit = Some(3))
+  }
+  test("closures no params") {
+    assertRunEquals("tl/integration/closures_no_params.abra")(exit = Some(4))
+  }
+  test("closures with params") {
+    assertRunEquals("tl/integration/closures_with_params.abra")(exit = Some(3))
+  }
+  test("nested closures") {
+    assertRunEquals("tl/integration/nested_closures.abra")(exit = Some(7))
+  }
+  test("modules") {
+    assertRunEquals("tl/integration/modules/moduleA.abra")(exit = Some(1))
   }
 }

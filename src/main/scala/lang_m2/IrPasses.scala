@@ -8,93 +8,59 @@ import scala.collection.mutable
   * Created by over on 28.10.16.
   */
 object IrPasses {
-  //  def extractCallParams(functions: Seq[Fn]): Seq[Fn] = {
-  //    var anonVars = 0
-  //    def nextAnonVar = {
-  //      anonVars += 1
-  //      s"anon__$anonVars"
-  //    }
-  //
-  //    def mapCall(call: Call): (Seq[Stat], Call) = call match {
-  //      case Call(fn, args) =>
-  //        val start: Seq[(Seq[Stat], Init)] = Seq()
-  //        val permutated: Seq[(Seq[Stat], Init)] =
-  //          _type.args.zip(args).foldLeft(start) {
-  //            case (seq, (arg, argInit)) =>
-  //              (arg._type, argInit) match {
-  //                case (struct: Struct, call: Call) =>
-  //                  val newVar = Var(nextAnonVar, struct)
-  //                  val (before, newCall) = mapCall(call)
-  //                  val newStore = Store(lLocal(newVar.name), Seq(), struct, newCall)
-  //                  val newInit = lLocal(newVar.name)
-  //                  seq :+ (before :+ newVar :+ newStore, newInit)
-  //                //                case (fnPtr@FnPointer(args, ret, Some(fnClosure)), global: lGlobal) =>
-  //                //                  val newVar = Var(nextAnonVar, fnPtr)
-  //                //                  val newStore = Store(lLocal(newVar.name), Seq(), fnPtr, global)
-  //                //                  val newInit = lLocal(newVar.name)
-  //                //                  seq :+ (Seq(newVar, newStore), newInit)
-  //                case _ => seq :+ (Seq(), argInit)
-  //              }
-  //          }
-  //        val stats = permutated.flatMap {
-  //          case (seq, init) => seq
-  //        }
-  //        val newCallArgs = permutated.map {
-  //          case (seq, init) => init
-  //        }
-  //
-  //        (stats, Call(fn, _type, newCallArgs))
-  //    }
-  //    def mapBoolOr(boolOr: BoolOr): (Seq[Stat], BoolOr) = boolOr match {
-  //      case BoolOr(left, right) =>
-  //        val (leftStats, l) = mapInit(left)
-  //        val (rightStats, r) = mapInit(right)
-  //        (leftStats ++ rightStats, BoolOr(l, r))
-  //    }
-  //    def mapBoolAnd(boolAnd: BoolAnd): (Seq[Stat], BoolAnd) = boolAnd match {
-  //      case BoolAnd(left, right) =>
-  //        val (leftStats, l) = mapInit(left)
-  //        val (rightStats, r) = mapInit(right)
-  //        (leftStats ++ rightStats, BoolAnd(l, r))
-  //    }
-  //    def mapInit(init: Init): (Seq[Stat], Init) = init match {
-  //      case call: Call => mapCall(call)
-  //      case b: BoolOr => mapBoolOr(b)
-  //      case b: BoolAnd => mapBoolAnd(b)
-  //      case other@_ => (Seq(), other)
-  //    }
-  //    def mapBlock(seq: Seq[Stat]): Seq[Stat] =
-  //      seq.foldLeft(Seq[Stat]()) {
-  //        case (seq, call: Call) =>
-  //          val (stats, newCall) = mapCall(call)
-  //          seq ++ stats :+ newCall
-  //        case (seq, Store(to, fields, varType, init)) =>
-  //          val (stats, newInit) = mapInit(init)
-  //          (seq ++ stats :+ Store(to, fields, varType, newInit))
-  //        case (seq, boolAnd: BoolAnd) =>
-  //          val (stats, b) = mapBoolAnd(boolAnd)
-  //          (seq ++ stats :+ b)
-  //        case (seq, boolOr: BoolOr) =>
-  //          val (stats, b) = mapBoolOr(boolOr)
-  //          (seq ++ stats :+ b)
-  //        case (seq, Cond(init, _if, _else)) =>
-  //          val (stats, newInit) = mapInit(init)
-  //          (seq ++ stats :+ Cond(newInit, mapBlock(_if), mapBlock(_else)))
-  //        case (seq, While(init, wseq)) =>
-  //          val (stats, newInit) = mapInit(init)
-  //          (seq ++ stats :+ While(newInit, mapBlock(wseq)))
-  //        case (seq, Ret(_type, init)) =>
-  //          val (stats, newInit) = mapInit(init)
-  //          (seq ++ stats :+ Ret(_type, newInit))
-  //        case (seq, other) => seq :+ other
-  //      }
-  //
-  //    functions.map {
-  //      case Fn(name, _type, Block(vars, seq)) =>
-  //        Fn(name, _type, Block(vars, mapBlock(seq)))
-  //      case other: Fn => other
-  //    }
-  //  }
+  def abiFix(functions: Seq[Fn], headers: Seq[Ast1.HeaderFn]): (Seq[Fn], Seq[Ast1.HeaderFn], Map[String, FnType]) = {
+
+    def fixedFnPointer(fnPtr: FnPointer): FnPointer = {
+      if (fnPtr.ret.isInstanceOf[Struct]) FnPointer(Field("ret", fnPtr.ret) +: fnPtr.args, Scalar("void"))
+      else fnPtr
+    }
+
+
+    def mapStores(fnMap: Map[String, FnType], seq: Seq[Stat]): Seq[Stat] = seq.map {
+      case store@Store(toVar, fields, Call(fnId, args)) =>
+        val foundFn = functions.find { fn =>
+          fn.name == fnId.value
+        }.get
+
+        //FIXME: fix Access!
+        if (fnMap(fnId.value).fnPointer.ret == Scalar("void"))
+          Call(fnId, toVar +: args)
+        else store
+      case other@_ => other
+    }
+
+    val fixedHeaders = headers.map { header =>
+      Ast1.HeaderFn(header.name, fixedFnPointer(header._type))
+    }
+
+    val fixedPrototypes = functions.map { fn =>
+      val fixedFnType =
+        fn._type match {
+          case fnPtr: FnPointer => fixedFnPointer(fnPtr)
+          case Closure(typeName, fnPtr, vals) => Closure(typeName, fixedFnPointer(fnPtr), vals)
+          case Disclosure(fnPtr) => Disclosure(fixedFnPointer(fnPtr))
+        }
+      Fn(fn.name, fixedFnType, fn.body)
+    }
+
+    val fnMap =
+      fixedHeaders.map { header =>
+        (header.name, header._type)
+      }.toMap[String, FnType] ++
+        fixedPrototypes.map { fn =>
+          (fn.name, fn._type)
+        }.toMap
+
+    val fixedBodies = fixedPrototypes.map { fn =>
+      val fixedBody = fn.body match {
+        case ir: IrInline => ir
+        case Block(vars, stats) => Block(vars, mapStores(fnMap, stats))
+      }
+      Fn(fn.name, fn._type, fixedBody)
+    }
+
+    (fixedBodies, fixedHeaders, fnMap)
+  }
 
   case class StringConst(name: String, value: HexUtil.EncodeResult)
 

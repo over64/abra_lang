@@ -1,4 +1,7 @@
-import abra.int
+def +: (self: Int, other: Int) -> Int = llvm {
+  %1 = add nsw i32 %self, %other
+  ret i32 %1
+}
 
 def foo = \fn: () -> Unit ->
     fn()
@@ -17,9 +20,11 @@ def main = {
         x = x + 1
     }()
 
+    foo(closure)
+
     foo({
         x = x + 1
     })
 
     x
-}: Int # 3 expected
+}: Int # 4 expected

@@ -45,6 +45,9 @@ object CE {
   case class BranchTypesNotEqual() extends CompileError {
     override def toString = "expected equal types in if-else branches"
   }
+  case class ExpectedTypeHint() extends CompileError {
+    override def toString = "expected type hint"
+  }
   case class NeedExplicitTypeDefinition() extends CompileError {
     override def toString = "function with llvm body definition must have explicit return type declaration"
   }

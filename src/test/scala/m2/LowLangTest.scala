@@ -221,7 +221,7 @@ class LowLangTest extends FunSuite with LowUtil {
     Module(
       functions = Seq(
         Fn("anonFn1", tclosure1, Block(stats = Seq(
-          Store(lClosure("x"), Seq(), lInt("42")),
+          Store(lClosureLocal("x"), Seq(), lInt("42")),
           RetVoid()
         ))),
         Fn("main", FnPointer(args = Seq(), ret = tInt), Block(
@@ -250,7 +250,7 @@ class LowLangTest extends FunSuite with LowUtil {
     Module(
       functions = Seq(
         Fn("anonFn1", tclosure1, Block(stats = Seq(
-          Store(lClosure("x"), Seq(), lInt("42")),
+          Store(lClosureLocal("x"), Seq(), lInt("42")),
           RetVoid()
         ))),
         Fn("foo", FnPointer(args = Seq(Field("fn", tdisclosure1)), ret = tUnit), Block(stats = Seq(

@@ -1,0 +1,29 @@
+def +: (self: Int, other: Int) -> Int = llvm {
+  %1 = add nsw i32 %self, %other
+  ret i32 %1
+}
+
+def foo = { i: Int, fn: (i: Int) -> Unit ->
+    fn(i)
+}: Unit
+
+def main = {
+    var x = 0
+
+    val closure = { i: Int ->
+        x = x + i
+    }
+    closure(1)
+
+    # anonymous closure
+    { i: Int ->
+        x = x + i
+    }(1)
+
+    # pass anonymous closure as parameter
+    foo(1, { i ->
+        x = x + 1
+    })
+
+    x
+}: Int # 3 expected
