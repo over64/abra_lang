@@ -1,0 +1,12 @@
+def +: (self: Int, other: Int) -> Int = llvm {
+  %1 = add nsw i32 %self, %other
+  ret i32 %1
+}
+
+type Bar = (x: Int, y: Int)
+type Foo = (x: Int, bar: Bar)
+
+def main = {
+    val foobar = Foo(1, Bar(1, 1))
+    foobar.x + foobar.bar.x + foobar.bar.y
+}: Int

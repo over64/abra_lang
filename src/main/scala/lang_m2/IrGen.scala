@@ -220,11 +220,23 @@ case class IrGen(val out: OutputStream) {
       val (ptr, vtype) = genericIdToPtr(fnMap, fnType, vars, closure)
       load(ptr, vtype)
     case a: Access =>
-      val (ptr, vtype) = genericIdToPtr(fnMap, fnType, vars, a.from)
-      val (resType, indicies) = evalGep(vtype, Seq(a.prop))
+      def accessChainToGep(access: Access): (String, Type, Seq[String]) = {
+        access.from match {
+          case id: lId =>
+            val (ptr, baseType) = genericIdToPtr(fnMap, fnType, vars, id)
+            (ptr, baseType, Seq(access.prop))
+          case acc: Access =>
+            val (ptr, baseType, props) = accessChainToGep(acc)
+            (ptr, baseType, props :+ acc.prop)
+          case _ => throw new Exception("not implemented in ABI")
+        }
+      }
+
+      val (ptr, baseType, props) = accessChainToGep(a)
+      val (resType, indicies) = evalGep(baseType, props)
       val res = nextTmpVar()
 
-      out.println(s"\t$res = getelementptr ${vtype.name}, ${vtype.name}* $ptr, ${indicies.map { i => s"i32 $i" } mkString (", ")}")
+      out.println(s"\t$res = getelementptr ${baseType.name}, ${baseType.name}* $ptr, ${indicies.map { i => s"i32 $i" } mkString (", ")}")
       load(res, resType)
     case call: Call =>
       genericCallToValue(fnMap, fnType, vars, call)

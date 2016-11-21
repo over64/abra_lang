@@ -8,27 +8,29 @@ import scala.collection.mutable
   * Created by over on 28.10.16.
   */
 object IrPasses {
+  def fixedFnPointer(fnPtr: FnPointer): FnPointer = {
+    if (fnPtr.ret.isInstanceOf[Struct]) FnPointer(Field("ret", fnPtr.ret) +: fnPtr.args, Scalar("void"))
+    else fnPtr
+  }
+
+  def mapCall(fnMap: Map[String, FnType], call: Call): (Call, Map[String, Type]) = {
+    val fn = fnMap(call.fn.value)
+    val additionalArgs =
+      if (fn.fnPointer.args.length > call.args.length) Seq(lLocal("_abi_"))
+      else Seq()
+
+  }
+
+  def mapStats(fnMap: Map[String, FnType], seq: Seq[Stat]): Seq[Stat] = seq.map {
+    case store@Store(toVar, fields, Call(fnId, args)) =>
+      //FIXME: fix Access!
+      if (fnMap(fnId.value).fnPointer.ret == Scalar("void"))
+        Call(fnId, toVar +: args)
+      else store
+    case other@_ => other
+  }
+
   def abiFix(functions: Seq[Fn], headers: Seq[Ast1.HeaderFn]): (Seq[Fn], Seq[Ast1.HeaderFn], Map[String, FnType]) = {
-
-    def fixedFnPointer(fnPtr: FnPointer): FnPointer = {
-      if (fnPtr.ret.isInstanceOf[Struct]) FnPointer(Field("ret", fnPtr.ret) +: fnPtr.args, Scalar("void"))
-      else fnPtr
-    }
-
-
-    def mapStores(fnMap: Map[String, FnType], seq: Seq[Stat]): Seq[Stat] = seq.map {
-      case store@Store(toVar, fields, Call(fnId, args)) =>
-        val foundFn = functions.find { fn =>
-          fn.name == fnId.value
-        }.get
-
-        //FIXME: fix Access!
-        if (fnMap(fnId.value).fnPointer.ret == Scalar("void"))
-          Call(fnId, toVar +: args)
-        else store
-      case other@_ => other
-    }
-
     val fixedHeaders = headers.map { header =>
       Ast1.HeaderFn(header.name, fixedFnPointer(header._type))
     }
@@ -54,7 +56,7 @@ object IrPasses {
     val fixedBodies = fixedPrototypes.map { fn =>
       val fixedBody = fn.body match {
         case ir: IrInline => ir
-        case Block(vars, stats) => Block(vars, mapStores(fnMap, stats))
+        case Block(vars, stats) => Block(vars, mapStats(fnMap, stats))
       }
       Fn(fn.name, fn._type, fixedBody)
     }

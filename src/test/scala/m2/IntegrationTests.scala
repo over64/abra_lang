@@ -46,6 +46,9 @@ class IntegrationTests extends FunSuite {
   test("type declarations") {
     assertRunEquals("tl/integration/type_declarations.abra")(exit = Some(1))
   }
+  test("access and store") {
+    assertRunEquals("tl/integration/access_and_store.abra")(exit = Some(3))
+  }
   test("get and set") {
     assertRunEquals("tl/integration/get_and_set.abra")(exit = Some(3))
   }

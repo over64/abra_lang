@@ -217,7 +217,7 @@ class TypeChecker {
         if (realField.isDefined) {
           val field = realField.get
           val lowFromType = namespace.toLow(infFrom.infType)
-          InferedExp(field.ftype, Seq(), Some(Ast1.Access(infFrom.init.get.asInstanceOf[Ast1.lId], field.name)))
+          InferedExp(field.ftype, Seq(), Some(Ast1.Access(infFrom.init.get, field.name)))
         } else {
           // Fixme: no cheats, bro. Test that needed function exists
           evalBlockExpression(namespace, scope, forInit, typeAdvice, SelfCall(prop.value, from, Seq()))

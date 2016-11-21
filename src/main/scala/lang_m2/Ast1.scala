@@ -78,7 +78,7 @@ object Ast1 {
 
   //  case class FnPtrToDisclosure(from: lLocal, disclosure: Disclosure) extends Init
   //  case class ClosureToDisclosure(from: lLocal, disclosure: Disclosure) extends Init
-  case class Access(from: lId, prop: String) extends Init
+  case class Access(from: Init, prop: String) extends Init
   case class Store(toVar: lId, fields: Seq[String], init: Init) extends Stat
   case class StoreEnclosure(toVar: lId, init: lGlobal) extends Stat
   case class Call(fn: lId, args: Seq[Init]) extends Init with Stat
