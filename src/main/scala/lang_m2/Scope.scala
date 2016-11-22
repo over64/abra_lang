@@ -40,9 +40,8 @@ sealed trait Scope {
 
   def findVar(name: String): Option[SymbolInfo]
 
-  def traceVars: Iterable[SymbolInfo] = {
-    vars.values ++ children.flatMap(_.vars.values)
-  }
+  def traceVars: Iterable[SymbolInfo] =
+    vars.values ++ children.flatMap(_.traceVars)
 }
 
 case class BlockScope(parent: Option[Scope], vars: mutable.HashMap[String, SymbolInfo] = mutable.HashMap()) extends Scope {

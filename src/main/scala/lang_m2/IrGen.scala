@@ -36,7 +36,7 @@ case class IrGen(val out: OutputStream) {
         val (f, idx) =
           _type.asInstanceOf[Struct].fields.zipWithIndex.find {
             case (f, idx) => f.name == field
-          }.head
+          }.get
         (f._type, seq ++ Seq(idx))
     }
   }
@@ -60,7 +60,28 @@ case class IrGen(val out: OutputStream) {
   def store(from: String, to: String, varType: Type) =
     out.println(s"\tstore ${varType.name} $from, ${varType.name}* $to")
 
-  def genericIdToPtr(fnMap: Map[String, FnType], fnType: FnType, vars: Map[String, Type], id: lId): (String, Type) = id match {
+  def genericAccessToPtr(fnMap: Map[String, FnType], fnType: FnType, vars: Map[String, Type], access: Access): (String, Type) = {
+    def accessChainToGep(access: Access): (String, Type, Seq[String]) = {
+      access.from match {
+        case id: lId =>
+          val (ptr, baseType) = genericInitToPtr(fnMap, fnType, vars, id)
+          (ptr, baseType, Seq(access.prop))
+        case acc: Access =>
+          val (ptr, baseType, props) = accessChainToGep(acc)
+          (ptr, baseType, props :+ access.prop)
+        case _ => throw new Exception("not implemented in ABI")
+      }
+    }
+
+    val (ptr, baseType, props) = accessChainToGep(access)
+    val (resType, indicies) = evalGep(baseType, props)
+    val res = nextTmpVar()
+
+    out.println(s"\t$res = getelementptr ${baseType.name}, ${baseType.name}* $ptr, ${indicies.map { i => s"i32 $i" } mkString (", ")}")
+    (res, resType)
+  }
+
+  def genericInitToPtr(fnMap: Map[String, FnType], fnType: FnType, vars: Map[String, Type], init: Init): (String, Type) = init match {
     case lLocal(value) =>
       ("%" + value, vars(value))
     case lParam(value) =>
@@ -100,12 +121,19 @@ case class IrGen(val out: OutputStream) {
           (fieldPtr, varType)
       case _ => throw new Exception("not implemented in ABI")
     }
-    case _ => throw new Exception("not implemented in ABI")
+    case access: Access => genericAccessToPtr(fnMap, fnType, vars, access)
+    case other@_ => throw new Exception(s"not implemented in ABI for $other")
   }
 
   def genericFnTypeToDisclosure(fnMap: Map[String, FnType], fnType: FnType, vars: Map[String, Type], id: lId, ds: Disclosure): String = {
     val (idType, idValue) = id match {
-      case lLocal(value) => (vars(value), "%" + value)
+      case lLocal(value) =>
+        val idType = vars(value)
+        val loaded = idType match {
+          case fnPtr: FnPointer => load("%" + value, idType)
+          case _ => "%" + value
+        }
+        (idType, loaded)
       case lParam(value) => (fnType.fnPointer.args.find { arg => arg.name == value }.map { arg => arg._type }.get, "%" + value)
       case lGlobal(value) => (fnMap(value), "@" + escapeFnName(value))
     }
@@ -168,7 +196,7 @@ case class IrGen(val out: OutputStream) {
       val calculatedArgs = (args).zip(fnPtr.args).map { case (arg, field) =>
         field._type match {
           case s: Struct =>
-            val (ptr, _) = genericIdToPtr(fnMap, fnType, vars, arg.asInstanceOf[lId]); ptr
+            val (ptr, _) = genericInitToPtr(fnMap, fnType, vars, arg); ptr
           case ds: Disclosure =>
             genericFnTypeToDisclosure(fnMap, fnType, vars, arg.asInstanceOf[lId], ds)
           case _ => genInitWithValue(fnMap, fnType, vars, field._type, arg)
@@ -214,30 +242,14 @@ case class IrGen(val out: OutputStream) {
       if (vtype.isInstanceOf[Struct]) load(s"%$paramName", vtype)
       else s"%$paramName"
     case closure: lClosureLocal =>
-      val (ptr, vtype) = genericIdToPtr(fnMap, fnType, vars, closure)
+      val (ptr, vtype) = genericInitToPtr(fnMap, fnType, vars, closure)
       load(ptr, vtype)
     case closure: lClosureParam =>
-      val (ptr, vtype) = genericIdToPtr(fnMap, fnType, vars, closure)
+      val (ptr, vtype) = genericInitToPtr(fnMap, fnType, vars, closure)
       load(ptr, vtype)
-    case a: Access =>
-      def accessChainToGep(access: Access): (String, Type, Seq[String]) = {
-        access.from match {
-          case id: lId =>
-            val (ptr, baseType) = genericIdToPtr(fnMap, fnType, vars, id)
-            (ptr, baseType, Seq(access.prop))
-          case acc: Access =>
-            val (ptr, baseType, props) = accessChainToGep(acc)
-            (ptr, baseType, props :+ acc.prop)
-          case _ => throw new Exception("not implemented in ABI")
-        }
-      }
-
-      val (ptr, baseType, props) = accessChainToGep(a)
-      val (resType, indicies) = evalGep(baseType, props)
-      val res = nextTmpVar()
-
-      out.println(s"\t$res = getelementptr ${baseType.name}, ${baseType.name}* $ptr, ${indicies.map { i => s"i32 $i" } mkString (", ")}")
-      load(res, resType)
+    case access: Access =>
+      val (ptr, resType) = genericAccessToPtr(fnMap, fnType, vars, access)
+      load(ptr, resType)
     case call: Call =>
       genericCallToValue(fnMap, fnType, vars, call)
     case BoolAnd(left, right) =>
@@ -278,7 +290,7 @@ case class IrGen(val out: OutputStream) {
   def genStat(fnMap: Map[String, FnType], fnType: FnType, vars: Map[String, Type], seq: Seq[Stat]): Unit =
     seq.foreach {
       case Store(to, fields, init) =>
-        val (base, baseType) = genericIdToPtr(fnMap, fnType, vars, to)
+        val (base, baseType) = genericInitToPtr(fnMap, fnType, vars, to)
         val (ptr, resType) =
           if (fields.length == 0) (base, baseType)
           else {
@@ -291,7 +303,7 @@ case class IrGen(val out: OutputStream) {
         val forStore = genInitWithValue(fnMap, fnType, vars, resType, init)
         store(forStore, ptr, resType)
       case StoreEnclosure(to, init) =>
-        val (base, baseType) = genericIdToPtr(fnMap, fnType, vars, to)
+        val (base, baseType) = genericInitToPtr(fnMap, fnType, vars, to)
         baseType match {
           case closure@Closure(typeName, fnPtr, vals) =>
             // store fn pointer
@@ -312,7 +324,7 @@ case class IrGen(val out: OutputStream) {
                     val closureValPtr = genInitWithValue(fnMap, fnType, vars, v.varType, v.closurable)
                     store(closureValPtr, ptrToClosureVal, v.varType)
                   case _ =>
-                    val (closureValPtr, _) = genericIdToPtr(fnMap, fnType, vars, v.closurable)
+                    val (closureValPtr, _) = genericInitToPtr(fnMap, fnType, vars, v.closurable)
                     store(closureValPtr, ptrToClosureVal, Scalar(v.varType.name + "*"))
                 }
             }
@@ -386,7 +398,8 @@ case class IrGen(val out: OutputStream) {
     val (consts, functions1) = IrPasses.inferStringConsts(module.functions)
     val (functions2, headers, fnMap) = IrPasses.abiFix(functions1, module.headers)
 
-    println(functions2)
+    println(s"headers: $headers")
+    println(s"functions: $functions2")
 
 
     consts.foreach { const =>

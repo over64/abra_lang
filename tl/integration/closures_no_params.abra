@@ -6,8 +6,21 @@ def +: (self: Int, other: Int) -> Int = llvm {
 def foo = \fn: () -> Unit ->
     fn()
 
+def bar = \fn: () -> Int ->
+    fn()
+
 def main = {
     var x = 0
+
+    # anon function (no closure)
+    val y = {
+        1
+    }()
+
+    # pass fn pointer as param
+    val z = bar({
+        1
+    })
 
     #store and call
     val closure = {
@@ -26,5 +39,5 @@ def main = {
         x = x + 1
     })
 
-    x
-}: Int # 4 expected
+    x + y + z
+}: Int # 6 expected

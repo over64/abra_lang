@@ -1,6 +1,6 @@
 package lang_m2
 
-import lang_m2.Ast1._
+import lang_m2.Ast1.{Type, _}
 
 import scala.collection.mutable
 
@@ -13,24 +13,87 @@ object IrPasses {
     else fnPtr
   }
 
-  def mapCall(fnMap: Map[String, FnType], call: Call): (Call, Map[String, Type]) = {
-    val fn = fnMap(call.fn.value)
-    val additionalArgs =
-      if (fn.fnPointer.args.length > call.args.length) Seq(lLocal("_abi_"))
-      else Seq()
-
-  }
-
-  def mapStats(fnMap: Map[String, FnType], seq: Seq[Stat]): Seq[Stat] = seq.map {
-    case store@Store(toVar, fields, Call(fnId, args)) =>
-      //FIXME: fix Access!
-      if (fnMap(fnId.value).fnPointer.ret == Scalar("void"))
-        Call(fnId, toVar +: args)
-      else store
-    case other@_ => other
+  def fnIdToFnType(fnMap: Map[String, FnType], currentFnType: FnType, currentFnVars: Map[String, Type], id: lId) = id match {
+    case lGlobal(value) => fnMap(value)
+    case lLocal(value) => currentFnVars(value).asInstanceOf[FnType]
+    case lParam(value) => currentFnType.fnPointer.args.find(_.name == value).map(_._type).get.asInstanceOf[FnType]
   }
 
   def abiFix(functions: Seq[Fn], headers: Seq[Ast1.HeaderFn]): (Seq[Fn], Seq[Ast1.HeaderFn], Map[String, FnType]) = {
+    var anonVars = 0
+    def nextAnonVar = {
+      anonVars += 1
+      s"_abi_$anonVars"
+    }
+    def mapCall(fnMap: Map[String, FnType], currentFnType: FnType, currentFnVars: Map[String, Type], call: Call): (Map[String, Type], Seq[Stat], Call, Init) = {
+      val fnType = fnIdToFnType(fnMap, currentFnType, currentFnVars, call.fn)
+
+      val (additionalArgs, additionalVars): (Seq[Init], Map[String, Type]) =
+        if (fnType.fnPointer.args.length > call.args.length) {
+          val anon = nextAnonVar
+          (Seq(lLocal(anon)), Map(anon -> fnType.fnPointer.args.head._type))
+        } else (Seq(), Map())
+
+      val (newVars, beforeStats, mappedArgs) =
+        (additionalArgs ++ call.args).zip(fnType.fnPointer.args).foldLeft((additionalVars, Seq[Stat](), Seq[Init]())) {
+          case ((vars, stats, newArgs), (argInit, argType)) =>
+            (argInit, argType._type) match {
+              case (call: Call, s: Struct) =>
+                val (addVars, beforeStats, newCall, newInit) = mapCall(fnMap, currentFnType, currentFnVars, call)
+                (vars ++ addVars, beforeStats ++ stats :+ newCall, newArgs :+ newInit)
+              case _ => (vars, stats, newArgs :+ argInit)
+            }
+        }
+
+      val newCall = Call(call.fn, mappedArgs)
+
+      // real void call
+      if (additionalArgs.length == 0)
+        (newVars, beforeStats, newCall, newCall)
+      else
+        (newVars, beforeStats, newCall, mappedArgs.head)
+    }
+
+    def mapStats(fnMap: Map[String, FnType], currentFnType: FnType, currentFnVars: Map[String, Type], seq: Seq[Stat]): (Map[String, Type], Seq[Stat]) =
+      seq.foldLeft(currentFnVars, Seq[Stat]()) {
+        case ((vars, stats), store@Store(toVar, fields, Call(fnId, args))) =>
+          val fnType = fnIdToFnType(fnMap, currentFnType, currentFnVars, fnId)
+          if (fnType.fnPointer.ret == Scalar("void")) {
+            // FIXME: Access
+            val (addVars, beforeStats, newCall, _) = mapCall(fnMap, currentFnType, currentFnVars, Call(fnId, toVar +: args))
+            (vars ++ addVars, stats ++ beforeStats :+ newCall)
+          }
+          else (vars, stats :+ store)
+        case ((vars, stats), call: Call) =>
+          val (addVars, beforeStats, newCall, _) = mapCall(fnMap, currentFnType, currentFnVars, call)
+          (vars ++ addVars, stats ++ beforeStats :+ newCall)
+        case ((vars, stats), Cond(init, _if, _else)) =>
+          val (newInitVars, newInitStats, newInit) = init match {
+            case call: Call =>
+              val (addVars, beforeStats, newCall, newInit) = mapCall(fnMap, currentFnType, currentFnVars, call)
+              (addVars, beforeStats :+ newCall, newInit)
+            case other@_ => (Map(), Seq(), other)
+          }
+          val (newIfVars, ifStats) = mapStats(fnMap, currentFnType, currentFnVars, _if)
+          val (newElseVars, elseStats) = mapStats(fnMap, currentFnType, currentFnVars, _else)
+
+          (vars ++ newInitVars ++ newIfVars ++ newElseVars,
+            stats ++ newInitStats :+ Cond(newInit, ifStats, elseStats))
+        case ((vars, stats), While(init, seq)) =>
+          val (newInitVars, newInitStats, newInit) = init match {
+            case call: Call =>
+              val (addVars, beforeStats, newCall, newInit) = mapCall(fnMap, currentFnType, currentFnVars, call)
+              (addVars, beforeStats :+ newCall, newInit)
+            case other@_ => (Map(), Seq(), other)
+          }
+
+          val (newVars, newStats) = mapStats(fnMap, currentFnType, currentFnVars, seq)
+
+          (vars ++ newInitVars ++ newVars,
+            stats ++ newInitStats :+ While(newInit, newStats))
+        case ((vars, stats), other@_) => (vars, stats :+ other)
+      }
+
     val fixedHeaders = headers.map { header =>
       Ast1.HeaderFn(header.name, fixedFnPointer(header._type))
     }
@@ -56,7 +119,9 @@ object IrPasses {
     val fixedBodies = fixedPrototypes.map { fn =>
       val fixedBody = fn.body match {
         case ir: IrInline => ir
-        case Block(vars, stats) => Block(vars, mapStats(fnMap, stats))
+        case Block(vars, stats) =>
+          val (newVars, newStats) = mapStats(fnMap, fn._type, vars, stats)
+          Block(newVars, newStats)
       }
       Fn(fn.name, fn._type, fixedBody)
     }

@@ -99,11 +99,13 @@ class TypeChecker {
         val lowName = nextLowVar("anon")
         scope.addVar(block, lowName, infFn.ftype, isMutable = false, LocalSymbol(lowName))
 
-        val lowType = namespace.toLow(infFn.ftype)
+        val lowStore =
+          infFn.ftype match {
+            case closure: Closure => Ast1.StoreEnclosure(Ast1.lLocal(lowName), Ast1.lGlobal(infFn.lowFn.name))
+            case _ => Ast1.Store(Ast1.lLocal(lowName), Seq(), Ast1.lGlobal(infFn.lowFn.name))
+          }
 
-        InferedExp(infFn.ftype,
-          Seq(Ast1.StoreEnclosure(Ast1.lLocal(lowName), Ast1.lGlobal(infFn.lowFn.name))),
-          Some(Ast1.lLocal(lowName)))
+        InferedExp(infFn.ftype, Seq(lowStore), Some(Ast1.lLocal(lowName)))
       case call@ApplyCall(self) =>
         val inferedSelf = evalBlockExpression(namespace, scope, forInit = true, None, self)
         inferedSelf.infType match {
