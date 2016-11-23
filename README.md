@@ -31,7 +31,7 @@ Research platform for design language with new memory management and modularity 
 #### Hello, world
 Yes, it is unicode, baby! If you have UTF8 locale...
 ```scala
-  import abra.string
+  import abra.io
   
   def main =
     'こんにちは、世界!'.print
