@@ -20,9 +20,9 @@ Research platform for design language with new memory management and modularity 
   - uniform declaration syntax
   - Pyhton and Java-like modules system without any global variables
   - simple FFI to C via LLVM IR
+  - stack-based closures
 
 #### In progress in M2
-  - closures
   - named parameters
   - early returns
   - continue / break for while loops
@@ -164,5 +164,30 @@ def main = {
   fn(0) + c + a + b
 }: Int
 ```
-  
+#### Closures
+```scala
+def foo = { i: Int, fn: (i: Int) -> Unit ->
+    fn(i)
+}: Unit
 
+def main = {
+    var x = 0
+
+    val closure = { i: Int ->
+        x = x + i
+    }
+    closure(1)
+
+    # anonymous closure
+    { i: Int ->
+        x = x + i
+    }(1)
+
+    # pass anonymous closure as parameter
+    foo(1, { i ->
+        x = x + 1
+    })
+
+    x
+}: Int
+```
