@@ -1,0 +1,39 @@
+type Byte = llvm { i8 }
+type Short = llvm { i16 }
+
+def +: (self: Int, other: Int) -> Int = llvm {
+    %1 = add nsw i32 %self, %other
+    ret i32 %1
+}
+
+def shl: (self: Int, shift: Int) -> Int = llvm {
+    %1 = shl i32 %self, %shift
+    ret i32 %1
+}
+
+def toByte: (self: Int) -> Byte = llvm {
+    %1 = trunc i32 %self to i8
+    ret i8 %1
+}
+
+def toShort: (self: Int) -> Short = llvm {
+    %1 = trunc i32 %self to i16
+    ret i16 %1
+}
+
+def PERIPH_BASE = 0x40000000
+def PERIPH_BASE_APB2 = PERIPH_BASE() + 0x10000
+def IOC = PERIPH_BASE_APB2() + 0x1000
+def IO_MODE_OUTPUT_2_MHZ = 0x02.toByte
+def IO_CNF_OUTPUT_PUSHPULL = 0x00.toByte
+def IO13 = (1 shl 13).toShort
+
+def setMode: (port: Int, mode: Byte, cnf: Byte, pin: Short) -> Unit = llvm {
+    call void @gpio_set_mode(i32 %port, i8 %mode, i8 %cnf, i16 %pin)
+    ret void
+}
+
+def toggle: (port: Int, pin: Short) -> Unit = llvm {
+    call void @gpio_toggle(i32 %port, i16 %pin)
+    ret void
+}

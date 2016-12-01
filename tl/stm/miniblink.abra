@@ -1,0 +1,21 @@
+import asm
+import rcc
+import gpio
+import range
+
+def main = {
+    rcc.periphClockEnable(rcc.IOC)
+
+    gpio.setMode(gpio.IOC,
+        gpio.IO_MODE_OUTPUT_2_MHZ,
+        gpio.IO_CNF_OUTPUT_PUSHPULL,
+        gpio.IO13)
+
+    while true {
+        gpio.toggle(gpio.IOC, gpio.IO13)
+
+        800000.times({
+            asm.nop()
+        })
+    }
+}: Unit
