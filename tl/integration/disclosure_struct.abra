@@ -1,0 +1,14 @@
+type Foo = (x: Int)
+
+def bar = \foo: Foo, callback: (foo: Foo) -> Unit ->
+    callback(foo)
+
+def main = {
+    val foo = Foo(1)
+
+    bar(foo, { foo ->
+        foo.x = 2
+    })
+
+    foo.x
+}: Int # 2 expected

@@ -18,8 +18,11 @@ def INIT_NOPARACHUTE    = 0x00100000 # compatibility; this flag is ignored
 #                or INIT_JOYSTICK
 #                or INIT_HAPTIC
 #                or INIT_GAMECONTROLLER
+def init = { mode: Int, onErr: (err: String) -> Unit ->
+    if initInternal(mode) < 0 then onErr('error!')
+}: Unit
 
-def init: (mode: Int) -> Int = llvm {
+def initInternal: (mode: Int) -> Int = llvm {
     %1 = call i32 @SDL_Init(i32 %mode)
     ret i32 %1
 }
@@ -54,6 +57,16 @@ def EVENT_KEYDOWN = 0x300
 
 type EventData = llvm { [56 x i8] }
 type Event = (eventType: Int, data: EventData)
+
+def pollEvents = { onEvent: (event: Event) -> Unit ->
+    var hasEvent = true
+    while hasEvent {
+        val event = pollEvent()
+        if event.eventType == NO_EVENT()
+            then hasEvent = false
+            else onEvent(event)
+    }
+}: Unit
 
 def pollEvent: () -> Event = llvm {
     %1 = getelementptr %struct.lib.sdl.Event, %struct.lib.sdl.Event* %ret, i32 0, i32 0

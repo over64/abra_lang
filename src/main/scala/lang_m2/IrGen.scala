@@ -373,10 +373,11 @@ case class IrGen(val out: OutputStream) {
   def genFunction(fnMap: Map[String, FnType], fn: Fn): Unit = {
     fn._type match {
       case fnPtr@FnPointer(args, ret) =>
-        out.println(s"define ${fnPtr.ret.name} @${escapeFnName(fn.name)}(${fnPtr.irArgs.mkString(", ")}) {")
+        val modifier = if (fn.name.startsWith("anonFn")) "private" else ""
+        out.println(s"define $modifier ${fnPtr.ret.name} @${escapeFnName(fn.name)}(${fnPtr.irArgs.mkString(", ")}) {")
       case Closure(typeName, fnPtr, vals) =>
         val realFnPtr = FnPointer(fnPtr.args :+ Field("closure", Scalar(s"%$typeName*")), fnPtr.ret)
-        out.println(s"define ${realFnPtr.ret.name} @${fn.name}(${realFnPtr.irArgs.mkString(", ")}) {")
+        out.println(s"define private ${realFnPtr.ret.name} @${fn.name}(${realFnPtr.irArgs.mkString(", ")}) {")
       case Disclosure(fnPointer) => throw new Exception("not implemented in ABI")
     }
 

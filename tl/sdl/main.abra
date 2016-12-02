@@ -50,7 +50,8 @@ def mkProgram = { vertexSource: String, fragmentSource: String ->
 
 def mkRenderer = {
     gl.enable(gl.DEPTH_TEST)
-    gl.clearColor(0.2117, 0.0823, 0.2784)
+    # gl.clearColor(0.2117, 0.0823, 0.2784)
+    gl.clearColor(0.9, 0.9, 0.9)
     val mesh = objLoader.load('cube.obj')
     val program = mkProgram('
         #version 130
@@ -145,9 +146,9 @@ def render = { self: Renderer ->
 }: Unit
 
 def main = {
-    if sdl.init(sdl.INIT_VIDEO) < 0
-        then sys.panic('unable to init SDL')
-        else 'SDL init ok'.print
+    sdl.init(sdl.INIT_VIDEO, { err ->
+        sys.panic(err)
+    })
 
     val window = sdl.createWindow('ABRA Lang Demo 0!', 100, 100, 640, 480,
         sdl.WINDOW_SHOWN or sdl.WINDOW_OPENGL or sdl.WINDOW_RESIZABLE)
@@ -156,12 +157,9 @@ def main = {
 
     var running = true
     while running {
-        var hasEvent = true
-        while hasEvent {
-            val event = sdl.pollEvent()
-            if event.eventType == sdl.NO_EVENT then hasEvent = false
+        sdl.pollEvents({ event ->
             if event.eventType == sdl.EVENT_QUIT then running = false
-        }
+        })
 
         renderer.render()
         window.glSwap()
