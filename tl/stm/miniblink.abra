@@ -1,21 +1,23 @@
-import asm
-import rcc
-import gpio
-import range
+import abra.int
+import stm32.asm
+import stm32.rcc
+import stm32.gpio
+
+
 
 def main = {
-    rcc.periphClockEnable(rcc.IOC)
+    rcc.periphClockEnable(rcc.portC)
 
-    gpio.setMode(gpio.IOC,
-        gpio.IO_MODE_OUTPUT_2_MHZ,
-        gpio.IO_CNF_OUTPUT_PUSHPULL,
-        gpio.IO13)
+    gpio.setMode(gpio.portC,
+        gpio.ioModeOutput2Mhz, # IO_MODE_OUTPUT_2_MHZ
+        gpio.ioCnfOutputPushPull, # IO_CNF_OUTPUT_PUSHPULL
+        gpio.pin13)
 
     while true {
-        gpio.toggle(gpio.IOC, gpio.IO13)
+        gpio.toggle(gpio.portC, gpio.pin13)
 
-        800000.times({
+        800000 times {
             asm.nop()
-        })
+        }
     }
 }: Unit
