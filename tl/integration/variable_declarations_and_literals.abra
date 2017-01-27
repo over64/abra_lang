@@ -1,5 +1,0 @@
-type Vec3 = (x: Float, y: Float, z: Float)
-
-def main = {
-    val v1 = Vec3(1.0, 1.0, 1.0)
-}

@@ -24,15 +24,16 @@ case class CompileResult(namespace: Namespace, binLocation: Path)
 
 class CompilerKernel {
 
-  def message(level: Int, msg: String) = println(s"${"\t" * level}$msg")
+  def message(level: Int, msg: String) = println(s"${"  " * level}$msg")
 
-  def compile(level: Int, config: Config, currentPkg: Seq[String], sourcePath: Path, isMain: Boolean): CompileResult = {
+  def compile(level: Int, config: Config, currentPkg: Seq[String], sourcePath: Path, targetPath: Path, isMain: Boolean): CompileResult = {
     val time1 = System.currentTimeMillis()
 
-    message(level, s"compile $sourcePath")
+    message(level, s"- compile $sourcePath")
+    Files.createDirectories(targetPath)
+
     val modName = sourcePath.iterator().toSeq.last.toString.split("\\.")(0)
     val fullModName = (currentPkg :+ modName).mkString("", ".", ".")
-    val currentDir = sourcePath.getParent
 
     val reader = new ANTLRFileStream(sourcePath.toAbsolutePath.toString)
     val lexer = new M2Lexer(reader)
@@ -44,9 +45,8 @@ class CompilerKernel {
     val module = visitor.visit(tree).asInstanceOf[Module]
 
     val importedModules: Seq[CompileResult] = module.imports.map { _import =>
-      val modPath = Paths.get(_import.seq.map(_.value).mkString("/") + ".abra")
       val modPkg = _import.seq.dropRight(1).map(_.value)
-      val relativePath = currentDir.resolve(modPath)
+      val modPath = Paths.get(_import.seq.map(_.value).mkString("/") + ".abra")
 
       message(level, s"- import ${_import.seq.map(_.value).mkString(".")}")
 
@@ -60,7 +60,11 @@ class CompilerKernel {
       }
 
       foundModule.map {
-        case (_, foundModule) => compile(level + 1, config, currentPkg = modPkg, foundModule, isMain = false)
+        case (_, foundModule) =>
+          val targetPath = config.targetDir.resolve(modPath).getParent
+          message(level + 1, s"- target path = $targetPath")
+
+          compile(level + 1, config, currentPkg = modPkg, foundModule, targetPath, isMain = false)
       }.getOrElse(throw new CompileEx(_import, CE.ImportNotResolved(modPath.toString, config.include.map(_.toString))))
 
     }
@@ -100,8 +104,9 @@ class CompilerKernel {
     val lowModule = Ast1.Module(structs, anonFunctions.toSeq ++ lowFunctions, lowHeaders)
 
     val fnameNoExt = sourcePath.toAbsolutePath.toString.split("\\.").dropRight(1).mkString(".")
-    val llFname = fnameNoExt + ".out.ll"
-    val llFile = new File(llFname)
+    val llFilePath = targetPath.resolve(modName + ".out.ll")
+    println(s"llFilePath = $llFilePath")
+    val llFile = llFilePath.toFile
     llFile.createNewFile()
     val llOut = new FileOutputStream(llFile)
 
@@ -115,7 +120,7 @@ class CompilerKernel {
     new IrGen(llOut).gen(lowModule)
     llOut.close()
 
-    val llcArgs = Seq("llc-3.8", llFname)
+    val llcArgs = Seq("llc-3.8", llFilePath.toString)
     message(level, llcArgs.mkString("- ", " ", ""))
 
     run(llcArgs: _*) { (realExit, realStdout, realStderr) =>
@@ -128,8 +133,11 @@ class CompilerKernel {
     }
 
     val gccArgs =
-      if (isMain) Seq("gcc", "-g", fnameNoExt + ".out.s") ++ config.libs ++ importedModules.map(_.binLocation.toString) ++ Seq("-o", fnameNoExt)
-      else Seq("gcc", "-g", "-c", fnameNoExt + ".out.s", "-o", s"$fnameNoExt.o")
+      if (isMain)
+        Seq("gcc", "-g", targetPath.resolve(modName).toString + ".out.s") ++
+          config.libs ++ importedModules.map(_.binLocation.toString) ++ Seq("-o", targetPath.resolve(modName).toString)
+      else Seq("gcc", "-g", "-c", targetPath.resolve(modName).toString + ".out.s", "-o", s"${targetPath.resolve(modName).toString}.o")
+
     message(level, gccArgs.mkString("- ", " ", ""))
 
     run(gccArgs: _*) { (realExit, realStdout, realStderr) =>
@@ -144,6 +152,9 @@ class CompilerKernel {
     val time2 = System.currentTimeMillis()
     message(level, s"- done with ${(time2 - time1).toDouble / 1000}s")
 
-    CompileResult(Namespacer.dumpHeader(namespace), Paths.get(if (isMain) fnameNoExt else s"$fnameNoExt.o"))
+    CompileResult(Namespacer.dumpHeader(namespace), Paths.get(
+      if (isMain) targetPath.resolve(modName).toString
+      else s"${targetPath.resolve(modName).toString}.o")
+    )
   }
 }

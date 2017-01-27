@@ -1,11 +1,14 @@
-import abra.int
-import stm32.asm
-import stm32.rcc
-import stm32.gpio
+import _ = abra.int enhance Int
+import arrays = abra.array with IntArray
+import asm = stm32.asm
+import rcc = stm32.rcc
+import gpio = stm32.gpio
 
 
 
 def main = {
+    val array = arrays.mkIntArray(4)
+    array(0) =  5
     rcc.periphClockEnable(rcc.portC)
 
     gpio.setMode(gpio.portC,
@@ -16,6 +19,14 @@ def main = {
     while true {
         gpio.toggle(gpio.portC, gpio.pin13)
 
+#        times from abra.int
+#        def times = { self: Int, callback: () -> Unit ->
+#            var i = 0
+#            while i < self {
+#                callback()
+#                i = i + 1
+#            }
+#        }: Unit
         800000 times {
             asm.nop()
         }

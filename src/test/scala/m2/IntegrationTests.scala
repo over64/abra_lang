@@ -16,8 +16,8 @@ class IntegrationTests extends FunSuite {
   def assertRunEquals(fname: String)(exit: Option[Int], stdout: Option[String] = None, stderr: Option[String] = None) = {
     val binPath =
       new CompilerKernel()
-        .compile(level = 0, Config(include = Seq(Paths.get("tl"))), currentPkg = Seq("tl", "integration"),
-          sourcePath = Paths.get(fname), isMain = true)
+        .compile(level = 0, Config(include = Seq(Paths.get("tl")), targetDir = Paths.get("tl/integration/target/")), currentPkg = Seq("tl", "integration"),
+          sourcePath = Paths.get(fname), targetPath = Paths.get("tl/integration/target/integration"), isMain = true)
         .binLocation
 
 

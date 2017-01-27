@@ -1,19 +1,22 @@
 package lang_m2
 
-import java.io._
-import java.nio.file.{Path, Paths}
-import java.util.Scanner
+import java.nio.file.{Files, Path, Paths}
 
 import scala.collection.JavaConversions._
-import grammar2.{M2Lexer, M2Parser}
-import org.antlr.v4.runtime.{ANTLRFileStream, CommonTokenStream}
-import scala.collection.mutable
 
 /**
   * Created by over on 14.08.16.
   */
 object Compiler {
-  case class Config(include: Seq[Path] = Seq(), libs: Seq[String] = Seq(), file: Path = null)
+  val defaultInclude = Seq(".")
+
+  def absolutePath(paths: Seq[String]): Seq[Path] =
+    paths.map { file => Paths.get(file).normalize().toRealPath().toAbsolutePath }
+
+  case class Config(targetDir: Path = Paths.get("").toAbsolutePath.resolve("target"),
+                    include: Seq[Path] = absolutePath(defaultInclude),
+                    libs: Seq[String] = Seq(),
+                    file: Path = null)
 
   def main(args: Array[String]): Unit = {
     val argsParser = new scopt.OptionParser[Config]("kadabra") {
@@ -21,9 +24,7 @@ object Compiler {
 
       opt[Seq[String]]('I', "include").valueName("<dir1>,<dir2>...").action {
         case (files, config) =>
-          config.copy(include = files.map { file =>
-            Paths.get(file).normalize().toRealPath().toAbsolutePath
-          })
+          config.copy(include = absolutePath(files ++ defaultInclude))
       }.text("include directories")
 
       opt[Seq[String]]('l', "libs").valueName("<lib1>,<lib2>...").action {
@@ -55,8 +56,9 @@ object Compiler {
         println(s"includes = ${config.include}")
         println(s"libs = ${config.libs}")
 
+        Files.createDirectories(config.targetDir)
 
-        new CompilerKernel().compile(level = 0, config, basePackage, config.file, isMain = true)
+        new CompilerKernel().compile(level = 0, config, basePackage, config.file, config.targetDir, isMain = true)
 
       case None => System.exit(1)
     }

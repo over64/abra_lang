@@ -1,7 +1,0 @@
-import abra.float
-
-def main = {
- val a = float.PI * float.PI + 2.1
-
- a.toInt
-}: Int

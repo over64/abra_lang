@@ -1,4 +1,0 @@
-import abra.io
-
-def main =
-  'Привет, мир!'.print
