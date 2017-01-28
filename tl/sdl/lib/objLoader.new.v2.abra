@@ -1,0 +1,73 @@
+import buff = abra.buffers with FloatBuffer, OutOfRange
+import io = abra.io with IOErr, ReaderErr
+
+error ObjLoadErr = IOErr | ReaderErr | OutOfRange
+
+def readVertex = { buffer: FloatBuffer, line: String ->
+    val reader = line.toReader
+    reader.drop('v '.length) ? ReaderErr
+    buffer.add(reader.readFloat ? ReaderErr) # x
+    buffer.add(reader.readFloat ? ReaderErr) # y
+    buffer.add(reader.readFloat ? ReaderErr) # z
+}: Unit | ReaderErr
+
+def readTexture = { buffer: FloatBuffer, line: String ->
+    val reader = line.toReader
+    reader.drop('vt '.length) ? ReaderErr
+    buffer.add(reader.readFloat ? ReaderErr) # u
+    buffer.add(reader.readFloat ? ReaderErr) # v
+}: Unit | ReaderErr
+
+def readNormal = { buffer: FloatBuffer, line: String ->
+    val reader = line.toReader
+    reader.drop('vn '.length) ? ReaderErr
+    buffer.add(reader.readFloat ? ReaderErr) # nx
+    buffer.add(reader.readFloat ? ReaderErr) # ny
+    buffer.add(reader.readFloat ? ReaderErr) # nz
+}: Unit | ReaderErr
+
+def readFace = { buffer: FloatBuffer, line: String, vert: FloatBuffer, tex: FloatBuffer, nl: FloatBuffer ->
+    val reader = line.toReader
+    reader.drop('f '.length) ? ReaderErr
+
+    (0 to 3).eachUnless[ObjLoadErr]({ i ->
+        val vertexId = reader.readInt ? ReaderErr - 1
+        reader.drop('/'.length) ? ReaderErr
+        val uvId = reader.readInt ? ReaderErr - 1
+        reader.drop('/'.length) ? ReaderErr
+        val normalId = reader.readInt ? ReaderErr - 1
+
+        buffer.add(vertexBuffer(vertexId * 3) ? OutOfRange)     # x
+        buffer.add(vertexBuffer(vertexId * 3 + 1) ? OutOfRange) # y
+        buffer.add(vertexBuffer(vertexId * 3 + 2) ? OutOfRange) # z
+
+        buffer.add(textureBuffer(uvId * 2) ? OutOfRange)        # u
+        buffer.add(textureBuffer(uvId * 2 + 1) ? OutOfRange)    # v
+
+        buffer.add(normalBuffer(normalId * 3) ? OutOfRange)     # nx
+        buffer.add(normalBuffer(normalId * 3 + 1) ? OutOfRange) # ny
+        buffer.add(normalBuffer(normalId * 3 + 2) ? OutOfRange) # nz
+    }) ? ObjLoadErr
+}: Unit | ObjLoadErr
+
+def load = { fname: String ->
+    val objFile = io.open(fname, mode='r') ? IOErr
+
+    val vertexBuffer = buff.mkFloat(4)
+    val textureBuffer = buff.mkFloat(4)
+    val normalBuffer = buff.mkFloat(4)
+    val meshBuffer = buff.mkFloat(4)
+
+    objFile.lines.eachUnless[ObjLoadErr]({ ioLine ->
+        val line = ioLine ? IOErr
+
+        if line.startsWith('v ')  then readVertex(vertexBuffer, line) ? ObjLoadErr
+        if line.startsWith('vt ') then readTexture(textureBuffer, line) ? ObjLoadErr
+        if line.startsWith('vn ') then readNormal(normalBuffer, line) ? ObjLoadErr
+        if line.startsWith('f ')  then readFace(meshBuffer, line, vertexBuffer, textureBuffer, normalBuffer) ? ObjLoadErr
+    }) ? ObjLoadErr
+
+    # automatically call free on buffers and close on file?
+
+    meshBuffer
+}: FloatBuffer | ObjLoadErr

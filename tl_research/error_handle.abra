@@ -1,0 +1,32 @@
+# Функции могут возвращать значение или не возвращать
+# если функция возвращает Unit?
+# для ошибок автоматически захватывается stack trace?
+
+error IOError = (errno: Int, msg: String)
+
+def foo = {
+    'foo'.print ? IOError
+    'bar'.print ? IOError
+}: Unit | IOError
+
+import io = abra.io with IOError
+
+error MainError = IOError | OutOfRange
+
+def main = {
+    val array = (1, 2, 3, 4, 5)
+    val first = array(0) ? OutOfRange
+    io.print('a(0) = $first') ? IOError
+}: Unit | MainError
+
+# hello, world!
+import io = abra.io with IOError
+
+def main =
+    io.print('Hello world') ? IOError
+
+# infers to
+type AnonUnion1 = Unit | IOError
+def main = {
+    io.print('Hello world')
+}: AnonUnion1

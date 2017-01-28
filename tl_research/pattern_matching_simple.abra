@@ -1,0 +1,54 @@
+# Шаг 1 - добавляем паттерн матчинг в язык, в котором пока нет Tagged Unions
+# что можно матчить: expression
+# какие типы можно матчить: ScalarType и FactorType в будущем Tagged Unions
+# чем можно матчить: $variable, literal, ${expression}
+
+
+val y = 0
+val name = match getInt()
+    of $y       -> 'is zero'
+    of 1        -> 'is one'
+    of ${1 + 1} -> 'is two'
+    of other    -> 'is $other'
+
+
+type Vec2 = (x: Float, y: Float)
+
+val center = Vec2(0.0, 0.0)
+val name = match randVec2()
+    of $center      -> 'is center of coords'
+    of Vec2(0.0, y) -> 'is point on X axis where Y = $y'
+    of Vec2(x, 0.0) -> 'is point on Y axis where X = $x'
+    of other        -> 'generic vector: $other'
+
+
+# Placeholder
+type Foo = (x: Int, y: Int)
+val fooY = match Foo(1, 1)
+    of Foo(_, y) -> y
+
+# Guards (if conditions)
+
+val name = match randVec2()
+    of $center         -> 'is center of coords'
+    of v if v.x == 0.0 -> 'is point on X axis where Y = ${v.x}'
+    of v if v.y == 0.0 -> 'is point on Y axis where X = ${v.y}'
+    of other           -> 'generic vector: $other'
+
+
+# Deep match с байндингом внутренностей
+
+type Bar = (x: Int, y: Int)
+type FooBar = (z: Int, bar: Bar)
+
+val fb = FooBar(1, Bar(1, 1))
+val value = match fb
+    of FooBar(1, bar = Bar(_, 0)) ->
+
+# в случае с Tagged Unions добавляется возможность матчить по типу
+
+type IOString = String | IOError of (msg: String)
+
+val str = match readLine()
+    of s: String -> s
+    of IOError(msg) -> die(msg)

@@ -87,3 +87,20 @@ try {
 } catch(ex: IOException) {
     // some
 }
+
+def bmi = \w: Float, h: Float -> (w / h) pow 2
+def bmiTell = \weight: Float, height: Float ->
+    match x: bmi(weight, height)
+        of x <= 18.5 -> 'You\'re underweight, you emo, you!'
+        of x <= 25.0 -> 'You\'re supposedly normal. Pffft, I bet you\'re ugly!'
+        of x <= 30.0 -> 'You\'re fat! Lose some weight, fatty!'
+        of _ -> 'You\'re a whale, congratulations!'
+
+
+bmiTell :: (RealFloat a) => a -> a -> String
+bmiTell weight height
+    | bmi <= 18.5 = "You're underweight, you emo, you!"
+    | bmi <= 25.0 = "You're supposedly normal. Pffft, I bet you're ugly!"
+    | bmi <= 30.0 = "You're fat! Lose some weight, fatty!"
+    | otherwise   = "You're a whale, congratulations!"
+    where bmi = weight / height ^ 2
