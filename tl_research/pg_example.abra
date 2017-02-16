@@ -37,3 +37,42 @@ def main = {
     })
   })
 }: Unit
+
+
+import pg = org.postgresql
+
+data User = (name: String, age: Int, lastName: String | Unit)
+error UserPrintErr = PgErr | IOErr
+
+def main = {
+  val (uname, passwd) = ('over', '123')
+  val connFactory = pg.mkConnFactory(url = 'localhost:5432/test_db', uname, passwd).?PgErr
+  val conn = connFactory.getConnection.?PgErr
+
+  (1 to 10) eachUnless[UserPrintErr] { id ->
+    val u = conn.select[User]('select #name, #age from users where id = $id').one.?PgErr
+    if u == Unit then 'user not found'.print.?IOErr else u.print.?IOErr
+  }
+}: Unit | UserPrintErr
+
+# carry?
+
+import pg = org.postgresql
+import io = abra.io
+trait Printable
+def print: (self: Printable, writer: (bytes: Array[Byte]) -> Unit = stdout)
+
+data User = (name: String, age: Int, lastName: String | Unit)
+error UserPrintErr = PgErr | IOErr
+
+def main = {
+  val (uname, passwd) = ('over', '123')
+  val connFactory = pg.mkConnFactory(url = 'localhost:5432/test_db', uname, passwd).?PgErr
+  val conn = connFactory.getConnection.?PgErr
+
+  (1 to 10) eachUnless[UserPrintErr] { id ->
+    val u = conn.select[User]('select #name, #age from users where id = $id').one.?PgErr
+    val p: Printable = if u == Unit then 'user not found' else u
+    p.print.?IOErr
+  }
+}: Unit | UserPrintErr

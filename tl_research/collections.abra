@@ -1,0 +1,110 @@
+val sum = (1 to 1000)
+    .filter(\x -> x mod 2 == 0)
+    .map(\x -> x * 111 mod 100)
+    .sort(\x, y -> x > y)
+    .take(50)
+    .fold(0, \x1, x2 -> x1 + x2)
+
+sortedTake(n: Long, isMore: (x1: T, x2: T) -> Boolean)
+
+val sum = (1 to 1000)
+    .filter(\x -> x mod 2 == 0)
+    .map(\x -> x * 100)
+    .fold(0, \x, y -> x + y)
+
+# should be as:
+val a1 = Range(1, 1000)
+val next1 = {
+    if a1.idx < a1.r then {
+        val idx = a1.idx
+        a1.idx += 1
+        idx
+    }
+}: Int | Unit
+
+val a2 = Filter(\x -> x mod 2 == 0)
+val next2 = {
+    match next1()
+        of i: Int -> if a2.pred(i) then i else Unit
+}: Int | Unit
+
+val a3 = Mapper(\x -> x * 100)
+val next3 = {
+    match next2()
+        of i: Int -> a3.mapper(i)
+}: Int | Unit
+
+val a4 = Fold(0, \x, y -> x + y)
+val terminal1 = {
+    val do = true
+    while do {
+        match next3
+            of i: Int -> a4.acc = a4.folder(a4.acc, i)
+            of Unit -> do = false
+    }
+
+    a4.acc
+}
+
+val sum = terminal1()
+
+
+# should be as after inline:
+val a1 = Range(1, 1000)
+val a2 = Filter(\x -> x mod 2 == 0)
+val a3 = Mapper(\x -> x * 100)
+val a4 = Fold(0, \x, y -> x + y)
+
+val do = true
+while do {
+    match
+        match
+            match if a1.idx < a1.r then ++a1.idx else Unit
+                of i: Int -> if a2.pred(i) then i else Unit
+            of i: Int -> a3.mapper(i)
+        of i: Int -> a4.acc = a4.folder(a4.acc, i)
+        of Unit -> do = false
+}
+
+val sum = a4.acc
+
+# should be as v2:
+val a1 = Range(1, 1000)
+val a2 = Filter(\x -> x mod 2 == 0)
+val a3 = Mapper(\x -> x * 100)
+val a4 = Fold(0, \x, y -> x + y)
+
+val next1 = { a1.next }
+val next2 = { a2.next()}
+
+val sum = fold(a4, next2)
+
+val next1 = {
+    if a1.idx < a1.r then {
+        val idx = a1.idx
+        a1.idx += 1
+        idx
+    }
+}: Int | Unit
+val next2 = {
+    match next1()
+        of i: Int -> if a2.pred(i) then i else Unit
+}: Int | Unit
+
+val next3 = {
+    match next2()
+        of i: Int -> a3.mapper(i)
+}: Int | Unit
+
+val terminal1 = {
+    val do = true
+    while do {
+        match next3
+            of i: Int -> a4.acc = a4.folder(a4.acc, i)
+            of Unit -> do = false
+    }
+
+    a4.acc
+}
+
+val sum = terminal1()

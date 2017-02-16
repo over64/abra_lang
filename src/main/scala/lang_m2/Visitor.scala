@@ -38,8 +38,6 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
       if (terminal == null)
         terminal = ctx.StringLiteral()
       if (terminal == null)
-        terminal = ctx.Id()
-      if (terminal == null)
         terminal = ctx.getToken(SELF, 0)
 
       terminal.getSymbol
@@ -59,7 +57,7 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
       })
   }
 
-  override def visitRealdId(ctx: RealdIdContext): lId = {
+  override def visitId(ctx: IdContext): lId = {
     val realId = if (ctx.Id() != null) ctx.Id()
     else ctx.getToken(SELF, 0)
     emit(realId.getSymbol, lId(realId.getSymbol.getText))
@@ -165,21 +163,22 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
 
     if (ctx.tuple() != null) {
       val indecies = visitTuple(ctx.tuple()).seq
-      val to: Expression = ctx.realdId.drop(1).headOption.map { second =>
-        val firstProp = Prop(visitRealdId(ctx.realdId.head), visitRealdId(second))
-        ctx.realdId.drop(2).foldLeft(firstProp) {
-          case (prop, id) => Prop(prop, visitRealdId(id))
+      val to: Expression = ctx.id().drop(1).headOption.map { second =>
+        val firstProp = Prop(visitId(ctx.id().head), visitId(second))
+        ctx.id().drop(2).foldLeft(firstProp) {
+          case (prop, id) => Prop(prop, visitId(id))
         }
-      }.getOrElse(visitRealdId(ctx.realdId.head))
+      }.getOrElse(visitId(ctx.id().head))
 
       emit(ctx, SelfCall("set", to, indecies :+ expr))
     } else
-      emit(ctx, Store(ctx.realdId().map(id => visitRealdId(id)), expr))
+      emit(ctx, Store(ctx.id().map(id => visitId(id)), expr))
   }
 
   def visitExpr(ctx: ExpressionContext) = ctx.accept(this).asInstanceOf[Expression]
 
   override def visitExprLiteral(ctx: ExprLiteralContext): Literal = visitLiteral(ctx.literal())
+  override def visitExprId(ctx: ExprIdContext): lId = visitId(ctx.id())
 
   override def visitExprSelfCall(ctx: ExprSelfCallContext): ParseNode = {
     visitExpr(ctx.expression()) match {
@@ -257,6 +256,46 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
       case expr@_ =>
         emit(ctx, Prop(expr, emit(ctx.op, lId(ctx.op.getText))))
     }
+
+  override def visitMatchDash(ctx: MatchDashContext): MatchOver = emit(ctx, Dash)
+
+  override def visitMatchId(ctx: MatchIdContext): lId = {
+    val realId = if (ctx.MatchId() != null) ctx.MatchId() else ctx.getToken(SELF, 0)
+    emit(realId.getSymbol, lId(realId.getSymbol.getText.replaceFirst("\\$", "")))
+  }
+
+  override def visitMatchType(ctx: MatchTypeContext): MatchType =
+    emit(ctx, MatchType(
+      varName = if (ctx.id() == null) None else Some(visitId(ctx.id())),
+      scalarTypeHint = visitScalarTypeHint(ctx.scalarTypeHint())
+    ))
+
+  override def visitMatchBracketsExpr(ctx: MatchBracketsExprContext): Expression = visitExpr(ctx.expression())
+
+  override def visitMatchExpression(ctx: MatchExpressionContext): Expression =
+    emit(ctx, visitChildren(ctx).asInstanceOf[Expression])
+
+  override def visitDestruct(ctx: DestructContext): ParseNode =
+    emit(ctx, Destruct(
+      varName = if (ctx.id() == null) None else Some(visitId(ctx.id())),
+      scalarTypeHint = visitScalarTypeHint(ctx.scalarTypeHint()),
+      args = ctx.matchOver().map { mo => visitMatchOver(mo) }
+    ))
+
+  override def visitMatchOver(ctx: MatchOverContext): MatchOver =
+    emit(ctx, visitChildren(ctx).asInstanceOf[MatchOver])
+
+  override def visitMatchCase(ctx: MatchCaseContext): Case =
+    emit(ctx, Case(
+      over = visitMatchOver(ctx.matchOver()),
+      cond = if (ctx.cond == null) None else Some(visitExpr(ctx.cond)),
+      expr = visitExpr(ctx.onMatch)
+    ))
+  override def visitExprMatch(ctx: ExprMatchContext): Match =
+    emit(ctx, Match(
+      on = visitExpr(ctx.expr),
+      cases = ctx.matchCase().map { mc => visitMatchCase(mc) }
+    ))
 
   override def visitFunction(ctx: FunctionContext): Fn = {
     val (block, retType) =

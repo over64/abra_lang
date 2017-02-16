@@ -1,0 +1,14 @@
+def ==: (self: Int, other: Int) -> Boolean = llvm {
+  %1 = icmp eq i32 %self, %other
+  ret i1 %1
+}
+
+def +: (self: Int, other: Int) -> Int = llvm {
+  %1 = add nsw i32 %self, %other
+  ret i32 %1
+}
+
+def main = {
+    match 2
+        of ${1 + 1} -> 3
+}: Int

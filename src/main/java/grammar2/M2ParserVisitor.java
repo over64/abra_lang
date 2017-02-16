@@ -1,4 +1,4 @@
-// Generated from /home/over/build/abra_lang/grammar/M2Parser.g4 by ANTLR 4.5.3
+// Generated from /home/over/build/test_lang/grammar/M2Parser.g4 by ANTLR 4.5.3
 package grammar2;
 import org.antlr.v4.runtime.tree.ParseTreeVisitor;
 
@@ -17,11 +17,46 @@ public interface M2ParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitLiteral(M2Parser.LiteralContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link M2Parser#realdId}.
+	 * Visit a parse tree produced by {@link M2Parser#id}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitRealdId(M2Parser.RealdIdContext ctx);
+	T visitId(M2Parser.IdContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code exprMatch}
+	 * labeled alternative in {@link M2Parser#expression}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitExprMatch(M2Parser.ExprMatchContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code exprLiteral}
+	 * labeled alternative in {@link M2Parser#expression}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitExprLiteral(M2Parser.ExprLiteralContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code exprIfElse}
+	 * labeled alternative in {@link M2Parser#expression}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitExprIfElse(M2Parser.ExprIfElseContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code exprLambda}
+	 * labeled alternative in {@link M2Parser#expression}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitExprLambda(M2Parser.ExprLambdaContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code exprApply}
+	 * labeled alternative in {@link M2Parser#expression}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitExprApply(M2Parser.ExprApplyContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code exprParen}
 	 * labeled alternative in {@link M2Parser#expression}.
@@ -51,6 +86,13 @@ public interface M2ParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitExprWhile(M2Parser.ExprWhileContext ctx);
 	/**
+	 * Visit a parse tree produced by the {@code exprId}
+	 * labeled alternative in {@link M2Parser#expression}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitExprId(M2Parser.ExprIdContext ctx);
+	/**
 	 * Visit a parse tree produced by the {@code exprUnaryCall}
 	 * labeled alternative in {@link M2Parser#expression}.
 	 * @param ctx the parse tree
@@ -72,13 +114,6 @@ public interface M2ParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitExprSelfCall(M2Parser.ExprSelfCallContext ctx);
 	/**
-	 * Visit a parse tree produced by the {@code exprLiteral}
-	 * labeled alternative in {@link M2Parser#expression}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitExprLiteral(M2Parser.ExprLiteralContext ctx);
-	/**
 	 * Visit a parse tree produced by the {@code exprBlock}
 	 * labeled alternative in {@link M2Parser#expression}.
 	 * @param ctx the parse tree
@@ -86,26 +121,53 @@ public interface M2ParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitExprBlock(M2Parser.ExprBlockContext ctx);
 	/**
-	 * Visit a parse tree produced by the {@code exprIfElse}
-	 * labeled alternative in {@link M2Parser#expression}.
+	 * Visit a parse tree produced by {@link M2Parser#matchDash}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitExprIfElse(M2Parser.ExprIfElseContext ctx);
+	T visitMatchDash(M2Parser.MatchDashContext ctx);
 	/**
-	 * Visit a parse tree produced by the {@code exprLambda}
-	 * labeled alternative in {@link M2Parser#expression}.
+	 * Visit a parse tree produced by {@link M2Parser#matchId}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitExprLambda(M2Parser.ExprLambdaContext ctx);
+	T visitMatchId(M2Parser.MatchIdContext ctx);
 	/**
-	 * Visit a parse tree produced by the {@code exprApply}
-	 * labeled alternative in {@link M2Parser#expression}.
+	 * Visit a parse tree produced by {@link M2Parser#matchType}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitExprApply(M2Parser.ExprApplyContext ctx);
+	T visitMatchType(M2Parser.MatchTypeContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link M2Parser#matchBracketsExpr}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitMatchBracketsExpr(M2Parser.MatchBracketsExprContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link M2Parser#matchExpression}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitMatchExpression(M2Parser.MatchExpressionContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link M2Parser#destruct}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitDestruct(M2Parser.DestructContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link M2Parser#matchOver}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitMatchOver(M2Parser.MatchOverContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link M2Parser#matchCase}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitMatchCase(M2Parser.MatchCaseContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link M2Parser#if_stat}.
 	 * @param ctx the parse tree

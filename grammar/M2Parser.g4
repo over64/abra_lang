@@ -8,13 +8,12 @@ literal           : IntLiteral
                   | FloatLiteral
                   | BooleanLiteral
                   | StringLiteral
-                  | Id
-                  | 'self'
                   ;
 
-realdId: Id | 'self' ;
+id: Id | 'self' ;
 
 expression : literal #exprLiteral
+           | id #exprId
            | '(' expression ')' #exprParen
            | tuple #exprTuple
            | expression '.' op=(Id | '*' | '/' | '+' | '-' | '>' | '<' | '<=' | '>=' | '==' | '!=' | '||' | '&&') tuple #exprSelfCall
@@ -30,11 +29,21 @@ expression : literal #exprLiteral
            | expression op=('||' | '&&') expression #exprInfixCall
            | 'if' NL* cond=expression NL* (then_block=block | ('then' NL* then_stat=if_stat)) (NL* 'else' NL* (else_block=block | else_stat=if_stat))? #exprIfElse
            | 'while' NL* cond=expression NL* then_block=block #exprWhile
+           | 'match' NL* expr=expression NL* (matchCase NL*)+ #exprMatch
            ;
+
+matchDash: '_' ;
+matchId: MatchId | '$self' ;
+matchType: id NL* ':' NL* scalarTypeHint ;
+matchBracketsExpr: '${' expression '}' ;
+matchExpression: literal | matchId | matchBracketsExpr ;
+destruct: (id '=')? scalarTypeHint '(' (matchOver (',' NL* matchOver)*)? ')' ;
+matchOver: matchDash | id | matchExpression | destruct | matchType ;
+matchCase: 'of' NL* matchOver NL* ('if' NL* cond=expression NL*)? '->' NL* onMatch=expression ;
 
 if_stat : expression | store ;
 
-store : realdId ('.' realdId)* tuple? '=' expression ;
+store : id ('.' id)* tuple? '=' expression ;
 
 fnArg: ('self' | Id) (':' typeHint)? ;
 block : '{' (fnArg (',' fnArg)* '->')? NL* blockBody* NL* '}' ;

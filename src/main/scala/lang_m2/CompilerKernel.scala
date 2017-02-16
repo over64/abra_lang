@@ -26,10 +26,12 @@ class CompilerKernel {
 
   def message(level: Int, msg: String) = println(s"${"  " * level}$msg")
 
-  def compile(level: Int, config: Config, currentPkg: Seq[String], sourcePath: Path, targetPath: Path, isMain: Boolean): CompileResult = {
+  def compile(level: Int, config: Config, currentPkg: Seq[String], sourcePath: Path, isMain: Boolean): CompileResult = {
     val time1 = System.currentTimeMillis()
 
     message(level, s"- compile $sourcePath")
+
+    val targetPath = config.targetDir.resolve(Paths.get(currentPkg.mkString("/")))
     Files.createDirectories(targetPath)
 
     val modName = sourcePath.iterator().toSeq.last.toString.split("\\.")(0)
@@ -61,10 +63,9 @@ class CompilerKernel {
 
       foundModule.map {
         case (_, foundModule) =>
-          val targetPath = config.targetDir.resolve(modPath).getParent
           message(level + 1, s"- target path = $targetPath")
 
-          compile(level + 1, config, currentPkg = modPkg, foundModule, targetPath, isMain = false)
+          compile(level + 1, config, currentPkg = modPkg, foundModule, isMain = false)
       }.getOrElse(throw new CompileEx(_import, CE.ImportNotResolved(modPath.toString, config.include.map(_.toString))))
 
     }

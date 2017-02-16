@@ -28,6 +28,7 @@ case class IrGen(val out: OutputStream) {
   def nextLabel: String = {
     labelId += 1
     s"label$labelId"
+    s"label$labelId"
   }
 
   def evalGep(baseType: Type, fields: Seq[String]): (Type, Seq[Int]) = {

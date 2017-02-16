@@ -21,6 +21,7 @@ IF : 'if' ;
 THEN : 'then' ;
 ELSE : 'else' ;
 CBO : '{' ;
+DOLLAR_CBO : '${' ;
 CBC : '}' ;
 LOGIC_OR : '||' ;
 LOGIC_AND : '&&' ;
@@ -32,9 +33,13 @@ ARROW_RIGHT : '->' ;
 TYPE : 'type' ;
 BACK_SLASH : '\\' ;
 SELF : 'self' ;
+MATCH_SELF : '$self' ;
 DEF : 'def' ;
 IMPORT : 'import' ;
 WITH : 'with' ;
+MATCH: 'match';
+OF: 'of';
+DASH: '_';
 
 LlBegin : 'llvm' [ \t\r\n]* '{' -> pushMode(llvm);
 
@@ -50,6 +55,7 @@ FloatLiteral : '-'? Digit+ '.' Digit+ ExponentPart? | Digit+ ExponentPart ;
 BooleanLiteral   :  'true' | 'false';
 StringLiteral    : '\'' StringElement* '\'' ;
 Id  : ('a'..'z' | 'A'..'Z')+ ('a'..'z' | 'A'..'Z' | '_' | Digit)* ;
+MatchId: '$' Id ;
 
 mode llvm ;
 IrInline : ~[{}]+ ;

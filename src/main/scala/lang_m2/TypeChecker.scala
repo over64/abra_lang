@@ -248,7 +248,7 @@ class TypeChecker {
 
         val lowStore = Ast1.Store(lowTo, to.drop(1).map(_.value), whatExp.init.get)
         InferedExp(tUnit, whatExp.stats :+ lowStore, None)
-      case self@Cond(ifCond, _then, _else) =>
+      case self@Cond(ifCond, _then, _else, allowPartialRet) =>
         val anonVarName = nextAnonVar
 
         def retMapper(scope: Namespace, last: Option[InferedExp]): InferedExp =
@@ -276,13 +276,30 @@ class TypeChecker {
         val lowIf = Ast1.Cond(condExp.init.get, ifBranch, elseBranch)
 
         if (forInit) {
-          if (ifType != elseType) throw new CompileEx(self, CE.BranchTypesNotEqual())
+          if (!allowPartialRet && ifType != elseType) throw new CompileEx(self, CE.BranchTypesNotEqual())
 
           scope.addVar(null, anonVarName, ifType, isMutable = true, LocalSymbol(anonVarName))
           InferedExp(ifType, Seq(lowIf), Some(Ast1.lLocal(anonVarName)))
         }
         else InferedExp(ifType, Seq(lowIf), None)
 
+      case self@Match(on, cases) =>
+        val onVal = Val(mutable = false, nextAnonVar, None, on)
+        val onInfered = evalBlockExpression(namespace, scope, forInit = true, None, onVal)
+
+        def casesToCond(cases: List[Case]): Option[Cond] = cases match {
+          case head :: tail =>
+            head.over match {
+              case Dash => Some(Cond(lBoolean("true"), Block(Seq(), Seq(head.expr)), Some(Block(Seq(), casesToCond(tail).toSeq)), true))
+              case exp: Expression => Some(Cond(SelfCall("==", lId(onVal.name), Seq(exp)), Block(Seq(), Seq(head.expr)), Some(Block(Seq(), casesToCond(tail).toSeq)), true))
+            }
+          case Nil => None
+        }
+
+        val matchFullCond = casesToCond(cases.toList).get
+        val inferedCond = evalBlockExpression(namespace, scope, forInit = true, None, matchFullCond)
+
+        InferedExp(inferedCond.infType, onInfered.stats ++ inferedCond.stats, inferedCond.init)
       case BoolAnd(left, right) =>
         val leftInf = evalBlockExpression(namespace, scope, forInit = true, Some(tBool), left)
         assertTypeEquals(left, tBool, leftInf.infType)

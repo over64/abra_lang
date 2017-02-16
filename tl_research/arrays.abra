@@ -33,9 +33,8 @@ data StaticMap[]
 val a1: Mat2x2[Int] = ((0, 1), (1, 0))
 val a1 = ((0, 1), (1, 0)) # Int x 2 x 2
 
-trait Comparable[T] = {
-    compareTo: (self, other: T) -> Int
-}
+trait Comparable[T]
+def compareTo: (self, other: T) -> Int
 
 macro Seq[T] = {
     +:   (self: Self, other: Seq[T]) -> Seq[T]
@@ -55,4 +54,22 @@ data Array3    = Int x 3 x 3
 filter: ArrayN -> Array
         Array  -> Array
 
-trait Map[K, V]
+trait Array[n1, T] = llvm {[ T x n1 ]}
+
+macro def get: (self: Array)
+
+trait Map[K, V] = {
+    get: (self: U)
+}
+
+Int[15]
+
+data Users = Array[3, User]
+data UsersMap = Map[User] with HashMap
+
+статический полиморфизм - traits
+динамический полиморфизм - fn pointers & type unions
+
+Стоимость виртуальных вызовов?
+Static String vs String
+Static Array vs DynArray

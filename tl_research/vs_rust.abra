@@ -1,0 +1,45 @@
+struct Person {
+    name: String,
+    age: u8,
+}
+
+impl Person {
+    fn new(name: &str, age: u8) -> Person {
+        Person {
+            name: name.into(),
+            age: age,
+        }
+    }
+
+    fn celebrate_birthday(&mut self) {
+        self.age += 1;
+
+        println!("{} is now {} years old!", self.name, self.age);
+    }
+
+    fn name(&self) -> &str {
+        &self.name
+    }
+}
+
+fn main() {
+    let mut jill = Person::new("Jill", 19);
+    let jill_ref_mut = &mut jill;
+    jill_ref_mut.celebrate_birthday();
+    println!("{}", jill.name()); // невозможно заимствовать jill как неизменяемое
+                                 // потому что это уже заимствовано как
+                                 // изменяемое
+}
+
+data Person = (name: String, age: uByte)
+
+def celebrateBirthday = { self: Person ->
+    self.age += 1
+    '${self.name} is now ${self.age} years old!'.println.?IOErr
+}: Unit | IOErr
+
+def main = {
+    val jill = Person(name = 'Jill', age = 19)
+    jill.celebrateBirthday.?IOErr
+    jill.name.println.?IOErr
+}: Unit | IOErr

@@ -58,7 +58,7 @@ object Compiler {
 
         Files.createDirectories(config.targetDir)
 
-        new CompilerKernel().compile(level = 0, config, basePackage, config.file, config.targetDir, isMain = true)
+        new CompilerKernel().compile(level = 0, config, basePackage, config.file, isMain = true)
 
       case None => System.exit(1)
     }

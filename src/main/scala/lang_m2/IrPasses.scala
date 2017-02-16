@@ -68,29 +68,16 @@ object IrPasses {
           val (addVars, beforeStats, newCall, _) = mapCall(fnMap, currentFnType, currentFnVars, call)
           (vars ++ addVars, stats ++ beforeStats :+ newCall)
         case ((vars, stats), Cond(init, _if, _else)) =>
-          val (newInitVars, newInitStats, newInit) = init match {
-            case call: Call =>
-              val (addVars, beforeStats, newCall, newInit) = mapCall(fnMap, currentFnType, currentFnVars, call)
-              (addVars, beforeStats :+ newCall, newInit)
-            case other@_ => (Map(), Seq(), other)
-          }
           val (newIfVars, ifStats) = mapStats(fnMap, currentFnType, currentFnVars, _if)
           val (newElseVars, elseStats) = mapStats(fnMap, currentFnType, currentFnVars, _else)
 
-          (vars ++ newInitVars ++ newIfVars ++ newElseVars,
-            stats ++ newInitStats :+ Cond(newInit, ifStats, elseStats))
+          (vars ++ newIfVars ++ newElseVars,
+            stats :+ Cond(init, ifStats, elseStats))
         case ((vars, stats), While(init, seq)) =>
-          val (newInitVars, newInitStats, newInit) = init match {
-            case call: Call =>
-              val (addVars, beforeStats, newCall, newInit) = mapCall(fnMap, currentFnType, currentFnVars, call)
-              (addVars, beforeStats :+ newCall, newInit)
-            case other@_ => (Map(), Seq(), other)
-          }
-
           val (newVars, newStats) = mapStats(fnMap, currentFnType, currentFnVars, seq)
 
-          (vars ++ newInitVars ++ newVars,
-            stats ++ newInitStats :+ While(newInit, newStats))
+          (vars ++ newVars,
+            stats :+ While(init, newStats))
         case ((vars, stats), other@_) => (vars, stats :+ other)
       }
 

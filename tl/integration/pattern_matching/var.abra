@@ -1,0 +1,10 @@
+def ==: (self: Int, other: Int) -> Boolean = llvm {
+  %1 = icmp eq i32 %self, %other
+  ret i1 %1
+}
+
+def main = {
+    val x = 3
+    match 3
+        of $x -> 3
+}: Int

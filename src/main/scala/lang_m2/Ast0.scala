@@ -3,7 +3,8 @@ package lang_m2
 object Ast0 {
   sealed trait ParseNode
   sealed trait BlockExpression extends ParseNode
-  sealed trait Expression extends BlockExpression
+  sealed trait MatchOver extends ParseNode
+  sealed trait Expression extends BlockExpression with MatchOver
   sealed trait FnBody
   sealed trait Level1Declaration extends ParseNode
   sealed trait Literal extends Expression {
@@ -53,7 +54,14 @@ object Ast0 {
 
   case class BoolAnd(left: Expression, right: Expression) extends Expression
   case class BoolOr(left: Expression, right: Expression) extends Expression
-  case class Cond(ifCond: Expression, _then: Block, _else: Option[Block]) extends Expression
+  case class Cond(ifCond: Expression, _then: Block, _else: Option[Block], allowPartialRet: Boolean = false) extends Expression
+
+  case object Dash extends MatchOver
+  case class BindVar(varName: lId) extends MatchOver
+  case class Destruct(varName: Option[lId], scalarTypeHint: ScalarTypeHint, args: Seq[MatchOver]) extends MatchOver
+  case class MatchType(varName: Option[lId], scalarTypeHint: ScalarTypeHint) extends MatchOver
+  case class Case(over: MatchOver, cond: Option[Expression], expr: Expression) extends ParseNode
+  case class Match(on: Expression, cases: Seq[Case]) extends Expression
 
   case class While(cond: Expression, _then: Block) extends Expression with BlockExpression
   case class Store(to: Seq[lId], what: Expression) extends BlockExpression
