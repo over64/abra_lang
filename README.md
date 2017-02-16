@@ -186,8 +186,11 @@ def main = {
 
     # pass anonymous closure as parameter
     foo(1, { i ->
-        x = x + 1
+        x = x + i
     })
+    
+    # Haskell-lambda style
+    foo(1, \i -> x = x + i)
 
     x
 }: Int
