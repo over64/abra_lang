@@ -23,6 +23,7 @@ Research platform for design language with new memory management and modularity 
   - stack-based closures
 
 #### In progress in M2
+  - pattern matching
   - named parameters
   - early returns
   - continue / break for while loops
