@@ -171,6 +171,13 @@ public class M2ParserBaseVisitor<T> extends AbstractParseTreeVisitor<T> implemen
 	 * <p>The default implementation returns the result of calling
 	 * {@link #visitChildren} on {@code ctx}.</p>
 	 */
+	@Override public T visitBindVar(M2Parser.BindVarContext ctx) { return visitChildren(ctx); }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation returns the result of calling
+	 * {@link #visitChildren} on {@code ctx}.</p>
+	 */
 	@Override public T visitMatchOver(M2Parser.MatchOverContext ctx) { return visitChildren(ctx); }
 	/**
 	 * {@inheritDoc}

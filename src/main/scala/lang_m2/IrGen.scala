@@ -254,13 +254,13 @@ case class IrGen(val out: OutputStream) {
     case call: Call =>
       genericCallToValue(fnMap, fnType, vars, call)
     case BoolAnd(left, right) =>
+      val leftRes = genInitWithValue(fnMap, fnType, vars, Scalar("i1"), left)
       val (beginLabel, secondLabel, endLabel) = (nextLabel, nextLabel, nextLabel)
       out.println(s"\tbr label %$beginLabel")
       out.println(s"$beginLabel:")
-      val leftRes = genInitWithValue(fnMap, fnType, vars, Scalar("i1"), left)
       out.println(s"\tbr i1 $leftRes, label %$secondLabel, label %$endLabel")
-
       out.println(s"$secondLabel:")
+
       val rightRes = genInitWithValue(fnMap, fnType, vars, Scalar("i1"), right)
       out.println(s"\tbr label %$endLabel")
 

@@ -2,6 +2,11 @@ def PI = 3.14159265359
 
 def SIZE = 4
 
+def ==: (self: Float, other: Float) -> Boolean = llvm {
+  %1 = fcmp oeq float %self, %other
+  ret i1 %1
+}
+
 def +: (self: Float, other: Float) -> Float = llvm {
   %1 = fadd float %self, %other
   ret float %1

@@ -82,11 +82,39 @@ class IntegrationTests extends FunSuite {
     assertRunEquals("tl/integration/pattern_matching/literal.abra", Seq("integration", "pattern_matching"))(exit = Some(2))
   }
 
+  test("pattern matching -> two branches") {
+    assertRunEquals("tl/integration/pattern_matching/two_branches.abra", Seq("integration", "pattern_matching"))(exit = Some(2))
+  }
+
   test("pattern matching -> expression") {
     assertRunEquals("tl/integration/pattern_matching/expression.abra", Seq("integration", "pattern_matching"))(exit = Some(3))
   }
 
   test("pattern matching -> var") {
     assertRunEquals("tl/integration/pattern_matching/var.abra", Seq("integration", "pattern_matching"))(exit = Some(3))
+  }
+
+  test("pattern matching -> bind var") {
+    assertRunEquals("tl/integration/pattern_matching/bind_var.abra", Seq("integration", "pattern_matching"))(exit = Some(3))
+  }
+
+  test("pattern matching -> guard") {
+    assertRunEquals("tl/integration/pattern_matching/guard.abra", Seq("integration", "pattern_matching"))(exit = Some(1))
+  }
+
+  test("pattern matching -> destruct -> literal") {
+    assertRunEquals("tl/integration/pattern_matching/destruct_literal.abra", Seq("integration", "pattern_matching"))(exit = Some(1))
+  }
+
+  test("pattern matching -> destruct -> named") {
+    assertRunEquals("tl/integration/pattern_matching/destruct_named.abra", Seq("integration", "pattern_matching"))(exit = Some(1))
+  }
+
+  test("pattern matching -> destruct -> multi") {
+    assertRunEquals("tl/integration/pattern_matching/destruct_multi.abra", Seq("integration", "pattern_matching"))(exit = Some(2))
+  }
+
+  test("pattern matching -> destruct -> deep named") {
+    assertRunEquals("tl/integration/pattern_matching/destruct_deep_named.abra", Seq("integration", "pattern_matching"))(exit = Some(5))
   }
 }

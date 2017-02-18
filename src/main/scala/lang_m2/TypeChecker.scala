@@ -9,9 +9,9 @@ class TypeChecker {
   var lowVars = 0
   var closureNames = 0
 
-  def nextAnonVar = {
+  def nextAnonVar(prefix: String = "anon") = {
     annoVars += 1
-    s"anon$annoVars"
+    s"$prefix$annoVars"
   }
 
   def nextAnonFn = {
@@ -198,7 +198,7 @@ class TypeChecker {
       case lBoolean(value) =>
         InferedExp(tBool, Seq(), Some(Ast1.lInt(value)))
       case lString(value) =>
-        InferedExp(tString, Seq(), Some(Ast1.lString(s"${nextAnonVar}", HexUtil.singleByteNullTerminated(value.getBytes))))
+        InferedExp(tString, Seq(), Some(Ast1.lString(s"${nextAnonVar()}", HexUtil.singleByteNullTerminated(value.getBytes))))
       case self@lId(varName) =>
         val vi = scope.findVar(varName).getOrElse({
           println(scope)
@@ -249,7 +249,7 @@ class TypeChecker {
         val lowStore = Ast1.Store(lowTo, to.drop(1).map(_.value), whatExp.init.get)
         InferedExp(tUnit, whatExp.stats :+ lowStore, None)
       case self@Cond(ifCond, _then, _else, allowPartialRet) =>
-        val anonVarName = nextAnonVar
+        val anonVarName = nextAnonVar("anonCondRet")
 
         def retMapper(scope: Namespace, last: Option[InferedExp]): InferedExp =
           last.map { last =>
@@ -284,22 +284,61 @@ class TypeChecker {
         else InferedExp(ifType, Seq(lowIf), None)
 
       case self@Match(on, cases) =>
-        val onVal = Val(mutable = false, nextAnonVar, None, on)
-        val onInfered = evalBlockExpression(namespace, scope, forInit = true, None, onVal)
+        val childScope = scope.mkChild { parent => new BlockScope(Some(parent)) }
+        val onVal = Val(mutable = false, nextAnonVar("anonMatchExpr"), None, on)
+        val onInfered = evalBlockExpression(namespace, childScope, forInit = false, None, onVal)
 
-        def casesToCond(cases: List[Case]): Option[Cond] = cases match {
-          case head :: tail =>
-            head.over match {
-              case Dash => Some(Cond(lBoolean("true"), Block(Seq(), Seq(head.expr)), Some(Block(Seq(), casesToCond(tail).toSeq)), true))
-              case exp: Expression => Some(Cond(SelfCall("==", lId(onVal.name), Seq(exp)), Block(Seq(), Seq(head.expr)), Some(Block(Seq(), casesToCond(tail).toSeq)), true))
-            }
-          case Nil => None
+        def withGuard(expr1: Expression, expr2: Option[Expression]) = expr2 match {
+          case Some(e) => BoolAnd(expr1, e)
+          case None => expr1
         }
 
-        val matchFullCond = casesToCond(cases.toList).get
-        val inferedCond = evalBlockExpression(namespace, scope, forInit = true, None, matchFullCond)
+        def evalMatchOver(on: Expression, expectedType: Type, mo: MatchOver): (Seq[Expression], Seq[Val]) = mo match {
+          case Dash => (Seq(), Seq())
+          case BindVar(lId(varName)) => (Seq(), Seq(Val(mutable = false, varName, None, on)))
+          case exp: Expression => (Seq(SelfCall("==", on, Seq(exp))), Seq())
+          case Destruct(newVar, sth, args) =>
+            val (addVal, newInit) = newVar match {
+              case Some(lId(varName)) => (Some(Val(mutable = false, varName, None, on)), lId(varName))
+              case None => (None, on)
+            }
 
-        InferedExp(inferedCond.infType, onInfered.stats ++ inferedCond.stats, inferedCond.init)
+            val destructType = namespace.types.getOrElse(sth, throw new CompileEx(sth, CE.TypeNotFound(sth)))
+            assertTypeEquals(sth, expectedType, destructType)
+            val factorType = expectedType match {
+              case ft: FactorType => ft
+              case _ => throw new CompileEx(sth, CE.ExpectedStructType(sth))
+            }
+
+            val empty = (Seq(), Seq())
+            val (newConds, newVals) = factorType.fields.zip(args).foldLeft[(Seq[Expression], Seq[Val])](empty) {
+              case ((conditions, vals), (typeField, matchOver)) =>
+                val (newConditions, newVals) = evalMatchOver(Prop(newInit, lId(typeField.name)), typeField.ftype, matchOver)
+                (conditions ++ newConditions, vals ++ newVals)
+            }
+
+            (newConds, addVal.toSeq ++ newVals)
+        }
+
+        def caseToCond(_case: Case): (Seq[Val], Cond) = {
+          val (conditions, vals) = evalMatchOver(lId(onVal.name), childScope.findVar(onVal.name).get.stype, _case.over)
+          val head = conditions.headOption.getOrElse(lBoolean("true"))
+          val unicond = conditions.drop(1).foldLeft(head) {
+            case (cond1, cond2) => BoolAnd(cond1, cond2)
+          }
+
+          (vals, Cond(withGuard(unicond, _case.cond), Block(Seq(), Seq(_case.expr)), None, allowPartialRet = true))
+        }
+
+        val (vals, matchCond) = cases.map { c => caseToCond(c) }.reduceRight[(Seq[BlockExpression], Cond)] {
+          case ((init1, cond1), (init2, cond2)) =>
+            (init1, Cond(cond1.ifCond, cond1._then, Some(Block(Seq(), init2 :+ cond2)), allowPartialRet = true))
+        }
+
+        val inferedExp = vals.map { be => evalBlockExpression(namespace, childScope, forInit = false, None, be) }
+        val inferedCond = evalBlockExpression(namespace, childScope, forInit = true, None, matchCond)
+
+        InferedExp(inferedCond.infType, onInfered.stats ++ inferedExp.flatten(_.stats) ++ inferedCond.stats, inferedCond.init)
       case BoolAnd(left, right) =>
         val leftInf = evalBlockExpression(namespace, scope, forInit = true, Some(tBool), left)
         assertTypeEquals(left, tBool, leftInf.infType)

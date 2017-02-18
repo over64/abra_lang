@@ -157,6 +157,12 @@ public interface M2ParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitDestruct(M2Parser.DestructContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link M2Parser#bindVar}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitBindVar(M2Parser.BindVarContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link M2Parser#matchOver}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

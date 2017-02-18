@@ -54,4 +54,7 @@ object CE {
   case class TypeNotFound(sth: ScalarTypeHint) extends CompileError {
     override def toString = s"type with name ${sth.name} not found (${sth._package}${sth.name})"
   }
+  case class ExpectedStructType(sth: ScalarTypeHint) extends CompileError {
+    override def toString = s"expected struct type, got ${sth._package}${sth.name}"
+  }
 }

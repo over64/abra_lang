@@ -275,14 +275,16 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
   override def visitMatchExpression(ctx: MatchExpressionContext): Expression =
     emit(ctx, visitChildren(ctx).asInstanceOf[Expression])
 
-  override def visitDestruct(ctx: DestructContext): ParseNode =
+  override def visitDestruct(ctx: DestructContext) =
     emit(ctx, Destruct(
       varName = if (ctx.id() == null) None else Some(visitId(ctx.id())),
       scalarTypeHint = visitScalarTypeHint(ctx.scalarTypeHint()),
       args = ctx.matchOver().map { mo => visitMatchOver(mo) }
     ))
 
-  override def visitMatchOver(ctx: MatchOverContext): MatchOver =
+  override def visitBindVar(ctx: BindVarContext) = BindVar(visitId(ctx.id()))
+
+  override def visitMatchOver(ctx: MatchOverContext) =
     emit(ctx, visitChildren(ctx).asInstanceOf[MatchOver])
 
   override def visitMatchCase(ctx: MatchCaseContext): Case =
@@ -291,7 +293,7 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
       cond = if (ctx.cond == null) None else Some(visitExpr(ctx.cond)),
       expr = visitExpr(ctx.onMatch)
     ))
-  override def visitExprMatch(ctx: ExprMatchContext): Match =
+  override def visitExprMatch(ctx: ExprMatchContext) =
     emit(ctx, Match(
       on = visitExpr(ctx.expr),
       cases = ctx.matchCase().map { mc => visitMatchCase(mc) }

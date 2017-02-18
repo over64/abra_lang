@@ -38,7 +38,8 @@ matchType: id NL* ':' NL* scalarTypeHint ;
 matchBracketsExpr: '${' expression '}' ;
 matchExpression: literal | matchId | matchBracketsExpr ;
 destruct: (id '=')? scalarTypeHint '(' (matchOver (',' NL* matchOver)*)? ')' ;
-matchOver: matchDash | id | matchExpression | destruct | matchType ;
+bindVar: id ;
+matchOver: matchDash | bindVar | matchExpression | destruct | matchType ;
 matchCase: 'of' NL* matchOver NL* ('if' NL* cond=expression NL*)? '->' NL* onMatch=expression ;
 
 if_stat : expression | store ;

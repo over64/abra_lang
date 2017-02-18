@@ -1,0 +1,23 @@
+import abra.io
+import abra.float
+
+type Vec3 = (x: Float, y: Float, z: Float)
+
+def classifyPoint = \p: Vec3 -> match p
+    of Vec3(0.0, 0.0, 0.0) -> 'coord center'
+    of Vec3(x, 0.0, 0.0) -> 'point on X axis'
+    of Vec3(0.0, y, 0.0) -> 'point on Y axis'
+    of Vec3(0.0, 0.0, z) -> 'point on Z axis'
+    of Vec3(x, y, 0.0) -> 'point on XoY plain'
+    of Vec3(0.0, y, z) -> 'point on YoZ plain'
+    of Vec3(x, 0.0, z) -> 'point on XoZ plain'
+
+def main = {
+    classifyPoint(Vec3(0.0, 0.0 ,0.0)).print
+    classifyPoint(Vec3(1.0, 0.0 ,0.0)).print
+    classifyPoint(Vec3(0.0, 1.0 ,0.0)).print
+    classifyPoint(Vec3(0.0, 0.0 ,1.0)).print
+    classifyPoint(Vec3(1.0, 1.0 ,0.0)).print
+    classifyPoint(Vec3(0.0, 1.0 ,1.0)).print
+    classifyPoint(Vec3(1.0, 0.0 ,1.0)).print
+}: Unit
