@@ -1,7 +1,7 @@
 ### ABRA lang:
 Research platform for design language with new memory management and modularity concepts
 #### Build compiler
-  For build compiler you just need JDK8 and SBT. LLVM 3.8 and GCC also must be available in PATH
+  For build compiler you just need Jdk8 and Sbt. Llvm 3.8 and Gcc also must be available in PATH
   ```bash
     sbt> assembly
   ```
@@ -12,7 +12,7 @@ Research platform for design language with new memory management and modularity 
   - if-else is expressions
   - while loops
   - Rich function call syntax: infix calls, unary calls, apply calls, get/set calls, self calls, usual calls
-  - types: scalar and struct types (no arrays and ATD yet
+  - types: scalar and struct types (no arrays and ATD yet)
   - higher order functions
   - natural operator overloading (no 'operators' in language syntax)
   - smooth integration with LLVM via scalar types and inline LLVM IR
@@ -21,9 +21,10 @@ Research platform for design language with new memory management and modularity 
   - Pyhton and Java-like modules system without any global variables
   - simple FFI to C via LLVM IR
   - stack-based closures
+  - full-featured pattern matching
 
 #### In progress in M2
-  - pattern matching
+  - type unions
   - named parameters
   - early returns
   - continue / break for while loops
@@ -31,7 +32,7 @@ Research platform for design language with new memory management and modularity 
 
 #### Hello, world
 Yes, it is unicode, baby! If you have UTF8 locale...
-```scala
+```ruby
   import abra.io
   
   def main =
@@ -41,7 +42,7 @@ Yes, it is unicode, baby! If you have UTF8 locale...
   WHAT_TO_DECLARE NAME [: TYPE_HINT] = INIT_EXPRESSION
   
   There is only one rule you need to know!
-  ```scala
+  ```ruby
     val a = 1
     var b: Double = 1.0
     
@@ -55,7 +56,7 @@ Yes, it is unicode, baby! If you have UTF8 locale...
   ```
 #### Types
   Predifined types by language specification:
-  ```scala
+  ```ruby
     type Unit = llvm { void }
     type Boolean = llvm { i1 }
     type Int = llvm { i32 }
@@ -63,12 +64,12 @@ Yes, it is unicode, baby! If you have UTF8 locale...
     type String = llvm { i8* }
   ```
   Scalar types - types direct-mapped to raw LLVM types. Any LLVM type can be used in language. Even SIMD!
-  ```scala
+  ```ruby
     type Int = llvm { i32 }
     type SimdVec4f = llvm { <4 x float> }
   ```
   Struct types - composition of types (algebraic multiplication)
-  ```scala
+  ```ruby
     type Float = llvm { float }
     type Vec3 = (x: Float, y: Float: z: Float)
   ```
@@ -81,7 +82,7 @@ Yes, it is unicode, baby! If you have UTF8 locale...
 
   last function expression is return value
   
-  ```scala
+  ```ruby
     # LLVM IR inline block
     def print: (self: String) -> Unit = llvm  {
       %1 = call i32 @puts(i8* %self)
@@ -112,7 +113,7 @@ Yes, it is unicode, baby! If you have UTF8 locale...
 
 #### Function call
   Rich function call rules for eye-candy DSL
-  ```scala
+  ```ruby
     def +: (self: Int, other: Int) -> Int = llvm {
       %1 = add nsw i32 %other, %self
       ret i32 %1
@@ -129,7 +130,7 @@ Yes, it is unicode, baby! If you have UTF8 locale...
   ```
 #### If-else expressions
 No parantheses, bro!
-```scala
+```ruby
   val a = false
   # if-else is expression
   # if-then style for single-expression
@@ -143,7 +144,7 @@ No parantheses, bro!
 #### Loops
 for loop is not needed and was removed.
 Need imperative programming?
-```scala
+```ruby
   var a = 0
   while a < 255 {
     doSomethingLikeFather()
@@ -151,7 +152,7 @@ Need imperative programming?
   }
 ```
 #### Function pointers & anonymous functions
-```scala
+```ruby
 def foo = { fn: (x: Int) -> Int, x: Int ->
   fn(x)
 }: Int
@@ -166,17 +167,14 @@ def main = {
 }: Int
 ```
 #### Closures
-```scala
-def foo = { i: Int, fn: (i: Int) -> Unit ->
-    fn(i)
-}: Unit
+```ruby
+def foo = \i: Int, fn: (i: Int) -> Unit ->
+  fn(i)
 
 def main = {
     var x = 0
 
-    val closure = { i: Int ->
-        x = x + i
-    }
+    val closure = { i: Int -> x = x + i }
     closure(1)
 
     # anonymous closure
@@ -194,4 +192,40 @@ def main = {
 
     x
 }: Int
+```
+#### Pattern matching
+```ruby
+# Match is expression. Match over dash
+val z = match 2
+  of _ -> 'I dont care'
+  
+#Match over literals
+match 0
+  of 0 -> 'is zero'.println
+    
+# Match over variables
+val x = 2
+val z = match 2
+  of $x -> x
+  
+# Match over expressions
+val z = match 2
+  of ${1 + 1} -> '1 + 1'
+  
+# Match with variable bind
+val z = match 2
+  of 1 -> 'is zero'
+  of x -> 'something another: ' + x
+  
+# Match with guard
+val on = 2
+val z = match on
+  of ${1 + 1} if rand() mod 2 == 0 -> 'good try!'
+  
+# Match with deep named destructuring
+type Bar = (y: Int, z: Int)
+type Foo = (x: Int, bar: Bar)
+
+match Foo(1, Bar(2, 3))
+        of Foo(1, bar = Bar(2, z)) -> bar.y + z
 ```
