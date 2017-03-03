@@ -1,3 +1,4 @@
+![ABRA](https://raw.githubusercontent.com/over64/abra_lang/master/abra.png)
 ### ABRA lang:
 Research platform for design language with new memory management and modularity concepts
 #### Build compiler
