@@ -102,6 +102,10 @@ class IntegrationTests extends FunSuite {
     assertRunEquals("tl/integration/pattern_matching/guard.abra", Seq("integration", "pattern_matching"))(exit = Some(1))
   }
 
+  test("pattern matching -> return unit") {
+    assertRunEquals("tl/integration/pattern_matching/return_unit.abra", Seq("integration", "pattern_matching"))(exit = Some(1))
+  }
+
   test("pattern matching -> destruct -> literal") {
     assertRunEquals("tl/integration/pattern_matching/destruct_literal.abra", Seq("integration", "pattern_matching"))(exit = Some(1))
   }
@@ -116,5 +120,25 @@ class IntegrationTests extends FunSuite {
 
   test("pattern matching -> destruct -> deep named") {
     assertRunEquals("tl/integration/pattern_matching/destruct_deep_named.abra", Seq("integration", "pattern_matching"))(exit = Some(5))
+  }
+
+  test("unions -> val") {
+    assertRunEquals("tl/integration/unions/val.abra", Seq("integration", "unions"))(exit = Some(0))
+  }
+
+  test("unions -> conditional val") {
+    assertRunEquals("tl/integration/unions/conditional_val.abra", Seq("integration", "unions"))(exit = Some(0))
+  }
+
+  test("unions -> store") {
+    assertRunEquals("tl/integration/unions/store.abra", Seq("integration", "unions"))(exit = Some(0))
+  }
+
+  test("unions -> match") {
+    assertRunEquals("tl/integration/unions/match.abra", Seq("integration", "unions"))(exit = Some(3))
+  }
+
+  test("unions -> return from function") {
+    assertRunEquals("tl/integration/unions/return_from_function.abra", Seq("integration", "unions"))(exit = Some(0))
   }
 }

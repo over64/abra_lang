@@ -11,7 +11,7 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable.ListBuffer
 import Utils._
 import lang_m2.Compiler.Config
-import lang_m2.TypeCheckerUtil.FactorType
+import lang_m2.TypeCheckerUtil.{FactorType, UnionType}
 
 /**
   * Created by over on 20.09.16.
@@ -74,12 +74,14 @@ class CompilerKernel {
     val namespace = new TypeChecker().transform(thisNamespace, visitor.sourceMap)
 
     val structs = ListBuffer[Ast1.Struct]()
+    val unions = ListBuffer[Ast1.Union]()
     val lowFunctions = ListBuffer[Ast1.Fn]()
     val lowHeaders = ListBuffer[Ast1.HeaderFn]()
 
     namespace.types.values.foreach {
       case ft: FactorType =>
         structs += namespace.toLow(ft).asInstanceOf[Ast1.Struct]
+      case u: UnionType => unions += namespace.toLow(u).asInstanceOf[Ast1.Union]
       case _ =>
     }
 
@@ -102,7 +104,7 @@ class CompilerKernel {
     }
 
     val anonFunctions = namespace.anonFunctions.values.map(_.lowFn)
-    val lowModule = Ast1.Module(structs, anonFunctions.toSeq ++ lowFunctions, lowHeaders)
+    val lowModule = Ast1.Module(structs, unions, anonFunctions.toSeq ++ lowFunctions, lowHeaders)
 
     val fnameNoExt = sourcePath.toAbsolutePath.toString.split("\\.").dropRight(1).mkString(".")
     val llFilePath = targetPath.resolve(modName + ".out.ll")

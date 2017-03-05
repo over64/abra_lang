@@ -28,16 +28,17 @@ case class IrGen(val out: OutputStream) {
   def nextLabel: String = {
     labelId += 1
     s"label$labelId"
-    s"label$labelId"
   }
 
   def evalGep(baseType: Type, fields: Seq[String]): (Type, Seq[Int]) = {
     fields.foldLeft((baseType, Seq[Int](0))) {
       case ((_type, seq), field) =>
-        val (f, idx) =
-          _type.asInstanceOf[Struct].fields.zipWithIndex.find {
-            case (f, idx) => f.name == field
-          }.get
+        val (f, idx) = _type match {
+          case s: Struct => s.fields.zipWithIndex.find { case (f, idx) => f.name == field }.get
+          case u: Union =>
+            if (field == "tag") (Field(name = "anon", Scalar("i32")), 0)
+            else (Field(name = "anon", u.variants(field.toInt)), field.toInt + 1)
+        }
         (f._type, seq ++ Seq(idx))
     }
   }
@@ -92,6 +93,7 @@ case class IrGen(val out: OutputStream) {
 
       varType match {
         case s: Struct => ("%" + value, varType)
+        case u: Union => ("%" + value, varType)
         case _ => throw new Exception("not implemented in ABI")
       }
     case lClosureLocal(value) => fnType match {
@@ -198,6 +200,8 @@ case class IrGen(val out: OutputStream) {
         field._type match {
           case s: Struct =>
             val (ptr, _) = genericInitToPtr(fnMap, fnType, vars, arg); ptr
+          case u: Union =>
+            val (ptr, _) = genericInitToPtr(fnMap, fnType, vars, arg); ptr
           case ds: Disclosure =>
             genericFnTypeToDisclosure(fnMap, fnType, vars, arg.asInstanceOf[lId], ds)
           case _ => genInitWithValue(fnMap, fnType, vars, field._type, arg)
@@ -208,6 +212,7 @@ case class IrGen(val out: OutputStream) {
         case (arg, argType) =>
           val argTypeName = argType._type match {
             case s: Struct => s.name + "*"
+            case u: Union => u.name + "*"
             case ds: Disclosure => ds.name + "*"
             case other@_ => other.name
           }
@@ -411,6 +416,10 @@ case class IrGen(val out: OutputStream) {
     headers.foreach { header =>
       val signature = header._type
       out.println(s"declare ${signature.ret.name} @${escapeFnName(header.name)}(${signature.irArgs.mkString(", ")})")
+    }
+
+    module.unions.foreach { union =>
+      out.println(s"${union.name} = type { i32, ${union.variants.map { v => v.name }.mkString(", ")} }")
     }
 
     module.structs.foreach { struct =>

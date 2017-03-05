@@ -7,7 +7,7 @@ import org.scalatest.FunSuite
 class LowLangTest extends FunSuite with LowUtil {
   override val testBase: String = System.getProperty("java.io.tmpdir")
 
-  val tVoid = Scalar("void")
+  val tUnit = Scalar("void")
   val tBool = Scalar("i1")
   val tInt = Scalar("i32")
   val tVec3 = Struct("Vec3", Seq(Field("x", tInt), Field("y", tInt), Field("z", tInt)))
@@ -244,7 +244,6 @@ class LowLangTest extends FunSuite with LowUtil {
   //   x
   // }: Int
   test("closure param") {
-    val tUnit = Scalar("void")
     val tclosure1 = Closure("tclosure1", FnPointer(args = Seq(), ret = tUnit), vals = Seq(ClosureVal(lLocal("x"), tInt)))
     val tdisclosure1 = Disclosure(FnPointer(args = Seq(), ret = tUnit))
     Module(
@@ -266,5 +265,29 @@ class LowLangTest extends FunSuite with LowUtil {
             Ret(lLocal("x"))
           )))
       )).assertRunEquals(Some(42))
+  }
+
+  test("type union local") {
+    val tUnion1 = Union("BoolOrInt", Seq(tBool, tInt))
+    val tFnEq = FnPointer(args = Seq(Field("self", tInt), Field("other", tInt)), ret = tBool)
+    val fEq = Fn("==_for_Int", tFnEq, IrInline(
+      """|    %1 = icmp eq i32 %self, %other
+        |    ret i1 %1 """.stripMargin))
+    Module(
+      unions = Seq(tUnion1),
+      functions = Seq(
+        fEq,
+        Fn("main", FnPointer(args = Seq(), ret = tInt), Block(
+          vars = Map("x" -> tUnion1, "y" -> tInt),
+          stats = Seq(
+            Store(lLocal("x"), Seq("tag"), lInt("1")),
+            Store(lLocal("x"), Seq("1"), lInt("10")),
+            Cond(Call(lGlobal("==_for_Int"), Seq(Access(lLocal("x"), "tag"), lInt("1"))),
+              _if = Seq(Store(lLocal("y"), Seq(), Access(lLocal("x"), "1"))),
+              _else = Seq(Store(lLocal("y"), Seq(), lInt("0")))
+            ),
+            Ret(lLocal("y"))
+          )))
+      )).assertRunEquals(Some(10))
   }
 }

@@ -79,16 +79,30 @@ class TypeChecker {
       case v: Val =>
         val expectedVarType = v.typeHint.map(_.toType(isParam = false))
         val initExp = evalBlockExpression(namespace, scope, forInit = true, expectedVarType, v.init)
-        expectedVarType.map { etype => assertTypeEquals(v.init, etype, initExp.infType) }
-
         val lowName = nextLowVar(v.name)
-        val location = scope.addVar(v, v.name, initExp.infType, v.mutable, LocalSymbol(lowName))
 
-        val infExp = InferedExp(tUnit, initExp.stats
-          :+ Ast1.Store(Ast1.lLocal(lowName), Seq(), initExp.init.get),
-          None)
-
-        infExp
+        (expectedVarType, initExp.infType) match {
+          case (Some(u: UnionType), other: UnionType) =>
+            assertTypeEquals(v.init, u, other)
+            scope.addVar(v, v.name, other, v.mutable, LocalSymbol(lowName))
+            InferedExp(tUnit, initExp.stats :+ Ast1.Store(Ast1.lLocal(lowName), Seq(), initExp.init.get), None)
+          case (Some(u: UnionType), other) =>
+            val (_, idx) = u.variants.zipWithIndex.find { case (v, idx) => v.name == initExp.infType.name }.getOrElse {
+              throw new CompileEx(v.init, CE.ExprTypeMismatchIn(u.variants.map(_.name), initExp.infType.name))
+            }
+            scope.addVar(v, v.name, u, v.mutable, LocalSymbol(lowName))
+            InferedExp(tUnit, initExp.stats :+
+              Ast1.Store(Ast1.lLocal(lowName), Seq("tag"), Ast1.lInt(idx.toString)) :+
+              Ast1.Store(Ast1.lLocal(lowName), Seq(idx.toString), initExp.init.get),
+              None)
+          case (Some(some), other) =>
+            assertTypeEquals(v.init, some, other)
+            scope.addVar(v, v.name, other, v.mutable, LocalSymbol(lowName))
+            InferedExp(tUnit, initExp.stats :+ Ast1.Store(Ast1.lLocal(lowName), Seq(), initExp.init.get), None)
+          case (None, other) =>
+            scope.addVar(v, v.name, other, v.mutable, LocalSymbol(lowName))
+            InferedExp(tUnit, initExp.stats :+ Ast1.Store(Ast1.lLocal(lowName), Seq(), initExp.init.get), None)
+        }
       case block@Block(args, seq) =>
         val fnRet = typeAdvice.map {
           case fnPtr: FnType => Some(typeToTypeHint(fnPtr).asInstanceOf[FnTypeHint])
@@ -213,6 +227,9 @@ class TypeChecker {
         val realField = infFrom.infType match {
           case factor: FactorType =>
             factor.fields.find(field => field.name == prop.value)
+          case u: UnionType =>
+            if (prop.value == "tag") Some(TypeField(false, "tag", tInt))
+            else u.variants.lift(prop.value.toInt).map { v => TypeField(false, prop.value, v) }
           case scalar: ScalarType => None
         }
 
@@ -226,8 +243,8 @@ class TypeChecker {
         }
       case Store(to, what) =>
         // FIXME: validate fields and ret
-        // FIXME: как делать store в структуру, у которой полем является указательн на функцию?
-        val whatExp = evalBlockExpression(namespace, scope, forInit = true, Some(tBool), what)
+        // FIXME: как делать store в структуру, у которой полем является указатель на функцию?
+        val whatExp = evalBlockExpression(namespace, scope, forInit = true, None, what)
         val varName = to.head.value
         val _var = scope.findVar(varName).getOrElse(throw new CompileEx(to.head, CE.VarNotFound(varName)))
 
@@ -246,8 +263,21 @@ class TypeChecker {
             }
         }
 
-        val lowStore = Ast1.Store(lowTo, to.drop(1).map(_.value), whatExp.init.get)
-        InferedExp(tUnit, whatExp.stats :+ lowStore, None)
+        (destType, whatExp.infType) match {
+          case (u: UnionType, other: UnionType) =>
+            assertTypeEquals(what, u, other)
+            InferedExp(tUnit, whatExp.stats :+ Ast1.Store(lowTo, to.drop(1).map(_.value), whatExp.init.get), None)
+          case (u: UnionType, other) =>
+            val (_, idx) = u.variants.zipWithIndex.find { case (v, idx) => v.name == other.name }.getOrElse {
+              throw new CompileEx(what, CE.ExprTypeMismatchIn(u.variants.map(_.name), other.name))
+            }
+            InferedExp(tUnit, whatExp.stats :+
+              Ast1.Store(lowTo, Seq("tag"), Ast1.lInt(idx.toString)) :+
+              Ast1.Store(lowTo, Seq(idx.toString), whatExp.init.get), None)
+          case (t1, t2) =>
+            assertTypeEquals(what, t1, t2)
+            InferedExp(tUnit, whatExp.stats :+ Ast1.Store(lowTo, to.drop(1).map(_.value), whatExp.init.get), None)
+        }
       case self@Cond(ifCond, _then, _else, allowPartialRet) =>
         val anonVarName = nextAnonVar("anonCondRet")
 
@@ -258,9 +288,21 @@ class TypeChecker {
               else Seq()
 
             if (last.infType == tUnit) InferedExp(tUnit, last.stats ++ lastStatInit, None)
-            else if (forInit)
-              InferedExp(last.infType, last.stats :+ Ast1.Store(Ast1.lLocal(anonVarName), Seq(), last.init.get), None)
-            else
+            else if (forInit) {
+              (typeAdvice, last.infType) match {
+                case (Some(u: UnionType), other: UnionType) =>
+                  InferedExp(last.infType, last.stats :+ Ast1.Store(Ast1.lLocal(anonVarName), Seq(), last.init.get), None)
+                case (Some(u: UnionType), other) =>
+                  val (_, idx) = u.variants.zipWithIndex.find { case (v, idx) => v.name == last.infType.name }.getOrElse {
+                    throw new CompileEx(self, CE.ExprTypeMismatchIn(u.variants.map(_.name), last.infType.name))
+                  }
+                  InferedExp(last.infType, last.stats :+
+                    Ast1.Store(Ast1.lLocal(anonVarName), Seq("tag"), Ast1.lInt(idx.toString)) :+
+                    Ast1.Store(Ast1.lLocal(anonVarName), Seq(idx.toString), last.init.get),
+                    None)
+                case _ => InferedExp(last.infType, last.stats :+ Ast1.Store(Ast1.lLocal(anonVarName), Seq(), last.init.get), None)
+              }
+            } else
               InferedExp(last.infType, last.stats ++ lastStatInit, None)
 
           }.getOrElse(InferedExp(tUnit, Seq(), None))
@@ -276,16 +318,24 @@ class TypeChecker {
         val lowIf = Ast1.Cond(condExp.init.get, ifBranch, elseBranch)
 
         if (forInit) {
-          if (!allowPartialRet && ifType != elseType) throw new CompileEx(self, CE.BranchTypesNotEqual())
+          val (expectUnion, inferedType) = typeAdvice match {
+            case Some(u: UnionType) => (true, u)
+            case _ => (false, ifType)
+          }
 
-          scope.addVar(null, anonVarName, ifType, isMutable = true, LocalSymbol(anonVarName))
-          InferedExp(ifType, Seq(lowIf), Some(Ast1.lLocal(anonVarName)))
+          if (!allowPartialRet && !expectUnion && ifType != elseType) throw new CompileEx(self, CE.BranchTypesNotEqual())
+          if (inferedType != tUnit)
+            scope.addVar(null, anonVarName, inferedType, isMutable = true, LocalSymbol(anonVarName))
+          InferedExp(inferedType, Seq(lowIf), Some(Ast1.lLocal(anonVarName)))
         }
-        else InferedExp(ifType, Seq(lowIf), None)
+        else InferedExp(tUnit, Seq(lowIf), None)
 
       case self@Match(on, cases) =>
         val childScope = scope.mkChild { parent => new BlockScope(Some(parent)) }
-        val onVal = Val(mutable = false, nextAnonVar("anonMatchExpr"), None, on)
+        val (onVal, onValName) = on match {
+          case id: lId => (id, id.value)
+          case _ => val anon = nextAnonVar("anonMatchExpr"); (Val(mutable = false, anon, None, on), anon)
+        }
         val onInfered = evalBlockExpression(namespace, childScope, forInit = false, None, onVal)
 
         def withGuard(expr1: Expression, expr2: Option[Expression]) = expr2 match {
@@ -299,7 +349,7 @@ class TypeChecker {
           case exp: Expression => (Seq(SelfCall("==", on, Seq(exp))), Seq())
           case Destruct(newVar, sth, args) =>
             val (addVal, newInit) = newVar match {
-              case Some(lId(varName)) => (Some(Val(mutable = false, varName, None, on)), lId(varName))
+              case Some(lId(varName)) => (Some(Val(mutable = false, varName, None, on)), on)
               case None => (None, on)
             }
 
@@ -318,27 +368,38 @@ class TypeChecker {
             }
 
             (newConds, addVal.toSeq ++ newVals)
+          case MatchType(varName, sth) =>
+            expectedType match {
+              case u: UnionType =>
+                val (et, idx) = u.variants.zipWithIndex.find { case (v, idx) => v.name == sth.name }.getOrElse {
+                  throw new CompileEx(sth, CE.ExprTypeMismatchIn(u.variants.map(_.name), sth.name))
+                }
+                (Seq(SelfCall("==", lInt(idx.toString), Seq(Prop(on, lId("tag"))))), Seq(Val(mutable = false, varName.value, None, Prop(on, lId(idx.toString)))))
+              case other =>
+                if (other.name != sth.name) throw new CompileEx(sth, CE.ExprTypeMismatch(other.name, sth.name))
+                (Seq(), Seq(Val(mutable = false, varName.value, None, on)))
+            }
         }
 
-        def caseToCond(_case: Case): (Seq[Val], Cond) = {
-          val (conditions, vals) = evalMatchOver(lId(onVal.name), childScope.findVar(onVal.name).get.stype, _case.over)
+        def caseToCond(_case: Case): Cond = {
+          val (conditions, vals) = evalMatchOver(lId(onValName), childScope.findVar(onValName).get.stype, _case.over)
           val head = conditions.headOption.getOrElse(lBoolean("true"))
           val unicond = conditions.drop(1).foldLeft(head) {
             case (cond1, cond2) => BoolAnd(cond1, cond2)
           }
 
-          (vals, Cond(withGuard(unicond, _case.cond), Block(Seq(), Seq(_case.expr)), None, allowPartialRet = true))
+          Cond(withGuard(unicond, _case.cond), Block(Seq(), vals :+ _case.expr), None, allowPartialRet = true)
         }
 
-        val (vals, matchCond) = cases.map { c => caseToCond(c) }.reduceRight[(Seq[BlockExpression], Cond)] {
-          case ((init1, cond1), (init2, cond2)) =>
-            (init1, Cond(cond1.ifCond, cond1._then, Some(Block(Seq(), init2 :+ cond2)), allowPartialRet = true))
+        val matchCond = cases.map { c => caseToCond(c) }.reduceRight[Cond] {
+          case (cond1, cond2) =>
+            Cond(cond1.ifCond, cond1._then, Some(Block(Seq(), Seq(cond2))), allowPartialRet = true)
         }
 
-        val inferedExp = vals.map { be => evalBlockExpression(namespace, childScope, forInit = false, None, be) }
+        //val inferedExp = vals.map { be => evalBlockExpression(namespace, childScope, forInit = false, None, be) }
         val inferedCond = evalBlockExpression(namespace, childScope, forInit = true, None, matchCond)
 
-        InferedExp(inferedCond.infType, onInfered.stats ++ inferedExp.flatten(_.stats) ++ inferedCond.stats, inferedCond.init)
+        InferedExp(inferedCond.infType, onInfered.stats ++ inferedCond.stats, inferedCond.init)
       case BoolAnd(left, right) =>
         val leftInf = evalBlockExpression(namespace, scope, forInit = true, Some(tBool), left)
         assertTypeEquals(left, tBool, leftInf.infType)
@@ -420,9 +481,7 @@ class TypeChecker {
     }
 
     val childScope = closureScope.map { cs =>
-      cs.mkChild { parent =>
-        new FnScope(Some(parent))
-      }
+      cs.mkChild { parent => new FnScope(Some(parent)) }
     }.getOrElse(new FnScope(closureScope))
 
     val (inferedRet, lowBody): (Type, Ast1.FnBody) = fn.body match {
@@ -436,27 +495,30 @@ class TypeChecker {
         }
 
         val (etype, body) = evalBlock2(namespace, childScope, expectedRet, seq, retMapper = {
-          case (scope, Some(infExp)) =>
-            if (infExp.infType == tUnit)
-              genVoid(infExp)
-            else if (expectedRet.isDefined && expectedRet.get == tUnit)
-              genVoid(infExp)
+          case (scope, Some(last)) =>
+            if (last.infType == tUnit || expectedRet == Some(tUnit)) genVoid(last)
             else {
-              val seq = infExp.infType match {
-                case fact: FactorType => Seq(Ast1.Store(Ast1.lParam("ret"), Seq(), infExp.init.get), Ast1.RetVoid())
-                case fnPtr: FnType => Seq(Ast1.Ret(infExp.init.get))
-                case scalar: ScalarType => Seq(Ast1.Ret(infExp.init.get))
+              val (et, seq) = (expectedRet, last.infType) match {
+                case (Some(u: UnionType), other) if !other.isInstanceOf[UnionType] =>
+                  val (_, idx) = u.variants.zipWithIndex.find { case (v, idx) => v.name == last.infType.name }.getOrElse {
+                    throw new CompileEx(self, CE.ExprTypeMismatchIn(u.variants.map(_.name), last.infType.name))
+                  }
+                  (u, Seq(Ast1.Store(Ast1.lParam("ret"), Seq("tag"), Ast1.lInt(idx.toString)),
+                    Ast1.Store(Ast1.lParam("ret"), Seq(idx.toString), last.init.get), Ast1.RetVoid()))
+                case (expected, other) =>
+                  expected.map { et => assertTypeEquals(self, et, other) }
+                  (other, other match {
+                    case u: UnionType => Seq(Ast1.Store(Ast1.lParam("ret"), Seq(), last.init.get), Ast1.RetVoid())
+                    case fact: FactorType => Seq(Ast1.Store(Ast1.lParam("ret"), Seq(), last.init.get), Ast1.RetVoid())
+                    case fnPtr: FnType => Seq(Ast1.Ret(last.init.get))
+                    case scalar: ScalarType => Seq(Ast1.Ret(last.init.get))
+                  })
               }
 
-              InferedExp(infExp.infType, infExp.stats ++ seq, None)
+              InferedExp(et, last.stats ++ seq, None)
             }
-          case (scope, None) =>
-            InferedExp(tUnit, Seq(Ast1.RetVoid()), None)
+          case (scope, None) => InferedExp(tUnit, Seq(Ast1.RetVoid()), None)
         })
-
-        expectedRet.map { expectedRet =>
-          assertTypeEquals(self, expectedRet, etype)
-        }
 
         val vars = childScope.traceVars.map { si =>
           (si.location.lowName, toLow(si.stype))

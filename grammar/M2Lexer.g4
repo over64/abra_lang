@@ -40,6 +40,7 @@ WITH : 'with' ;
 MATCH: 'match';
 OF: 'of';
 DASH: '_';
+VERT_LINE: '|';
 
 LlBegin : 'llvm' [ \t\r\n]* '{' -> pushMode(llvm);
 

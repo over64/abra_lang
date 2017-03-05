@@ -9,7 +9,7 @@ import scala.collection.mutable
   */
 object IrPasses {
   def fixedFnPointer(fnPtr: FnPointer): FnPointer = {
-    if (fnPtr.ret.isInstanceOf[Struct]) FnPointer(Field("ret", fnPtr.ret) +: fnPtr.args, Scalar("void"))
+    if (!fnPtr.ret.isSmal) FnPointer(Field("ret", fnPtr.ret) +: fnPtr.args, Scalar("void"))
     else fnPtr
   }
 

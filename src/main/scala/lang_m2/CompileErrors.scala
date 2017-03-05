@@ -30,6 +30,9 @@ object CE {
   case class ExprTypeMismatch(expected: String, has: String) extends CompileError {
     override def toString = s"expected expression of type $expected has $has"
   }
+  case class ExprTypeMismatchIn(expected: Seq[String], has: String) extends CompileError {
+    override def toString = s"expected expression of any in ${expected.mkString(" | ")} has $has"
+  }
   case class NoFnToCall(fnName: String) extends CompileError {
     override def toString = s"cannot find candidate for call $fnName"
   }

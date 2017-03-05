@@ -3,13 +3,22 @@ package lang_m2
 object Ast1 {
   sealed trait Type {
     val name: String
+    val isSmal: Boolean
   }
-  case class Scalar(name: String) extends Type
+  case class Scalar(name: String) extends Type {
+    override val isSmal: Boolean = true
+  }
   case class Field(name: String, _type: Type) {
     override def toString = s"${_type.name} %${name}"
   }
   case class Struct(_name: String, fields: Seq[Field]) extends Type {
     override val name: String = s"%struct.${_name}"
+    override val isSmal: Boolean = false
+  }
+
+  case class Union(_name: String, variants: Seq[Type]) extends Type {
+    override val name: String = s"%union.${_name}"
+    override val isSmal: Boolean = false
   }
 
   sealed trait FnType extends Type {
@@ -17,11 +26,13 @@ object Ast1 {
   }
 
   case class FnPointer(args: Seq[Field], ret: Type) extends FnType {
+    override val isSmal: Boolean = true
     override val name: String = {
       s"${ret.name} (${
         args.map { arg =>
           arg._type match {
             case struct: Struct => struct.name + "*"
+            case u: Union => s"${arg._type.name}* %${arg.name}"
             case other@_ => other.name
           }
         }.mkString(", ")
@@ -30,6 +41,7 @@ object Ast1 {
 
     val irArgs = args.map(arg => arg._type match {
       case struct: Struct => s"${arg._type.name}* %${arg.name}"
+      case u: Union => s"${arg._type.name}* %${arg.name}"
       case ds: Disclosure => s"${arg._type.name}* %${arg.name}"
       case _ => s"${arg._type.name} %${arg.name}"
     })
@@ -41,12 +53,13 @@ object Ast1 {
   }
 
   case class Closure(typeName: String, fnPointer: FnPointer, vals: Seq[ClosureVal]) extends FnType {
+    override val isSmal: Boolean = false
     override val name: String = "%" + typeName
-
     def realFnPointer = FnPointer(fnPointer.args :+ Field("closure", Scalar(s"%$typeName*")), fnPointer.ret)
   }
 
   case class Disclosure(fnPointer: FnPointer) extends FnType {
+    override val isSmal: Boolean = true
     override val name: String =
       s"{ ${realFnPointer.name} }"
 
@@ -97,5 +110,5 @@ object Ast1 {
 
   case class Fn(name: String, _type: FnType, body: FnBody)
   case class HeaderFn(name: String, _type: FnPointer)
-  case class Module(structs: Seq[Struct] = Seq(), functions: Seq[Fn], headers: Seq[HeaderFn] = Seq())
+  case class Module(structs: Seq[Struct] = Seq(), unions: Seq[Union] = Seq(), functions: Seq[Fn], headers: Seq[HeaderFn] = Seq())
 }

@@ -33,6 +33,7 @@ object Namespacer {
           FactorType(fullModName, name, declFields.map { declField =>
             TypeField(declField.isSelf, declField.name, typeHintToType(declField.th))
           })
+        case UnionDecl(name, variants) => UnionType(fullModName, name, variants.map { sth => typeHintToType(sth) })
       }
 
       typeMap += ScalarTypeHint(td.name, fullModName) -> newType

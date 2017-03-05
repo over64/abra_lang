@@ -20,8 +20,13 @@ declare i32 @sscanf(i8*, i8*, ...)
 ; int printf(const char *format, ...);
 declare i32 @printf(i8*, ...)
 
+; int scanf(const char *format, ...);
+declare i32 @scanf(i8*, ...)
+
+
 @.sscanfFloat = private constant [5 x i8] c"%f%n\00", align 1
 @.sscanfInt = private constant [5 x i8] c"%d%n\00", align 1
+@.scanfInt = private constant [3 x i8] c"%d\00", align 1
 @.printfFloat = private constant [3 x i8] c"%f\00", align 1
 @.printfInt = private constant [3 x i8] c"%d\00", align 1
 

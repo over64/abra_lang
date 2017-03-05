@@ -110,11 +110,14 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
       ctx.typeField().map { f => visitTypeField(f) }
     ))
 
-  override def visitType(ctx: TypeContext): TypeDecl =
-    if (ctx.scalarType() != null)
-      visitScalarType(ctx.scalarType())
-    else visitFactorType(ctx.factorType())
+  override def visitUnionType(ctx: UnionTypeContext): UnionDecl =
+    emit(ctx, UnionDecl(
+      ctx.Id().getText,
+      ctx.scalarTypeHint().map { sth => visitScalarTypeHint(sth) }
+    ))
 
+  override def visitType(ctx: TypeContext): TypeDecl =
+    visitChildren(ctx).asInstanceOf[TypeDecl]
 
   override def visitTuple(ctx: TupleContext): Tuple =
     emit(ctx, Tuple(ctx.expression().map { f => visitExpr(f) }))
@@ -266,7 +269,7 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
 
   override def visitMatchType(ctx: MatchTypeContext): MatchType =
     emit(ctx, MatchType(
-      varName = if (ctx.id() == null) None else Some(visitId(ctx.id())),
+      varName = visitId(ctx.id()),
       scalarTypeHint = visitScalarTypeHint(ctx.scalarTypeHint())
     ))
 
@@ -285,7 +288,7 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
   override def visitBindVar(ctx: BindVarContext) = BindVar(visitId(ctx.id()))
 
   override def visitMatchOver(ctx: MatchOverContext) =
-    emit(ctx, visitChildren(ctx).asInstanceOf[MatchOver])
+    visitChildren(ctx).asInstanceOf[MatchOver]
 
   override def visitMatchCase(ctx: MatchCaseContext): Case =
     emit(ctx, Case(

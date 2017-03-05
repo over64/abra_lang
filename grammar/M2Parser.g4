@@ -64,13 +64,13 @@ typeHint : scalarTypeHint
 variable : valVar=('val' | 'var') NL* Id ( ':' typeHint)? NL* '=' NL* expression ;
 
 scalarType : 'type' Id '=' LlLiteral ;
-
 typeField : 'self'? ('self' | Id) ':' typeHint ;
-
 factorType : 'type' Id '=' '(' NL* typeField (',' NL* typeField)* NL*')' ;
+unionType: 'type' Id '=' scalarTypeHint ('|' scalarTypeHint)+ ;
 
 type : scalarType
      | factorType
+     | unionType
      ;
 
 function : 'def' name=('self' | Id | '!' | '*' | '/' | '+' | '-' | '>' | '<' | '<=' | '>=' | '==' | '!=' | '||' | '&&')

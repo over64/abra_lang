@@ -109,3 +109,25 @@ def readInt: (self: StringReader) -> Int = llvm {
     %readInt = load i32, i32* %readIntPtr
     ret i32 %readInt
 }
+type Stdin = (void: Int)
+def stdin = Stdin(0)
+
+type None = llvm { i8 }
+type IntOption = Int | None
+
+def readInt: (self: Stdin) -> IntOption = llvm {
+    %tagPtr = getelementptr %union.abra.io.IntOption, %union.abra.io.IntOption* %ret, i32 0, i32 0
+    %intPtr = getelementptr %union.abra.io.IntOption, %union.abra.io.IntOption* %ret, i32 0, i32 1
+	%format = bitcast [3 x i8]* @.scanfInt to i8*
+	%result = call i32 (i8*, ...) @scanf(i8* %format, i32* %intPtr)
+	%1 = icmp eq i32 %result, 1
+	br i1 %1, label %readOk, label %readFail
+readOk:
+    store i32 0, i32* %tagPtr
+    br label %readDone
+readFail:
+    store i32 1, i32* %tagPtr
+    br label %readDone
+readDone:
+    ret void
+}

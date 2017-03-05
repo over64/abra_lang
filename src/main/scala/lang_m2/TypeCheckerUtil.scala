@@ -20,6 +20,7 @@ object TypeCheckerUtil {
       else o.asInstanceOf[TypeField].ftype == ftype
   }
   case class FactorType(fullModName: String, name: String, fields: Seq[TypeField]) extends Type
+  case class UnionType(fullModName: String, name: String, variants: Seq[Type]) extends Type
   sealed trait FnType extends Type {
     val fnPointer: FnPointer
   }
@@ -66,6 +67,8 @@ object TypeCheckerUtil {
         Ast1.Struct(fullModName + name, fields.map { field =>
           Ast1.Field(field.name, toLow(field.ftype))
         })
+      case UnionType(fullModName, name, variants) =>
+        Ast1.Union(fullModName + name, variants.map { v => toLow(v) })
       case FnPointer(args, ret) =>
         //        val (realArgs, realRet) = ret match {
         //          case s: Struct => (args :+ TypeField(false, "ret", ret), tUnit)

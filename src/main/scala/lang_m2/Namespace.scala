@@ -52,6 +52,7 @@ class Namespace(val _package: String,
 
   def findSelfFn(name: String, selfType: Type, inferCallback: RawFn => CallableFn): Option[CallableFn] = {
     val selfTh = selfType match {
+      case UnionType(fullModName, name, _) => ScalarTypeHint(name, fullModName)
       case ScalarType(fullModName, name, _) => ScalarTypeHint(name, fullModName)
       case FactorType(fullModName, name, _) => ScalarTypeHint(name, fullModName)
       case fnPtr: FnType => throw new CompileEx(null, CE.FnlTypeNotEntensible())

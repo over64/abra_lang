@@ -24,6 +24,7 @@ object Ast0 {
   case class ScalarDecl(name: String, llType: String) extends TypeDecl
   case class FieldDecl(isSelf: Boolean, name: String, th: TypeHint) extends ParseNode
   case class FactorDecl(name: String, fields: Seq[FieldDecl]) extends TypeDecl
+  case class UnionDecl(name: String, variants: Seq[ScalarTypeHint]) extends TypeDecl
 
   sealed trait TypeHint extends ParseNode {
     val name: String
@@ -59,7 +60,7 @@ object Ast0 {
   case object Dash extends MatchOver
   case class BindVar(varName: lId) extends MatchOver
   case class Destruct(varName: Option[lId], scalarTypeHint: ScalarTypeHint, args: Seq[MatchOver]) extends MatchOver
-  case class MatchType(varName: Option[lId], scalarTypeHint: ScalarTypeHint) extends MatchOver
+  case class MatchType(varName: lId, scalarTypeHint: ScalarTypeHint) extends MatchOver
   case class Case(over: MatchOver, cond: Option[Expression], expr: Expression) extends ParseNode
   case class Match(on: Expression, cases: Seq[Case]) extends Expression
 

@@ -1,0 +1,11 @@
+import abra.int
+import abra.io
+
+def main = {
+    match io.stdin().readInt
+        of i: Int -> i.print
+        of None -> 'integer read error'.print
+
+    # in future should be possible to
+    # val i = match io.stdin.readInt of i: Int -> i else 100
+}: Unit
