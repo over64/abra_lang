@@ -6,6 +6,10 @@ abra_v1/tl/sdl/kadabra.jar
 abra_v1/tl/sdl/target/
 
 abra_v2/.idea/
+abra_v2/grammar/M2Lexer.tokens
+abra_v2/tl/integration/target/
+abra_v2/tl/sdl/kadabra.jar
+abra_v2/tl/sdl/target/
 
 project/project
 project/target
