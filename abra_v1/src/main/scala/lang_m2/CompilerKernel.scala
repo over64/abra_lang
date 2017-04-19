@@ -20,6 +20,7 @@ import lang_m2.TypeCheckerUtil.{FactorType, UnionType}
 class CompileEx(val node: ParseNode, val error: CompileError) extends Exception {
   override def getMessage: String = error.toString
 }
+
 case class CompileResult(namespace: Namespace, binLocation: Path)
 
 class CompilerKernel {
@@ -123,7 +124,7 @@ class CompilerKernel {
     new IrGen(llOut).gen(lowModule)
     llOut.close()
 
-    val llcArgs = Seq("llc-3.8", llFilePath.toString)
+    val llcArgs = Seq("llc-3.8", "-filetype=obj", llFilePath.toString)
     message(level, llcArgs.mkString("- ", " ", ""))
 
     run(llcArgs: _*) { (realExit, realStdout, realStderr) =>
@@ -135,29 +136,29 @@ class CompilerKernel {
       }
     }
 
-    val gccArgs =
-      if (isMain)
-        Seq("gcc", "-g", targetPath.resolve(modName).toString + ".out.s") ++
-          config.libs ++ importedModules.map(_.binLocation.toString) ++ Seq("-o", targetPath.resolve(modName).toString)
-      else Seq("gcc", "-g", "-c", targetPath.resolve(modName).toString + ".out.s", "-o", s"${targetPath.resolve(modName).toString}.o")
+    if (isMain) {
+      val gccArgs = Seq("gcc", "-g", targetPath.resolve(modName).toString + ".out.o") ++
+        config.libs ++ importedModules.map(_.binLocation.toString) ++ Seq("-o", targetPath.resolve(modName).toString)
 
-    message(level, gccArgs.mkString("- ", " ", ""))
+      message(level, gccArgs.mkString("- ", " ", ""))
 
-    run(gccArgs: _*) { (realExit, realStdout, realStderr) =>
-      if (realExit != 0) {
-        realStderr.split("\n").foreach { line =>
-          message(level, line)
+      run(gccArgs: _*) { (realExit, realStdout, realStderr) =>
+        if (realExit != 0) {
+          realStderr.split("\n").foreach { line =>
+            message(level, line)
+          }
+          throw new CompileEx(null, CE.LinkError("gcc exited with non zero"))
         }
-        throw new CompileEx(null, CE.LinkError("gcc exited with non zero"))
       }
     }
+    // else Seq("gcc", "-g", "-c", targetPath.resolve(modName).toString + ".out.s", "-o", s"${targetPath.resolve(modName).toString}.o")
 
     val time2 = System.currentTimeMillis()
     message(level, s"- done with ${(time2 - time1).toDouble / 1000}s")
 
     CompileResult(Namespacer.dumpHeader(namespace), Paths.get(
       if (isMain) targetPath.resolve(modName).toString
-      else s"${targetPath.resolve(modName).toString}.o")
+      else s"${targetPath.resolve(modName).toString}.out.o")
     )
   }
 }

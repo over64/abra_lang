@@ -5,6 +5,8 @@ resolvers += Resolver.sonatypeRepo("public")
 
 lazy val abra1 = (project in file("abra_v1"))
   .settings(
+    baseDirectory := file("abra_v1").getAbsoluteFile,
+    fork in Test := true,
     name := "abra-lang-compiler_v1",
     version := "1.0.0",
     scalaVersion := "2.11.8",

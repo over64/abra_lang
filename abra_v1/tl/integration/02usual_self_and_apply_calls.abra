@@ -1,3 +1,4 @@
+# allowed: +-*/
 def +: (self: Int, other: Int) -> Int = llvm {
   %1 = add nsw i32 %self, %other
   ret i32 %1
@@ -13,5 +14,8 @@ def main = {
   bar(1)    # usual call
   1.twice() # self call via dot
   1.twice   # self call via prop
+  # OCaml: twice twice 1 # <--
+  # JS: twice(twice(1)) # <--
+  # Abra 1.twice.twice # -->
   1()       # apply call
 }: Int

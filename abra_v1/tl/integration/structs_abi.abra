@@ -1,5 +1,0 @@
-type Foo = (x: Int)
-
-def main = {
-
-}

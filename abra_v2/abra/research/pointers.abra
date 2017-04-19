@@ -1,0 +1,26 @@
+type Some[T] = (x: T)
+type Option[T] = None | Some[T]
+
+type Tree[T] = (
+    v: T,
+    l: *Tree[T] | None = None,
+    r: *Tree[T] | None = None
+)
+
+type Tree[T] = (
+    v: T,
+    *l: Option[Tree[T]],
+    *r: Option[Tree[T]]
+)
+
+struct Tree {
+    int v;
+    Tree *l;
+    Tree *r;
+}
+
+val l = Tree(2, None)
+val r = Tree(3, None)
+val root = Tree(1, &l, &r)
+
+val root = Tree(1, &Tree(2, None), &Tree(3, None))

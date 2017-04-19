@@ -6,9 +6,6 @@ def +: (self: Int, other: Int) -> Int = llvm {
 def foo = \fn: () -> Unit ->
     fn()
 
-def bar = \fn: () -> Int ->
-    fn()
-
 def main = {
     var x = 0
 
@@ -18,7 +15,7 @@ def main = {
     }()
 
     # pass fn pointer as param
-    val z = bar({
+    val z = foo({
         1
     })
 

@@ -22,7 +22,7 @@ def main = {
 
     # pass anonymous closure as parameter
     foo(1, { i ->
-        x = x + 1
+        x = x + i
     })
 
     x

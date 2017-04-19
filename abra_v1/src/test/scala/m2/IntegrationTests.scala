@@ -36,40 +36,40 @@ class IntegrationTests extends FunSuite {
   }
 
   test("function declarations") {
-    assertRunEquals("tl/integration/function_declarations.abra", Seq("integration"))(exit = Some(1))
+    assertRunEquals("tl/integration/00function_declarations.abra", Seq("integration"))(exit = Some(1))
   }
   test("literals") {
-    assertRunEquals("tl/integration/literals.abra", Seq("integration"))(exit = Some(42))
+    assertRunEquals("tl/integration/01literals.abra", Seq("integration"))(exit = Some(42))
   }
   test("usual self and apply calls") {
-    assertRunEquals("tl/integration/usual_self_and_apply_calls.abra", Seq("integration"))(exit = Some(99))
+    assertRunEquals("tl/integration/02usual_self_and_apply_calls.abra", Seq("integration"))(exit = Some(99))
   }
   test("type declarations") {
-    assertRunEquals("tl/integration/type_declarations.abra", Seq("integration"))(exit = Some(1))
+    assertRunEquals("tl/integration/03type_declarations.abra", Seq("integration"))(exit = Some(1))
   }
   test("access and store") {
-    assertRunEquals("tl/integration/access_and_store.abra", Seq("integration"))(exit = Some(3))
+    assertRunEquals("tl/integration/04access_and_store.abra", Seq("integration"))(exit = Some(3))
   }
   test("get and set") {
-    assertRunEquals("tl/integration/get_and_set.abra", Seq("integration"))(exit = Some(3))
+    assertRunEquals("tl/integration/05get_and_set.abra", Seq("integration"))(exit = Some(3))
   }
-  test("closures no params") {
-    assertRunEquals("tl/integration/closures_no_params.abra", Seq("integration"))(exit = Some(6))
-  }
+//  test("closures no params") {
+//    assertRunEquals("tl/integration/06closures_no_params.abra", Seq("integration"))(exit = Some(6))
+//  }
   test("closure struct") {
-    assertRunEquals("tl/integration/closure_struct.abra", Seq("integration"))(exit = Some(2))
+    assertRunEquals("tl/integration/07closure_struct.abra", Seq("integration"))(exit = Some(2))
   }
   test("disclosure struct") {
-    assertRunEquals("tl/integration/disclosure_struct.abra", Seq("integration"))(exit = Some(2))
+    assertRunEquals("tl/integration/08disclosure_struct.abra", Seq("integration"))(exit = Some(2))
   }
   test("closures with params") {
-    assertRunEquals("tl/integration/closures_with_params.abra", Seq("integration"))(exit = Some(3))
+    assertRunEquals("tl/integration/09closures_with_params.abra", Seq("integration"))(exit = Some(3))
   }
   test("nested closures") {
-    assertRunEquals("tl/integration/nested_closures.abra", Seq("integration"))(exit = Some(7))
+    assertRunEquals("tl/integration/10nested_closures.abra", Seq("integration"))(exit = Some(7))
   }
   test("if else") {
-    assertRunEquals("tl/integration/if_else.abra", Seq("integration"))(exit = Some(6))
+    assertRunEquals("tl/integration/11if_else.abra", Seq("integration"))(exit = Some(6))
   }
   test("modules") {
     assertRunEquals("tl/integration/modules/moduleA.abra", Seq("integration", "modules"))(exit = Some(1))
