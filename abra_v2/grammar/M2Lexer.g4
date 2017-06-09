@@ -1,5 +1,9 @@
 lexer grammar M2Lexer ;
 
+@members {
+    boolean startLlvm = false;
+}
+
 MINUS : '-' ;
 PLUS : '+' ;
 MUL : '*' ;
@@ -29,7 +33,7 @@ WHILE : 'while';
 VAL : 'val' ;
 VAR : 'var' ;
 CON : ':' ;
-ARROW_RIGHT : '->' ;
+ARROW_RIGHT : '->' { if(startLlvm) pushMode(llvm); } ;
 TYPE : 'type' ;
 BACK_SLASH : '\\' ;
 SELF : 'self' ;
@@ -45,26 +49,28 @@ BRACKET_LEFT: '[';
 BRACKET_RIGTH: ']';
 AMP: '&';
 
-LlBegin : 'llvm' [ \t\r\n]* '{' -> pushMode(llvm);
+LlBegin : 'lltype' [ \t\r\n]* '{' -> pushMode(llvm) ;
+LlDef : 'lldef' [ \t\r\n]* '{' { startLlvm = true; } ;
 
 WS : [ \t]+ -> skip ; // skip spaces, tabs
 NL : '\r'? '\n' ;
 COMMENT : '#' ~[\r\n]* -> skip ;
 
-LlLiteral : LlBegin IrInline LlEnd;
+// LlLiteral : LlBegin IrInline LlEnd;
 
-IntLiteral   : '-'?  '0' | NonZeroDigit Digit* ;
+IntLiteral   : '-'? ('0' | NonZeroDigit Digit*) ;
 HexLiteral   : '0' [xX] HexDigit+ ;
-FloatLiteral : '-'? Digit+ '.' Digit+ ExponentPart? | Digit+ ExponentPart ;
+FloatLiteral : '-'? (Digit+ '.' Digit+ ExponentPart? | Digit+ ExponentPart) ;
 BooleanLiteral   :  'true' | 'false';
 
 StringLiteral    : '\'' StringElement* '\'' ;
-Id  : ('a'..'z' | 'A'..'Z')+ ('a'..'z' | 'A'..'Z' | '_' | Digit)* ;
-MatchId: '$' Id ;
+VarId  : ('a'..'z')+ ('a'..'z' | 'A'..'Z' | '_' | Digit)* ;
+TypeId  : ('A'..'Z')+ ('a'..'z' | 'A'..'Z' | '_' | Digit)* ;
+MatchId: '$' VarId ;
 
 mode llvm ;
 IrInline : ~[{}]+ ;
-LlEnd: CBC -> popMode;
+LlEnd: CBC { startLlvm = false; } -> popMode ;
 
 fragment StringElement    :  Char
                           |  CharEscapeSeq

@@ -1,0 +1,2531 @@
+Start testing: May 23 22:03 +06
+----------------------------------------------------------
+1/34 Testing: benchmark
+1/34 Test: benchmark
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/benchmark_test" "--benchmark_min_time=0.01"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"benchmark" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+Run on (8 X 4201 MHz CPU s)
+2017-05-23 22:03:33
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+--------------------------------------------------------------------------------
+Benchmark                                         Time           CPU Iterations
+--------------------------------------------------------------------------------
+[0;32mBM_Factorial                             [m[0;33m         1 ns          1 ns [m[0;36m  11559873[m 40320[m
+[m[0;32mBM_Factorial/real_time                   [m[0;33m         1 ns          1 ns [m[0;36m  11758718[m 40320[m
+[m[0;32mBM_CalculatePiRange/1                    [m[0;33m         2 ns          2 ns [m[0;36m   6113086[m 0[m
+[m[0;32mBM_CalculatePiRange/8                    [m[0;33m        10 ns         10 ns [m[0;36m   1473724[m 3.28374[m
+[m[0;32mBM_CalculatePiRange/64                   [m[0;33m        74 ns         74 ns [m[0;36m    191496[m 3.15746[m
+[m[0;32mBM_CalculatePiRange/512                  [m[0;33m       567 ns        567 ns [m[0;36m     26258[m 3.14355[m
+[m[0;32mBM_CalculatePiRange/4096                 [m[0;33m      4249 ns       4252 ns [m[0;36m      3314[m 3.14184[m
+[m[0;32mBM_CalculatePiRange/32768                [m[0;33m     33478 ns      33498 ns [m[0;36m       417[m 3.14162[m
+[m[0;32mBM_CalculatePiRange/262144               [m[0;33m    266874 ns     267062 ns [m[0;36m        51[m 3.1416[m
+[m[0;32mBM_CalculatePiRange/1048576              [m[0;33m   1072505 ns    1073304 ns [m[0;36m        13[m 3.14159[m
+[m[0;32mBM_CalculatePi/threads:8                 [m[0;33m       193 ns       1547 ns [m[0;36m      9904[m
+[m[0;32mBM_CalculatePi/threads:1                 [m[0;33m      1013 ns       1013 ns [m[0;36m     13572[m
+[m[0;32mBM_CalculatePi/threads:2                 [m[0;33m       481 ns        961 ns [m[0;36m     14930[m
+[m[0;32mBM_CalculatePi/threads:4                 [m[0;33m       352 ns       1409 ns [m[0;36m     14928[m
+[m[0;32mBM_CalculatePi/threads:8                 [m[0;33m       234 ns       1659 ns [m[0;36m      8512[m
+[m[0;32mBM_CalculatePi/threads:16                [m[0;33m       109 ns       1547 ns [m[0;36m      9072[m
+[m[0;32mBM_CalculatePi/threads:32                [m[0;33m        46 ns       1370 ns [m[0;36m     10336[m
+[m[0;32mBM_CalculatePi/threads:8                 [m[0;33m       345 ns       2420 ns [m[0;36m      7472[m
+[m[0;32mBM_SetInsert/1024/1                      [m[0;33m     16192 ns      16199 ns [m[0;36m       639[m   241.136kB/s[m    60.284k items/s[m
+[m[0;32mBM_SetInsert/4096/1                      [m[0;33m     61683 ns      61732 ns [m[0;36m       227[m   63.2773kB/s[m   15.8193k items/s[m
+[m[0;32mBM_SetInsert/8192/1                      [m[0;33m    123399 ns     123493 ns [m[0;36m       114[m   31.6313kB/s[m   7.90782k items/s[m
+[m[0;32mBM_SetInsert/1024/8                      [m[0;33m     15966 ns      15975 ns [m[0;36m       898[m   1.91033MB/s[m   489.044k items/s[m
+[m[0;32mBM_SetInsert/4096/8                      [m[0;33m     61384 ns      61428 ns [m[0;36m       225[m   508.727kB/s[m   127.182k items/s[m
+[m[0;32mBM_SetInsert/8192/8                      [m[0;33m    127607 ns     127690 ns [m[0;36m       114[m   244.732kB/s[m   61.1831k items/s[m
+[m[0;32mBM_SetInsert/1024/10                     [m[0;33m     15933 ns      15944 ns [m[0;36m       865[m   2.39258MB/s[m     612.5k items/s[m
+[m[0;32mBM_SetInsert/4096/10                     [m[0;33m     61717 ns      61790 ns [m[0;36m       224[m   632.183kB/s[m   158.046k items/s[m
+[m[0;32mBM_SetInsert/8192/10                     [m[0;33m    123863 ns     123940 ns [m[0;36m       111[m   315.173kB/s[m   78.7932k items/s[m
+[m[0;32mBM_Sequential<std::vector<int>,int>/1    [m[0;33m         1 ns          1 ns [m[0;36m  10228370[m   2.73633GB/s[m   700.501M items/s[m
+[m[0;32mBM_Sequential<std::vector<int>,int>/8    [m[0;33m       154 ns        154 ns [m[0;36m     87141[m   197.925MB/s[m   49.4813M items/s[m
+[m[0;32mBM_Sequential<std::vector<int>,int>/64   [m[0;33m       349 ns        350 ns [m[0;36m     42287[m   698.129MB/s[m   174.532M items/s[m
+[m[0;32mBM_Sequential<std::vector<int>,int>/512  [m[0;33m      1312 ns       1312 ns [m[0;36m     10682[m   1.45355GB/s[m   372.108M items/s[m
+[m[0;32mBM_Sequential<std::vector<int>,int>/1024 [m[0;33m      2192 ns       2193 ns [m[0;36m      6387[m   1.73914GB/s[m   445.219M items/s[m
+[m[0;32mBM_Sequential<std::list<int>>/1          [m[0;33m         1 ns          1 ns [m[0;36m  13676296[m   3.63827GB/s[m   931.398M items/s[m
+[m[0;32mBM_Sequential<std::list<int>>/8          [m[0;33m       253 ns        253 ns [m[0;36m     54408[m    120.45MB/s[m   30.1126M items/s[m
+[m[0;32mBM_Sequential<std::list<int>>/64         [m[0;33m      2285 ns       2287 ns [m[0;36m      6158[m   106.768MB/s[m    26.692M items/s[m
+[m[0;32mBM_Sequential<std::list<int>>/512        [m[0;33m     18804 ns      18817 ns [m[0;36m       744[m   103.794MB/s[m   25.9484M items/s[m
+[m[0;32mBM_Sequential<std::list<int>>/1024       [m[0;33m     37098 ns      37126 ns [m[0;36m       375[m   105.216MB/s[m    26.304M items/s[m
+[m[0;32mBM_Sequential<std::vector<int>, int>/512 [m[0;33m      1301 ns       1302 ns [m[0;36m     10696[m   1.46455GB/s[m   374.924M items/s[m
+[m[0;32mBM_StringCompare/1                       [m[0;33m         2 ns          2 ns [m[0;36m   6894090[m
+[m[0;32mBM_StringCompare/8                       [m[0;33m         3 ns          3 ns [m[0;36m   5652409[m
+[m[0;32mBM_StringCompare/64                      [m[0;33m         4 ns          4 ns [m[0;36m   3785087[m
+[m[0;32mBM_StringCompare/512                     [m[0;33m        13 ns         13 ns [m[0;36m   1073387[m
+[m[0;32mBM_StringCompare/4096                    [m[0;33m        75 ns         75 ns [m[0;36m    189061[m
+[m[0;32mBM_StringCompare/32768                   [m[0;33m       748 ns        748 ns [m[0;36m     18619[m
+[m[0;32mBM_StringCompare/262144                  [m[0;33m     10179 ns      10188 ns [m[0;36m      1000[m
+[m[0;32mBM_StringCompare/1048576                 [m[0;33m     44467 ns      44497 ns [m[0;36m       243[m
+[m[0;32mBM_SetupTeardown/threads:8               [m[0;33m       128 ns        918 ns [m[0;36m     16736[m
+[m[0;32mBM_LongTest/65536                        [m[0;33m     62744 ns      62785 ns [m[0;36m       219[m
+[m[0;32mBM_LongTest/262144                       [m[0;33m    238538 ns     238714 ns [m[0;36m        59[m
+[m[0;32mBM_LongTest/2097152                      [m[0;33m   1908843 ns    1910284 ns [m[0;36m         7[m
+[m[0;32mBM_LongTest/16777216                     [m[0;33m  15277896 ns   15288428 ns [m[0;36m         1[m
+[m[0;32mBM_LongTest/134217728                    [m[0;33m 121799053 ns  121883493 ns [m[0;36m         1[m
+[m[0;32mBM_LongTest/268435456                    [m[0;33m 244750736 ns  244925118 ns [m[0;36m         1[m
+[m[0;32mBM_ParallelMemset/10485760/threads:1     [m[0;33m   1686100 ns    1687213 ns [m[0;36m         9[m
+[m[0;32mBM_ParallelMemset/10485760/threads:2     [m[0;33m    453883 ns     903183 ns [m[0;36m        16[m
+[m[0;32mBM_ParallelMemset/10485760/threads:4     [m[0;33m    312067 ns    1245596 ns [m[0;36m        12[m
+[m[0;32mBM_ManualTiming/1/real_time              [m[0;33m     52317 ns        812 ns [m[0;36m       267[m   18.6662k items/s[m
+[m[0;32mBM_ManualTiming/8/real_time              [m[0;33m     59248 ns        792 ns [m[0;36m       236[m    131.86k items/s[m
+[m[0;32mBM_ManualTiming/64/real_time             [m[0;33m    115300 ns        825 ns [m[0;36m       120[m   542.065k items/s[m
+[m[0;32mBM_ManualTiming/512/real_time            [m[0;33m    645476 ns       3191 ns [m[0;36m        23[m   774.623k items/s[m
+[m[0;32mBM_ManualTiming/4096/real_time           [m[0;33m   4244417 ns       3419 ns [m[0;36m         3[m   942.414k items/s[m
+[m[0;32mBM_ManualTiming/16384/real_time          [m[0;33m  16439920 ns       3218 ns [m[0;36m         1[m   973.241k items/s[m
+[m[0;32mBM_ManualTiming/1/manual_time            [m[0;33m     52280 ns        850 ns [m[0;36m       268[m   18.6796k items/s[m
+[m[0;32mBM_ManualTiming/8/manual_time            [m[0;33m     59286 ns        855 ns [m[0;36m       236[m   131.777k items/s[m
+[m[0;32mBM_ManualTiming/64/manual_time           [m[0;33m    115330 ns        884 ns [m[0;36m       121[m   541.921k items/s[m
+[m[0;32mBM_ManualTiming/512/manual_time          [m[0;33m    658991 ns       3170 ns [m[0;36m        22[m   758.736k items/s[m
+[m[0;32mBM_ManualTiming/4096/manual_time         [m[0;33m   4219242 ns       3374 ns [m[0;36m         3[m   948.038k items/s[m
+[m[0;32mBM_ManualTiming/16384/manual_time        [m[0;33m  16542237 ns       3790 ns [m[0;36m         1[m   967.221k items/s[m
+[m[0;32mBM_with_args/int_test                    [m[0;33m         1 ns          1 ns [m[0;36m  12333693[m
+[m[0;32mBM_with_args/string_and_pair_test        [m[0;33m         1 ns          1 ns [m[0;36m  12353523[m
+[m[0;32mBM_non_template_args/basic_test          [m[0;33m         1 ns          1 ns [m[0;36m  12855418[m
+[m[0;32mBM_DenseThreadRanges/1/threads:1         [m[0;33m         1 ns          1 ns [m[0;36m  13214953[m
+[m[0;32mBM_DenseThreadRanges/1/threads:2         [m[0;33m         1 ns          1 ns [m[0;36m  12923862[m
+[m[0;32mBM_DenseThreadRanges/1/threads:3         [m[0;33m         0 ns          1 ns [m[0;36m  11779233[m
+[m[0;32mBM_DenseThreadRanges/2/threads:1         [m[0;33m         1 ns          1 ns [m[0;36m  12937256[m
+[m[0;32mBM_DenseThreadRanges/2/threads:3         [m[0;33m         0 ns          1 ns [m[0;36m  12911271[m
+[m[0;32mBM_DenseThreadRanges/2/threads:4         [m[0;33m         0 ns          1 ns [m[0;36m  11419064[m
+[m[0;32mBM_DenseThreadRanges/3/threads:5         [m[0;33m         0 ns          1 ns [m[0;36m  12123995[m
+[m[0;32mBM_DenseThreadRanges/3/threads:8         [m[0;33m         0 ns          1 ns [m[0;36m  11032232[m
+[m[0;32mBM_DenseThreadRanges/3/threads:11        [m[0;33m         0 ns          1 ns [m[0;36m  10318539[m
+[m[0;32mBM_DenseThreadRanges/3/threads:14        [m[0;33m         0 ns          1 ns [m[0;36m  10153542[m
+[m
+<end of output>
+Test time =   1.96 sec
+----------------------------------------------------------
+Test Passed.
+"benchmark" end time: May 23 22:03 +06
+"benchmark" time elapsed: 00:00:01
+----------------------------------------------------------
+
+2/34 Testing: filter_simple
+2/34 Test: filter_simple
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/filter_test" "--benchmark_min_time=0.01" "--benchmark_filter=Foo" "3"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"filter_simple" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+Run on (8 X 4201 MHz CPU s)
+2017-05-23 22:03:35
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+--------------------------------------------------
+Benchmark           Time           CPU Iterations
+--------------------------------------------------
+[0;32mBM_Foo     [m[0;33m         1 ns          1 ns [m[0;36m  10861293[m
+[m[0;32mBM_FooBar  [m[0;33m         1 ns          1 ns [m[0;36m  13217223[m
+[m[0;32mBM_FooBa   [m[0;33m         1 ns          1 ns [m[0;36m  12931031[m
+[m
+<end of output>
+Test time =   0.05 sec
+----------------------------------------------------------
+Test Passed.
+"filter_simple" end time: May 23 22:03 +06
+"filter_simple" time elapsed: 00:00:00
+----------------------------------------------------------
+
+3/34 Testing: filter_simple_list_only
+3/34 Test: filter_simple_list_only
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/filter_test" "--benchmark_list_tests" "--benchmark_filter=Foo" "3"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"filter_simple_list_only" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+BM_Foo
+BM_FooBar
+BM_FooBa
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"filter_simple_list_only" end time: May 23 22:03 +06
+"filter_simple_list_only" time elapsed: 00:00:00
+----------------------------------------------------------
+
+4/34 Testing: filter_suffix
+4/34 Test: filter_suffix
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/filter_test" "--benchmark_min_time=0.01" "--benchmark_filter=BM_.*" "4"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"filter_suffix" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+Run on (8 X 4201 MHz CPU s)
+2017-05-23 22:03:35
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+--------------------------------------------------
+Benchmark           Time           CPU Iterations
+--------------------------------------------------
+[0;32mBM_Foo     [m[0;33m         1 ns          1 ns [m[0;36m  13036899[m
+[m[0;32mBM_Bar     [m[0;33m         1 ns          1 ns [m[0;36m  12908032[m
+[m[0;32mBM_FooBar  [m[0;33m         1 ns          1 ns [m[0;36m  12887072[m
+[m[0;32mBM_FooBa   [m[0;33m         1 ns          1 ns [m[0;36m  13227126[m
+[m
+<end of output>
+Test time =   0.06 sec
+----------------------------------------------------------
+Test Passed.
+"filter_suffix" end time: May 23 22:03 +06
+"filter_suffix" time elapsed: 00:00:00
+----------------------------------------------------------
+
+5/34 Testing: filter_suffix_list_only
+5/34 Test: filter_suffix_list_only
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/filter_test" "--benchmark_list_tests" "--benchmark_filter=BM_.*" "4"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"filter_suffix_list_only" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+BM_Foo
+BM_Bar
+BM_FooBar
+BM_FooBa
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"filter_suffix_list_only" end time: May 23 22:03 +06
+"filter_suffix_list_only" time elapsed: 00:00:00
+----------------------------------------------------------
+
+6/34 Testing: filter_regex_all
+6/34 Test: filter_regex_all
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/filter_test" "--benchmark_min_time=0.01" "--benchmark_filter=.*" "5"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"filter_regex_all" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+Run on (8 X 4201 MHz CPU s)
+2017-05-23 22:03:35
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+--------------------------------------------------
+Benchmark           Time           CPU Iterations
+--------------------------------------------------
+[0;32mNoPrefix   [m[0;33m         1 ns          1 ns [m[0;36m  13006547[m
+[m[0;32mBM_Foo     [m[0;33m         1 ns          1 ns [m[0;36m  12845463[m
+[m[0;32mBM_Bar     [m[0;33m         1 ns          1 ns [m[0;36m  12499866[m
+[m[0;32mBM_FooBar  [m[0;33m         1 ns          1 ns [m[0;36m  12911080[m
+[m[0;32mBM_FooBa   [m[0;33m         1 ns          1 ns [m[0;36m  12920338[m
+[m
+<end of output>
+Test time =   0.08 sec
+----------------------------------------------------------
+Test Passed.
+"filter_regex_all" end time: May 23 22:03 +06
+"filter_regex_all" time elapsed: 00:00:00
+----------------------------------------------------------
+
+7/34 Testing: filter_regex_all_list_only
+7/34 Test: filter_regex_all_list_only
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/filter_test" "--benchmark_list_tests" "--benchmark_filter=.*" "5"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"filter_regex_all_list_only" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+NoPrefix
+BM_Foo
+BM_Bar
+BM_FooBar
+BM_FooBa
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"filter_regex_all_list_only" end time: May 23 22:03 +06
+"filter_regex_all_list_only" time elapsed: 00:00:00
+----------------------------------------------------------
+
+8/34 Testing: filter_regex_blank
+8/34 Test: filter_regex_blank
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/filter_test" "--benchmark_min_time=0.01" "--benchmark_filter=" "5"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"filter_regex_blank" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+Run on (8 X 4201 MHz CPU s)
+2017-05-23 22:03:35
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+--------------------------------------------------
+Benchmark           Time           CPU Iterations
+--------------------------------------------------
+[0;32mNoPrefix   [m[0;33m         1 ns          1 ns [m[0;36m  12706284[m
+[m[0;32mBM_Foo     [m[0;33m         1 ns          1 ns [m[0;36m  12829395[m
+[m[0;32mBM_Bar     [m[0;33m         1 ns          1 ns [m[0;36m  13239246[m
+[m[0;32mBM_FooBar  [m[0;33m         1 ns          1 ns [m[0;36m  13235579[m
+[m[0;32mBM_FooBa   [m[0;33m         1 ns          1 ns [m[0;36m  12923141[m
+[m
+<end of output>
+Test time =   0.08 sec
+----------------------------------------------------------
+Test Passed.
+"filter_regex_blank" end time: May 23 22:03 +06
+"filter_regex_blank" time elapsed: 00:00:00
+----------------------------------------------------------
+
+9/34 Testing: filter_regex_blank_list_only
+9/34 Test: filter_regex_blank_list_only
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/filter_test" "--benchmark_list_tests" "--benchmark_filter=" "5"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"filter_regex_blank_list_only" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+NoPrefix
+BM_Foo
+BM_Bar
+BM_FooBar
+BM_FooBa
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"filter_regex_blank_list_only" end time: May 23 22:03 +06
+"filter_regex_blank_list_only" time elapsed: 00:00:00
+----------------------------------------------------------
+
+10/34 Testing: filter_regex_none
+10/34 Test: filter_regex_none
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/filter_test" "--benchmark_min_time=0.01" "--benchmark_filter=monkey" "0"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"filter_regex_none" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+Failed to match any benchmarks against regex: monkey
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"filter_regex_none" end time: May 23 22:03 +06
+"filter_regex_none" time elapsed: 00:00:00
+----------------------------------------------------------
+
+11/34 Testing: filter_regex_none_list_only
+11/34 Test: filter_regex_none_list_only
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/filter_test" "--benchmark_list_tests" "--benchmark_filter=monkey" "0"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"filter_regex_none_list_only" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+Failed to match any benchmarks against regex: monkey
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"filter_regex_none_list_only" end time: May 23 22:03 +06
+"filter_regex_none_list_only" time elapsed: 00:00:00
+----------------------------------------------------------
+
+12/34 Testing: filter_regex_wildcard
+12/34 Test: filter_regex_wildcard
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/filter_test" "--benchmark_min_time=0.01" "--benchmark_filter=.*Foo.*" "3"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"filter_regex_wildcard" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+Run on (8 X 4201 MHz CPU s)
+2017-05-23 22:03:35
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+--------------------------------------------------
+Benchmark           Time           CPU Iterations
+--------------------------------------------------
+[0;32mBM_Foo     [m[0;33m         1 ns          1 ns [m[0;36m  12857378[m
+[m[0;32mBM_FooBar  [m[0;33m         1 ns          1 ns [m[0;36m  12580323[m
+[m[0;32mBM_FooBa   [m[0;33m         1 ns          1 ns [m[0;36m  13024116[m
+[m
+<end of output>
+Test time =   0.05 sec
+----------------------------------------------------------
+Test Passed.
+"filter_regex_wildcard" end time: May 23 22:03 +06
+"filter_regex_wildcard" time elapsed: 00:00:00
+----------------------------------------------------------
+
+13/34 Testing: filter_regex_wildcard_list_only
+13/34 Test: filter_regex_wildcard_list_only
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/filter_test" "--benchmark_list_tests" "--benchmark_filter=.*Foo.*" "3"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"filter_regex_wildcard_list_only" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+BM_Foo
+BM_FooBar
+BM_FooBa
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"filter_regex_wildcard_list_only" end time: May 23 22:03 +06
+"filter_regex_wildcard_list_only" time elapsed: 00:00:00
+----------------------------------------------------------
+
+14/34 Testing: filter_regex_begin
+14/34 Test: filter_regex_begin
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/filter_test" "--benchmark_min_time=0.01" "--benchmark_filter=^BM_.*" "4"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"filter_regex_begin" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+Run on (8 X 4201 MHz CPU s)
+2017-05-23 22:03:35
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+--------------------------------------------------
+Benchmark           Time           CPU Iterations
+--------------------------------------------------
+[0;32mBM_Foo     [m[0;33m         1 ns          1 ns [m[0;36m  13055646[m
+[m[0;32mBM_Bar     [m[0;33m         1 ns          1 ns [m[0;36m  12879864[m
+[m[0;32mBM_FooBar  [m[0;33m         1 ns          1 ns [m[0;36m  12867056[m
+[m[0;32mBM_FooBa   [m[0;33m         1 ns          1 ns [m[0;36m  12703598[m
+[m
+<end of output>
+Test time =   0.06 sec
+----------------------------------------------------------
+Test Passed.
+"filter_regex_begin" end time: May 23 22:03 +06
+"filter_regex_begin" time elapsed: 00:00:00
+----------------------------------------------------------
+
+15/34 Testing: filter_regex_begin_list_only
+15/34 Test: filter_regex_begin_list_only
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/filter_test" "--benchmark_list_tests" "--benchmark_filter=^BM_.*" "4"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"filter_regex_begin_list_only" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+BM_Foo
+BM_Bar
+BM_FooBar
+BM_FooBa
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"filter_regex_begin_list_only" end time: May 23 22:03 +06
+"filter_regex_begin_list_only" time elapsed: 00:00:00
+----------------------------------------------------------
+
+16/34 Testing: filter_regex_begin2
+16/34 Test: filter_regex_begin2
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/filter_test" "--benchmark_min_time=0.01" "--benchmark_filter=^N" "1"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"filter_regex_begin2" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+Run on (8 X 4201 MHz CPU s)
+2017-05-23 22:03:35
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+--------------------------------------------------
+Benchmark           Time           CPU Iterations
+--------------------------------------------------
+[0;32mNoPrefix   [m[0;33m         1 ns          1 ns [m[0;36m  13233340[m
+[m
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"filter_regex_begin2" end time: May 23 22:03 +06
+"filter_regex_begin2" time elapsed: 00:00:00
+----------------------------------------------------------
+
+17/34 Testing: filter_regex_begin2_list_only
+17/34 Test: filter_regex_begin2_list_only
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/filter_test" "--benchmark_list_tests" "--benchmark_filter=^N" "1"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"filter_regex_begin2_list_only" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+NoPrefix
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"filter_regex_begin2_list_only" end time: May 23 22:03 +06
+"filter_regex_begin2_list_only" time elapsed: 00:00:00
+----------------------------------------------------------
+
+18/34 Testing: filter_regex_end
+18/34 Test: filter_regex_end
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/filter_test" "--benchmark_min_time=0.01" "--benchmark_filter=.*Ba$" "1"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"filter_regex_end" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+Run on (8 X 4201 MHz CPU s)
+2017-05-23 22:03:35
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+--------------------------------------------------
+Benchmark           Time           CPU Iterations
+--------------------------------------------------
+[0;32mBM_FooBa   [m[0;33m         1 ns          1 ns [m[0;36m  12660265[m
+[m
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"filter_regex_end" end time: May 23 22:03 +06
+"filter_regex_end" time elapsed: 00:00:00
+----------------------------------------------------------
+
+19/34 Testing: filter_regex_end_list_only
+19/34 Test: filter_regex_end_list_only
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/filter_test" "--benchmark_list_tests" "--benchmark_filter=.*Ba$" "1"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"filter_regex_end_list_only" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+BM_FooBa
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"filter_regex_end_list_only" end time: May 23 22:03 +06
+"filter_regex_end_list_only" time elapsed: 00:00:00
+----------------------------------------------------------
+
+20/34 Testing: options_benchmarks
+20/34 Test: options_benchmarks
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/options_test" "--benchmark_min_time=0.01"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"options_benchmarks" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+Run on (8 X 4201 MHz CPU s)
+2017-05-23 22:03:35
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+----------------------------------------------------------------------------------------
+Benchmark                                                 Time           CPU Iterations
+----------------------------------------------------------------------------------------
+[0;32mBM_basic                                         [m[0;33m         1 ns          1 ns [m[0;36m  13030116[m
+[m[0;32mBM_basic/42                                      [m[0;33m         1 ns          1 ns [m[0;36m  12874084[m
+[m[0;32mBM_basic_slow/10                                 [m[0;33m  10115349 ns       6755 ns [m[0;36m        10[m
+[m[0;32mBM_basic_slow/100                                [m[0;33m    100057 us          8 us [m[0;36m         1[m
+[m[0;32mBM_basic_slow/1000                               [m[0;33m      1000 ms          0 ms [m[0;36m         1[m
+[m[0;32mBM_basic/1                                       [m[0;33m         3 ns          3 ns [m[0;36m   5291201[m
+[m[0;32mBM_basic/8                                       [m[0;33m         1 ns          1 ns [m[0;36m  12916299[m
+[m[0;32mBM_basic/1                                       [m[0;33m         1 ns          1 ns [m[0;36m  13227551[m
+[m[0;32mBM_basic/2                                       [m[0;33m         1 ns          1 ns [m[0;36m  13075924[m
+[m[0;32mBM_basic/4                                       [m[0;33m         1 ns          1 ns [m[0;36m  13234966[m
+[m[0;32mBM_basic/8                                       [m[0;33m         1 ns          1 ns [m[0;36m  12655745[m
+[m[0;32mBM_basic/10                                      [m[0;33m         1 ns          1 ns [m[0;36m  12934137[m
+[m[0;32mBM_basic/11                                      [m[0;33m         1 ns          1 ns [m[0;36m  12363636[m
+[m[0;32mBM_basic/12                                      [m[0;33m         1 ns          1 ns [m[0;36m  13237632[m
+[m[0;32mBM_basic/13                                      [m[0;33m         1 ns          1 ns [m[0;36m  13235304[m
+[m[0;32mBM_basic/14                                      [m[0;33m         1 ns          1 ns [m[0;36m  12906069[m
+[m[0;32mBM_basic/15                                      [m[0;33m         1 ns          1 ns [m[0;36m  12776707[m
+[m[0;32mBM_basic/42/42                                   [m[0;33m         1 ns          1 ns [m[0;36m  12832182[m
+[m[0;32mBM_basic/64/64                                   [m[0;33m         1 ns          1 ns [m[0;36m  12898542[m
+[m[0;32mBM_basic/512/64                                  [m[0;33m         1 ns          1 ns [m[0;36m  11934019[m
+[m[0;32mBM_basic/64/512                                  [m[0;33m         1 ns          1 ns [m[0;36m  12895845[m
+[m[0;32mBM_basic/512/512                                 [m[0;33m         1 ns          1 ns [m[0;36m  13214903[m
+[m[0;32mBM_basic/min_time:0.700                          [m[0;33m         1 ns          1 ns [m[0;36m 903763983[m
+[m[0;32mBM_basic/real_time                               [m[0;33m         1 ns          1 ns [m[0;36m  12928391[m
+[m[0;32mBM_basic/threads:2                               [m[0;33m         1 ns          1 ns [m[0;36m  12723306[m
+[m[0;32mBM_basic/threads:4                               [m[0;33m         0 ns          1 ns [m[0;36m  12951380[m
+[m[0;32mBM_basic/threads:8                               [m[0;33m         0 ns          1 ns [m[0;36m  10997440[m
+[m[0;32mBM_basic/repeats:3                               [m[0;33m         1 ns          1 ns [m[0;36m  12932404[m
+[m[0;32mBM_basic/repeats:3                               [m[0;33m         1 ns          1 ns [m[0;36m  12932404[m
+[m[0;32mBM_basic/repeats:3                               [m[0;33m         1 ns          1 ns [m[0;36m  12932404[m
+[m[0;32mBM_basic/repeats:3_mean                          [m[0;33m         1 ns          1 ns [m[0;36m  12932404[m
+[m[0;32mBM_basic/repeats:3_stddev                        [m[0;33m         0 ns          0 ns [m[0;36m         0[m
+[m[0;32mBM_basic/0                                       [m[0;33m         1 ns          1 ns [m[0;36m  12596861[m
+[m[0;32mBM_basic/1                                       [m[0;33m         1 ns          1 ns [m[0;36m  12639600[m
+[m[0;32mBM_basic/2                                       [m[0;33m         1 ns          1 ns [m[0;36m  12899778[m
+[m[0;32mBM_basic/3                                       [m[0;33m         1 ns          1 ns [m[0;36m  13237970[m
+[m[0;32mBM_basic/4                                       [m[0;33m         1 ns          1 ns [m[0;36m  13217560[m
+[m[0;32mBM_basic/5                                       [m[0;33m         1 ns          1 ns [m[0;36m  13225451[m
+[m[0;32mBM_basic/6                                       [m[0;33m         1 ns          1 ns [m[0;36m  13059970[m
+[m[0;32mBM_basic/7                                       [m[0;33m         1 ns          1 ns [m[0;36m  12896510[m
+[m[0;32mBM_basic/8                                       [m[0;33m         1 ns          1 ns [m[0;36m  12877992[m
+[m[0;32mBM_basic/9                                       [m[0;33m         1 ns          1 ns [m[0;36m  12894586[m
+[m[0;32mBM_explicit_iteration_count/iterations:42        [m[0;33m         5 ns          5 ns [m[0;36m        42[m
+[m
+<end of output>
+Test time =   2.86 sec
+----------------------------------------------------------
+Test Passed.
+"options_benchmarks" end time: May 23 22:03 +06
+"options_benchmarks" time elapsed: 00:00:02
+----------------------------------------------------------
+
+21/34 Testing: basic_benchmark
+21/34 Test: basic_benchmark
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/basic_test" "--benchmark_min_time=0.01"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"basic_benchmark" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+Run on (8 X 4201 MHz CPU s)
+2017-05-23 22:03:38
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+-------------------------------------------------------------------------------------
+Benchmark                                              Time           CPU Iterations
+-------------------------------------------------------------------------------------
+[0;32mBM_empty                                      [m[0;33m         1 ns          1 ns [m[0;36m  12865554[m
+[m[0;32mBM_empty/threads:8                            [m[0;33m         0 ns          1 ns [m[0;36m  11033056[m
+[m[0;32mBM_spin_empty/8                               [m[0;33m         5 ns          5 ns [m[0;36m   2373374[m
+[m[0;32mBM_spin_empty/512                             [m[0;33m       242 ns        242 ns [m[0;36m     57318[m
+[m[0;32mBM_spin_empty/8192                            [m[0;33m      3750 ns       3753 ns [m[0;36m      3776[m
+[m[0;32mBM_spin_empty/8/threads:8                     [m[0;33m         1 ns          8 ns [m[0;36m   1844400[m
+[m[0;32mBM_spin_empty/512/threads:8                   [m[0;33m        60 ns        437 ns [m[0;36m     33752[m
+[m[0;32mBM_spin_empty/8192/threads:8                  [m[0;33m       980 ns       7213 ns [m[0;36m      1952[m
+[m[0;32mBM_spin_pause_before/8                        [m[0;33m         5 ns          5 ns [m[0;36m   2528551[m
+[m[0;32mBM_spin_pause_before/512                      [m[0;33m       241 ns        241 ns [m[0;36m     58100[m
+[m[0;32mBM_spin_pause_before/8192                     [m[0;33m      3733 ns       3735 ns [m[0;36m      3729[m
+[m[0;32mBM_spin_pause_before/8/threads:8              [m[0;33m         1 ns          8 ns [m[0;36m   1809840[m
+[m[0;32mBM_spin_pause_before/512/threads:8            [m[0;33m        59 ns        416 ns [m[0;36m     33776[m
+[m[0;32mBM_spin_pause_before/8192/threads:8           [m[0;33m       700 ns       5599 ns [m[0;36m      2504[m
+[m[0;32mBM_spin_pause_during/8                        [m[0;33m       114 ns        116 ns [m[0;36m    119833[m
+[m[0;32mBM_spin_pause_during/512                      [m[0;33m       323 ns        325 ns [m[0;36m     42846[m
+[m[0;32mBM_spin_pause_during/8192                     [m[0;33m      3387 ns       3391 ns [m[0;36m      4148[m
+[m[0;32mBM_spin_pause_during/8/threads:8              [m[0;33m        17 ns        140 ns [m[0;36m    103120[m
+[m[0;32mBM_spin_pause_during/512/threads:8            [m[0;33m        70 ns        486 ns [m[0;36m     32320[m
+[m[0;32mBM_spin_pause_during/8192/threads:8           [m[0;33m       791 ns       6336 ns [m[0;36m      2424[m
+[m[0;32mBM_pause_during                               [m[0;33m       109 ns        111 ns [m[0;36m    102133[m
+[m[0;32mBM_pause_during/threads:8                     [m[0;33m        19 ns        138 ns [m[0;36m    110600[m
+[m[0;32mBM_pause_during/real_time                     [m[0;33m       114 ns        116 ns [m[0;36m    119158[m
+[m[0;32mBM_pause_during/real_time/threads:8           [m[0;33m        17 ns        136 ns [m[0;36m    823664[m
+[m[0;32mBM_spin_pause_after/8                         [m[0;33m         4 ns          4 ns [m[0;36m   3222740[m
+[m[0;32mBM_spin_pause_after/512                       [m[0;33m       242 ns        242 ns [m[0;36m     58610[m
+[m[0;32mBM_spin_pause_after/8192                      [m[0;33m      3718 ns       3721 ns [m[0;36m      3766[m
+[m[0;32mBM_spin_pause_after/8/threads:8               [m[0;33m         1 ns          8 ns [m[0;36m   1852528[m
+[m[0;32mBM_spin_pause_after/512/threads:8             [m[0;33m        58 ns        425 ns [m[0;36m     33760[m
+[m[0;32mBM_spin_pause_after/8192/threads:8            [m[0;33m       932 ns       6843 ns [m[0;36m      2048[m
+[m[0;32mBM_spin_pause_before_and_after/8              [m[0;33m         5 ns          5 ns [m[0;36m   3153728[m
+[m[0;32mBM_spin_pause_before_and_after/512            [m[0;33m       242 ns        242 ns [m[0;36m     55264[m
+[m[0;32mBM_spin_pause_before_and_after/8192           [m[0;33m      3782 ns       3784 ns [m[0;36m      3666[m
+[m[0;32mBM_spin_pause_before_and_after/8/threads:8    [m[0;33m         1 ns          8 ns [m[0;36m   1743232[m
+[m[0;32mBM_spin_pause_before_and_after/512/threads:8  [m[0;33m        65 ns        457 ns [m[0;36m     30688[m
+[m[0;32mBM_spin_pause_before_and_after/8192/threads:8 [m[0;33m       941 ns       7523 ns [m[0;36m      1952[m
+[m[0;32mBM_empty_stop_start                           [m[0;33m         1 ns          1 ns [m[0;36m  11762749[m
+[m[0;32mBM_empty_stop_start/threads:8                 [m[0;33m         0 ns          1 ns [m[0;36m  10031984[m
+[m
+<end of output>
+Test time =   0.54 sec
+----------------------------------------------------------
+Test Passed.
+"basic_benchmark" end time: May 23 22:03 +06
+"basic_benchmark" time elapsed: 00:00:00
+----------------------------------------------------------
+
+22/34 Testing: diagnostics_test
+22/34 Test: diagnostics_test
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/diagnostics_test" "--benchmark_min_time=0.01"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"diagnostics_test" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+Run on (8 X 4201 MHz CPU s)
+2017-05-23 22:03:39
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+----------------------------------------------------------
+Benchmark                   Time           CPU Iterations
+----------------------------------------------------------
+[0;32mBM_diagnostic_test [m[0;33m         1 ns          1 ns [m[0;36m  11766901[m
+[m
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"diagnostics_test" end time: May 23 22:03 +06
+"diagnostics_test" time elapsed: 00:00:00
+----------------------------------------------------------
+
+23/34 Testing: skip_with_error_test
+23/34 Test: skip_with_error_test
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/skip_with_error_test" "--benchmark_min_time=0.01"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"skip_with_error_test" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+Run on (8 X 4201 MHz CPU s)
+2017-05-23 22:03:39
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+---------------------------------------------------------------------------
+Benchmark                                    Time           CPU Iterations
+---------------------------------------------------------------------------
+[0;32mBM_error_before_running             [m[0;31mERROR OCCURRED: 'error message'[m
+[m[0;32mBM_error_during_running/1/threads:1 [m[0;31mERROR OCCURRED: 'error message'[m
+[m[0;32mBM_error_during_running/1/threads:2 [m[0;31mERROR OCCURRED: 'error message'[m
+[m[0;32mBM_error_during_running/1/threads:4 [m[0;31mERROR OCCURRED: 'error message'[m
+[m[0;32mBM_error_during_running/1/threads:8 [m[0;31mERROR OCCURRED: 'error message'[m
+[m[0;32mBM_error_during_running/2/threads:1 [m[0;33m       112 ns        114 ns [m[0;36m    123436[m
+[m[0;32mBM_error_during_running/2/threads:2 [m[0;33m        54 ns        109 ns [m[0;36m    127886[m
+[m[0;32mBM_error_during_running/2/threads:4 [m[0;33m        27 ns        109 ns [m[0;36m    114880[m
+[m[0;32mBM_error_during_running/2/threads:8 [m[0;33m        16 ns        128 ns [m[0;36m    109648[m
+[m[0;32mBM_error_after_running/threads:1    [m[0;31mERROR OCCURRED: 'error message'[m
+[m[0;32mBM_error_after_running/threads:2    [m[0;31mERROR OCCURRED: 'error message'[m
+[m[0;32mBM_error_after_running/threads:4    [m[0;31mERROR OCCURRED: 'error message'[m
+[m[0;32mBM_error_after_running/threads:8    [m[0;31mERROR OCCURRED: 'error message'[m
+[m[0;32mBM_error_while_paused/1/threads:1   [m[0;31mERROR OCCURRED: 'error message'[m
+[m[0;32mBM_error_while_paused/1/threads:2   [m[0;31mERROR OCCURRED: 'error message'[m
+[m[0;32mBM_error_while_paused/1/threads:4   [m[0;31mERROR OCCURRED: 'error message'[m
+[m[0;32mBM_error_while_paused/1/threads:8   [m[0;31mERROR OCCURRED: 'error message'[m
+[m[0;32mBM_error_while_paused/2/threads:1   [m[0;33m       107 ns        109 ns [m[0;36m    128068[m
+[m[0;32mBM_error_while_paused/2/threads:2   [m[0;33m        54 ns        110 ns [m[0;36m    128316[m
+[m[0;32mBM_error_while_paused/2/threads:4   [m[0;33m        30 ns        121 ns [m[0;36m    126112[m
+[m[0;32mBM_error_while_paused/2/threads:8   [m[0;33m        16 ns        133 ns [m[0;36m    109072[m
+[m
+<end of output>
+Test time =   0.13 sec
+----------------------------------------------------------
+Test Passed.
+"skip_with_error_test" end time: May 23 22:03 +06
+"skip_with_error_test" time elapsed: 00:00:00
+----------------------------------------------------------
+
+24/34 Testing: donotoptimize_test
+24/34 Test: donotoptimize_test
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/donotoptimize_test" "--benchmark_min_time=0.01"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"donotoptimize_test" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"donotoptimize_test" end time: May 23 22:03 +06
+"donotoptimize_test" time elapsed: 00:00:00
+----------------------------------------------------------
+
+25/34 Testing: fixture_test
+25/34 Test: fixture_test
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/fixture_test" "--benchmark_min_time=0.01"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"fixture_test" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+Run on (8 X 4201 MHz CPU s)
+2017-05-23 22:03:39
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+------------------------------------------------------------------
+Benchmark                           Time           CPU Iterations
+------------------------------------------------------------------
+[0;32mMyFixture/Foo              [m[0;33m         1 ns          1 ns [m[0;36m  12926887[m
+[m[0;32mMyFixture/Bar/42           [m[0;33m         1 ns          1 ns [m[0;36m  12603291[m   2.72461k items/s[m
+[m[0;32mMyFixture/Bar/42/threads:8 [m[0;33m         0 ns          1 ns [m[0;36m   9817904[m   24.8106k items/s[m
+[m
+<end of output>
+Test time =   0.04 sec
+----------------------------------------------------------
+Test Passed.
+"fixture_test" end time: May 23 22:03 +06
+"fixture_test" time elapsed: 00:00:00
+----------------------------------------------------------
+
+26/34 Testing: register_benchmark_test
+26/34 Test: register_benchmark_test
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/register_benchmark_test" "--benchmark_min_time=0.01"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"register_benchmark_test" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+Run on (8 X 4201 MHz CPU s)
+2017-05-23 22:03:39
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+-----------------------------------------------------------------------
+Benchmark                                Time           CPU Iterations
+-----------------------------------------------------------------------
+[0;32mBM_function                     [m[0;33m         1 ns          1 ns [m[0;36m  12315173[m
+[m[0;32mBM_function_manual_registration [m[0;33m         1 ns          1 ns [m[0;36m  12913009[m
+[m[0;32mtest1                           [m[0;33m         1 ns          1 ns [m[0;36m  12933754[m One[m
+[m[0;32mtest2                           [m[0;33m         1 ns          1 ns [m[0;36m  12939265[m Two[m
+[m[0;32mtest3                           [m[0;33m         1 ns          1 ns [m[0;36m  12964884[m Three[m
+[m[0;32mcustom_fixture                  [m[0;33m         1 ns          1 ns [m[0;36m  12601657[m
+[m[0;32mlambda_benchmark                [m[0;33m         1 ns          1 ns [m[0;36m  12734612[m 42[m
+[m
+<end of output>
+Test time =   0.11 sec
+----------------------------------------------------------
+Test Passed.
+"register_benchmark_test" end time: May 23 22:03 +06
+"register_benchmark_test" time elapsed: 00:00:00
+----------------------------------------------------------
+
+27/34 Testing: map_test
+27/34 Test: map_test
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/map_test" "--benchmark_min_time=0.01"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"map_test" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+Run on (8 X 4201 MHz CPU s)
+2017-05-23 22:03:39
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+--------------------------------------------------------------
+Benchmark                       Time           CPU Iterations
+--------------------------------------------------------------
+[0;32mBM_MapLookup/8         [m[0;33m       353 ns        356 ns [m[0;36m     40966[m   21.4434M items/s[m
+[m[0;32mBM_MapLookup/64        [m[0;33m      2673 ns       2677 ns [m[0;36m      4051[m   22.8014M items/s[m
+[m[0;32mBM_MapLookup/512       [m[0;33m     26414 ns      26433 ns [m[0;36m       533[m   18.4723M items/s[m
+[m[0;32mBM_MapLookup/4096      [m[0;33m    293608 ns     293752 ns [m[0;36m        47[m   13.2978M items/s[m
+[m[0;32mMapFixture/Lookup/8    [m[0;33m       151 ns        151 ns [m[0;36m    100311[m    50.611M items/s[m
+[m[0;32mMapFixture/Lookup/64   [m[0;33m      1851 ns       1853 ns [m[0;36m      7402[m   32.9417M items/s[m
+[m[0;32mMapFixture/Lookup/512  [m[0;33m     22091 ns      22107 ns [m[0;36m       645[m   22.0867M items/s[m
+[m[0;32mMapFixture/Lookup/4096 [m[0;33m    259368 ns     259558 ns [m[0;36m        52[m   15.0496M items/s[m
+[m
+<end of output>
+Test time =   0.22 sec
+----------------------------------------------------------
+Test Passed.
+"map_test" end time: May 23 22:03 +06
+"map_test" time elapsed: 00:00:00
+----------------------------------------------------------
+
+28/34 Testing: multiple_ranges_test
+28/34 Test: multiple_ranges_test
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/multiple_ranges_test" "--benchmark_min_time=0.01"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"multiple_ranges_test" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+Run on (8 X 4201 MHz CPU s)
+2017-05-23 22:03:39
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+--------------------------------------------------------------------------
+Benchmark                                   Time           CPU Iterations
+--------------------------------------------------------------------------
+[0;32mMultipleRangesFixture/Empty/1/3/5  [m[0;33m         5 ns          5 ns [m[0;36m   2871356[m
+[m[0;32mMultipleRangesFixture/Empty/2/3/5  [m[0;33m        14 ns         14 ns [m[0;36m    969985[m
+[m[0;32mMultipleRangesFixture/Empty/1/4/5  [m[0;33m         7 ns          7 ns [m[0;36m   2529176[m
+[m[0;32mMultipleRangesFixture/Empty/2/4/5  [m[0;33m        18 ns         18 ns [m[0;36m    837879[m
+[m[0;32mMultipleRangesFixture/Empty/1/7/5  [m[0;33m        16 ns         16 ns [m[0;36m    881299[m
+[m[0;32mMultipleRangesFixture/Empty/2/7/5  [m[0;33m        24 ns         24 ns [m[0;36m    592986[m
+[m[0;32mMultipleRangesFixture/Empty/1/3/8  [m[0;33m         6 ns          6 ns [m[0;36m   2180058[m
+[m[0;32mMultipleRangesFixture/Empty/2/3/8  [m[0;33m        19 ns         19 ns [m[0;36m    762042[m
+[m[0;32mMultipleRangesFixture/Empty/1/4/8  [m[0;33m        15 ns         15 ns [m[0;36m    883616[m
+[m[0;32mMultipleRangesFixture/Empty/2/4/8  [m[0;33m        23 ns         23 ns [m[0;36m    620546[m
+[m[0;32mMultipleRangesFixture/Empty/1/7/8  [m[0;33m        21 ns         21 ns [m[0;36m    675108[m
+[m[0;32mMultipleRangesFixture/Empty/2/7/8  [m[0;33m        34 ns         34 ns [m[0;36m    411917[m
+[m[0;32mMultipleRangesFixture/Empty/1/3/15 [m[0;33m        18 ns         18 ns [m[0;36m    741720[m
+[m[0;32mMultipleRangesFixture/Empty/2/3/15 [m[0;33m        28 ns         28 ns [m[0;36m    485156[m
+[m[0;32mMultipleRangesFixture/Empty/1/4/15 [m[0;33m        21 ns         22 ns [m[0;36m    648170[m
+[m[0;32mMultipleRangesFixture/Empty/2/4/15 [m[0;33m        35 ns         36 ns [m[0;36m    398471[m
+[m[0;32mMultipleRangesFixture/Empty/1/7/15 [m[0;33m        32 ns         32 ns [m[0;36m    442786[m
+[m[0;32mMultipleRangesFixture/Empty/2/7/15 [m[0;33m        56 ns         56 ns [m[0;36m    249374[m
+[m[0;32mMultipleRangesFixture/Empty/7/6/3  [m[0;33m        37 ns         37 ns [m[0;36m    384656[m
+[m[0;32mBM_CheckDefaultArgument/1/6        [m[0;33m         1 ns          1 ns [m[0;36m  12871243[m
+[m[0;32mBM_CheckDefaultArgument/5/6        [m[0;33m         1 ns          1 ns [m[0;36m  13218446[m
+[m[0;32mBM_CheckDefaultArgument/1/8        [m[0;33m         1 ns          1 ns [m[0;36m  12899409[m
+[m[0;32mBM_CheckDefaultArgument/5/8        [m[0;33m         1 ns          1 ns [m[0;36m  12772010[m
+[m[0;32mBM_CheckDefaultArgument/1/10       [m[0;33m         1 ns          1 ns [m[0;36m  12737567[m
+[m[0;32mBM_CheckDefaultArgument/5/10       [m[0;33m         1 ns          1 ns [m[0;36m  13219420[m
+[m[0;32mBM_MultipleRanges/5/6              [m[0;33m         1 ns          1 ns [m[0;36m  13017940[m
+[m
+<end of output>
+Test time =   0.44 sec
+----------------------------------------------------------
+Test Passed.
+"multiple_ranges_test" end time: May 23 22:03 +06
+"multiple_ranges_test" time elapsed: 00:00:00
+----------------------------------------------------------
+
+29/34 Testing: reporter_output_test
+29/34 Test: reporter_output_test
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/reporter_output_test" "--benchmark_min_time=0.01"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"reporter_output_test" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+Running benchmarks...
+-------------------------------
+Testing ConsoleReporter Output
+-------------------------------
+Run on (8 X 4201 MHz CPU s)
+2017-05-23 22:03:40
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+-----------------------------------------------------------------------------
+Benchmark                                      Time           CPU Iterations
+-----------------------------------------------------------------------------
+BM_basic                                       1 ns          1 ns   12882424
+BM_bytes_per_second                            1 ns          1 ns   12870510    71.0104B/s
+BM_items_per_second                            1 ns          1 ns   12876879    72.1269 items/s
+BM_label                                       1 ns          1 ns   13208955 some label
+BM_error                              ERROR OCCURRED: 'message'
+BM_no_arg_name/3                               1 ns          1 ns   12892389
+BM_arg_name/first:3                            1 ns          1 ns   12852479
+BM_arg_names/first:2/5/third:4                 1 ns          1 ns   11914985
+BM_Complexity_O1/1                             1 ns          1 ns   12879070
+BM_Complexity_O1/8                             1 ns          1 ns   13231426
+BM_Complexity_O1/64                            1 ns          1 ns   12829947
+BM_Complexity_O1/512                           1 ns          1 ns   12896130
+BM_Complexity_O1/4096                          1 ns          1 ns   12886728
+BM_Complexity_O1/32768                         1 ns          1 ns   12888864
+BM_Complexity_O1/262144                        1 ns          1 ns   13207435
+BM_Complexity_O1_BigO                       1.08 (1)       1.09 (1) 
+BM_Complexity_O1_RMS                           0 %          0 % 
+BM_Repeat/repeats:3                            1 ns          1 ns   13214865
+BM_Repeat/repeats:3                            1 ns          1 ns   13214865
+BM_Repeat/repeats:3                            1 ns          1 ns   13214865
+BM_Repeat/repeats:3_mean                       1 ns          1 ns   13214865
+BM_Repeat/repeats:3_stddev                     0 ns          0 ns          0
+BM_RepeatOnce/repeats:1                        1 ns          1 ns   13229638
+BM_SummaryRepeat/repeats:3_mean                1 ns          1 ns   13216562
+BM_SummaryRepeat/repeats:3_stddev              0 ns          0 ns          0
+BM_RepeatTimeUnit/repeats:3_mean               0 us          0 us   12784291
+BM_RepeatTimeUnit/repeats:3_stddev             0 us          0 us          0
+
+----------------------------
+Testing JSONReporter Output
+----------------------------
+{
+  "context": {
+    "date": "2017-05-23 22:03:40",
+    "num_cpus": 8,
+    "mhz_per_cpu": 4201,
+    "cpu_scaling_enabled": true,
+    "library_build_type": "release"
+  },
+  "benchmarks": [
+    {
+      "name": "BM_basic",
+      "iterations": 12882424,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_bytes_per_second",
+      "iterations": 12870510,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "bytes_per_second": 71
+    },
+    {
+      "name": "BM_items_per_second",
+      "iterations": 12876879,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "items_per_second": 72
+    },
+    {
+      "name": "BM_label",
+      "iterations": 13208955,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "label": "some label"
+    },
+    {
+      "name": "BM_error",
+      "error_occurred": true,
+      "error_message": "message",
+      "iterations": 1,
+      "real_time": 0,
+      "cpu_time": 0,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_no_arg_name/3",
+      "iterations": 12892389,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_arg_name/first:3",
+      "iterations": 12852479,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_arg_names/first:2/5/third:4",
+      "iterations": 11914985,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1/1",
+      "iterations": 12879070,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1/8",
+      "iterations": 13231426,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1/64",
+      "iterations": 12829947,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1/512",
+      "iterations": 12896130,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1/4096",
+      "iterations": 12886728,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1/32768",
+      "iterations": 12888864,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1/262144",
+      "iterations": 13207435,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1_BigO",
+      "cpu_coefficient": 1,
+      "real_coefficient": 1,
+      "big_o": "(1)",
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1_RMS",
+      "rms": 0.00
+    },
+    {
+      "name": "BM_Repeat/repeats:3",
+      "iterations": 13214865,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Repeat/repeats:3",
+      "iterations": 13214865,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Repeat/repeats:3",
+      "iterations": 13214865,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Repeat/repeats:3_mean",
+      "iterations": 13214865,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Repeat/repeats:3_stddev",
+      "iterations": 0,
+      "real_time": 0,
+      "cpu_time": 0,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_RepeatOnce/repeats:1",
+      "iterations": 13229638,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_SummaryRepeat/repeats:3_mean",
+      "iterations": 13216562,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_SummaryRepeat/repeats:3_stddev",
+      "iterations": 0,
+      "real_time": 0,
+      "cpu_time": 0,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_RepeatTimeUnit/repeats:3_mean",
+      "iterations": 12784291,
+      "real_time": 0,
+      "cpu_time": 0,
+      "time_unit": "us"
+    },
+    {
+      "name": "BM_RepeatTimeUnit/repeats:3_stddev",
+      "iterations": 0,
+      "real_time": 0,
+      "cpu_time": 0,
+      "time_unit": "us"
+    }
+  ]
+}
+
+---------------------------
+Testing CSVReporter Output
+---------------------------
+Run on (8 X 4201 MHz CPU s)
+2017-05-23 22:03:40
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+name,iterations,real_time,cpu_time,time_unit,bytes_per_second,items_per_second,label,error_occurred,error_message
+"BM_basic",12882424,1.08769,1.08811,ns,,,,,
+"BM_bytes_per_second",12870510,1.09339,1.09416,ns,71.0104,,,,
+"BM_items_per_second",12876879,1.07595,1.07669,ns,,72.1269,,,
+"BM_label",13208955,1.08773,1.08854,ns,,,"some label",,
+"BM_error",,,,,,,,true,"message"
+"BM_no_arg_name/3",12892389,1.0847,1.08548,ns,,,,,
+"BM_arg_name/first:3",12852479,1.0972,1.09803,ns,,,,,
+"BM_arg_names/first:2/5/third:4",11914985,1.09253,1.09326,ns,,,,,
+"BM_Complexity_O1/1",12879070,1.09193,1.09252,ns,,,,,
+"BM_Complexity_O1/8",13231426,1.08957,1.09039,ns,,,,,
+"BM_Complexity_O1/64",12829947,1.07951,1.08023,ns,,,,,
+"BM_Complexity_O1/512",12896130,1.08358,1.08435,ns,,,,,
+"BM_Complexity_O1/4096",12886728,1.07702,1.07774,ns,,,,,
+"BM_Complexity_O1/32768",12888864,1.08347,1.08427,ns,,,,,
+"BM_Complexity_O1/262144",13207435,1.08557,1.08634,ns,,,,,
+"BM_Complexity_O1_BigO",,1.08438,1.08512,(1),,,,,
+"BM_Complexity_O1_RMS",,0.00447394,0.00445583,,,,,,
+"BM_Repeat/repeats:3",13214865,1.0796,1.08039,ns,,,,,
+"BM_Repeat/repeats:3",13214865,1.09846,1.09917,ns,,,,,
+"BM_Repeat/repeats:3",13214865,1.08144,1.08224,ns,,,,,
+"BM_Repeat/repeats:3_mean",13214865,1.0865,1.08727,ns,,,,,
+"BM_Repeat/repeats:3_stddev",0,0.00849251,0.00844902,ns,,,,,
+"BM_RepeatOnce/repeats:1",13229638,1.08755,1.08833,ns,,,,,
+"BM_SummaryRepeat/repeats:3_mean",13216562,1.08334,1.08413,ns,,,,,
+"BM_SummaryRepeat/repeats:3_stddev",0,0.000715444,0.000693303,ns,,,,,
+"BM_RepeatTimeUnit/repeats:3_mean",12784291,0.00109829,0.00109904,us,,,,,
+"BM_RepeatTimeUnit/repeats:3_stddev",0,8.29699e-06,8.38888e-06,us,,,,,
+
+<end of output>
+Test time =   0.40 sec
+----------------------------------------------------------
+Test Passed.
+"reporter_output_test" end time: May 23 22:03 +06
+"reporter_output_test" time elapsed: 00:00:00
+----------------------------------------------------------
+
+30/34 Testing: user_counters_test
+30/34 Test: user_counters_test
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/user_counters_test" "--benchmark_min_time=0.01"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"user_counters_test" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+Running benchmarks...
+-------------------------------
+Testing ConsoleReporter Output
+-------------------------------
+Run on (8 X 4201 MHz CPU s)
+2017-05-23 22:03:40
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+--------------------------------------------------------------------------------------------
+Benchmark                                     Time           CPU Iterations UserCounters...
+--------------------------------------------------------------------------------------------
+BM_Counters_Simple                            1 ns          1 ns   11547363 bar=22.0248M foo=1
+BM_Counters_WithBytesAndItemsPSec             1 ns          1 ns   13225139 bar=8 foo=1   24.6437kB/s   10.1554k items/s
+BM_Counters_Rate                              1 ns          1 ns   12472038 bar=146.909/s foo=73.4546/s
+BM_Counters_Threads/threads:1                 1 ns          1 ns   12865436 bar=2 foo=1
+BM_Counters_Threads/threads:2                 1 ns          1 ns   12857172 bar=4 foo=2
+BM_Counters_Threads/threads:4                 0 ns          1 ns   12957176 bar=8 foo=4
+BM_Counters_Threads/threads:8                 0 ns          1 ns   10878136 bar=16 foo=8
+BM_Counters_AvgThreads/threads:1              1 ns          1 ns   12850462 bar=2 foo=1
+BM_Counters_AvgThreads/threads:2              1 ns          1 ns   12917716 bar=2 foo=1
+BM_Counters_AvgThreads/threads:4              0 ns          1 ns   11423284 bar=2 foo=1
+BM_Counters_AvgThreads/threads:8              0 ns          1 ns    8000000 bar=2 foo=1
+BM_Counters_AvgThreadsRate/threads:1          1 ns          1 ns   12937938 bar=142.806/s foo=71.4032/s
+BM_Counters_AvgThreadsRate/threads:2          1 ns          1 ns   12854970 bar=142.938/s foo=71.4691/s
+BM_Counters_AvgThreadsRate/threads:4          0 ns          1 ns   12947308 bar=126.15/s foo=63.0751/s
+BM_Counters_AvgThreadsRate/threads:8          0 ns          1 ns   11046256 bar=142.418/s foo=71.2091/s
+
+----------------------------
+Testing JSONReporter Output
+----------------------------
+{
+  "context": {
+    "date": "2017-05-23 22:03:40",
+    "num_cpus": 8,
+    "mhz_per_cpu": 4201,
+    "cpu_scaling_enabled": true,
+    "library_build_type": "release"
+  },
+  "benchmarks": [
+    {
+      "name": "BM_Counters_Simple",
+      "iterations": 11547363,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "bar": 23094726,
+      "foo": 1
+    },
+    {
+      "name": "BM_Counters_WithBytesAndItemsPSec",
+      "iterations": 13225139,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "bytes_per_second": 25235,
+      "items_per_second": 10399,
+      "bar": 8,
+      "foo": 1
+    },
+    {
+      "name": "BM_Counters_Rate",
+      "iterations": 12472038,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "bar": 147,
+      "foo": 73
+    },
+    {
+      "name": "BM_Counters_Threads/threads:1",
+      "iterations": 12865436,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "bar": 2,
+      "foo": 1
+    },
+    {
+Run on (8 X 4201 MHz CPU s)
+2017-05-23 22:03:40
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+      "name": "BM_Counters_Threads/threads:2",
+      "iterations": 12857172,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "bar": 4,
+      "foo": 2
+    },
+    {
+      "name": "BM_Counters_Threads/threads:4",
+      "iterations": 12957176,
+      "real_time": 0,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "bar": 8,
+      "foo": 4
+    },
+    {
+      "name": "BM_Counters_Threads/threads:8",
+      "iterations": 10878136,
+      "real_time": 0,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "bar": 16,
+      "foo": 8
+    },
+    {
+      "name": "BM_Counters_AvgThreads/threads:1",
+      "iterations": 12850462,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "bar": 2,
+      "foo": 1
+    },
+    {
+      "name": "BM_Counters_AvgThreads/threads:2",
+      "iterations": 12917716,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "bar": 2,
+      "foo": 1
+    },
+    {
+      "name": "BM_Counters_AvgThreads/threads:4",
+      "iterations": 11423284,
+      "real_time": 0,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "bar": 2,
+      "foo": 1
+    },
+    {
+      "name": "BM_Counters_AvgThreads/threads:8",
+      "iterations": 8000000,
+      "real_time": 0,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "bar": 2,
+      "foo": 1
+    },
+    {
+      "name": "BM_Counters_AvgThreadsRate/threads:1",
+      "iterations": 12937938,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "bar": 143,
+      "foo": 71
+    },
+    {
+      "name": "BM_Counters_AvgThreadsRate/threads:2",
+      "iterations": 12854970,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "bar": 143,
+      "foo": 71
+    },
+    {
+      "name": "BM_Counters_AvgThreadsRate/threads:4",
+      "iterations": 12947308,
+      "real_time": 0,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "bar": 126,
+      "foo": 63
+    },
+    {
+      "name": "BM_Counters_AvgThreadsRate/threads:8",
+      "iterations": 11046256,
+      "real_time": 0,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "bar": 142,
+      "foo": 71
+    }
+  ]
+}
+
+---------------------------
+Testing CSVReporter Output
+---------------------------
+name,iterations,real_time,cpu_time,time_unit,bytes_per_second,items_per_second,label,error_occurred,error_message,"bar","foo"
+"BM_Counters_Simple",11547363,1.14359,1.14433,ns,,,,,,2.30947e+07,1
+"BM_Counters_WithBytesAndItemsPSec",13225139,1.0901,1.09068,ns,25235.1,10399.1,,,,8,1
+"BM_Counters_Rate",12472038,1.09084,1.09155,ns,,,,,,146.909,73.4546
+"BM_Counters_Threads/threads:1",12865436,1.07788,1.07862,ns,,,,,,2,1
+"BM_Counters_Threads/threads:2",12857172,0.542369,1.08375,ns,,,,,,4,2
+"BM_Counters_Threads/threads:4",12957176,0.270471,1.08248,ns,,,,,,8,4
+"BM_Counters_Threads/threads:8",10878136,0.176966,1.24255,ns,,,,,,16,8
+"BM_Counters_AvgThreads/threads:1",12850462,1.14442,1.14472,ns,,,,,,2,1
+"BM_Counters_AvgThreads/threads:2",12917716,0.541471,1.083,ns,,,,,,2,1
+"BM_Counters_AvgThreads/threads:4",11423284,0.305736,1.22392,ns,,,,,,2,1
+"BM_Counters_AvgThreads/threads:8",8000000,0.180179,1.26821,ns,,,,,,2,1
+"BM_Counters_AvgThreadsRate/threads:1",12937938,1.08198,1.08247,ns,,,,,,142.806,71.4032
+"BM_Counters_AvgThreadsRate/threads:2",12854970,0.543779,1.08846,ns,,,,,,142.938,71.4691
+"BM_Counters_AvgThreadsRate/threads:4",12947308,0.305937,1.22451,ns,,,,,,126.15,63.0751
+"BM_Counters_AvgThreadsRate/threads:8",11046256,0.175384,1.2713,ns,,,,,,142.418,71.2091
+
+<end of output>
+Test time =   0.19 sec
+----------------------------------------------------------
+Test Passed.
+"user_counters_test" end time: May 23 22:03 +06
+"user_counters_test" time elapsed: 00:00:00
+----------------------------------------------------------
+
+31/34 Testing: user_counters_tabular_test
+31/34 Test: user_counters_tabular_test
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/user_counters_tabular_test" "--benchmark_counters_tabular=true" "--benchmark_min_time=0.01"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"user_counters_tabular_test" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+Running benchmarks...
+-------------------------------
+Testing ConsoleReporter Output
+-------------------------------
+Run on (8 X 4201 MHz CPU s)
+2017-05-23 22:03:40
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+--------------------------------------------------------------------------------------------------------------------------------------------
+Benchmark                                   Time           CPU Iterations        Bar        Bat        Baz        Foo       Frob        Lob
+--------------------------------------------------------------------------------------------------------------------------------------------
+BM_Counters_Tabular/threads:1               1 ns          1 ns   12702653          2          8          4          1         16         32
+BM_Counters_Tabular/threads:2               1 ns          1 ns   12962074          2          8          4          1         16         32
+BM_Counters_Tabular/threads:4               0 ns          1 ns   12908568          2          8          4          1         16         32
+BM_Counters_Tabular/threads:8               0 ns          1 ns   10029704          2          8          4          1         16         32
+BM_Counters_Tabular/threads:16              0 ns          1 ns   10514176          2          8          4          1         16         32
+BM_CounterRates_Tabular/threads:1           1 ns          1 ns   11749471  146.911/s  587.643/s  293.821/s  73.4553/s 1.14774k/s 2.29548k/s
+BM_CounterRates_Tabular/threads:2           1 ns          1 ns   12928922   142.78/s  571.119/s  285.559/s  71.3898/s 1.11547k/s 2.23093k/s
+BM_CounterRates_Tabular/threads:4           0 ns          1 ns   12960880  142.506/s  570.023/s  285.012/s  71.2529/s 1.11333k/s 2.22665k/s
+BM_CounterRates_Tabular/threads:8           0 ns          1 ns   11032296  151.398/s  605.593/s  302.797/s  75.6992/s  1.1828k/s  2.3656k/s
+BM_CounterRates_Tabular/threads:16          0 ns          1 ns   11565104  120.703/s  482.812/s  241.406/s  60.3514/s  965.623/s 1.88598k/s
+-----------------------------------------------------------------------------------------------------------
+Benchmark                                   Time           CPU Iterations        Bar        Baz        Foo
+-----------------------------------------------------------------------------------------------------------
+BM_CounterSet0_Tabular/threads:1            1 ns          1 ns    9509849         20         40         10
+BM_CounterSet0_Tabular/threads:2            1 ns          1 ns   13006770         20         40         10
+BM_CounterSet0_Tabular/threads:4            0 ns          1 ns   11464000         20         40         10
+BM_CounterSet0_Tabular/threads:8            0 ns          1 ns   11029448         20         40         10
+BM_CounterSet0_Tabular/threads:16           0 ns          1 ns   11245168         20         40         10
+BM_CounterSet1_Tabular/threads:1            1 ns          1 ns   10352556         25         45         15
+BM_CounterSet1_Tabular/threads:2            1 ns          1 ns   12981148         25         45         15
+BM_CounterSet1_Tabular/threads:4            0 ns          1 ns   11465720         25         45         15
+BM_CounterSet1_Tabular/threads:8            0 ns          1 ns   11045552         25         45         15
+BM_CounterSet1_Tabular/threads:16           0 ns          1 ns   11583936         25         45         15
+-----------------------------------------------------------------------------------------------------------
+Benchmark                                   Time           CPU Iterations        Bat        Baz        Foo
+-----------------------------------------------------------------------------------------------------------
+BM_CounterSet2_Tabular/threads:1            1 ns          1 ns   10285390         30         40         10
+BM_CounterSet2_Tabular/threads:2            1 ns          1 ns   11780452         30         40         10
+BM_CounterSet2_Tabular/threads:4            0 ns          1 ns   11410004         30         40         10
+BM_CounterSet2_Tabular/threads:8            0 ns          1 ns   11045616         30         40         10
+BM_CounterSet2_Tabular/threads:16           0 ns          1 ns   11576336         30         40         10
+
+----------------------------
+Testing JSONReporter Output
+----------------------------
+{
+  "context": {
+    "date": "2017-05-23 22:03:40",
+    "num_cpus": 8,
+    "mhz_per_cpu": 4201,
+    "cpu_scaling_enabled": true,
+    "library_build_type": "release"
+  },
+  "benchmarks": [
+    {
+      "name": "BM_Counters_Tabular/threads:1",
+      "iterations": 12702653,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "Bar": 2,
+      "Bat": 8,
+      "Baz": 4,
+      "Foo": 1,
+      "Frob": 16,
+      "Lob": 32
+    },
+    {
+      "name": "BM_Counters_Tabular/threads:2",
+      "iterations": 12962074,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "Bar": 2,
+      "Bat": 8,
+      "Baz": 4,
+      "Foo": 1,
+      "Frob": 16,
+      "Lob": 32
+    },
+    {
+      "name": "BM_Counters_Tabular/threads:4",
+      "iterations": 12908568,
+      "real_time": 0,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "Bar": 2,
+      "Bat": 8,
+      "Baz": 4,
+      "Foo": 1,
+      "Frob": 16,
+      "Lob": 32
+    },
+    {
+      "name": "BM_Counters_Tabular/threads:8",
+      "iterations": 10029704,
+      "real_time": 0,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "Bar": 2,
+      "Bat": 8,
+      "Baz": 4,
+      "Foo": 1,
+      "Frob": 16,
+      "Lob": 32
+    },
+    {
+      "name": "BM_Counters_Tabular/threads:16",
+      "iterations": 10514176,
+      "real_time": 0,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "Bar": 2,
+      "Bat": 8,
+      "Baz": 4,
+      "Foo": 1,
+      "Frob": 16,
+      "Lob": 32
+    },
+    {
+      "name": "BM_CounterRates_Tabular/threads:1",
+      "iterations": 11749471,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "Bar": 147,
+      "Bat": 588,
+      "Baz": 294,
+      "Foo": 73,
+      "Frob": 1175,
+      "Lob": 2351
+    },
+    {
+      "name": "BM_CounterRates_Tabular/threads:2",
+      "iterations": 12928922,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "Bar": 143,
+      "Bat": 571,
+      "Baz": 286,
+      "Foo": 71,
+      "Frob": 1142,
+      "Lob": 2284
+    },
+    {
+      "name": "BM_CounterRates_Tabular/threads:4",
+      "iterations": 12960880,
+      "real_time": 0,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "Bar": 143,
+      "Bat": 570,
+      "Baz": 285,
+      "Foo": 71,
+      "Frob": 1140,
+      "Lob": 2280
+    },
+    {
+      "name": "BM_CounterRates_Tabular/threads:8",
+      "iterations": 11032296,
+      "real_time": 0,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "Bar": 151,
+      "Bat": 606,
+      "Baz": 303,
+      "Foo": 76,
+      "Frob": 1211,
+      "Lob": 2422
+    },
+    {
+      "name": "BM_CounterRates_Tabular/threads:16",
+      "iterations": 11565104,
+      "real_time": 0,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "Bar": 121,
+      "Bat": 483,
+      "Baz": 241,
+      "Foo": 60,
+      "Frob": 966,
+      "Lob": 1931
+    },
+    {
+      "name": "BM_CounterSet0_Tabular/threads:1",
+      "iterations": 9509849,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "Bar": 20,
+      "Baz": 40,
+      "Foo": 10
+    },
+    {
+      "name": "BM_CounterSet0_Tabular/threads:2",
+      "iterations": 13006770,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "Bar": 20,
+      "Baz": 40,
+      "Foo": 10
+    },
+    {
+      "name": "BM_CounterSet0_Tabular/threads:4",
+      "iterations": 11464000,
+      "real_time": 0,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "Bar": 20,
+      "Baz": 40,
+      "Foo": 10
+    },
+    {
+      "name": "BM_CounterSet0_Tabular/threads:8",
+      "iterations": 11029448,
+      "real_time": 0,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "Bar": 20,
+      "Baz": 40,
+      "Foo": 10
+    },
+    {
+      "name": "BM_CounterSet0_Tabular/threads:16",
+      "iterations": 11245168,
+      "real_time": 0,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "Bar": 20,
+      "Baz": 40,
+      "Foo": 10
+    },
+    {
+      "name": "BM_CounterSet1_Tabular/threads:1",
+      "iterations": 10352556,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "Bar": 25,
+      "Baz": 45,
+      "Foo": 15
+    },
+    {
+      "name": "BM_CounterSet1_Tabular/threads:2",
+      "iterations": 12981148,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "Bar": 25,
+      "Baz": 45,
+      "Foo": 15
+    },
+    {
+      "name": "BM_CounterSet1_Tabular/threads:4",
+      "iterations": 11465720,
+      "real_time": 0,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "Bar": 25,
+      "Baz": 45,
+      "Foo": 15
+    },
+    {
+      "name": "BM_CounterSet1_Tabular/threads:8",
+      "iterations": 11045552,
+      "real_time": 0,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "Bar": 25,
+      "Baz": 45,
+      "Foo": 15
+    },
+    {
+      "name": "BM_CounterSet1_Tabular/threads:16",
+      "iterations": 11583936,
+      "real_time": 0,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "Bar": 25,
+      "Baz": 45,
+      "Foo": 15
+    },
+    {
+      "name": "BM_CounterSet2_Tabular/threads:1",
+      "iterations": 10285390,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "Bat": 30,
+Run on (8 X 4201 MHz CPU s)
+2017-05-23 22:03:40
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+      "Baz": 40,
+      "Foo": 10
+    },
+    {
+      "name": "BM_CounterSet2_Tabular/threads:2",
+      "iterations": 11780452,
+      "real_time": 1,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "Bat": 30,
+      "Baz": 40,
+      "Foo": 10
+    },
+    {
+      "name": "BM_CounterSet2_Tabular/threads:4",
+      "iterations": 11410004,
+      "real_time": 0,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "Bat": 30,
+      "Baz": 40,
+      "Foo": 10
+    },
+    {
+      "name": "BM_CounterSet2_Tabular/threads:8",
+      "iterations": 11045616,
+      "real_time": 0,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "Bat": 30,
+      "Baz": 40,
+      "Foo": 10
+    },
+    {
+      "name": "BM_CounterSet2_Tabular/threads:16",
+      "iterations": 11576336,
+      "real_time": 0,
+      "cpu_time": 1,
+      "time_unit": "ns",
+      "Bat": 30,
+      "Baz": 40,
+      "Foo": 10
+    }
+  ]
+}
+
+---------------------------
+Testing CSVReporter Output
+---------------------------
+name,iterations,real_time,cpu_time,time_unit,bytes_per_second,items_per_second,label,error_occurred,error_message,"Bar","Bat","Baz","Foo","Frob","Lob"
+"BM_Counters_Tabular/threads:1",12702653,1.09955,1.09987,ns,,,,,,2,8,4,1,16,32
+"BM_Counters_Tabular/threads:2",12962074,0.540497,1.08185,ns,,,,,,2,8,4,1,16,32
+"BM_Counters_Tabular/threads:4",12908568,0.293107,1.17226,ns,,,,,,2,8,4,1,16,32
+"BM_Counters_Tabular/threads:8",10029704,0.210408,1.34753,ns,,,,,,2,8,4,1,16,32
+"BM_Counters_Tabular/threads:16",10514176,0.0951,1.36831,ns,,,,,,2,8,4,1,16,32
+"BM_CounterRates_Tabular/threads:1",11749471,1.15799,1.15867,ns,,,,,,146.911,587.643,293.821,73.4553,1175.29,2350.57
+"BM_CounterRates_Tabular/threads:2",12928922,0.541694,1.08343,ns,,,,,,142.78,571.119,285.559,71.3898,1142.24,2284.48
+"BM_CounterRates_Tabular/threads:4",12960880,0.270611,1.08284,ns,,,,,,142.506,570.023,285.012,71.2529,1140.05,2280.09
+"BM_CounterRates_Tabular/threads:8",11032296,0.150603,1.19741,ns,,,,,,151.398,605.593,302.797,75.6992,1211.19,2422.37
+"BM_CounterRates_Tabular/threads:16",11565104,0.0999528,1.43272,ns,,,,,,120.703,482.812,241.406,60.3514,965.623,1931.25
+"BM_CounterSet0_Tabular/threads:1",9509849,1.20817,1.20886,ns,,,,,,20,,40,10,,
+"BM_CounterSet0_Tabular/threads:2",13006770,0.538527,1.07725,ns,,,,,,20,,40,10,,
+"BM_CounterSet0_Tabular/threads:4",11464000,0.305229,1.22168,ns,,,,,,20,,40,10,,
+"BM_CounterSet0_Tabular/threads:8",11029448,0.172679,1.29496,ns,,,,,,20,,40,10,,
+"BM_CounterSet0_Tabular/threads:16",11245168,0.0881416,1.31243,ns,,,,,,20,,40,10,,
+"BM_CounterSet1_Tabular/threads:1",10352556,1.26945,1.26975,ns,,,,,,25,,45,15,,
+"BM_CounterSet1_Tabular/threads:2",12981148,0.539239,1.07836,ns,,,,,,25,,45,15,,
+"BM_CounterSet1_Tabular/threads:4",11465720,0.30526,1.22178,ns,,,,,,25,,45,15,,
+"BM_CounterSet1_Tabular/threads:8",11045552,0.171664,1.30243,ns,,,,,,25,,45,15,,
+"BM_CounterSet1_Tabular/threads:16",11583936,0.0897921,1.28468,ns,,,,,,25,,45,15,,
+"BM_CounterSet2_Tabular/threads:1",10285390,1.2945,1.29491,ns,,,,,,,30,40,10,,
+"BM_CounterSet2_Tabular/threads:2",11780452,0.58463,1.16875,ns,,,,,,,30,40,10,,
+"BM_CounterSet2_Tabular/threads:4",11410004,0.305885,1.22399,ns,,,,,,,30,40,10,,
+"BM_CounterSet2_Tabular/threads:8",11045616,0.180306,1.27201,ns,,,,,,,30,40,10,,
+"BM_CounterSet2_Tabular/threads:16",11576336,0.0851958,1.21093,ns,,,,,,,30,40,10,,
+
+<end of output>
+Test time =   0.32 sec
+----------------------------------------------------------
+Test Passed.
+"user_counters_tabular_test" end time: May 23 22:03 +06
+"user_counters_tabular_test" time elapsed: 00:00:00
+----------------------------------------------------------
+
+32/34 Testing: cxx03
+32/34 Test: cxx03
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/cxx03_test" "--benchmark_min_time=0.01"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"cxx03" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+Run on (8 X 4201 MHz CPU s)
+2017-05-23 22:03:41
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+----------------------------------------------------------------------
+Benchmark                               Time           CPU Iterations
+----------------------------------------------------------------------
+[0;32mBM_empty                       [m[0;33m         1 ns          1 ns [m[0;36m   9717923[m
+[m[0;32mBM_old_arg_range_interface/1/2 [m[0;33m         1 ns          1 ns [m[0;36m  12947211[m
+[m[0;32mBM_old_arg_range_interface/5/6 [m[0;33m         1 ns          1 ns [m[0;36m  12663850[m
+[m[0;32mBM_template2<int,long>         [m[0;33m         1 ns          1 ns [m[0;36m   9308777[m
+[m[0;32mBM_template1<long>             [m[0;33m         1 ns          1 ns [m[0;36m   9635231[m
+[m[0;32mBM_template1<int>              [m[0;33m         1 ns          1 ns [m[0;36m   9464089[m
+[m[0;32mBM_counters                    [m[0;33m         1 ns          1 ns [m[0;36m   9523460[m Foo=2[m
+[m
+<end of output>
+Test time =   0.11 sec
+----------------------------------------------------------
+Test Passed.
+"cxx03" end time: May 23 22:03 +06
+"cxx03" time elapsed: 00:00:00
+----------------------------------------------------------
+
+33/34 Testing: complexity_benchmark
+33/34 Test: complexity_benchmark
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/complexity_test" "--benchmark_min_time=0.01"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test
+"complexity_benchmark" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+Running benchmarks...
+-------------------------------
+Testing ConsoleReporter Output
+-------------------------------
+---------------------------------------------------------------------
+Benchmark                              Time           CPU Iterations
+---------------------------------------------------------------------
+BM_Complexity_O1/1                  1147 ns       1148 ns      13114
+BM_Complexity_O1/8                  1117 ns       1117 ns      12751
+BM_Complexity_O1/64                 1127 ns       1128 ns      12411
+BM_Complexity_O1/512                1121 ns       1122 ns      12578
+BM_Complexity_O1/4096               1120 ns       1121 ns      12390
+BM_Complexity_O1/32768              1100 ns       1101 ns      12765
+BM_Complexity_O1/262144             1111 ns       1112 ns      12721
+BM_Complexity_O1_BigO            1120.64 (1)    1121.21 (1) 
+BM_Complexity_O1_RMS                   1 %          1 % 
+BM_Complexity_O1/1                  1113 ns       1114 ns      12378
+Run on (8 X 4201 MHz CPU s)
+2017-05-23 22:03:41
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+BM_Complexity_O1/8                  1116 ns       1116 ns      12615
+BM_Complexity_O1/64                 1110 ns       1111 ns      12340
+BM_Complexity_O1/512                1115 ns       1116 ns      11870
+BM_Complexity_O1/4096               1117 ns       1118 ns      12682
+BM_Complexity_O1/32768              1101 ns       1102 ns      12625
+BM_Complexity_O1/262144             1092 ns       1092 ns      13169
+BM_Complexity_O1_BigO            1109.12 (1)    1109.87 (1) 
+BM_Complexity_O1_RMS                   1 %          1 % 
+BM_Complexity_O1/1                  1100 ns       1100 ns      12803
+BM_Complexity_O1/8                  1100 ns       1101 ns      13255
+BM_Complexity_O1/64                 1098 ns       1099 ns      12769
+BM_Complexity_O1/512                1095 ns       1096 ns      12819
+BM_Complexity_O1/4096               1092 ns       1093 ns      12451
+BM_Complexity_O1/32768              1105 ns       1106 ns      12659
+BM_Complexity_O1/262144             1117 ns       1118 ns      12548
+BM_Complexity_O1_BigO            1100.96 f(N)    1101.76 f(N) 
+BM_Complexity_O1_RMS                   1 %          1 % 
+BM_Complexity_O_N/1024               182 ns        182 ns      77300
+BM_Complexity_O_N/2048               358 ns        359 ns      39385
+BM_Complexity_O_N/4096               703 ns        704 ns      19587
+BM_Complexity_O_N/8192              1402 ns       1403 ns       9969
+BM_Complexity_O_N/16384             2808 ns       2806 ns       5048
+BM_Complexity_O_N/32768             5775 ns       5779 ns       2481
+BM_Complexity_O_N/65536            11315 ns      11323 ns       1197
+BM_Complexity_O_N_BigO              0.17 N       0.17 N 
+BM_Complexity_O_N_RMS                  1 %          1 % 
+BM_Complexity_O_N/1024               182 ns        182 ns      77975
+BM_Complexity_O_N/2048               356 ns        356 ns      39652
+BM_Complexity_O_N/4096               707 ns        707 ns      19897
+BM_Complexity_O_N/8192              1409 ns       1410 ns      10181
+BM_Complexity_O_N/16384             2811 ns       2813 ns       4994
+BM_Complexity_O_N/32768             5663 ns       5666 ns       2480
+BM_Complexity_O_N/65536            11437 ns      11445 ns       1269
+BM_Complexity_O_N_BigO              0.17 f(N)       0.17 f(N) 
+BM_Complexity_O_N_RMS                  1 %          1 % 
+BM_Complexity_O_N/1024               181 ns        181 ns      77194
+BM_Complexity_O_N/2048               355 ns        356 ns      39648
+BM_Complexity_O_N/4096               706 ns        707 ns      19794
+BM_Complexity_O_N/8192              1408 ns       1409 ns       9985
+BM_Complexity_O_N/16384             2789 ns       2791 ns       4994
+BM_Complexity_O_N/32768             5817 ns       5821 ns       2467
+BM_Complexity_O_N/65536            11282 ns      11290 ns       1242
+BM_Complexity_O_N_BigO              0.17 N       0.17 N 
+BM_Complexity_O_N_RMS                  2 %          2 % 
+BM_Complexity_O_N_log_N/1024        3596 ns       3599 ns       3821
+BM_Complexity_O_N_log_N/2048        8519 ns       8525 ns       1390
+BM_Complexity_O_N_log_N/4096       19909 ns      19924 ns        656
+BM_Complexity_O_N_log_N/8192       45984 ns      46015 ns        286
+BM_Complexity_O_N_log_N/16384     105657 ns     105717 ns        133
+BM_Complexity_O_N_log_N/32768     241785 ns     241935 ns         42
+BM_Complexity_O_N_log_N/65536     562599 ns     562966 ns         22
+BM_Complexity_O_N_log_N_BigO        0.52 NlgN       0.53 NlgN 
+BM_Complexity_O_N_log_N_RMS            7 %          7 % 
+BM_Complexity_O_N_log_N/1024        3764 ns       3767 ns       3944
+BM_Complexity_O_N_log_N/2048        8708 ns       8715 ns       1593
+BM_Complexity_O_N_log_N/4096       20489 ns      20503 ns        629
+BM_Complexity_O_N_log_N/8192       47031 ns      47064 ns        286
+BM_Complexity_O_N_log_N/16384     106029 ns     106104 ns        131
+BM_Complexity_O_N_log_N/32768     246748 ns     246921 ns         42
+BM_Complexity_O_N_log_N/65536     565363 ns     565778 ns         23
+BM_Complexity_O_N_log_N_BigO        0.53 f(N)       0.53 f(N) 
+BM_Complexity_O_N_log_N_RMS            7 %          7 % 
+BM_Complexity_O_N_log_N/1024        3669 ns       3671 ns       3869
+BM_Complexity_O_N_log_N/2048        8711 ns       8716 ns       1590
+BM_Complexity_O_N_log_N/4096       20687 ns      20700 ns        654
+BM_Complexity_O_N_log_N/8192       47210 ns      47244 ns        289
+BM_Complexity_O_N_log_N/16384     106851 ns     106926 ns        130
+BM_Complexity_O_N_log_N/32768     246713 ns     246865 ns         41
+BM_Complexity_O_N_log_N/65536     556768 ns     557151 ns         23
+BM_Complexity_O_N_log_N_BigO        0.52 NlgN       0.52 NlgN 
+BM_Complexity_O_N_log_N_RMS            6 %          6 % 
+
+----------------------------
+Testing JSONReporter Output
+----------------------------
+{
+  "context": {
+    "date": "2017-05-23 22:03:41",
+    "num_cpus": 8,
+    "mhz_per_cpu": 4201,
+    "cpu_scaling_enabled": true,
+    "library_build_type": "release"
+  },
+  "benchmarks": [
+    {
+      "name": "BM_Complexity_O1/1",
+      "iterations": 13114,
+      "real_time": 1147,
+      "cpu_time": 1148,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1/8",
+      "iterations": 12751,
+      "real_time": 1117,
+      "cpu_time": 1117,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1/64",
+      "iterations": 12411,
+      "real_time": 1127,
+      "cpu_time": 1128,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1/512",
+      "iterations": 12578,
+      "real_time": 1121,
+      "cpu_time": 1122,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1/4096",
+      "iterations": 12390,
+      "real_time": 1120,
+      "cpu_time": 1121,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1/32768",
+      "iterations": 12765,
+      "real_time": 1100,
+      "cpu_time": 1101,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1/262144",
+      "iterations": 12721,
+      "real_time": 1111,
+      "cpu_time": 1112,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1_BigO",
+      "cpu_coefficient": 1121,
+      "real_coefficient": 1121,
+      "big_o": "(1)",
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1_RMS",
+      "rms": 0.01
+    },
+    {
+      "name": "BM_Complexity_O1/1",
+      "iterations": 12378,
+      "real_time": 1113,
+      "cpu_time": 1114,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1/8",
+      "iterations": 12615,
+      "real_time": 1116,
+      "cpu_time": 1116,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1/64",
+      "iterations": 12340,
+      "real_time": 1110,
+      "cpu_time": 1111,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1/512",
+      "iterations": 11870,
+      "real_time": 1115,
+      "cpu_time": 1116,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1/4096",
+      "iterations": 12682,
+      "real_time": 1117,
+      "cpu_time": 1118,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1/32768",
+      "iterations": 12625,
+      "real_time": 1101,
+      "cpu_time": 1102,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1/262144",
+      "iterations": 13169,
+      "real_time": 1092,
+      "cpu_time": 1092,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1_BigO",
+      "cpu_coefficient": 1110,
+      "real_coefficient": 1109,
+      "big_o": "(1)",
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1_RMS",
+      "rms": 0.01
+    },
+    {
+      "name": "BM_Complexity_O1/1",
+      "iterations": 12803,
+      "real_time": 1100,
+      "cpu_time": 1100,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1/8",
+      "iterations": 13255,
+      "real_time": 1100,
+      "cpu_time": 1101,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1/64",
+      "iterations": 12769,
+      "real_time": 1098,
+      "cpu_time": 1099,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1/512",
+      "iterations": 12819,
+      "real_time": 1095,
+      "cpu_time": 1096,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1/4096",
+      "iterations": 12451,
+      "real_time": 1092,
+      "cpu_time": 1093,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1/32768",
+      "iterations": 12659,
+      "real_time": 1105,
+      "cpu_time": 1106,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1/262144",
+      "iterations": 12548,
+      "real_time": 1117,
+      "cpu_time": 1118,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1_BigO",
+      "cpu_coefficient": 1102,
+      "real_coefficient": 1101,
+      "big_o": "f(N)",
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O1_RMS",
+      "rms": 0.01
+    },
+    {
+      "name": "BM_Complexity_O_N/1024",
+      "iterations": 77300,
+      "real_time": 182,
+      "cpu_time": 182,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N/2048",
+      "iterations": 39385,
+      "real_time": 358,
+      "cpu_time": 359,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N/4096",
+      "iterations": 19587,
+      "real_time": 703,
+      "cpu_time": 704,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N/8192",
+      "iterations": 9969,
+      "real_time": 1402,
+      "cpu_time": 1403,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N/16384",
+      "iterations": 5048,
+      "real_time": 2808,
+      "cpu_time": 2806,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N/32768",
+      "iterations": 2481,
+      "real_time": 5775,
+      "cpu_time": 5779,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N/65536",
+      "iterations": 1197,
+      "real_time": 11315,
+      "cpu_time": 11323,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N_BigO",
+      "cpu_coefficient": 0,
+      "real_coefficient": 0,
+      "big_o": "N",
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N_RMS",
+      "rms": 0.01
+    },
+    {
+      "name": "BM_Complexity_O_N/1024",
+      "iterations": 77975,
+      "real_time": 182,
+      "cpu_time": 182,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N/2048",
+      "iterations": 39652,
+      "real_time": 356,
+      "cpu_time": 356,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N/4096",
+      "iterations": 19897,
+      "real_time": 707,
+      "cpu_time": 707,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N/8192",
+      "iterations": 10181,
+      "real_time": 1409,
+      "cpu_time": 1410,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N/16384",
+      "iterations": 4994,
+      "real_time": 2811,
+      "cpu_time": 2813,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N/32768",
+      "iterations": 2480,
+      "real_time": 5663,
+      "cpu_time": 5666,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N/65536",
+      "iterations": 1269,
+      "real_time": 11437,
+      "cpu_time": 11445,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N_BigO",
+      "cpu_coefficient": 0,
+      "real_coefficient": 0,
+      "big_o": "f(N)",
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N_RMS",
+      "rms": 0.01
+    },
+    {
+      "name": "BM_Complexity_O_N/1024",
+      "iterations": 77194,
+      "real_time": 181,
+      "cpu_time": 181,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N/2048",
+      "iterations": 39648,
+      "real_time": 355,
+      "cpu_time": 356,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N/4096",
+      "iterations": 19794,
+      "real_time": 706,
+      "cpu_time": 707,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N/8192",
+      "iterations": 9985,
+      "real_time": 1408,
+      "cpu_time": 1409,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N/16384",
+      "iterations": 4994,
+      "real_time": 2789,
+      "cpu_time": 2791,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N/32768",
+      "iterations": 2467,
+      "real_time": 5817,
+      "cpu_time": 5821,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N/65536",
+      "iterations": 1242,
+      "real_time": 11282,
+      "cpu_time": 11290,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N_BigO",
+      "cpu_coefficient": 0,
+      "real_coefficient": 0,
+      "big_o": "N",
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N_RMS",
+      "rms": 0.02
+    },
+    {
+      "name": "BM_Complexity_O_N_log_N/1024",
+      "iterations": 3821,
+      "real_time": 3596,
+      "cpu_time": 3599,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N_log_N/2048",
+      "iterations": 1390,
+      "real_time": 8519,
+      "cpu_time": 8525,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N_log_N/4096",
+      "iterations": 656,
+      "real_time": 19909,
+      "cpu_time": 19924,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N_log_N/8192",
+      "iterations": 286,
+      "real_time": 45984,
+      "cpu_time": 46015,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N_log_N/16384",
+      "iterations": 133,
+      "real_time": 105657,
+      "cpu_time": 105717,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N_log_N/32768",
+      "iterations": 42,
+      "real_time": 241785,
+      "cpu_time": 241935,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N_log_N/65536",
+      "iterations": 22,
+      "real_time": 562599,
+      "cpu_time": 562966,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N_log_N_BigO",
+      "cpu_coefficient": 1,
+      "real_coefficient": 1,
+      "big_o": "NlgN",
+      "time_unit": "ns"
+    },
+    {
+Run on (8 X 4201 MHz CPU s)
+2017-05-23 22:03:41
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+      "name": "BM_Complexity_O_N_log_N_RMS",
+      "rms": 0.07
+    },
+    {
+      "name": "BM_Complexity_O_N_log_N/1024",
+      "iterations": 3944,
+      "real_time": 3764,
+      "cpu_time": 3767,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N_log_N/2048",
+      "iterations": 1593,
+      "real_time": 8708,
+      "cpu_time": 8715,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N_log_N/4096",
+      "iterations": 629,
+      "real_time": 20489,
+      "cpu_time": 20503,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N_log_N/8192",
+      "iterations": 286,
+      "real_time": 47031,
+      "cpu_time": 47064,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N_log_N/16384",
+      "iterations": 131,
+      "real_time": 106029,
+      "cpu_time": 106104,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N_log_N/32768",
+      "iterations": 42,
+      "real_time": 246748,
+      "cpu_time": 246921,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N_log_N/65536",
+      "iterations": 23,
+      "real_time": 565363,
+      "cpu_time": 565778,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N_log_N_BigO",
+      "cpu_coefficient": 1,
+      "real_coefficient": 1,
+      "big_o": "f(N)",
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N_log_N_RMS",
+      "rms": 0.07
+    },
+    {
+      "name": "BM_Complexity_O_N_log_N/1024",
+      "iterations": 3869,
+      "real_time": 3669,
+      "cpu_time": 3671,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N_log_N/2048",
+      "iterations": 1590,
+      "real_time": 8711,
+      "cpu_time": 8716,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N_log_N/4096",
+      "iterations": 654,
+      "real_time": 20687,
+      "cpu_time": 20700,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N_log_N/8192",
+      "iterations": 289,
+      "real_time": 47210,
+      "cpu_time": 47244,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N_log_N/16384",
+      "iterations": 130,
+      "real_time": 106851,
+      "cpu_time": 106926,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N_log_N/32768",
+      "iterations": 41,
+      "real_time": 246713,
+      "cpu_time": 246865,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N_log_N/65536",
+      "iterations": 23,
+      "real_time": 556768,
+      "cpu_time": 557151,
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N_log_N_BigO",
+      "cpu_coefficient": 1,
+      "real_coefficient": 1,
+      "big_o": "NlgN",
+      "time_unit": "ns"
+    },
+    {
+      "name": "BM_Complexity_O_N_log_N_RMS",
+      "rms": 0.06
+    }
+  ]
+}
+
+---------------------------
+Testing CSVReporter Output
+---------------------------
+name,iterations,real_time,cpu_time,time_unit,bytes_per_second,items_per_second,label,error_occurred,error_message
+"BM_Complexity_O1/1",13114,1147.25,1148,ns,,,,,
+"BM_Complexity_O1/8",12751,1117.11,1116.52,ns,,,,,
+"BM_Complexity_O1/64",12411,1127.32,1128.06,ns,,,,,
+"BM_Complexity_O1/512",12578,1121.02,1121.77,ns,,,,,
+"BM_Complexity_O1/4096",12390,1120.42,1121.2,ns,,,,,
+"BM_Complexity_O1/32768",12765,1100.03,1100.79,ns,,,,,
+"BM_Complexity_O1/262144",12721,1111.36,1112.11,ns,,,,,
+"BM_Complexity_O1_BigO",,1120.64,1121.21,(1),,,,,
+"BM_Complexity_O1_RMS",,0.0120482,0.0120922,,,,,,
+"BM_Complexity_O1/1",12378,1113.27,1114.07,ns,,,,,
+"BM_Complexity_O1/8",12615,1115.64,1116.26,ns,,,,,
+"BM_Complexity_O1/64",12340,1110.23,1111.01,ns,,,,,
+"BM_Complexity_O1/512",11870,1114.89,1115.68,ns,,,,,
+"BM_Complexity_O1/4096",12682,1117,1117.78,ns,,,,,
+"BM_Complexity_O1/32768",12625,1101.09,1101.82,ns,,,,,
+"BM_Complexity_O1/262144",13169,1091.7,1092.49,ns,,,,,
+"BM_Complexity_O1_BigO",,1109.12,1109.87,(1),,,,,
+"BM_Complexity_O1_RMS",,0.00780289,0.00778686,,,,,,
+"BM_Complexity_O1/1",12803,1099.63,1100.4,ns,,,,,
+"BM_Complexity_O1/8",13255,1100.28,1101.1,ns,,,,,
+"BM_Complexity_O1/64",12769,1097.75,1098.57,ns,,,,,
+"BM_Complexity_O1/512",12819,1095.3,1096.11,ns,,,,,
+"BM_Complexity_O1/4096",12451,1092,1092.8,ns,,,,,
+"BM_Complexity_O1/32768",12659,1105.05,1105.78,ns,,,,,
+"BM_Complexity_O1/262144",12548,1116.69,1117.52,ns,,,,,
+"BM_Complexity_O1_BigO",,1100.96,1101.76,f(N),,,,,
+"BM_Complexity_O1_RMS",,0.00677097,0.00676843,,,,,,
+"BM_Complexity_O_N/1024",77300,181.648,181.74,ns,,,,,
+"BM_Complexity_O_N/2048",39385,358.326,358.523,ns,,,,,
+"BM_Complexity_O_N/4096",19587,703.348,703.852,ns,,,,,
+"BM_Complexity_O_N/8192",9969,1401.62,1402.65,ns,,,,,
+"BM_Complexity_O_N/16384",5048,2807.7,2806,ns,,,,,
+"BM_Complexity_O_N/32768",2481,5774.85,5778.74,ns,,,,,
+"BM_Complexity_O_N/65536",1197,11315.2,11323,ns,,,,,
+"BM_Complexity_O_N_BigO",,0.173249,0.173357,N,,,,,
+"BM_Complexity_O_N_RMS",,0.0130727,0.0131886,,,,,,
+"BM_Complexity_O_N/1024",77975,181.606,181.742,ns,,,,,
+"BM_Complexity_O_N/2048",39652,355.776,356.04,ns,,,,,
+"BM_Complexity_O_N/4096",19897,706.612,707.15,ns,,,,,
+"BM_Complexity_O_N/8192",10181,1408.75,1409.82,ns,,,,,
+"BM_Complexity_O_N/16384",4994,2811.16,2813.19,ns,,,,,
+"BM_Complexity_O_N/32768",2480,5662.73,5666.46,ns,,,,,
+"BM_Complexity_O_N/65536",1269,11437.3,11445.2,ns,,,,,
+"BM_Complexity_O_N_BigO",,0.174025,0.174146,f(N),,,,,
+"BM_Complexity_O_N_RMS",,0.00792325,0.00792954,,,,,,
+"BM_Complexity_O_N/1024",77194,181.014,181.118,ns,,,,,
+"BM_Complexity_O_N/2048",39648,355.426,355.683,ns,,,,,
+"BM_Complexity_O_N/4096",19794,706.286,706.783,ns,,,,,
+"BM_Complexity_O_N/8192",9985,1408.45,1409.45,ns,,,,,
+"BM_Complexity_O_N/16384",4994,2788.68,2790.78,ns,,,,,
+"BM_Complexity_O_N/32768",2467,5817.37,5820.79,ns,,,,,
+"BM_Complexity_O_N/65536",1242,11281.9,11289.8,ns,,,,,
+"BM_Complexity_O_N_BigO",,0.173066,0.173185,N,,,,,
+"BM_Complexity_O_N_RMS",,0.0194093,0.019335,,,,,,
+"BM_Complexity_O_N_log_N/1024",3821,3596.31,3598.89,ns,,,,,
+"BM_Complexity_O_N_log_N/2048",1390,8518.91,8524.74,ns,,,,,
+"BM_Complexity_O_N_log_N/4096",656,19909.3,19923.6,ns,,,,,
+"BM_Complexity_O_N_log_N/8192",286,45984.3,46014.7,ns,,,,,
+"BM_Complexity_O_N_log_N/16384",133,105657,105717,ns,,,,,
+"BM_Complexity_O_N_log_N/32768",42,241785,241935,ns,,,,,
+"BM_Complexity_O_N_log_N/65536",22,562599,562966,ns,,,,,
+"BM_Complexity_O_N_log_N_BigO",,0.524903,0.525242,NlgN,,,,,
+"BM_Complexity_O_N_log_N_RMS",,0.0746028,0.0746295,,,,,,
+"BM_Complexity_O_N_log_N/1024",3944,3764.23,3766.99,ns,,,,,
+"BM_Complexity_O_N_log_N/2048",1593,8708.39,8714.87,ns,,,,,
+"BM_Complexity_O_N_log_N/4096",629,20488.6,20503.2,ns,,,,,
+"BM_Complexity_O_N_log_N/8192",286,47030.7,47063.7,ns,,,,,
+"BM_Complexity_O_N_log_N/16384",131,106029,106104,ns,,,,,
+"BM_Complexity_O_N_log_N/32768",42,246748,246921,ns,,,,,
+"BM_Complexity_O_N_log_N/65536",23,565363,565778,ns,,,,,
+"BM_Complexity_O_N_log_N_BigO",,0.528859,0.529243,f(N),,,,,
+"BM_Complexity_O_N_log_N_RMS",,0.0677964,0.0678152,,,,,,
+"BM_Complexity_O_N_log_N/1024",3869,3668.66,3670.98,ns,,,,,
+"BM_Complexity_O_N_log_N/2048",1590,8711.16,8716.47,ns,,,,,
+"BM_Complexity_O_N_log_N/4096",654,20686.6,20700.3,ns,,,,,
+"BM_Complexity_O_N_log_N/8192",289,47209.8,47244.2,ns,,,,,
+"BM_Complexity_O_N_log_N/16384",130,106851,106926,ns,,,,,
+"BM_Complexity_O_N_log_N/32768",41,246713,246865,ns,,,,,
+"BM_Complexity_O_N_log_N/65536",23,556768,557151,ns,,,,,
+"BM_Complexity_O_N_log_N_BigO",,0.5226,0.522953,NlgN,,,,,
+"BM_Complexity_O_N_log_N_RMS",,0.0571779,0.0571991,,,,,,
+
+<end of output>
+Test time =   1.18 sec
+----------------------------------------------------------
+Test Passed.
+"complexity_benchmark" end time: May 23 22:03 +06
+"complexity_benchmark" time elapsed: 00:00:01
+----------------------------------------------------------
+
+34/34 Testing: Bench_one_example
+34/34 Test: Bench_one_example
+Command: "/home/over/build/abra_lang/abra_v2/benchmark/build/bench/one_example"
+Directory: /home/over/build/abra_lang/abra_v2/benchmark/build/bench
+"Bench_one_example" start time: May 23 22:03 +06
+Output:
+----------------------------------------------------------
+Run on (8 X 4201 MHz CPU s)
+2017-05-23 22:03:42
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.
+------------------------------------------------------------
+Benchmark                     Time           CPU Iterations
+------------------------------------------------------------
+[0;32mBM_VectorInsert/8    [m[0;33m        73 ns         73 ns [m[0;36m   8928132[m
+[m[0;32mBM_VectorInsert/64   [m[0;33m       240 ns        240 ns [m[0;36m   2921791[m
+[m[0;32mBM_VectorInsert/512  [m[0;33m      1203 ns       1204 ns [m[0;36m    583328[m
+[m[0;32mBM_VectorInsert/4096 [m[0;33m      7390 ns       7395 ns [m[0;36m     94228[m
+[m[0;32mBM_VectorInsert/8192 [m[0;33m     14358 ns      14368 ns [m[0;36m     48799[m
+[m[0;32mBM_SetInsert/8       [m[0;33m       178 ns        178 ns [m[0;36m   3928760[m
+[m[0;32mBM_SetInsert/64      [m[0;33m      1791 ns       1792 ns [m[0;36m    389771[m
+[m[0;32mBM_SetInsert/512     [m[0;33m     17324 ns      17336 ns [m[0;36m     40122[m
+[m[0;32mBM_SetInsert/4096    [m[0;33m    191931 ns     192054 ns [m[0;36m      3648[m
+[m[0;32mBM_SetInsert/8192    [m[0;33m    488766 ns     489110 ns [m[0;36m      1421[m
+[m
+<end of output>
+Test time =   9.01 sec
+----------------------------------------------------------
+Test Passed.
+"Bench_one_example" end time: May 23 22:03 +06
+"Bench_one_example" time elapsed: 00:00:09
+----------------------------------------------------------
+
+End testing: May 23 22:03 +06

@@ -13,7 +13,7 @@ lazy val abra1 = (project in file("abra_v1"))
     assemblyJarName in assembly := "kadabra.jar",
     libraryDependencies ++= Seq(
       "com.github.scopt" %% "scopt" % "3.5.0",
-      "org.antlr" % "antlr4-runtime" % "4.5.3",
+      "org.antlr" % "antlr4-runtime" % "4.7",
       "org.scalatest" % "scalatest_2.11" % "2.2.6" % "test"
     )
   )
@@ -27,7 +27,7 @@ lazy val abra2 = (project in file("abra_v2"))
     assemblyJarName in assembly := "kadabra.jar",
     libraryDependencies ++= Seq(
       "com.github.scopt" %% "scopt" % "3.5.0",
-      "org.antlr" % "antlr4-runtime" % "4.5.3",
+      "org.antlr" % "antlr4-runtime" % "4.7",
       "org.scalatest" % "scalatest_2.11" % "2.2.6" % "test"
     )
   )

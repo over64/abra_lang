@@ -1,0 +1,114 @@
+Performing C++ SOURCE FILE Test HAVE_CXX_FLAG_WSHORTEN_64_TO_32 failed with the following output:
+Change Dir: /home/over/build/abra_lang/abra_v2/benchmark/build/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTryCompileExec4279078509/fast"
+/usr/bin/make -f CMakeFiles/cmTryCompileExec4279078509.dir/build.make CMakeFiles/cmTryCompileExec4279078509.dir/build
+make[1]: Entering directory '/home/over/build/abra_lang/abra_v2/benchmark/build/CMakeFiles/CMakeTmp'
+/usr/bin/cmake -E cmake_progress_report /home/over/build/abra_lang/abra_v2/benchmark/build/CMakeFiles/CMakeTmp/CMakeFiles 1
+Building CXX object CMakeFiles/cmTryCompileExec4279078509.dir/src.cxx.o
+/usr/bin/c++    -std=c++11 -std=c++11 -Wall -Wextra -Wshadow -pedantic -pedantic-errors -DHAVE_CXX_FLAG_WSHORTEN_64_TO_32  -Wshorten-64-to-32   -Wshorten-64-to-32 -o CMakeFiles/cmTryCompileExec4279078509.dir/src.cxx.o -c /home/over/build/abra_lang/abra_v2/benchmark/build/CMakeFiles/CMakeTmp/src.cxx
+c++: error: unrecognized command line option '-Wshorten-64-to-32'
+c++: error: unrecognized command line option '-Wshorten-64-to-32'
+CMakeFiles/cmTryCompileExec4279078509.dir/build.make:57: recipe for target 'CMakeFiles/cmTryCompileExec4279078509.dir/src.cxx.o' failed
+make[1]: *** [CMakeFiles/cmTryCompileExec4279078509.dir/src.cxx.o] Error 1
+make[1]: Leaving directory '/home/over/build/abra_lang/abra_v2/benchmark/build/CMakeFiles/CMakeTmp'
+Makefile:118: recipe for target 'cmTryCompileExec4279078509/fast' failed
+make: *** [cmTryCompileExec4279078509/fast] Error 2
+
+Source file was:
+int main() { return 0; }
+Performing C++ SOURCE FILE Test HAVE_CXX_FLAG_WD654 failed with the following output:
+Change Dir: /home/over/build/abra_lang/abra_v2/benchmark/build/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTryCompileExec3045249021/fast"
+/usr/bin/make -f CMakeFiles/cmTryCompileExec3045249021.dir/build.make CMakeFiles/cmTryCompileExec3045249021.dir/build
+make[1]: Entering directory '/home/over/build/abra_lang/abra_v2/benchmark/build/CMakeFiles/CMakeTmp'
+/usr/bin/cmake -E cmake_progress_report /home/over/build/abra_lang/abra_v2/benchmark/build/CMakeFiles/CMakeTmp/CMakeFiles 1
+Building CXX object CMakeFiles/cmTryCompileExec3045249021.dir/src.cxx.o
+/usr/bin/c++    -std=c++11 -std=c++11 -Wall -Wextra -Wshadow -pedantic -pedantic-errors -Wfloat-equal -fstrict-aliasing -Wzero-as-null-pointer-constant -Wstrict-aliasing -DHAVE_CXX_FLAG_WD654  -wd654   -wd654 -o CMakeFiles/cmTryCompileExec3045249021.dir/src.cxx.o -c /home/over/build/abra_lang/abra_v2/benchmark/build/CMakeFiles/CMakeTmp/src.cxx
+c++: error: unrecognized command line option '-wd654'
+c++: error: unrecognized command line option '-wd654'
+CMakeFiles/cmTryCompileExec3045249021.dir/build.make:57: recipe for target 'CMakeFiles/cmTryCompileExec3045249021.dir/src.cxx.o' failed
+make[1]: Leaving directory '/home/over/build/abra_lang/abra_v2/benchmark/build/CMakeFiles/CMakeTmp'
+make[1]: *** [CMakeFiles/cmTryCompileExec3045249021.dir/src.cxx.o] Error 1
+Makefile:118: recipe for target 'cmTryCompileExec3045249021/fast' failed
+make: *** [cmTryCompileExec3045249021/fast] Error 2
+
+Source file was:
+int main() { return 0; }
+Performing C++ SOURCE FILE Test HAVE_CXX_FLAG_WTHREAD_SAFETY failed with the following output:
+Change Dir: /home/over/build/abra_lang/abra_v2/benchmark/build/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTryCompileExec846790455/fast"
+/usr/bin/make -f CMakeFiles/cmTryCompileExec846790455.dir/build.make CMakeFiles/cmTryCompileExec846790455.dir/build
+make[1]: Entering directory '/home/over/build/abra_lang/abra_v2/benchmark/build/CMakeFiles/CMakeTmp'
+/usr/bin/cmake -E cmake_progress_report /home/over/build/abra_lang/abra_v2/benchmark/build/CMakeFiles/CMakeTmp/CMakeFiles 1
+Building CXX object CMakeFiles/cmTryCompileExec846790455.dir/src.cxx.o
+/usr/bin/c++    -std=c++11 -std=c++11 -Wall -Wextra -Wshadow -pedantic -pedantic-errors -Wfloat-equal -fstrict-aliasing -Wzero-as-null-pointer-constant -Wstrict-aliasing -DHAVE_CXX_FLAG_WTHREAD_SAFETY  -Wthread-safety   -Wthread-safety -o CMakeFiles/cmTryCompileExec846790455.dir/src.cxx.o -c /home/over/build/abra_lang/abra_v2/benchmark/build/CMakeFiles/CMakeTmp/src.cxx
+c++: error: unrecognized command line option '-Wthread-safety'
+c++: error: unrecognized command line option '-Wthread-safety'
+CMakeFiles/cmTryCompileExec846790455.dir/build.make:57: recipe for target 'CMakeFiles/cmTryCompileExec846790455.dir/src.cxx.o' failed
+make[1]: *** [CMakeFiles/cmTryCompileExec846790455.dir/src.cxx.o] Error 1
+make[1]: Leaving directory '/home/over/build/abra_lang/abra_v2/benchmark/build/CMakeFiles/CMakeTmp'
+Makefile:118: recipe for target 'cmTryCompileExec846790455/fast' failed
+make: *** [cmTryCompileExec846790455/fast] Error 2
+
+Source file was:
+int main() { return 0; }
+Determining if the pthread_create exist failed with the following output:
+Change Dir: /home/over/build/abra_lang/abra_v2/benchmark/build/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTryCompileExec2411546087/fast"
+/usr/bin/make -f CMakeFiles/cmTryCompileExec2411546087.dir/build.make CMakeFiles/cmTryCompileExec2411546087.dir/build
+make[1]: вход в каталог «/home/over/build/abra_lang/abra_v2/benchmark/build/CMakeFiles/CMakeTmp»
+/usr/bin/cmake -E cmake_progress_report /home/over/build/abra_lang/abra_v2/benchmark/build/CMakeFiles/CMakeTmp/CMakeFiles 1
+Building C object CMakeFiles/cmTryCompileExec2411546087.dir/CheckSymbolExists.c.o
+/usr/bin/cc    -o CMakeFiles/cmTryCompileExec2411546087.dir/CheckSymbolExists.c.o   -c /home/over/build/abra_lang/abra_v2/benchmark/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c
+Linking C executable cmTryCompileExec2411546087
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTryCompileExec2411546087.dir/link.txt --verbose=1
+/usr/bin/cc       CMakeFiles/cmTryCompileExec2411546087.dir/CheckSymbolExists.c.o  -o cmTryCompileExec2411546087 -rdynamic 
+CMakeFiles/cmTryCompileExec2411546087.dir/CheckSymbolExists.c.o: In function `main':
+CheckSymbolExists.c:(.text+0x16): undefined reference to `pthread_create'
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTryCompileExec2411546087.dir/build.make:88: ошибка выполнения рецепта для цели «cmTryCompileExec2411546087»
+make[1]: *** [cmTryCompileExec2411546087] Ошибка 1
+make[1]: выход из каталога «/home/over/build/abra_lang/abra_v2/benchmark/build/CMakeFiles/CMakeTmp»
+Makefile:118: ошибка выполнения рецепта для цели «cmTryCompileExec2411546087/fast»
+make: *** [cmTryCompileExec2411546087/fast] Ошибка 2
+
+File /home/over/build/abra_lang/abra_v2/benchmark/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <pthread.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef pthread_create
+  return ((int*)(&pthread_create))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+
+Determining if the function pthread_create exists in the pthreads failed with the following output:
+Change Dir: /home/over/build/abra_lang/abra_v2/benchmark/build/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTryCompileExec2683922287/fast"
+/usr/bin/make -f CMakeFiles/cmTryCompileExec2683922287.dir/build.make CMakeFiles/cmTryCompileExec2683922287.dir/build
+make[1]: вход в каталог «/home/over/build/abra_lang/abra_v2/benchmark/build/CMakeFiles/CMakeTmp»
+/usr/bin/cmake -E cmake_progress_report /home/over/build/abra_lang/abra_v2/benchmark/build/CMakeFiles/CMakeTmp/CMakeFiles 1
+Building C object CMakeFiles/cmTryCompileExec2683922287.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -DCHECK_FUNCTION_EXISTS=pthread_create   -o CMakeFiles/cmTryCompileExec2683922287.dir/CheckFunctionExists.c.o   -c /usr/share/cmake-3.0/Modules/CheckFunctionExists.c
+Linking C executable cmTryCompileExec2683922287
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTryCompileExec2683922287.dir/link.txt --verbose=1
+/usr/bin/cc   -DCHECK_FUNCTION_EXISTS=pthread_create    CMakeFiles/cmTryCompileExec2683922287.dir/CheckFunctionExists.c.o  -o cmTryCompileExec2683922287 -rdynamic -lpthreads 
+/usr/bin/ld: cannot find -lpthreads
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTryCompileExec2683922287.dir/build.make:88: ошибка выполнения рецепта для цели «cmTryCompileExec2683922287»
+make[1]: *** [cmTryCompileExec2683922287] Ошибка 1
+make[1]: выход из каталога «/home/over/build/abra_lang/abra_v2/benchmark/build/CMakeFiles/CMakeTmp»
+Makefile:118: ошибка выполнения рецепта для цели «cmTryCompileExec2683922287/fast»
+make: *** [cmTryCompileExec2683922287/fast] Ошибка 2
+
+

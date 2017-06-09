@@ -1,0 +1,81 @@
+def bar = { x: Int, y: Int ->
+    val z = foo(x, y)
+    z.map({ y ->
+        val x = y * 2
+        save(x)
+        x
+    }) }: Seq[Int]
+
+# vs
+
+def bar = { x: Int, y: Int ->
+    val z = foo(x, y)
+    z.map({ y ->
+        val x = y * 2
+        save(x)
+        x
+    })
+}: Seq[Int]
+
+def bar = \x: Int, y: Int ->
+    val z = foo(x, y)
+    z.map(\y ->
+        val x = y * 2
+        save(x)
+        x) end Seq[Int]
+
+val y =
+    match x
+        of 1 ->
+            foo()
+            bar()
+        of 2 -> 1 + 1 end
+
+
+val str = match result of s: String -> s else "none"
+
+def bar = { x: Int, y: Int ->
+    val z = foo(x, y)
+    z.map(\y -> y * 2)
+}: Seq[Int]
+
+match x
+    of 1 -> {
+        foo()
+        bar() }
+    of 2 -> 1 + 1
+    of 3 -> { 1; 1;
+        1     }
+
+match x
+    of 1 ->
+        foo()
+        bar()
+    of 2 -> 1 + 1
+    of 3 -> 1
+    end
+
+if cond then 1 else 2
+
+match x {
+    of 1 ->
+        foo()
+        bar()
+    of 2 -> 1 + 1
+    of 3 -> 1
+}
+
+match x {
+    of 1 ->
+    ({
+        foo()
+        bar()
+    })()
+    of 2 -> 1 + 1
+    of 3 -> 1
+}
+
+
+def bar = { lambda: (Int) -> Int -> lambda(1) }
+val e = 1
+val e2 = bar({x -> x + e}) # 2 expected

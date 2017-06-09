@@ -1,0 +1,80 @@
+import abra.sys
+type Array[T] = (length: Long, self mem: &Mem)
+
+# this code on compiler side
+#self def store[T] = lldef { mem: &Mem, index: Long, value: T ->
+# ; ll assembly
+#}: None
+#
+#self def load[T] = lldef { mem: &Mem, index: Long ->
+# ; ll assembly
+#}: T
+
+def make[T] = { size: Long, init: (Long) -> T ->
+    val mem = sys.dynAlloc[T](size)
+    var i = 0
+
+    while i < size {
+        mem.store(i, init(i))
+        i = i + 1
+    }
+
+    Array[T](size, mem)
+}
+
+def get[T] = \self: Array[T], index: Long -> self.mem.load[T](index)
+def set[T] = \self: Array[T], index: Long, value: T -> self.mem.store(index, value)
+
+import abra.arrays
+import abra.io
+
+def main = {
+    val a = arrays.make(100, \i -> i + 1) # Array[Int](100, NativeStack(100))
+    a(0) = 1
+    io.println(a(1))
+}: Unit
+
+
+import abra.sys
+
+type Seq[T] = (length: T, self mem: &Mem)
+
+def map[T, U] = { self: Seq[T], mapper: (T) -> U ->
+    val mem = sys.dynAlloc[U](self.length)
+    var i = 0
+
+    while i < size {
+        mem.store[U](i, mapper(self.mem.load[T](i)))
+        i = i + 1
+    }
+
+    Seq[U](self.length, mem)
+}
+
+def filter[T] = { self: Seq[T], predicate: (T) -> Boolean ->
+    val mem = sys.openMem[T]()
+    var length = 0
+    var i = 0
+
+    while i < self.length {
+        if predicate(self(i)) then {
+            mem.grow(1)
+            mem.store(length, self(i))
+            length = length + 1
+        }
+        i = i + 1
+    }
+
+    Seq[T](length + 1, mem)
+}
+
+import abra.seq
+import abra.io
+
+def main = {
+    val s1 = seq.of(1, 2, 3, 4, 5, 6) # Seq[Int](6, &NativeStack(6))
+    val s2 = s1.map(\x -> x * 3).filter(\x -> x mod 2 == 0) # Seq[Int](3, ObjectStack)
+    val s3 = s2 # Seq[Int](3, Obstack) COPY from s2
+
+    io.println(s3)
+}

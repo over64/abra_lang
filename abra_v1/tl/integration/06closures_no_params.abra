@@ -6,35 +6,10 @@ def +: (self: Int, other: Int) -> Int = llvm {
 def foo = \fn: () -> Unit ->
     fn()
 
-def main = {
-    var x = 0
+var x = 0
 
-    # anon function (no closure)
-    val y = {
-        1
-    }()
+foo({
+    x = x + 1
+})
 
-    # pass fn pointer as param
-    val z = foo({
-        1
-    })
-
-    #store and call
-    val closure = {
-        x = x + 1
-    }
-    closure()
-
-    # anon call
-    {
-        x = x + 1
-    }()
-
-    foo(closure)
-
-    foo({
-        x = x + 1
-    })
-
-    x + y + z
-}: Int # 6 expected
+# x will be 1

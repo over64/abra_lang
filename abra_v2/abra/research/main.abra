@@ -1,0 +1,157 @@
+# -lSDL2 -lGL -lkazmath -lSOIL
+import abra.int
+import abra.float
+import abra.io
+import abra.sys
+import abra.arrays
+import abra.buffers
+import lib.sdl
+import lib.gl with VertexArray, Shader, ShaderProgram, Texture
+import lib.objLoader
+import lib.kazmath with Mat4
+import lib.soil
+
+type Renderer = (
+    vb: gl.Buffer,
+    vao: VertexArray,
+    program: ShaderProgram,
+    pMatrix: Mat4,
+    vMatrix: Mat4,
+    texture: Texture,
+    rot: Float
+)
+
+
+def mkShader = { shaderType: Int, source: String -?>
+    val shader = gl.createShader(shaderType)?
+    shader.setSource(source)
+    shader.compile()?
+    shader
+}: Shader
+
+def mkProgram = { vertexSource: String, fragmentSource: String -?>
+    val vertex = mkShader(gl.VERTEX_SHADER, vertexSource)?
+    val fragment = mkShader(gl.FRAGMENT_SHADER, fragmentSource)?
+    val program = gl.createProgram()?
+
+    program.attachShader(vertex)
+    program.attachShader(fragment)
+    program.link()?
+    program
+}: ShaderProgram
+
+def mkRenderer = { -?>
+    gl.enable(gl.DEPTH_TEST)
+    # gl.clearColor(0.2117, 0.0823, 0.2784)
+    gl.clearColor(0.9, 0.9, 0.9)
+    val mesh = objLoader.load('cube.obj')?
+    val program = mkProgram('
+        #version 130
+        in vec3 vertexPos;
+        in vec2 uv;
+        in vec3 normal;
+        out vec2 texCoord;
+
+        uniform mat4 P;
+        uniform mat4 V;
+        uniform mat4 M;
+
+        void main() {
+            texCoord = uv;
+            gl_Position = P * V * M * vec4(vertexPos.xyz, 1.0);
+        }
+    ','
+        #version 130
+        in vec2 texCoord;
+        out vec4 color;
+
+        uniform sampler2D tex;
+        void main() {
+            color = texture2D(tex, texCoord);
+        }
+    ')?
+
+    val vb = gl.genBuffer()
+    vb.bind(gl.ARRAY_BUFFER)
+    vb.data(gl.ARRAY_BUFFER, mesh.array, gl.STATIC_DRAW)
+    mesh.free()
+
+    val vao = gl.genVertexArray()
+    vao.bind()
+    vb.bind(gl.ARRAY_BUFFER)
+
+    val attribVertexPos = program.attribLocation('vertexPos')
+    val attribUV = program.attribLocation('uv')
+    val attribNormal = program.attribLocation('normal')
+
+    val stride = (3 + 2 + 3) * float.SIZE # 3 vertex coords + 2 uv coords + 3 normal coords
+    gl.vertexAttribPointer(attribVertexPos, 3, gl.FLOAT, false, stride, 0)
+    gl.vertexAttribPointer(attribUV, 2, gl.FLOAT, false, stride, 3 * float.SIZE)
+    gl.vertexAttribPointer(attribNormal, 3, gl.FLOAT, false, stride, (3 + 2) * float.SIZE)
+
+    val texture = gl.genTexture()
+    texture.bind(gl.TEXTURE_2D)
+    texture.loadFromFile('tex.png', soil.LOAD_AUTO, soil.FLAG_INVERT_Y)
+
+    val pMatrix = kazmath.perspective(45.0, 640.0 / 480.0, 0.01, 100.0)
+
+    # должны импортироваться конструкторы!
+    val eye = kazmath.Vec3(0.0, 1.0, 5.0)
+    val center = kazmath.Vec3(0.0, 0.0, 0.0)
+    val up = kazmath.Vec3(0.0, 1.0, 0.0)
+    val vMatrix = kazmath.lookAt(eye, center, up)
+
+    Renderer(vb, vao, program, pMatrix, vMatrix, texture, 0.0)
+}: Renderer
+
+def render = { self: Renderer ->
+    gl.clear(gl.COLOR_BUFFER_BIT or gl.DEPTH_BUFFER_BIT)
+    val identity = kazmath.identity4
+    val mMatrix = identity.rotateY(self.rot)
+    self.rot = self.rot + 0.03
+
+    self.program.use()
+
+    val attribVertexPos = self.program.attribLocation('vertexPos')
+    val attribUV = self.program.attribLocation('uv')
+    val attribNormal = self.program.attribLocation('normal')
+
+    val locationP = self.program.uniformLocation('P')
+    val locationV = self.program.uniformLocation('V')
+    val locationM = self.program.uniformLocation('M')
+    val locationTex = self.program.uniformLocation('tex')
+
+    self.program.uniformMatrix4(locationP, self.pMatrix)
+    self.program.uniformMatrix4(locationV, self.vMatrix)
+    self.program.uniformMatrix4(locationM, mMatrix)
+
+    self.vao.bind()
+    gl.enableVertexAttribArray(attribVertexPos)
+    gl.enableVertexAttribArray(attribUV)
+    gl.enableVertexAttribArray(attribNormal)
+
+    gl.activeTexture(gl.TEXTURE0)
+    self.texture.bind(gl.TEXTURE_2D)
+    self.program.uniform1i(locationTex, 0)
+
+    gl.drawArrays(gl.TRIANGLES, 0 , 36)
+}: Unit
+
+def main = { -?>
+    sdl.init(sdl.INIT_VIDEO)?
+
+    val window = sdl.createWindow('ABRA Lang Demo 0!', 100, 100, 640, 480,
+        sdl.WINDOW_SHOWN or sdl.WINDOW_OPENGL or sdl.WINDOW_RESIZABLE)
+    val glContext = window.glCreateContext()
+    val renderer = mkRenderer()?
+
+    var running = true
+    while running {
+        sdl.pollEvents({ event ->
+            if event.eventType == sdl.EVENT_QUIT then running = false
+        })
+
+        renderer.render()
+        window.glSwap()
+    }
+}: Unit

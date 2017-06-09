@@ -1,0 +1,74 @@
+type &R = (x: Int, y: Int)
+
+def main = {
+    # &R is reference type =>
+    #   x is mutable => x @ RC
+    var r1 = &R(1, 2)
+    if cond then
+        r1 = &R(1, 1)
+}
+
+
+def filter[T] = { self: Seq[T], predicate: (T) -> Boolean ->
+    val mem = sys.openMem[T]()
+    var length = 0
+    var i = 0
+
+    while i < self.length {
+        if predicate(self(i)) then {
+            mem.grow(1)
+            mem.store(length, self.mem.load[T](i))
+            length = length + 1
+        }
+        i = i + 1
+    }
+
+    Seq[T](length + 1, mem)
+}
+
+def main = {
+    # Seq is value type => s @ NativeStack
+    # Seq.length is value type => s.length @ NativeStack
+    # Seq.mem is referenceType =>
+    #   s.mem is immutable =>
+    #       s.mem is allocStatic => seq.mem @ NativeStack
+    val s = seq.of(
+        &R(0, 0),
+        &R(1, 1)) # Seq[&R] @ NativeStack
+
+    val s2 = s.filter(\r -> r.x != 0) # Seq[&R] @ ObjectStack
+}
+
+type C = (x: Int, r: &R)
+
+def main = {
+    # C is value type => x @ NativeStack
+    # C.r is reference type =>
+    #   x.r is mutable => x.r @ RC
+    val x = C(1, &R(0, 0))
+    x.r = &R(1, 1)
+}
+
+type String = (length: Int, mem: &Mem)
+
+def readLine = {
+    val mem = sys.allocDyn[Byte](64)
+    var idx = 0
+    var read = readRaw(idx, buff)
+
+    while read == 64 {
+        idx = idx + 64
+        mem.grow(64)
+        readRaw(idx, buff)
+    }
+}
+
+type D = (s1: String, x: Int)
+
+def main = {
+    # D is value type => x @ NativeStack
+    # D.s1 is String => x.s1 @ RC
+    val x = D('hello', 1)
+    # x.s1 is static String => no free for x.s1
+    x.s1 = io.readLine()
+}

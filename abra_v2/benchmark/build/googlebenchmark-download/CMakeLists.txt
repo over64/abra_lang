@@ -1,0 +1,14 @@
+cmake_minimum_required(VERSION 2.8.2)
+
+project(googlebenchmark-download NONE)
+
+include(ExternalProject)
+ExternalProject_Add(googlebenchmark-download
+                    GIT_REPOSITORY;https://github.com/google/benchmark.git;GIT_TAG;master
+                    SOURCE_DIR          "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-src"
+                    BINARY_DIR          "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build"
+                    CONFIGURE_COMMAND   ""
+                    BUILD_COMMAND       ""
+                    INSTALL_COMMAND     ""
+                    TEST_COMMAND        ""
+)

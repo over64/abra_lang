@@ -1,0 +1,72 @@
+type StateMachine[S] = (someUnrelatedValue: Int, state: S)
+
+type StateA = (startValue: String)
+type StateB = (internValue: Seq[String])
+type StateC = (finalValue: Int)
+
+def step = \self: StateMachine[StateA] ->
+    StateMachine(
+        self.someUnrelatedValue,
+        StateB(internValue = self.state.startValue.split(' '))
+
+def step = \self: StateMachine[StateB] ->
+    StateMachine(
+        self.someUnrelatedValue,
+        StateC(finalValue = self.state.internValue.length))
+
+
+def main = {
+    val inStateA = StateMachine(someUnrelatedValue = 0, StateA('бла бла бла'))
+
+    val inStateB = inStateA.step
+    io.println('Промежуточное значение: ${inStateB.state.internValue}')
+
+    # И наше заключительное состояние
+    val inStateC = inStateB.step
+    io.println('Конечное значение: ${inStateC.state.finalValue}')
+}
+
+
+type FSM[T] = (fn: (T) -> FSM[T])
+
+type Money = M5 | M10
+type M5 = ()
+type M10 = ()
+
+def readMoney = { ->
+    rescue
+        match io.readInt()?
+            of 5 -> M5
+            of 10 -> M10
+            of _ -> readMoney() # match conflict with rescue
+    of e: IOErr -> io.print(e.writer, io.stderr); readMoney()
+}: Money
+
+def give \m: Money -> io.println('keep the change: $m')
+def makeChoco = io.println('got choco')
+
+def s0 =
+    match readMoney()
+        of M5 -> FSM(s5)
+        of M10 -> FSM(s10)
+
+def s5 =
+    match readMoney()
+        of M5 -> FSM(s10)
+        of M10 -> FSM(s15)
+
+def s10 =
+    match readMoney()
+        of M5 -> FSM(s15)
+        of M10 -> { makeChoco(); FSM(s0) }
+
+def s15 =
+    match readMoney()
+        of M5 -> { makeChoco(); FSM(s0) }
+        of M10 -> { give(M5); makeChoco(); FSM(s0) }
+
+
+def main = { ->
+    var state: FSM[None] = s0
+    while true { state = state.fn() }
+}

@@ -1,0 +1,52 @@
+type Nil = lltype { void }
+type Node[T] = (value: T, next: *List[T])
+type List[T] = Nil | Node[T]
+
+def prepend[T] = { self: *List[T], value: T ->
+    match *self {
+        of Node(value, next) ->
+            val middle = Node(self.value, self.next)
+            self.value = value
+            self.next = &middle
+        of Nil -> *self = Node(value, Nil)
+    }
+}: None
+
+def forEach[T] = \self: List[T], fn: (T) -> None ->
+    match self
+        of Node(x, next) -> { fn(x); (*next).forEach(fn) }
+        of Nil -> None
+
+def main = {
+    val list = Node(1, &Node(2, &Nil))
+    (&list).prepend(0)
+    list.forEach(\x -> io.print(x))
+}: None
+
+#  value \\ vs // ref types
+
+
+type Nil = lltype { void }
+type &Node[T] = (value: T, next: &List[T])
+type &List[T] = Nil | &Node[T]
+
+def prepend[T] = { self: &List[T], value: T ->
+    &Node(value, self)
+}: &List[T]
+
+def forEach[T] = \self: &List[T], fn: (T) -> None ->
+    match self
+        of &Node(x, next) -> { fn(x); next.forEach(fn) }
+        of Nil -> None
+
+def main = {
+    val list = &Node(1, &Node(2, Nil))
+    val list2 = list.prepend(0)
+    list2.forEach(\x -> io.print(x))
+}: None
+
+type &String = llvm { i8* }
+type &Int = llvm { i32* }
+def &Int = lldef { v: Int ->
+    ; self: i32**
+}: &Int

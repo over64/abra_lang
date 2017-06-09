@@ -53,9 +53,9 @@ class IntegrationTests extends FunSuite {
   test("get and set") {
     assertRunEquals("tl/integration/05get_and_set.abra", Seq("integration"))(exit = Some(3))
   }
-//  test("closures no params") {
-//    assertRunEquals("tl/integration/06closures_no_params.abra", Seq("integration"))(exit = Some(6))
-//  }
+  test("closures no params") {
+    assertRunEquals("tl/integration/06closures_no_params.abra", Seq("integration"))(exit = Some(6))
+  }
   test("closure struct") {
     assertRunEquals("tl/integration/07closure_struct.abra", Seq("integration"))(exit = Some(2))
   }
