@@ -24,3 +24,22 @@ import io = abra.io with IOError
 
 def main =
     io.print('Hello world').?IOError
+
+
+type IOError = (errno: Int, trace: STrace)
+def toString = \self: IOError -> '${io.perror(self.errno)} -> \n $trace'
+
+# io
+def readline = {
+}: String | IOError
+
+def readTwoLines = (l1: io.readline?(), l2: io.readline?()) # (l1: String, l2: String) | IOError
+def bar = { s1: String, s2: String ->
+    s1 + s2
+    # any code
+}: String | ConcatErr
+
+def main = {
+    val (l1, l2) = readTwoLines?
+    bar?(l1, l2)
+}

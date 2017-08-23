@@ -31,7 +31,8 @@ fn main() {
                                  // изменяемое
 }
 
-data Person = (name: String, age: uByte)
+#1
+type Person = (name: String, age: uByte)
 
 def celebrateBirthday = { self: Person ->
     self.age += 1
@@ -43,3 +44,39 @@ def main = {
     jill.celebrateBirthday.?IOErr
     jill.name.println.?IOErr
 }: Unit | IOErr
+
+# 2
+type Person = (name: String, age: uByte)
+
+def celebrateBirthday = self: Person ->
+    self.age = self.age + 1
+    '${self.name} is now ${self.age} years old!'.println?()
+: Unit
+
+def main = ->
+    val jill = Person(name = 'Jill', age = 19)
+    jill.celebrateBirthday?()
+    jill.name.println?()
+: Unit
+
+def fact = x: Int ->
+    if x == 1 then 1
+    else x * fact(x - 1)
+: Int
+
+# 3
+
+def celebrateBirthday = \self: Person ->
+    self.age = self.age + 1
+    '${self.name} is now ${self.age} years old!'.println?()
+. Unit
+
+def main =
+    val jill = Person(name = 'Jill', age = 19)
+    jill.celebrateBirthday?()
+    jill.name.println?()
+. Unit
+
+def fact = \x: Int ->
+    if x == 1 do 1 else x * fact(x - 1)
+. Int

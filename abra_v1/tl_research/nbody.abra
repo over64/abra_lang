@@ -122,3 +122,27 @@ def main = {
 
   energy(bodies).print(digits = 9).?IOErr
 }: Unit | MainError
+
+
+def advance = \bodies: Planet, dt: Double ->
+  bodies.zipWithIndex forEach \b, i ->
+    (i + 1 to bodies.length) forEach \j ->
+      bodies.unsafeUpdate(j, \b2 ->
+        val (dx, dy, dz) = (b.x - b2.x, b.y - b2.y, b.z - b2.z)
+        val dist2 = dx * dx + dy * dy + dz * dz
+        val mag = dt / (dist2 * math.sqrt(dist2))
+
+        b.vx = b.vx - dx * b2.mass * mag
+        b.vy = b.vy - dy * b2.mass * mag
+        b.vz = b.vz - dz * b2.mass * mag
+
+        b2.vx = b2.vx + dx * b.mass * mag
+        b2.vy = b2.vy + dy * b.mass * mag
+        b2.vz = b2.vz + dz * b.mass * mag
+      ) ..
+
+  bodies forEach  \b ->
+    b.x = b.x + dt * b.vx
+    b.y = b.y + dt * b.vy
+    b.z = b.z + dt * b.vz .
+:Unit

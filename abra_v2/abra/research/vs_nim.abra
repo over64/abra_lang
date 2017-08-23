@@ -1,0 +1,35 @@
+ proc doWork(inFilenames: seq[string] = nil,
+             outFilename: string = nil,
+             ignoreCase: bool = false) {.raises: [IOError].} =
+   # Open files
+   var
+     infiles: seq[File] = @[stdin]
+     outfile: File = stdout
+   if inFilenames != nil and inFilenames.len > 0:
+     infiles = inFilenames.mapIt(File, (proc (filename: string): File =
+     if not open(result, filename):
+        raise newException(IOError, "Failed to open file: " & filename)
+     )(it))
+   if outFilename != nil and outFilename.len > 0 and not open(outfile, outFilename, fmWrite):
+     raise newException(IOError, "Failed to open file: " & outFilename)
+
+   # Parse words
+   var counts = initCountTable[string]()
+   for infile in infiles:
+     for line in infile.lines:
+       let input = if ignoreCase: line.tolower() else: line
+       let words = try: input.findAll(peg"\w+") except: @[]
+       for word in words:
+         counts.inc(word)
+
+   # Write counts
+   var words = toSeq(counts.keys)
+   sort(words, cmp)
+   for word in words:
+     outfile.writeln(counts[word], '\t', word)
+
+def doWork = { inFilenames: Seq[String] | None = None,
+               outFilename: String | None = None,
+               ignoreCase: Boolean = false ->
+    val (i)
+}: None | IOErr

@@ -1,0 +1,38 @@
+def foo = \x: Int, y: Int ->
+    io.println(x)
+    io.println(y)
+    x + y
+
+def bar = \x: Int, y: Int, fn: (Int, Int) -> Float -> fn(x, y)
+
+def main =
+    val z =
+        if io.args(0) == 'greet' then
+            io.println('Hello!')
+            1
+        else bar(1, 2, \x, y -> x / y)
+
+    (1 to 10)
+        .map(\x -> x + 1)
+        .filter(\x -> x mod 2 == 0)
+        .take(5)
+        .forEach(1, 2, \x ->
+            io.println(x)
+            io.println(x + 1)
+            foo(x))
+
+
+type Vec3 = (x: Float, y: Float, z: Float)
+type StringOption = String | None
+type Int = llvm { i32 }
+
+def bar = &f: Vec2, g: Int ->
+	val x = if x > 0 then x + 1 else 0
+	val y =
+		seq.of(1, 2, 3)
+		.map| x ->
+			val i = io.readInt?()
+			x + i
+		.forEach| 1, 2, x ->
+			println(x)
+			println(x)

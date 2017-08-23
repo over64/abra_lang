@@ -1,0 +1,73 @@
+import abra.taskShell
+import abra.kadabra with KadabraErr
+import abra.sh with ShErr
+import abra.os with NotifyErr
+
+#	Task('download', { ctx ->
+#	    sh.cd('deps', create = true)?
+#
+#	    val downloadOne = { uname: String, pkg: String, ver: String ->
+#	        sh.cd('$uname/$pkg/$ver', create = true)?
+#
+#	        if sh.exists('$ver.zip') return
+#	        curl.get('phenomena.org/repo/$uname/$pkg/$ver.zip')?
+#
+#	        zip.unzip('$ver.zip')?
+#	        sh.rm('$ver.zip')?
+#	    }: None | DownloadErr
+#
+#		downloadOne(uname = 'over', pkg = 'sdl', ver = '2.11.1')?
+#		downloadOne(uname = 'over', pkg = 'opengl', ver = '1.0.0')?
+#	}),
+#	Task('upload',  { ctx ->
+#	    val uname = io.readLine()
+#	    val passwd = io.readLine()
+#
+#
+#	}),
+def binName = if os.isUnix then 'demo' else 'demo.exe'
+def main =
+    taskShell.eval(
+        taskShell.download(name='download', dir='deps', libs = seq.of(
+            ('over', 'sdl2', '2.11.1'),
+            ('over', 'opengl3.3', '1.0.0')
+        )),
+        Task('compile', { ctx ->
+            ctx.run('download')?
+            val watchIncremental = if ctx.background then true else false
+            kadabra.compile(main = 'src/main.abra', include = 'deps', target='target/', binName, watchIncremental)?
+        }),
+        Task('run', { ctx ->
+            if ctx.background then {
+                cxt.run('&compile')?
+                os.fnotify(on = 'target/$binName', { sh('target/$binName')? })?
+            } else {
+                cxt.run('compile')?
+                sh('target/$binName')?
+            }
+        })
+    )
+
+
+
+
+# abra shell.abra
+import abra.taskShell
+import abra.kadabra
+import abra.sh
+
+def binName = if os.isUnix then 'demo' else 'demo.exe'
+def main =
+    taskShell.eval(seq.of(
+        taskShell.download(name='download', dir='deps', libs = seq.of(
+            ('over', 'abra-platform-pc', '1.0.99'),
+            ('over', 'sdl2', '2.11.1'),
+            ('over', 'opengl3.3', '1.0.0')
+        )),
+        Task('run', { ctx ->
+            ctx.run('download')?
+            kadabra.compile(main = 'src/main.abra', include = 'deps', target='target/', binName)?
+            sh('target/$binName')?
+        })
+    ))
+

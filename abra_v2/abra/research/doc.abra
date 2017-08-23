@@ -1,0 +1,11 @@
+def bar: (x: Int, y: Int, z: Int) -> Int = markdownComment('
+    This is the function for lalala
+', { x, y, z ->
+
+})
+
+def bar =doxygen('
+    This is the function for lalala
+', { x: Int, y: Int, z: Int ->
+    x + y + z
+})

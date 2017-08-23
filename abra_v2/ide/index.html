@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="">
+  </head>
+  <style type="text/css">
+    @font-face {
+        font-family: FiraMono;
+        src: url("fonts/FiraMono-Regular.otf") format("opentype");
+    }
+
+    @font-face {
+        font-family: FiraMono;
+        font-weight: bold;
+        src: url("fonts/FiraMono-Bold.otf") format("opentype");
+    }
+    html, body {
+        font-family: FiraMono;
+        height: 100%;
+    }
+    .flex-container {
+      display: flex;
+      margin: 0;
+    }
+    .tree {
+      display: flex;
+      flex-direction: column;
+      background-color: #eee;
+      width: 300px;
+      align-content: stretch;
+      padding: 10px 0px 10px 0px;
+    }
+    .folder-item {
+      white-space:nowrap;
+      margin-left: 10px;
+      overflow: hidden; 
+      /*background-color: #eee;*/
+      /* font-size: 18px; */
+    }
+    .item-caption:hover {
+      background-color: #8ccc88;
+    }
+    .code-editor {
+
+    }
+    .fa-folder, .fa-folder-open, .fa-file {
+      color: #319831; 
+    }
+    .tree-splitter {
+      padding: 3px 0px 3px 3px;
+      background-color: #eaea6e;
+      white-space:nowrap;
+      overflow: hidden; 
+    }
+    .source-path {
+      font-size: 14px;
+      margin-left: 10px;
+    }
+    .code-editor {
+      display: flex;
+      flex-basis:100%;
+    }
+  </style>
+  <body class="flex-container">
+    <div class="tree" id="tree">
+      <button style="display: block; position: relative; z-index:9000">tree</button>
+      <div class="tree-splitter">
+        <div class="item-caption"><i class="fa fa-folder-open" aria-hidden="true"></i> Source</div>
+        <div class="source-path">/home/over/build/test_lang/abra_v1/tl/sdl</div>
+      </div>
+      <div class="folder-item">
+        <div class="item-caption"><i class="fa fa-folder-open" aria-hidden="true"></i> lib</div>
+        <div class="folder-item"><div class="item-caption"><i class="fa fa-file" aria-hidden="true"></i> gl.abra</div></div>
+        <div class="folder-item"><div class="item-caption"><i class="fa fa-file" aria-hidden="true"></i> kazmath.abra</div></div>
+        <div class="folder-item"><div class="item-caption"><i class="fa fa-file" aria-hidden="true"></i> objLoader.abra</div></div>
+        <div class="folder-item"><div class="item-caption"><i class="fa fa-file" aria-hidden="true"></i> sdl.abra</div></div>
+        <div class="folder-item"><div class="item-caption"><i class="fa fa-file" aria-hidden="true"></i> soil.abra</div></div>
+      </div>
+      <div class="folder-item">
+        <div class="item-caption"><i class="fa fa-folder" aria-hidden="true"></i> target</div>
+      </div>
+      <div class="folder-item"><div class="item-caption"><i class="fa fa-file" aria-hidden="true"></i> main.abra</div></div>
+
+
+
+<!--       <div class="tree-splitter">
+        <div class="item-caption"><i class="fa fa-folder-open" aria-hidden="true"></i> Local libs</div>
+        <div class="source-path">/home/over/abra</div>
+      </div>
+      <div class="folder-item">
+        <div class="item-caption"><i class="fa fa-folder-open" aria-hidden="true"></i> abra@0.0.1</div>
+        <div class="folder-item"><div class="item-caption"><i class="fa fa-file" aria-hidden="true"></i> arrays.abra</div></div>
+        <div class="folder-item"><div class="item-caption"><i class="fa fa-file" aria-hidden="true"></i> buffers.abra</div></div>
+        <div class="folder-item"><div class="item-caption"><i class="fa fa-file" aria-hidden="true"></i> float.abra</div></div>
+        <div class="folder-item"><div class="item-caption"><i class="fa fa-file" aria-hidden="true"></i> int.abra</div></div>
+        <div class="folder-item"><div class="item-caption"><i class="fa fa-file" aria-hidden="true"></i> io.abra</div></div>
+        <div class="folder-item"><div class="item-caption"><i class="fa fa-file" aria-hidden="true"></i> sys.abra</div></div>
+      </div> -->
+
+      <div class="tree-splitter">
+        <div class="item-caption"><i class="fa fa-folder" aria-hidden="true"></i> Local libs</div>
+      </div>
+    </div>
+    <div id="code-editor" class="code-editor"></div>
+
+    <!-- jQuery first, then Tether, then Bootstrap JS. -->
+    <script src="http://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+    <script src="http://code.interactjs.io/v1.2.9/interact.min.js"></script>
+    <script src="/bower_components/ace-builds/src/ace.js" type="text/javascript" charset="utf-8"></script>
+    <script type="text/javascript">
+      $(function() {
+        interact('#tree')
+          .resizable({
+            preserveAspectRatio: false,
+            edges: { right: true}
+          })
+          .on('resizemove', function (event) {
+            var target = event.target;
+            target.style.width  = event.rect.width + 'px';
+          });
+        var editor = ace.edit("code-editor");
+        editor.setTheme("ace/theme/xcode");
+        editor.setOptions({
+          fontFamily: "FiraMono",
+          fontSize: "16px"
+        });
+        editor.getSession().setMode("ace/mode/javascript");
+      });
+  </script>
+  </body>
+</html>
