@@ -16,6 +16,6 @@ def main = {
   1.twice   # self call via prop
   # OCaml: twice twice 1 # <--
   # JS: twice(twice(1)) # <--
-  # Abra 1.twice.twice # -->
+  # Abra: 1.twice.twice # -->
   1()       # apply call
 }: Int

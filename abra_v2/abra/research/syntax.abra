@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 def foo = \x: Int, y: Int ->
     io.println(x)
     io.println(y)
@@ -36,3 +37,131 @@ def bar = &f: Vec2, g: Int ->
 		.forEach| 1, 2, x ->
 			println(x)
 			println(x)
+=======
+def main = ->
+    seq.of(1, 2, 3, 4, 5)
+    .map(x -> x + 1)
+    .forEach(x ->
+        logger.info(fd -> 'x is $x'.write(fd))
+        io.println(x + 1))
+
+    val y =
+        if x mod 2 == 0 then 0
+        else 1 :
+
+    val z = match bar()
+        of 1 -> logger.info(fd -> 'has 1'.write(fd)) ; 2
+        of v -> v * 2 :
+    io.println(z) :
+
+def main = ->
+    val fn = x: Int, y: Int ->
+        val z = io.readInt()
+        io.println(x + y + z) : None
+
+    seq.of(1, 2, 3, 4, 5)
+    .map(x -> x + 1)
+    .forEach(x ->
+        logger.info(fd -> 'x is $x'.write(fd))
+        io.println(x + 1))
+
+    val y = if x mod 2 == 0 then 0 else 1 :
+
+    val z = match bar()
+        of 1 -> logger.info(fd -> 'has 1'.write(fd)) ; 2
+        of v -> v * 2 :
+    io.println(z)
+: None
+
+# comment
+def main = ->
+    val fn = x: Int, y: Int ->
+        val z = io.readInt()
+        io.println(x + y + z) end
+
+    seq.of(1, 2, 3, 4, 5)
+    .map(x -> x + 1)
+    .forEach(x ->
+        logger.info(fd -> 'x is $x'.write(fd))
+        io.println(x + 1))
+
+    val y = if x mod 2 == 0 do 0 else 1 end
+
+    val z = match bar()
+        of 1 -> logger.info(fd -> 'has 1'.write(fd)) ; 2
+        of v -> v * 2 end
+
+    io.println(z) end None
+
+def main = ->
+    val fn = x: Int, y: Int ->
+        val z = io.readInt()
+        io.println(x + y + z) :
+
+    seq.of(1, 2, 3, 4, 5)
+    .map(x -> x + 1)
+    .forEach(x ->
+        logger.info(fd -> 'x is $x'.write(fd))
+        io.println(x + 1))
+
+    val y = if x mod 2 == 0 do 0 else 1 :
+
+    val z = match bar()
+        of 1 -> logger.info(fd -> 'has 1'.write(fd)) ; 2
+        of v -> v * 2 :
+
+    io.println(z) : None
+
+class FollowCameraSystem(
+    private val cam: Camera
+) : IteratingSystem(
+    Family.all(CameraComponent::class.java, TransformComponent::class.java).get()
+) {
+    override fun processEntity(entity: Entity?, deltaTime: Float) {
+        val targetC = Mappers.transform[entity] ?: return
+        val camC = Mappers.camera[entity] ?: return
+
+        if (targetC.pos.x - camC.leftBottomCorner.x > cam.viewportWidth / 2) {
+            if (camC.rightUpperCorner.x - targetC.pos.x > cam.viewportWidth / 2) {
+                cam.position.x = targetC.pos.x
+            } else {
+                cam.position.x = camC.rightUpperCorner.x - cam.viewportWidth / 2
+            }
+        } else {
+            cam.position.x = camC.leftBottomCorner.x + cam.viewportWidth / 2
+        }
+
+        if (targetC.pos.y - camC.leftBottomCorner.y > cam.viewportHeight / 2) {
+            if (camC.rightUpperCorner.y - targetC.pos.y > cam.viewportHeight / 2) {
+                cam.position.y = targetC.pos.y
+            } else {
+                cam.position.y = camC.rightUpperCorner.y - cam.viewportHeight / 2
+            }
+        } else {
+            cam.position.y = camC.leftBottomCorner.y + cam.viewportHeight / 2
+        }
+    }
+}
+
+
+def process = entity: Entity | None, delta: Float ->
+    val target = mappers.transform(entity)
+    val cam = mappers.camera(entity)
+
+    val posX =
+        if target.pos.x - cam.leftBottom.x > cam.vpWidth / 2 do
+            if cam.rightUpper.x - target.pos.x > cam.vpWidth / 2 do target.pos.x
+            else cam.rightUpper.x - cam.vpWidth / 2 end
+        else
+            cam.leftBottom.x + cam.vpWidth / 2 end
+
+    val posY =
+        if target.pos.y - cam.leftBottom.y > cam.vpHeight / 2 do
+            if cam.rightUpper.y - target.pos.y > cam.vpHeight / 2 do target.pos.y
+            else cam.rightUpper.y - cam.vpHeight / 2 end
+        else
+            cam.leftBottom.y + cam.vpHeight / 2 end
+
+    cam.position = (posX, posY)
+end None
+>>>>>>> some research

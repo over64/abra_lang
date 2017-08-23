@@ -1,0 +1,12 @@
+type MyInt = llvm { i32 }
+
+def make = llvm { i: Int ->
+    ret i32 %i
+}: MyInt
+
+def toInt = llvm { i: MyInt ->
+    ret i32 %i
+}: Int
+
+def main =
+    toInt(make(42))

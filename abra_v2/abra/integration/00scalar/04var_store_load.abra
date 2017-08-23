@@ -1,0 +1,5 @@
+def main = {
+    var x: Int = 42
+    x = 3
+    x
+}

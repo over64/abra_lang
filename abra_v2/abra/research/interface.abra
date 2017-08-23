@@ -1,0 +1,72 @@
+# interface emulation via higher-kinded types
+
+# lib/resolver.abra
+type Resolver[T] = (
+    self env: T,
+    self typeRef: (T, TypeRef) -> Type,
+    self closure: (T, String | None, String) -> Closure)
+
+def typeRef = \self: Resolver, ref: TypeRef ->
+    self.typeRef(self.env, ref)
+def closure = \self: Resolver, pkg: String | None, name: String ->
+    self.closure(self.env, pkg, name)
+
+# lib/resolvers/moduleResolver
+import lib@self/moduleResolver
+
+type ModuleSetResolver = (modules: Seq[Module])
+
+def typeRef = { self: ModuleSetResolver, ref: TypeRef -> }
+def closure = { self: ModuleSetResolver, pkg: String | None, name: String -> }
+
+def make = \set: Seq[Module] =
+   Resolver(ModuleSetResolver(set), typeRef, closure)
+
+trait Any
+type Seq = (length: Long, mem: Mem)
+
+def makeStatic = { a: Any, b: Any, c: Any ->
+    val mem = staticMem(3)
+    mem.store(0, a)
+    mem.store(1, b)
+    mem.store(2, c)
+}: Seq
+
+val s = seq.makeStatic(1, 2, 'haha') # Seq[Int | String]
+val m = map.makeStatic(
+    1 to 'x',
+    'x' to 1.0,
+    1 to 1.0
+) # Map[Int | String, String | Float]
+# Map[String, Resolver[Float]]
+
+
+# closures & factory method!
+
+type Resolver = (
+    typeRef: (ref: TypeRef) -> Type,
+    closure: (pkg: String | None, name: String) -> Closure
+)
+
+type ModuleSetResolver = (modules: Seq[Module])
+
+def typeRef = { self: ModuleSetResolver, ref: TypeRef -> }
+def closure = { self: ModuleSetResolver, pkg: String | None, name: String -> }
+
+def make = \set: Seq[Module] = {
+    val env = ModuleSetResolver(set)
+    Resolver(\ref -> env.typeRef(ref), \pkg, name -> env.closure(pkg, name))
+    # stack:
+    # Ret$0 {
+    #   env
+    #   closure0 {
+    #     fnPtr -> global
+    #     $env -> env
+    #   }
+    #   closure1 {
+    #     fnPtr -> global
+    #     $env -> env
+    #   }
+    #   ret: Resolver(typeRef -> closure0, closure -> closure1)
+    # }
+}

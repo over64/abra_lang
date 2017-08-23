@@ -1,0 +1,12 @@
+import(model = f30x) abra.stm32.irq
+import(model = f30x) abra.stm32.dma
+
+def main = {
+    val data = array.static[Byte](256)
+    var dma1Done = false
+
+    irq.with(
+        dma1Channel1 = { dma1Done = dma.isDone }
+        loop = { while !dma1Done { io.noop() } }
+    )
+}
