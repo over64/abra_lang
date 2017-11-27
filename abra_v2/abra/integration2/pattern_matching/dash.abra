@@ -1,0 +1,3 @@
+def main =
+    match 1
+        of _ -> 1 ..

@@ -1,0 +1,10 @@
+def foo = 1 .
+def bar2 = \x: Int -> x .Int
+def bar3 = \x: Int -> x .
+
+def baz = \a: Int -> llvm
+    ret i32 %a
+.Int
+
+def main =
+  1 .

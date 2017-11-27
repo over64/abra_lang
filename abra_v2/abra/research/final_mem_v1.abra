@@ -1,0 +1,11 @@
+type Mem = llvm { i8* }
+type Allocator[T] = (
+    alloc: (sizeof: Int, alignof: Int) -> Mem,
+    realloc: (Mem, sizeof: Int) -> Mem,
+    make[U]: (Mem) -> T[U]
+)
+
+def readLine[T] = \self: File, allocator: Allocator[T] ->
+    val maxLength = 
+    val x = io.read()
+    .

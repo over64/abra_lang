@@ -11,6 +11,12 @@ import org.antlr.v4.runtime.tree.ParseTreeVisitor;
  */
 public interface M2ParserVisitor<T> extends ParseTreeVisitor<T> {
 	/**
+	 * Visit a parse tree produced by {@link M2Parser#sp}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitSp(M2Parser.SpContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link M2Parser#literal}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -22,55 +28,6 @@ public interface M2ParserVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitId(M2Parser.IdContext ctx);
-	/**
-	 * Visit a parse tree produced by the {@code exprDeref}
-	 * labeled alternative in {@link M2Parser#expression}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitExprDeref(M2Parser.ExprDerefContext ctx);
-	/**
-	 * Visit a parse tree produced by the {@code exprHLambda}
-	 * labeled alternative in {@link M2Parser#expression}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitExprHLambda(M2Parser.ExprHLambdaContext ctx);
-	/**
-	 * Visit a parse tree produced by the {@code exprRef}
-	 * labeled alternative in {@link M2Parser#expression}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitExprRef(M2Parser.ExprRefContext ctx);
-	/**
-	 * Visit a parse tree produced by the {@code exprMatch}
-	 * labeled alternative in {@link M2Parser#expression}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitExprMatch(M2Parser.ExprMatchContext ctx);
-	/**
-	 * Visit a parse tree produced by the {@code exprLiteral}
-	 * labeled alternative in {@link M2Parser#expression}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitExprLiteral(M2Parser.ExprLiteralContext ctx);
-	/**
-	 * Visit a parse tree produced by the {@code exprIfElse}
-	 * labeled alternative in {@link M2Parser#expression}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitExprIfElse(M2Parser.ExprIfElseContext ctx);
-	/**
-	 * Visit a parse tree produced by the {@code exprLambda}
-	 * labeled alternative in {@link M2Parser#expression}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitExprLambda(M2Parser.ExprLambdaContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code exprParen}
 	 * labeled alternative in {@link M2Parser#expression}.
@@ -114,6 +71,13 @@ public interface M2ParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitExprUnaryCall(M2Parser.ExprUnaryCallContext ctx);
 	/**
+	 * Visit a parse tree produced by the {@code exprMatch}
+	 * labeled alternative in {@link M2Parser#expression}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitExprMatch(M2Parser.ExprMatchContext ctx);
+	/**
 	 * Visit a parse tree produced by the {@code exprInfixCall}
 	 * labeled alternative in {@link M2Parser#expression}.
 	 * @param ctx the parse tree
@@ -128,11 +92,26 @@ public interface M2ParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitExprSelfCall(M2Parser.ExprSelfCallContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link M2Parser#if_stat}.
+	 * Visit a parse tree produced by the {@code exprLiteral}
+	 * labeled alternative in {@link M2Parser#expression}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitIf_stat(M2Parser.If_statContext ctx);
+	T visitExprLiteral(M2Parser.ExprLiteralContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code exprIfElse}
+	 * labeled alternative in {@link M2Parser#expression}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitExprIfElse(M2Parser.ExprIfElseContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code exprLambda}
+	 * labeled alternative in {@link M2Parser#expression}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitExprLambda(M2Parser.ExprLambdaContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link M2Parser#tuple}.
 	 * @param ctx the parse tree
@@ -248,6 +227,12 @@ public interface M2ParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitStore(M2Parser.StoreContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link M2Parser#ret}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitRet(M2Parser.RetContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link M2Parser#while_stat}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -271,12 +256,6 @@ public interface M2ParserVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitBlockBody(M2Parser.BlockBodyContext ctx);
-	/**
-	 * Visit a parse tree produced by {@link M2Parser#hLambda}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitHLambda(M2Parser.HLambdaContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link M2Parser#scalarType}.
 	 * @param ctx the parse tree
@@ -314,6 +293,12 @@ public interface M2ParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitFunction(M2Parser.FunctionContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link M2Parser#import_}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitImport_(M2Parser.Import_Context ctx);
+	/**
 	 * Visit a parse tree produced by {@link M2Parser#level1}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -326,15 +311,15 @@ public interface M2ParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitModule(M2Parser.ModuleContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link M2Parser#lltype}.
+	 * Visit a parse tree produced by {@link M2Parser#llvmBody}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitLltype(M2Parser.LltypeContext ctx);
+	T visitLlvmBody(M2Parser.LlvmBodyContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link M2Parser#lldef}.
+	 * Visit a parse tree produced by {@link M2Parser#llvm}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitLldef(M2Parser.LldefContext ctx);
+	T visitLlvm(M2Parser.LlvmContext ctx);
 }

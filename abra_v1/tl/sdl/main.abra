@@ -1,6 +1,6 @@
 # -lSDL2 -lGL -lkazmath -lSOIL
-import abra.int
-import abra.float
+import abra.1.0.3/int
+import abra/float
 import abra.io
 import abra.sys
 import abra.arrays
@@ -22,18 +22,22 @@ type Renderer = (
     rot: Float
 )
 
-def mkShader = { shaderType: Int, source: String ->
+def mkShader = \shaderType: Int, source: String ->
     val shader = gl.createShader(shaderType)
     shader.setSource(source)
     shader.compile()
 
     if shader.getInfo(gl.COMPILE_STATUS) == gl.FALSE
         then sys.panic(shader.getInfoLog())
+        else 1.
 
-    shader
-}: Shader
+    match io.readLine()
+        of s: String -> s
+        of e: IOErr -> e.print(); 'no string'.
 
-def mkProgram = { vertexSource: String, fragmentSource: String ->
+    shader.
+
+def mkProgram = \vertexSource: String, fragmentSource: String ->
     val vertex = mkShader(gl.VERTEX_SHADER, vertexSource)
     val fragment = mkShader(gl.FRAGMENT_SHADER, fragmentSource)
     val program = gl.createProgram()
@@ -43,12 +47,11 @@ def mkProgram = { vertexSource: String, fragmentSource: String ->
     program.link()
 
     if program.getInfo(gl.LINK_STATUS) == gl.FALSE
-        then sys.panic(program.getInfoLog())
+        then sys.panic(program.getInfoLog()) .
 
-    program
-}: ShaderProgram
+    program.
 
-def mkRenderer = {
+def mkRenderer = 
     gl.enable(gl.DEPTH_TEST)
     # gl.clearColor(0.2117, 0.0823, 0.2784)
     gl.clearColor(0.9, 0.9, 0.9)
@@ -109,10 +112,9 @@ def mkRenderer = {
     val up = kazmath.Vec3(0.0, 1.0, 0.0)
     val vMatrix = kazmath.lookAt(eye, center, up)
 
-    Renderer(vb, vao, program, pMatrix, vMatrix, texture, 0.0)
-}: Renderer
+    Renderer(vb, vao, program, pMatrix, vMatrix, texture, 0.0).
 
-def render = { self: Renderer ->
+def render = \self: Renderer ->
     gl.clear(gl.COLOR_BUFFER_BIT or gl.DEPTH_BUFFER_BIT)
     val identity = kazmath.identity4
     val mMatrix = identity.rotateY(self.rot)
@@ -142,13 +144,32 @@ def render = { self: Renderer ->
     self.texture.bind(gl.TEXTURE_2D)
     self.program.uniform1i(locationTex, 0)
 
-    gl.drawArrays(gl.TRIANGLES, 0 , 36)
-}: Unit
+    gl.drawArrays(gl.TRIANGLES, 0 , 36).
 
-def main = {
-    sdl.init(sdl.INIT_VIDEO, { err ->
-        sys.panic(err)
-    })
+def PI = 3.14.
+def mul = x: Int, y: Int -> x * y.
+
+# Abra version
+def sin = \x: Int | Float ->
+    match x
+        of i: Int -> libint.sin(i)
+        of f: Float -> math.float(f)..
+
+# Scala version
+def sin(x: FloatOrInt) =
+    x match {
+        case Int(i) => libint.sin(i)
+        case Float(f) => math.float(f)
+    }
+
+def mul = \p: (x: Int, y: Int) -> p.x * p.y.
+def proxy[T, V] = \a: T, b: T, fn: (T, V) -> T ->
+    fn(a, b).
+
+def main = 
+    sdl.init(sdl.INIT_VIDEO,
+        \err -> sys.panic(err),
+        \ok -> io.println(ok))
 
     val window = sdl.createWindow('ABRA Lang Demo 0!', 100, 100, 640, 480,
         sdl.WINDOW_SHOWN or sdl.WINDOW_OPENGL or sdl.WINDOW_RESIZABLE)
@@ -156,12 +177,9 @@ def main = {
     val renderer = mkRenderer()
 
     var running = true
-    while running {
-        sdl.pollEvents({ event ->
-            if event.eventType == sdl.EVENT_QUIT then running = false
-        })
+    while running do
+        sdl.pollEvents(\event ->
+            if event.eventType == sdl.EVENT_QUIT then running = false.ю)
 
         renderer.render()
-        window.glSwap()
-    }
-}: Unit
+        window.glSwap()..

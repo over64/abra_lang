@@ -1,7 +1,12 @@
 package m2
 
+import java.util
+
+import com.google.gson.{Gson, JsonParser}
 import lang_m2.Ast1._
 import org.scalatest.FunSuite
+
+import scala.collection.mutable
 
 
 class LowLangTest extends FunSuite with LowUtil {
@@ -289,5 +294,10 @@ class LowLangTest extends FunSuite with LowUtil {
             Ret(lLocal("y"))
           )))
       )).assertRunEquals(Some(10))
+  }
+
+  test("xxx") {
+    val gson = new JsonParser()
+    print(gson.parse("""{  "error": {    "code": "5001",    "message": "Invalid currency"  }}"""))
   }
 }

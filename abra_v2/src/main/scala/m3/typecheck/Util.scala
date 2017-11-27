@@ -1,0 +1,335 @@
+package m3.typecheck
+
+import m3.codegen.Ast2
+import m3.parse.Ast0._
+
+import scala.collection.mutable
+
+/**
+  * Created by over on 23.10.17.
+  */
+object Util {
+  val thInt = ScalarTh(params = Seq.empty, "Int", None)
+  val thFloat = ScalarTh(params = Seq.empty, "Float", None)
+  val thBool = ScalarTh(params = Seq.empty, "Bool", None)
+  val thString = ScalarTh(params = Seq.empty, "String", None)
+  val thNil = ScalarTh(params = Seq.empty, "Nil", None)
+
+  val adviceBool = ScalarAdvice(Seq.empty, "Bool", pkg = None)
+
+  // val x = Seq10[Int]
+  // val y = Seq11[Int]
+  // val z = Seq12[Int]
+  // (x, y, z).toSeq with \sx, sy, sz ->
+  //   .
+  // s.toSeq(\seq -> bar(seq))
+  // ref type Seq[T] = (len: Long, ptr: Ptr)
+  // type Seq10[T] = llvm [T x 10] .
+  // type Seq10[Int] = llvm [i32 x 10] .
+  // ref type Mem[T] = llvm T* .
+  // Mem[Int] = llvm i32* .
+  // body.replace("%T", "i32")
+  // def get[T] = \self: Mem[T], idx: Int -> llvm
+  //   %1 = getelementptr %T* self, i64 0, i64 %idx
+  //   %2 = load %T, %T* %1
+  //   ret %T %2
+  // .T
+  // def sizeof[T] = \self: T -> llvm
+  //   %1 = getelementptr %T* null, i64 1
+  //   %2 = ptrtoint i64 %1
+  //   ret i64 %2
+  // .Long
+  // --- spec llvm types and defs ---
+  // def get[i32] = \self: i32*, idx: Int -> llvm
+  //   %1 = getelementptr i32* self, i64 %idx
+  //   %2 = load i32, i32* %1
+  //   ret i32 %2
+  // .Int
+  // def callocRC[T] = \length: Long -> llvm
+  //   %1 = getelementptr %T* null, i64 1
+  //   %2 = ptrtoint i64 %1
+  //   ; call calloc
+  //   ; cast to T*
+  //   ret %T* %4
+  // .Mem[T]
+  // type Seq[T] = (length: Int, mem: Mem[T])
+  // def make[T] = \length: Int ->
+  //   val m = mem.callocRC[T](length)
+  //   Seq(length, m) .
+  // def toSeq[T] = \self: Seq10[T] ->
+  //   val m = mem.cast[T](self)
+  //   mem.stackStoreHandler[Seq[T]](10, m) .
+
+  sealed trait ThAdvice
+  case class ScalarAdvice(params: Seq[Option[ThAdvice]], name: String, pkg: Option[String]) extends ThAdvice
+  case class FnAdvice(args: Seq[Option[ThAdvice]], ret: Option[ThAdvice]) extends ThAdvice
+  case class StructAdvice(fields: Seq[(String, Option[ThAdvice])]) extends ThAdvice
+  case class UnionAdvice(variants: Seq[Option[ThAdvice]]) extends ThAdvice
+
+  implicit class RichAdvice(self: ThAdvice) {
+    def toTh: TypeHint = self match {
+      case ScalarAdvice(params, name, pkg) =>
+        ScalarTh(params.map(p => p.get.toTh), name, pkg)
+      case StructAdvice(fields) =>
+        StructTh(fields.map {
+          case (name, advice) => FieldTh(name, advice.get.toTh)
+        })
+      case UnionAdvice(variants) =>
+        UnionTh(variants.map(v => v.get.toTh))
+      case FnAdvice(args, ret) =>
+        FnTh(Seq.empty, args.map(arg => arg.get.toTh), ret.get.toTh)
+    }
+
+    def toThOpt =
+      try {
+        Some(toTh)
+      } catch {
+        case ex: java.util.NoSuchElementException => None
+      }
+  }
+
+  def makeSpecMap(gen: Seq[GenericType], params: Seq[TypeHint]) = {
+    if (gen.length != params.length)
+      throw new RuntimeException("params length mismatch")
+
+    (gen zip params).toMap
+  }
+
+  implicit class RichExpression(self: Expression) {
+    def specMatchOver(mo: MatchOver, specMap: Map[GenericType, TypeHint], namespace: Namespace): MatchOver = mo match {
+      case e: Expression => e.spec(specMap, namespace)
+      case Dash => Dash
+      case bv: BindVar => bv
+      case Destruct(varName, scalarTypeHint, args) =>
+        Destruct(
+          varName,
+          scalarTypeHint.spec(specMap).asInstanceOf[ScalarTh], // so dirty
+          args.map(over => specMatchOver(over, specMap, namespace)))
+      case MatchType(varName, scalarTypeHint) =>
+        MatchType(varName, scalarTypeHint.spec(specMap).asInstanceOf[ScalarTh])
+    }
+    def spec(specMap: Map[GenericType, TypeHint], namespace: Namespace): Expression = self match {
+      case l: Literal => l
+      case Prop(from, prop) => Prop(from.spec(specMap, namespace), prop)
+      case Tuple(seq) => Tuple(seq.map(e => e.spec(specMap, namespace)))
+      case SelfCall(params, fnName, self, args) =>
+        SelfCall(
+          params.map(p => p.spec(specMap)),
+          fnName,
+          self.spec(specMap, namespace),
+          args.map(arg => arg.spec(specMap, namespace)))
+      case Call(params, expr, args) =>
+        Call(
+          params.map(p => p.spec(specMap)),
+          expr.spec(specMap, namespace),
+          args.map(arg => arg.spec(specMap, namespace)))
+      case Lambda(args, body) =>
+        Lambda(
+          args.map(arg => Arg(arg.name, arg.typeHint.map(th => th.spec(specMap)))),
+          body match {
+            case l: llVm =>
+              var code = l.code
+              specMap.foreach {
+                case (sth, th) =>
+                  val lowScalarRef = th.toLow(namespace).asInstanceOf[Ast2.ScalarRef] // FIXME: no cast?
+                val replName = namespace.lowTypes(lowScalarRef.name) match {
+                  case Ast2.Low(ref, name, llValue) => llValue
+                  case _ => "%" + lowScalarRef.name
+                }
+                  code = code.replace("%" + sth.name, replName)
+              }
+              llVm(code)
+            case AbraCode(seq) => AbraCode(seq.map(e => e.spec(specMap, namespace)))
+          })
+      case And(left, right) => And(left.spec(specMap, namespace), right.spec(specMap, namespace))
+      case Or(left, right) => Or(left.spec(specMap, namespace), right.spec(specMap, namespace))
+      case If(ifCond, _do, _else) =>
+        If(
+          ifCond.spec(specMap, namespace),
+          _do.map(e => e.spec(specMap, namespace)),
+          _else.map(e => e.spec(specMap, namespace)))
+      case Match(on, cases) =>
+        Match(on.spec(specMap, namespace),
+          cases.map(c => Case(
+            specMatchOver(c.over, specMap, namespace),
+            c._if.map(e => e.spec(specMap, namespace)),
+            c.seq.map(e => e.spec(specMap, namespace))
+          )))
+      case While(cond, _then) =>
+        While(cond.spec(specMap, namespace), _then.map(e => e.spec(specMap, namespace)))
+      case Store(to, what) =>
+        Store(to, what.spec(specMap, namespace))
+      case Ret(what) => Ret(what.map(e => e.spec(specMap, namespace)))
+      case Val(mutable, name, typeHint, init) =>
+        Val(mutable, name, typeHint.map(th => th.spec(specMap)), init.spec(specMap, namespace))
+    }
+  }
+
+  implicit class RichDef(self: Def) {
+    def isSelf: Boolean =
+      self.lambda.args.headOption.map(arg => arg.name == "self").getOrElse(false)
+    def isGeneric: Boolean =
+      self.params.nonEmpty
+    def signature: DefSpec = // FIXME
+      DefSpec(self.name, Seq.empty)
+
+    def spec(params: Seq[TypeHint], namespace: Namespace): Def = {
+      val specMap = makeSpecMap(self.params, params)
+      val newName = s"${self.name}[${params.map(p => p.toGenericName(namespace)).mkString(", ")}]"
+
+      Def(
+        params = Seq.empty,
+        name = newName,
+        lambda = self.lambda.spec(specMap, namespace).asInstanceOf[Lambda],
+        retTh = self.retTh.map(th => th.spec(specMap)))
+    }
+  }
+
+  implicit class RichLowDecl(self: ScalarDecl) {
+    def spec(params: Seq[TypeHint], namespace: Namespace) = {
+      val specMap = makeSpecMap(self.params, params)
+      val lowName = ScalarTh(params, self.name, pkg = None).toGenericName(namespace)
+      var llType = self.llType
+      specMap.foreach {
+        case (sth, th) =>
+          val lowScalarRef = th.toLow(namespace).asInstanceOf[Ast2.ScalarRef] // FIXME: no cast?
+        val replName = namespace.lowTypes(lowScalarRef.name) match {
+          case Ast2.Low(ref, name, llValue) => llValue
+          case _ => "%" + lowScalarRef.name
+        }
+
+          llType = llType.replace("%" + sth.name, replName)
+      }
+      Ast2.Low(self.ref, lowName, llType)
+    }
+  }
+
+  implicit class RichStructDecl(self: StructDecl) {
+    def spec(params: Seq[TypeHint], namespace: Namespace) = {
+      val specMap = makeSpecMap(self.params, params)
+      val lowName = ScalarTh(params, self.name, pkg = None).toGenericName(namespace)
+      Ast2.Struct(lowName, self.fields.map { field =>
+        Ast2.Field(field.name, field.th.spec(specMap).toLow(namespace))
+      })
+    }
+  }
+
+  implicit class RichUnionDecl(self: UnionDecl) {
+    def spec(params: Seq[TypeHint], namespace: Namespace) = {
+      val specMap = makeSpecMap(self.params, params)
+      val lowName = ScalarTh(params, self.name, pkg = None).toGenericName(namespace)
+      Ast2.Union(lowName, self.variants.map { th =>
+        th.spec(specMap).toLow(namespace)
+      })
+    }
+  }
+
+  // %"S[Int, (Int, String), K | V, \X -> Y]" = type {i32, {i32, i8*}, {i8, %"K", %"V"}, }
+  implicit class RichTypeHint(self: TypeHint) {
+    def toAdviceOpt(specMap: mutable.HashMap[GenericType, TypeHint]): Option[ThAdvice] =
+      self match {
+        case ScalarTh(params, name, pkg) =>
+          specMap.get(GenericType(name)) match {
+            case Some(th: ScalarTh) if th.name.contains("*") => None
+            case Some(th) => th.toAdviceOpt(specMap)
+            case None => Some(ScalarAdvice(params.map(p => p.toAdviceOpt(specMap)), name, pkg))
+          }
+        case StructTh(fields) =>
+          Some(StructAdvice(fields.map { field =>
+            (field.name, field.typeHint.toAdviceOpt(specMap))
+          }))
+        case UnionTh(variants) =>
+          Some(UnionAdvice(variants.map { th =>
+            th.toAdviceOpt(specMap)
+          }))
+        case FnTh(closure, args, ret) =>
+          Some(FnAdvice(args.map(arg => arg.toAdviceOpt(specMap)), ret.toAdviceOpt(specMap)))
+      }
+
+    def spec(specMap: Map[GenericType, TypeHint]): TypeHint =
+      self match {
+        case ScalarTh(params, name, pkg) =>
+          specMap.get(GenericType(name)) match {
+            case Some(th) => th
+            case None => ScalarTh(params.map(p => p.spec(specMap)), name, pkg)
+          }
+        case StructTh(fields) =>
+          StructTh(fields.map { field =>
+            FieldTh(field.name, field.typeHint.spec(specMap))
+          })
+        case UnionTh(variants) =>
+          UnionTh(variants.map { th =>
+            th.spec(specMap)
+          })
+        case FnTh(closure, args, ret) =>
+          FnTh(closure, args.map(arg => arg.spec(specMap)), ret.spec(specMap))
+      }
+
+    def toGenericName(namespace: Namespace): String = {
+      self match {
+        case ScalarTh(params, name, pkg) =>
+          if (params.isEmpty) name
+          else s"$name[${params.map(p => p.toGenericName(namespace)).mkString(", ")}]"
+        case StructTh(fields) =>
+          s"(${fields.map(_.typeHint.toGenericName(namespace)).mkString(", ")})"
+        case UnionTh(variants) =>
+          variants.map(_.toGenericName(namespace)).mkString(" | ")
+        case FnTh(closure, args, ret) =>
+          s"\\${args.map(_.toGenericName(namespace)).mkString(", ")} -> ${ret.toGenericName(namespace)}"
+      }
+    }
+
+    def toLow(namespace: Namespace): Ast2.TypeRef = {
+      self match {
+        case ScalarTh(params, name, pkg) =>
+          val foundType = namespace.types.find(_.name == name).getOrElse {
+            throw new RuntimeException(s"cannot find type for $name")
+          }
+          foundType match {
+            case sd: ScalarDecl =>
+              val low = sd.spec(params, namespace)
+              namespace.lowTypes.put(low.name, low)
+              Ast2.ScalarRef(name)
+            case struct: StructDecl =>
+              val lowStruct = struct.spec(params, namespace)
+              namespace.lowTypes.put(lowStruct.name, lowStruct)
+              Ast2.ScalarRef(lowStruct.name)
+            case ud: UnionDecl =>
+              val lowUnion = ud.spec(params, namespace)
+              namespace.lowTypes.put(lowUnion.name, lowUnion)
+              Ast2.ScalarRef(lowUnion.name)
+          }
+        case StructTh(fields) =>
+          Ast2.StructRef(fields.map { f =>
+            Ast2.Field(f.name, f.typeHint.toLow(namespace))
+          })
+        case UnionTh(variants) =>
+          Ast2.UnionRef(variants.map(_.toLow(namespace)))
+        case FnTh(closure, args, ret) =>
+          Ast2.FnRef(
+            closure.map {
+              case CLocal(th) => Ast2.Local(th.toLow(namespace))
+              case CParam(th) => Ast2.Param(th.toLow(namespace))
+            },
+            args.map(arg => arg.toLow(namespace)),
+            ret.toLow(namespace))
+      }
+    }
+  }
+
+  def upToClosure(seq: Seq[(String, VarInfo)]) = seq.map {
+    case (vName, vi) =>
+      vi.location match {
+        case Local => (vName, CLocal(vi.th))
+        case Param => (vName, CParam(vi.th))
+      }
+  }
+
+  def downToLow(namespace: Namespace, seq: Seq[(String, VarInfo)]): Map[String, Ast2.TypeRef] = seq.map {
+    case (vName, vi) =>
+      vi.location match {
+        case Local => (vName, vi.th.toLow(namespace))
+        case Param => throw new Exception(("Internal compiler error"))
+      }
+  }.toMap
+}

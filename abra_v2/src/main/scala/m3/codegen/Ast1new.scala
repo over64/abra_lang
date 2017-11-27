@@ -1,7 +1,5 @@
 package m3.codegen
 
-import m3.codegen.Ast1.{Id, Lit, Stat, Type}
-
 /**
   * Created by over on 27.07.17.
   */
@@ -10,16 +8,20 @@ object Ast1new {
   case class Virtual(name: String)
   case class Field(name: String, ref: TypeRef)
 
-  case class LowType(name: String, llValue: String) extends Type
-  case class Struct(specs: Seq[Virtual], name: String, fields: Seq[Field]) extends Type
+  case class LowType(ref: Boolean, name: String, llValue: String) extends Type
+  case class Struct(ref: Boolean, specs: Seq[Virtual], name: String, fields: Seq[Field]) extends Type
   case class Union(specs: Seq[Virtual], name: String, variants: Seq[TypeRef]) extends Type
 
   sealed trait TypeRef
-  case class SRef(specs: Seq[TypeRef], pkg: Option[String], name: String) extends TypeRef // Scalar type reference
-  case class FRef(args: Seq[TypeRef], ret: TypeRef) // Functional type reference
+  case class ScalarRef(specs: Seq[TypeRef], pkg: Option[String], name: String) extends TypeRef // Scalar type reference
+  case class UnionRef() extends TypeRef
+  case class StructRef() extends TypeRef
+  case class FnRef(args: Seq[TypeRef], ret: TypeRef) // Functional type reference
+  case class ClosureRef() extends TypeRef
+  case class DisclosureRef() extends TypeRef
 
-  object SRef {
-    def lnspec(name: String) = SRef(Seq(), None, name)
+  object ScalarRef {
+    def lnspec(name: String) = ScalarRef(Seq(), None, name)
   }
 
   sealed trait Stat
@@ -46,6 +48,5 @@ object Ast1new {
   case class LLCode(value: String) extends Code
   case class AbraCode(stats: Seq[Stat]) extends Code
   case class Closure(name: String, self: Option[TypeRef], args: Seq[Field], ret: Option[TypeRef], code: Code) extends Stat
-
-  case class Module(pkg: String, typeMap: Map[String, Type], closureMap: Map[(String, Option[TypeRef]), Closure])
+  case class Module()
 }

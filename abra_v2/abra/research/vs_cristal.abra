@@ -1,0 +1,87 @@
+require "kemal"
+require "user"
+require "user-service"
+
+get "/" do
+  "Hello World!"
+end
+
+post "/api/users" do |ctx|
+  if (json = ctx.request.body)
+    user = User.from_json(json)
+    UserService.new.save(user)
+    "user saved"
+  else
+    "no user provided"
+  end
+end
+
+Kemal.run
+
+# api.abra
+import logger with Logger
+import json
+import http/server
+import pg with PgPool
+import abra/seq
+import users
+
+type Ctx = (log: Logger, pgPool: PgPool)
+
+def handler = server.makeHandler[Ctx](
+    onErr = { ctx, req, resp, ex ->  ctx.log.err({ fd -> ex.print(fd) }); resp.status = 500 },
+    methods =
+        (Get, '/', hw),
+        (Post, '/api/users', addUser))
+
+def hw = ctx: Ctx, req: Request, resp: Response ->
+    val params: (uname: String, fname: String, id: Long) = req.parseParams
+    resp.write('Hello, World') .
+
+def addUser = ctx: Ctx, req: Request, resp: Response ->
+    val user = json.parse[User](req.body)
+    ctx.pgPool.withConn({ c -> users.save(c, ctx.log, user) }) .
+
+# main.abra
+import logger with Logger
+import http/server with Request, Response, Get, Post
+import pg with PgPool
+import abra/env, io
+import api with Ctx
+
+def openLogFile = \envName: String ->
+    match env.find(envName)
+        of Nil -> io.stdout
+        of fname -> io.open(fname) ..
+
+def main =
+    val apiLogFile = openLogFile('API_LOG_FILE')
+    val srvLogFile = openLogFile('SRV_LOG_FILE')
+    val pgLogFile = openLogFile('PG_LOG_FILE')
+
+    val dbUrl = env.findOrElse('DB_URL', 'localhost:5432/mydb')
+    val dbUser = env.findOrElse('DB_USER', 'over')
+    val dbPasswd = env.findOrElse('DB_PASSWD', '123')
+
+    val pgPool = pg.open(pgLogFile, dbUrl, dbUser, dbPasswd, poolSize = 4)
+    val ctx = Ctx(logger.open(logFile), pgPool)
+
+    server.run[Ctx](ctx, srvLogFile, api.handler, poolSize = 4) .
+
+# minimal.abra
+import http/server with Get, Request, Response
+
+def convert = \self: HttpBody[Vec3] ->
+    json.parse[Vec3](self.data) .
+
+def hello = \ctx: Nil, req: Request, resp: Response, q1: String, vec: Vec3, user: String ->
+    resp.write('Hello, ') .
+def world = \ctx: Nil, req: Request, resp: Response, userId: Long ->
+    resp.write(' world!') .
+
+def handlers = server.mkHandler(
+    (Get, '/hello?q1?vec/:user', root),
+    (Get, '/world/:userId', world))
+
+def main =
+    server.run[Nil](ctx = Nil, handlers, port = 3333) .

@@ -1,0 +1,7 @@
+type U1 = Boolean | Int
+
+def foo = false .U1
+
+def main =
+    val u = foo()
+    0 .

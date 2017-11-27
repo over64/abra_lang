@@ -1,9 +1,5 @@
 package m3.codegen
 
-import m3.parse.Ast0.TypeParam
-
-import scala.collection.mutable
-
 /**
   * Created by over on 12.05.17.
   */

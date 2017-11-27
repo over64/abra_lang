@@ -21,18 +21,19 @@ case class ModuleSetResolver(modules: Seq[Module]) {
     null
   }
   def closure(specs: Seq[TypeRef], pkg: String, self: Option[TypeRef], name: String): Option[(Boolean, Closure)] = {
-    val key = ClosureRef(specs, pkg, self, name)
-    closureCache.get(key) match {
-      case Some(c) => Some((true, c))
-      case None =>
-        modules
-          .find { m => m.pkg == pkg }
-          .flatMap { m => m.closureMap.get((name, self)) }
-          .map { c =>
-            val specialized = c // TODO: do spec
-            closureCache.put(key, specialized)
-            (false, c)
-          }
-    }
+    //    val key = ClosureRef(specs, pkg, self, name)
+    //    closureCache.get(key) match {
+    //      case Some(c) => Some((true, c))
+    //      case None =>
+    //        modules
+    //          .find { m => m.pkg == pkg }
+    //          .flatMap { m => m.closureMap.get((name, self)) }
+    //          .map { c =>
+    //            val specialized = c // TODO: do spec
+    //            closureCache.put(key, specialized)
+    //            (false, c)
+    //          }
+    null
+
   }
 }

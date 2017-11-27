@@ -1,0 +1,28 @@
+def == = \self: Bool, other: Bool -> llvm
+  %1 = icmp eq i1 %self, %other
+  ret i1 %1
+.Bool
+
+def + = \self: Int, other: Int -> llvm
+  %1 = add nsw i32 %self, %other
+  ret i32 %1
+.Int
+
+type Foo = (x: Int, y: Int)
+
+def toFoo = \self: Int -> Foo(self, self) .
+
+def main =
+    # if-else expression
+    var a = if true == true do 1 else 0 .
+    # if-else statement
+    if true == true do a = a + 1 else a = a + 2 .
+
+    # if-else with local vars
+    if true == true do
+        val b = 3
+        a = a + b
+        val foo = 1.toFoo
+        a = a + foo.x .
+
+    a .# 6 expected

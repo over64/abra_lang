@@ -1,0 +1,17 @@
+def + = \self: Int, other: Int -> llvm
+  %1 = add nsw i32 %self, %other
+  ret i32 %1
+.Int
+
+def main =
+    var x = 0
+    \i: Int ->
+        val y = i
+        \j: Int ->
+            \k: Int ->
+                x = x + y + i + j + k
+            .(3)
+        .(2)
+    .(1)
+
+    x . # 7 expected

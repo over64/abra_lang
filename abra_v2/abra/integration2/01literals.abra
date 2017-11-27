@@ -1,0 +1,8 @@
+def main =
+  true
+  false
+  'BATYA'
+  'こんにちは、世界!'
+  3.14
+  0xff
+  42 .Int

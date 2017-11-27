@@ -1,0 +1,6 @@
+type Foo = llvm i32* .
+type Vec3 = (x: Int, y: Int, z: Int)
+type Fd = (self handle: Int)
+type FnPtr = (name: String, ptr: () -> Unit)
+
+def main = 1 .

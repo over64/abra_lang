@@ -14,10 +14,10 @@ import scala.collection.mutable
 
 case class ClosureRef(specs: Seq[TypeRef], pkg: String, name: String)
 
-case class LineStream(level: Int, chan: ByteArrayOutputStream = new ByteArrayOutputStream()) {
+case class LineStream2(level: Int, chan: ByteArrayOutputStream = new ByteArrayOutputStream()) {
   def line(line: String) = chan.write(("\t" * level + line + "\n").getBytes())
-  def deeper = LineStream(level + 1)
-  def flushTo(stream: LineStream) = chan.writeTo(stream.chan)
+  def deeper = LineStream2(level + 1)
+  def flushTo(stream: LineStream2) = chan.writeTo(stream.chan)
   def flushTo(stream: OutputStream) = chan.writeTo(stream)
 }
 
@@ -31,7 +31,7 @@ class Context {
   def findVar(name: String): Option[CVar] = vars.get(name)
 }
 
-case class Out(types: LineStream, code: LineStream)
+case class Out(types: LineStream2, code: LineStream2)
 
 // Типы - файл1
 // Код - файл2
@@ -45,14 +45,14 @@ object IrGenNew {
     "String" -> "i8*")
 
   def isRegisterType(ref: TypeRef): Boolean = ref match {
-    case _: FRef => true
-    case s: SRef if regTypes.contains(s.name) => true
+    case _: FnRef => true
+    case s: ScalarRef if regTypes.contains(s.name) => true
     case _ => false
   }
 
   def typeRefToIr(ref: TypeRef): String = ref match {
-    case _: FRef => "not implemented"
-    case SRef(Seq(), None, name) if builtinTypes.contains(name) => builtinTypes(name)
+    case _: FnRef => "not implemented"
+    case ScalarRef(Seq(), None, name) if builtinTypes.contains(name) => builtinTypes(name)
     case _ => "not implemented"
   }
 
@@ -80,7 +80,7 @@ object IrGenNew {
   def evalStoreSrc(expectedType: Option[TypeRef], id: Lit, ctx: Context, out: Out): (TypeRef, String) = id match {
     case IConst(value) =>
       expectedType match {
-        case None => (SRef.lnspec("Int"), value)
+        case None => (ScalarRef.lnspec("Int"), value)
         case _ => throw new Exception("not implemented")
       }
     case Id(name, props) => throw new Exception("not implemented")
@@ -151,7 +151,7 @@ object IrGenNew {
       }
 
       stats.foreach(stat => evalStat(typeResolver, closureResolver, pkg, stat, ctx, out))
-      SRef.lnspec("Int")
+      ScalarRef.lnspec("Int")
   }
 
   def evalClosure(typeResolver: (TypeRef) => Option[(Boolean, Type)],

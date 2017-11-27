@@ -35,6 +35,10 @@ class TypeChecker {
   case object Self extends FnKind
   case object NonSelf extends FnKind
 
+  // def * = \self: Int, other: Int = llvm
+  //    %1 = ret nsw i32 %self, %other
+  //   ret i32 %1 .
+
   def evalBlockExpression(implicit namespace: Namespace,
                           scope: Scope,
                           forInit: Boolean,
@@ -576,4 +580,19 @@ class TypeChecker {
 
     namespace
   }
+
+  //   # Abra with style!
+  //   def transform = \namespace: Namespace, sourceMap: SourceMap ->
+  //     namespace.extensions.values.foreach with fnMap ->
+  //       fnMap.values.foreach with fnCont ->
+  //         match fnCont.fnInfo
+  //           case fn: RawFn => evalFunction(namespace, fn, kind = Self).lowFn
+  //           else Nil ...
+  //
+  //     namespace.functions.values.foreach with fnMap ->
+  //       fnMap.values.foreach with fnCont ->
+  //         match fnCont.fnInfo
+  //           case fn: RawFn do evalFunction(namespace, fn, kind = NonSelf).lowFn
+  //           else Nil ...
+  //     namespace .
 }

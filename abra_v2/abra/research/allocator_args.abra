@@ -1,0 +1,46 @@
+def bar = \ret: Map[Int, String] ->
+  50.times with \i ->
+    ret.put(i, i.toString) ..
+
+def bar = consumer: \Int -> None do
+  50.times with \i ->
+    ret.put(i, i.toString) ..
+
+1) Необходимо подменять ветку исполнения своим аллокатором
+2) Графы объектов
+3) Store handler
+4) implicit vs explicit?
+5) mem isolation area?
+val gc = traceGc.new()
+val s = gc.use with ->
+  val f = io.fopen('/tmp/file') .
+            3       4
+type U1 = String | Int
+          5      9       10
+type U2 = U1 | String | Byte
+mod 2 = value
+mod 3 = ref
+mod 5 - union
+
+def unionRcDec \ u ->
+    if u.tag mod 3 is 0 do
+      rcDec()
+    else if u.tag mod 5 is 0 do
+     recurseDec(u.data) .
+
+if a == 5 && b == 10
+  is true do 1
+  else 2
+
+if x && y is true do io.print('true')
+else io.print('xxx')
+
+# Унификация if и match
+val x: Int | Vec3 = load()
+if x
+  is s: String do fmt('string: %v', s)
+  is Vec3(*, *, 0) do fmt('this is Vec3 on Z axis')
+  else fmt('x is %v', x) .
+
+
+val z = if x

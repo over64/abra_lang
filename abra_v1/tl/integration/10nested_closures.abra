@@ -1,20 +1,17 @@
-def +: (self: Int, other: Int) -> Int = llvm {
+def +: (self: Int, other: Int) -> Int = llvm { 
   %1 = add nsw i32 %self, %other
   ret i32 %1
 }
 
-def main = {
+def main =
     var x = 0
-
-    { i: Int ->
+    \i: Int ->
         val y = i
-
-        { j: Int ->
-            { k: Int ->
+        \j: Int ->
+            \k: Int ->
                 x = x + y + i + j + k
-            }(3)
-        }(2)
-    }(1)
+            .(3)
+        .(2)
+    .(1)
 
-    x
-}: Int # 7 expected
+    x . # 7 expected

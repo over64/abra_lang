@@ -39,14 +39,14 @@ class _03PatternMatchingParse extends FunSuite {
 
     test("matchOver: matchExpression: matchBracketsExpr") {
       withStr("${ 1 }", lInt("1"))
-      withStr("${1 + 1}", SelfCall("+", lInt("1"), Seq(lInt("1"))))
+      withStr("${1 + 1}", SelfCall(Seq.empty, "+", lInt("1"), Seq(lInt("1"))))
     }
-
-    test("matchOver: destruct") {
-      withStr("Bar(1)", Destruct(None, ScalarTh(Seq(), "Bar", "", false), Seq(lInt("1"))))
-      withStr("Bar(1, 2)", Destruct(None, ScalarTh(Seq(), "Bar", "", false), Seq(lInt("1"), lInt("2"))))
-      withStr("x = Bar(1, 2)", Destruct(Some(lId("x")), ScalarTh(Seq(), "Bar", "", false), Seq(lInt("1"), lInt("2"))))
-    }
+    //
+    //    test("matchOver: destruct") {
+    //      withStr("Bar(1)", Destruct(None, ScalarTh(Seq(), "Bar", "", false), Seq(lInt("1"))))
+    //      withStr("Bar(1, 2)", Destruct(None, ScalarTh(Seq(), "Bar", "", false), Seq(lInt("1"), lInt("2"))))
+    //      withStr("x = Bar(1, 2)", Destruct(Some(lId("x")), ScalarTh(Seq(), "Bar", "", false), Seq(lInt("1"), lInt("2"))))
+    //    }
   }
 
   test("matchCase") {

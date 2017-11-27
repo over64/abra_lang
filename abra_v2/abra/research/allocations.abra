@@ -1,0 +1,45 @@
+import abra@1.0.0/mem.malloc
+
+def malloc[T] = llvm  {
+}
+
+def map[T, U] = { self: Seq[T],
+                  mapper: (x: T) -> U,
+                  alloc: () -> Seq[U] = mem.alloc[Seq[U]] ->
+
+}
+
+def filter[T, U] = { self: Seq[T],
+                  mapper: (x: T) -> U,
+                  alloc: () -> Seq[U] = mem.alloc[Seq[U]] ->
+
+}
+
+def to
+
+val s1 = seq.make(100, \i -> i + 1) # seq allocated on heap
+
+val stackAlloc
+val s2 = s1.map(\x -> x * 2, )
+
+type Node[T] = (v: T, next: Ref[Node])
+
+T -> &T via ref
+
+val x: Int = 1
+val y: &Int = x.ref
+
+def findAndCheck = \users: Hash[String, User], uname: String ->
+    match users.toMap.find(uname) of u: User -> check(u) else Nil
+
+import abra@1.0.0/ex
+
+type IOErr = (errno: String, trace: STrace = strace.keep())
+def toString = \self: IOErr -> perror(errno)
+
+def readLine = ex.throws[String, IOErr](fn = llvm { fd: Fd = stdin ->
+}) # String | IOErr
+
+def main = {
+    val line = io.readLine() unless { e: IOErr ->  e.printErr(); return 1 }
+}

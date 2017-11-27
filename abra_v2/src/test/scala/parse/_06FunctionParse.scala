@@ -15,14 +15,14 @@ class _06FunctionParse extends FunSuite {
 
   import parserFunction._
 
-  test("lldef") {
-    withStr("def + = lldef { x: Int, y: Int -> ;asm }: Int", Fn(
-      tparams = Seq(),
-      name = "+",
-      body = LlDef(Seq(
-        FnArg("x", Some(ScalarTh(Seq(), "Int", "", false))),
-        FnArg("y", Some(ScalarTh(Seq(), "Int", "", false)))),
-        code = " ;asm "),
-      retTh = Some(ScalarTh(Seq(), "Int", "", false))))
-  }
+//  test("lldef") {
+//    withStr("def + = lldef { x: Int, y: Int -> ;asm }: Int", Fn(
+//      tparams = Seq(),
+//      name = "+",
+//      body = LlDef(Seq(
+//        FnArg("x", Some(ScalarTh(Seq(), "Int", "", false))),
+//        FnArg("y", Some(ScalarTh(Seq(), "Int", "", false)))),
+//        code = " ;asm "),
+//      retTh = Some(ScalarTh(Seq(), "Int", "", false))))
+//  }
 }

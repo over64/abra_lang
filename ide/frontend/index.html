@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
+    <link rel="stylesheet" href="fonts/fira_code.css">
+    <link rel="stylesheet" type="text/css" href="editor/editor.css">
+  </head>
+  <style type="text/css">
+    html, body {
+      font: 14px/1.5em "Fira Code";
+      height: 100%;
+    }
+    body {
+      margin: 0;
+    }
+    .tree {
+      left: 0;
+      top: 0;
+      z-index: 1;
+      position: absolute;
+      background-color: #eee;
+      width: 450px;
+      /*align-content: stretch;*/
+      /*padding: 0px 0px 10px 0px;*/
+      /*border-bottom: 1px solid #238e1c;*/
+      height: 100%;
+    }
+    .tree-container {
+      margin-top: 20px;
+    }
+    .folder-item {
+      white-space:nowrap;
+      margin-left: 10px;
+      overflow: hidden;
+      /*background-color: #eee;*/
+      /* font-size: 18px; */
+    }
+    .item-caption {
+      margin-left: 3px;
+    }
+    .item-caption:hover {
+      background-color: #8ccc88;
+    }
+    
+    .fa-folder, .fa-folder-open, .fa-file {
+      color: #319831; 
+    }
+    .tree-splitter {
+      margin-bottom: 5px;
+      padding: 3px 0px 3px 0px;
+      background-color: #efefc9;
+      white-space:nowrap;
+      overflow: hidden; 
+    }
+    .source-path {
+      font-size: 14px;
+      margin-left: 10px;
+    }
+    .code-editor {
+      z-index: 0;
+      position: absolute;
+      height: 100%;
+      background-color: white;
+      border-left: 1px solid #238e1c;
+    }
+    .toggle-btn {
+      position: absolute;
+      /*background-color: #d2ead2;*/
+      background-color: #eee;
+      border-right: 1px solid #238e1c;
+      border-bottom: 1px solid #238e1c;
+      border-top: 1px solid #238e1c;
+      /*writing-mode: tb-rl !important;*/
+    }
+    .toggle-btn > button {
+      font-family: sans-serif;
+      display: block;
+      background-color: transparent;
+      border: 0;
+    }
+
+    .toggle-btn > button > hr {
+      border: 0;
+      border-bottom: 1px #238e1c solid;
+    }
+    .window-toggle {
+      z-index: 1;
+      position: absolute;
+      background-color: white;
+      border: 0;
+      border-right: 1px solid #238e1c;
+      border-bottom: 1px solid #238e1c;
+      border-top: 1px solid #238e1c;
+    }
+
+    .window-toggle > hr {
+      border: 0;
+      border-bottom: 1px #238e1c solid;
+    }
+    .bottom-doc {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100px;
+      height: 200px;
+      background-color: green;
+      z-index: 2;
+    }
+  </style>
+  <body style="position: relative;">
+    <!-- <div id="bottom-doc" class="bottom-doc"></div> -->
+
+    <script src="http://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+    <script src="http://code.interactjs.io/v1.2.9/interact.min.js"></script>
+    <script src="bower_components/mousetrap/mousetrap.js"></script>
+    <script src="editor/editor.js"></script>
+
+    <script type="text/javascript">
+        $('#pointer').focus();
+        $(function() {
+          var treeLeft = 500;
+
+          var editor = (function(initialLeft) {
+            var $editor = 
+              jQuery('<div/>', {
+                id: 'code-editor',
+                class: 'code-editor'
+              });
+
+            function setLeft(left) {
+              $editor.css('width', 'calc( 100% - ' + (left + 1) + 'px )'); // +1 из-за погрешностей? чтобы не было скролла
+              $editor.css('left', left + 'px');
+            };
+
+            function showHide() {};
+
+            setLeft(initialLeft);
+            $editor.appendTo('body');
+
+            return { html: $editor[0], setLeft: setLeft, showHide: showHide};
+          })(treeLeft);
+
+          editor_plugin(editor.html);
+
+          var tree = (function(initialWidth) {
+            var $tree = 
+              $('<div/>', {
+                id: 'tree',
+                class: 'tree'
+              });
+
+            var $toggle =
+              $('<button/>', {
+                class: 'window-toggle'
+              });
+
+            var toggleContent = '<i class="fa fa-code-fork"></i><br>t<br>r<br>e<br>e<br><hr>1'
+            $toggle.html(toggleContent);
+            $toggle.css('top', '20px');
+            $toggle.appendTo($tree);
+
+            function setWidth(width) {
+              $tree.css('width', width + 'px');
+              $toggle.css('left', width + 'px');              
+            };
+
+            setWidth(initialWidth);
+            $tree.appendTo('body');
+
+            return { html: $tree[0], setWidth: setWidth };
+          })(treeLeft);
+
+          window.tree = tree;
+
+          interact('#' + tree.html.id)
+            .resizable({
+              preserveAspectRatio: false,
+              edges: { right: true},
+            })
+            .on('resizemove', function (event) {
+              // console.log(event);
+
+              tree.setWidth(event.rect.width);
+              editor.setLeft(event.rect.width);
+
+              // var target = event.target;
+              // target.style['width']  = event.rect.width + 'px';
+              // //target.style['height']  = event.rect.height + 'px';
+              // $('#tree-toggle').css('left', event.rect.width + 'px')
+
+              // if(event.rect.width == 0) $('#tree-toggle').css('background-color', '#8ccc88');
+              // else $('#tree-toggle').css('background-color', '#eee');
+            });
+
+          Mousetrap.bind(['command+1', 'ctrl+1'], function(e) {
+            var $tree = $('#tree');
+            var $treeToggle = $('#tree-toggle');
+
+            if($tree.width() != 0) {
+              $tree.width(0);
+              $treeToggle.css('left', 0);
+              // $treeToggle.css('background-color', '#d2ead2');
+              $treeToggle.css('background-color', '#8ccc88');
+            } else {
+              $tree.width(300);
+              $treeToggle.css('left', 300);
+              $treeToggle.css('background-color', '#eee');
+            }
+
+            return false;
+          });
+
+        });
+  </script>
+  </div>
+  </body>
+</html>

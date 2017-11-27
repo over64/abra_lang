@@ -1,7 +1,6 @@
-lexer grammar M2Lexer ;
-
+lexer grammar M2Lexer;
 @members {
-    boolean startLlvm = false;
+    boolean start_llvm_ws = false;
 }
 
 MINUS : '-' ;
@@ -22,10 +21,10 @@ EQEQ : '==' ;
 NOTEQ : '!=' ;
 SEMI : ';' ;
 IF : 'if' ;
-THEN : 'then' ;
+DO : 'do' ;
 ELSE : 'else' ;
 CBO : '{' ;
-DOLLAR_CBO : '${' ;
+DOLLAR_CBO : '$(' ;
 CBC : '}' ;
 LOGIC_OR : '||' ;
 LOGIC_AND : '&&' ;
@@ -33,7 +32,7 @@ WHILE : 'while';
 VAL : 'val' ;
 VAR : 'var' ;
 CON : ':' ;
-ARROW_RIGHT : '->' { if(startLlvm) pushMode(llvm); } ;
+ARROW_RIGHT : '->' ;
 TYPE : 'type' ;
 BACK_SLASH : '\\' ;
 SELF : 'self' ;
@@ -43,20 +42,19 @@ IMPORT : 'import' ;
 WITH : 'with' ;
 MATCH: 'match';
 OF: 'of';
+RETURN: 'return';
+REF: 'ref';
 DASH: '_';
 VERT_LINE: '|';
 BRACKET_LEFT: '[';
 BRACKET_RIGTH: ']';
-AMP: '&';
 
-LlBegin : 'lltype' [ \t\r\n]* '{' -> pushMode(llvm) ;
-LlDef : 'lldef' [ \t\r\n]* '{' { startLlvm = true; } ;
+LlBegin : 'llvm' { start_llvm_ws = true; } -> pushMode(llvm) ;
 
-WS : [ \t]+ -> skip ; // skip spaces, tabs
+WS : [ \t]+ ;
 NL : '\r'? '\n' ;
-COMMENT : '#' ~[\r\n]* -> skip ;
+COMMENT : '#' ~[\r\n]* ;
 
-// LlLiteral : LlBegin IrInline LlEnd;
 
 IntLiteral   : '-'? ('0' | NonZeroDigit Digit*) ;
 HexLiteral   : '0' [xX] HexDigit+ ;
@@ -64,13 +62,17 @@ FloatLiteral : '-'? (Digit+ '.' Digit+ ExponentPart? | Digit+ ExponentPart) ;
 BooleanLiteral   :  'true' | 'false';
 
 StringLiteral    : '\'' StringElement* '\'' ;
-VarId  : ('a'..'z')+ ('a'..'z' | 'A'..'Z' | '_' | Digit)* ;
-TypeId  : ('A'..'Z')+ ('a'..'z' | 'A'..'Z' | '_' | Digit)* ;
+VarId  : [\p{Ll}]+ ([\p{Lu}\p{Ll}] | '_' | Digit)* ;
+TypeId  : [\p{Lu}]+ ([\p{Lu}\p{Ll}] | '_' | Digit)* ;
 MatchId: '$' VarId ;
 
 mode llvm ;
-IrInline : ~[{}]+ ;
-LlEnd: CBC { startLlvm = false; } -> popMode ;
+LLVM_NL: '\r'? '\n' { start_llvm_ws = true; System.out.println("nl");  };
+LLVM_WS: [ \t]+ { start_llvm_ws = true; System.out.println("ws");  };
+IrLine: ~[ \t\r\n\\.]+ { start_llvm_ws = false; System.out.println("ir_line"); };
+LL_End: { start_llvm_ws ==  true }? '.' { popMode(); System.out.println("ir_end"); };
+LL_Dot: '.' { System.out.println("ir_dot"); } ;
+//IrLiteral: (LLVM_NL | LLVM_WS | IrLine | LL_Dot)* LL_End ;
 
 fragment StringElement    :  Char
                           |  CharEscapeSeq

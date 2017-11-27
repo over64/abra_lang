@@ -1,0 +1,20 @@
+def + = \self: Int, other: Int -> llvm
+  %1 = add nsw i32 %self, %other
+  ret i32 %1
+.Int
+
+def foo = .Nil
+def bar = \i: Int -> i .
+def twice = \self: Int -> self + self .
+def apply = \self: Int -> 99 .
+
+def main =
+  foo()     # usual call
+  bar(1)    # usual call
+  1.twice() # self call via dot
+  1.twice   # self call via prop
+  # OCaml: twice twice 1 # <--
+  # JS: twice(twice(1)) # <--
+  # Abra: 1.twice.twice # -->
+  1()       # apply call
+.Int
