@@ -3,7 +3,9 @@ package m3.codegen;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 public class HexUtil {
     public static class EncodeResult {

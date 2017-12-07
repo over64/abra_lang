@@ -13,23 +13,23 @@ class NewTest extends FunSuite {
   //  val float = Low(ref = false, llValue = "float")
   //  val string = Low(ref = true, llValue = "i8*")
 
-  val nil = ScalarRef("Nil")
-  val bool = ScalarRef("Bool")
-  val int = ScalarRef("Int")
-  val float = ScalarRef("Float")
-  val string = ScalarRef("String")
-
-  val vec2 = ScalarRef("Vec2")
-  val tVec2 = Struct("Vec2", Seq(Field("x", int), Field("y", int)))
-  val node = ScalarRef("Node")
-  val tNode = Struct("Node", Seq(Field("v", int), Field("next", node)))
-
-  val u1 = ScalarRef("U1")
-  val tU1 = Union("U1", Seq(int, node, nil))
-
-  val anonVec2 = StructRef(Seq(Field("x", int), Field("y", nil)))
-  val anonRefStruct = StructRef(Seq(Field("x", int), Field("y", string)))
-  val anonU1 = UnionRef(Seq(int, nil))
+//  val nil = ScalarRef("Nil")
+//  val bool = ScalarRef("Bool")
+//  val int = ScalarRef("Int")
+//  val float = ScalarRef("Float")
+//  val string = ScalarRef("String")
+//
+//  val vec2 = ScalarRef("Vec2")
+//  val tVec2 = Struct("Vec2", Seq(Field("x", int), Field("y", int)))
+//  val node = ScalarRef("Node")
+//  val tNode = Struct("Node", Seq(Field("v", int), Field("next", node)))
+//
+//  val u1 = ScalarRef("U1")
+//  val tU1 = Union("U1", Seq(int, node, nil))
+//
+//  val anonVec2 = StructRef(Seq(Field("x", int), Field("y", nil)))
+//  val anonRefStruct = StructRef(Seq(Field("x", int), Field("y", string)))
+//  val anonU1 = UnionRef(Seq(int, nil))
 
 //  test("store: local to local") {
 //    Def("main", Seq.empty, Seq.empty, nil, AbraCode(
@@ -154,50 +154,50 @@ class NewTest extends FunSuite {
 
   }
 
-  test("call: local args pass") {
-    Def("bar",
-      Seq.empty,
-      Seq(
-        Field("x3", int), // check low value
-        Field("x4", string), // check low ref
-        Field("x5", vec2), // check value struct
-        Field("x6", node), // check ref struct
-        Field("x7", u1), // check union
-        Field("x8", anonVec2), // check anon struct
-        Field("x9", anonRefStruct), // check anon ref struct
-        Field("x10", anonU1)), // check anon union
-      ret = nil,
-      code = AbraCode(
-        vars = Map.empty, stats = Seq.empty))
-    Def("main",
-      Seq.empty,
-      Seq.empty,
-      nil,
-      AbraCode(
-        vars = Map(
-          "lInt" -> int, // check for low value alloca
-          "lString" -> string, // check for low ref alloca
-          "sVec2" -> vec2, // check for struct value alloca
-          "sNode" -> node, // check for struct ref alloca
-          "u1" -> u1, // check for union alloca
-          "anonS" -> anonVec2, // check for anon struct alloca
-          "anonRefStruct" -> anonRefStruct, // check for anon ref struct alloca
-          "anonU" -> anonU1), // check for anon union alloca
-        stats = Seq(
-          Call(Id("bar"), Seq(
-            Id("lInt"),
-            Id("lString"),
-            Id("sVec2"),
-            Id("sNode"),
-            Id("u1"),
-            Id("anonS"),
-            Id("anonRefStruct"),
-            Id("anonU")
-          ))
-        )))
-
-    // don't forget rcDec
-  }
+//  test("call: local args pass") {
+//    Def("bar",
+//      Seq.empty,
+//      Seq(
+//        Field("x3", int), // check low value
+//        Field("x4", string), // check low ref
+//        Field("x5", vec2), // check value struct
+//        Field("x6", node), // check ref struct
+//        Field("x7", u1), // check union
+//        Field("x8", anonVec2), // check anon struct
+//        Field("x9", anonRefStruct), // check anon ref struct
+//        Field("x10", anonU1)), // check anon union
+//      ret = nil,
+//      code = AbraCode(
+//        vars = Map.empty, stats = Seq.empty))
+//    Def("main",
+//      Seq.empty,
+//      Seq.empty,
+//      nil,
+//      AbraCode(
+//        vars = Map(
+//          "lInt" -> int, // check for low value alloca
+//          "lString" -> string, // check for low ref alloca
+//          "sVec2" -> vec2, // check for struct value alloca
+//          "sNode" -> node, // check for struct ref alloca
+//          "u1" -> u1, // check for union alloca
+//          "anonS" -> anonVec2, // check for anon struct alloca
+//          "anonRefStruct" -> anonRefStruct, // check for anon ref struct alloca
+//          "anonU" -> anonU1), // check for anon union alloca
+//        stats = Seq(
+//          Call(Id("bar"), Seq(
+//            Id("lInt"),
+//            Id("lString"),
+//            Id("sVec2"),
+//            Id("sNode"),
+//            Id("u1"),
+//            Id("anonS"),
+//            Id("anonRefStruct"),
+//            Id("anonU")
+//          ))
+//        )))
+//
+//    // don't forget rcDec
+//  }
 
   test("call: param args pass") {
 

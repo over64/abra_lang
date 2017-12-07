@@ -131,7 +131,7 @@ object Util {
               var code = l.code
               specMap.foreach {
                 case (sth, th) =>
-                  val lowScalarRef = th.toLow(namespace).asInstanceOf[Ast2.ScalarRef] // FIXME: no cast?
+                  val lowScalarRef = th.toLow(namespace) // FIXME: no cast?
                 val replName = namespace.lowTypes(lowScalarRef.name) match {
                   case Ast2.Low(ref, name, llValue) => llValue
                   case _ => "%" + lowScalarRef.name
@@ -192,11 +192,11 @@ object Util {
       var llType = self.llType
       specMap.foreach {
         case (sth, th) =>
-          val lowScalarRef = th.toLow(namespace).asInstanceOf[Ast2.ScalarRef] // FIXME: no cast?
-        val replName = namespace.lowTypes(lowScalarRef.name) match {
-          case Ast2.Low(ref, name, llValue) => llValue
-          case _ => "%" + lowScalarRef.name
-        }
+          val lowScalarRef = th.toLow(namespace)
+          val replName = namespace.lowTypes(lowScalarRef.name) match {
+            case Ast2.Low(ref, name, llValue) => llValue
+            case _ => "%" + lowScalarRef.name
+          }
 
           llType = llType.replace("%" + sth.name, replName)
       }
@@ -289,30 +289,48 @@ object Util {
             case sd: ScalarDecl =>
               val low = sd.spec(params, namespace)
               namespace.lowTypes.put(low.name, low)
-              Ast2.ScalarRef(name)
+              Ast2.TypeRef(name)
             case struct: StructDecl =>
               val lowStruct = struct.spec(params, namespace)
               namespace.lowTypes.put(lowStruct.name, lowStruct)
-              Ast2.ScalarRef(lowStruct.name)
+              Ast2.TypeRef(lowStruct.name)
             case ud: UnionDecl =>
               val lowUnion = ud.spec(params, namespace)
               namespace.lowTypes.put(lowUnion.name, lowUnion)
-              Ast2.ScalarRef(lowUnion.name)
+              Ast2.TypeRef(lowUnion.name)
           }
         case StructTh(fields) =>
-          Ast2.StructRef(fields.map { f =>
-            Ast2.Field(f.name, f.typeHint.toLow(namespace))
-          })
+          val lowFields = fields.map(f => Ast2.Field(f.name, f.typeHint.toLow(namespace)))
+          val lowName = s"(${lowFields.map(_.ref.name).mkString(", ")})"
+          if (namespace.lowTypes.get(lowName) == None)
+            namespace.lowTypes.put(lowName, Ast2.Struct(lowName, lowFields))
+          Ast2.TypeRef(lowName)
         case UnionTh(variants) =>
-          Ast2.UnionRef(variants.map(_.toLow(namespace)))
+          val lowVariants = variants.map(v => v.toLow(namespace))
+          val lowName = s"(${lowVariants.map(_.name).mkString(" | ")})"
+          if (namespace.lowTypes.get(lowName) == None)
+            namespace.lowTypes.put(lowName, Ast2.Union(lowName, lowVariants))
+          Ast2.TypeRef(lowName)
         case FnTh(closure, args, ret) =>
-          Ast2.FnRef(
-            closure.map {
-              case CLocal(th) => Ast2.Local(th.toLow(namespace))
-              case CParam(th) => Ast2.Param(th.toLow(namespace))
-            },
-            args.map(arg => arg.toLow(namespace)),
-            ret.toLow(namespace))
+          val lowClosure = closure.map {
+            case CLocal(th) => Ast2.Local(th.toLow(namespace))
+            case CParam(th) => Ast2.Param(th.toLow(namespace))
+          }
+          val lowArgs = args.map(arg => arg.toLow(namespace))
+          val lowRet = ret.toLow(namespace)
+
+          val closurePart =
+            lowClosure.map {
+              case Ast2.Local(ref) => ref.name + "@local"
+              case Ast2.Param(ref) => ref.name + "@param"
+            }.mkString(", ")
+          val argsPart = lowArgs.map(_.name).mkString(", ")
+          val retPart = lowRet.name
+
+          val lowName = s"""<$closurePart>\$argsPart -> $retPart"""
+          if (namespace.lowTypes.get(lowName) == None)
+            namespace.lowTypes.put(lowName, Ast2.Fn(lowName, lowClosure, lowArgs, lowRet))
+          Ast2.TypeRef(lowName)
       }
     }
   }

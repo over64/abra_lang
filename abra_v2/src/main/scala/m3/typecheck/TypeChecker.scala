@@ -249,15 +249,11 @@ object TypeChecker {
       }
 
     val header = DefHeader(namespace.pkg, fn.name, FnTh(closure.map(_._2), argsTh, retTh))
-    val lowArgs = (fn.lambda.args zip argsTh).map {
-      case (arg, th) => Ast2.Field(arg.name, th.toLow(namespace))
-    }
-    val lowClosure = closure.map {
-      case (vName, CLocal(th)) => Ast2.ClosureField(vName, Ast2.Local(th.toLow(namespace)))
-      case (vName, CParam(th)) => Ast2.ClosureField(vName, Ast2.Param(th.toLow(namespace)))
-    }
+    val lowType = header.th.toLow(namespace)
+    val lowArgs = fn.lambda.args.map(_.name)
+    val lowClosure = closure.map(_._1)
 
-    val lowDef = Ast2.Def(fn.name, lowClosure, lowArgs, retTh.toLow(namespace), code, isAnon = false)
+    val lowDef = Ast2.Def(fn.name, lowType, lowClosure, lowArgs, code, isAnon = false)
 
     (header, lowDef)
   }

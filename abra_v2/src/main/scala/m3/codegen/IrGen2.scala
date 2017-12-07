@@ -14,21 +14,26 @@ object IrGen2 {
   def findSymbol(ctx: IrContext,
                  dctx: DefContext,
                  name: String): (TypeRef, Boolean) =
+  // find local
     dctx.vars.get(name) match {
       case Some(tref) => (tref, true)
       case None =>
-        dctx.fn.args.find(arg => arg.name == name) match {
-          case Some(field) => (field.ref, !field.ref.isRegisterFit(ctx.types))
+        val fnType = ctx.types(dctx.fn.ref.name).asInstanceOf[Fn]
+        // find param
+        dctx.fn.args.zipWithIndex.find { case (argName, idx) => argName == name } match {
+          case Some((argName, idx)) => (fnType.args(idx), !fnType.args(idx).isRegisterFit(ctx.types))
           case None =>
-            dctx.fn.closure.find(cf => cf.name == name) match {
-              case Some(cf) =>
-                cf.ctype match {
+            // find closure
+            dctx.fn.closure.zipWithIndex.find { case (cName, idx) => cName == name } match {
+              case Some((cName, idx)) =>
+                fnType.closure(idx) match {
                   case Local(ref) => (ref, true)
                   case Param(ref) => (ref, !ref.isRegisterFit(ctx.types))
                 }
               case None =>
+                // find global
                 val d = ctx.defs(name)
-                (FnRef(d.closure.map(_.ctype), d.args.map(_.ref), d.ret), false)
+                (d.ref, false)
             }
         }
     }
@@ -50,18 +55,13 @@ object IrGen2 {
 
     val (resultTref, elements) = props.foldLeft((tref, Seq[Int](0))) {
       case ((tref, seq), prop) =>
-        tref match {
-          case ScalarRef(name) =>
-            ctx.types(name) match {
-              case Struct(name, fields) => fieldsTo(fields, tref, seq, prop)
-              case Union(name, variants) => variantsTo(variants, tref, seq, prop)
-              case _ => throw new RuntimeException("oops")
-            }
-          case StructRef(fields) => fieldsTo(fields, tref, seq, prop)
-          case UnionRef(variants) => variantsTo(variants, tref, seq, prop)
+        ctx.types(tref.name) match {
+          case Struct(name, fields) => fieldsTo(fields, tref, seq, prop)
+          case Union(name, variants) => variantsTo(variants, tref, seq, prop)
           case _ => throw new RuntimeException("oops")
         }
     }
+
 
     val irType =
       if (tref.isRef(ctx.types)) tref.toValue(ctx.types).stripSuffix("*")
@@ -109,10 +109,7 @@ object IrGen2 {
 
   def evalCall(ctx: IrContext, dctx: DefContext, call: Call): Option[(TypeRef, String)] = {
     val (tref, vName) = requireValue(ctx, dctx, evalId(ctx, dctx, call.id))
-    val fnType = tref match {
-      case fn: FnRef => fn
-      case _ => throw new RuntimeException("expected fn to call")
-    }
+    val fnType = ctx.types(tref.name).asInstanceOf[Fn]
     val irArgs = call.args.map { arg =>
       val (tref, isPtr, name) = evalId(ctx, dctx, arg)
       if (tref.isRegisterFit(ctx.types) && isPtr) {
@@ -133,67 +130,107 @@ object IrGen2 {
     ret
   }
 
+  def prepareUnionStore(ctx: IrContext, dctx: DefContext, endBranch: String, value: String, typeRef: TypeRef, doInc: Boolean): Unit = {
+    val variants =
+      ctx.types(typeRef.name) match {
+        case Union(name, variants) => variants
+      }
+
+    val tag = dctx.nextReg()
+    val uIrType = typeRef.toValue(ctx.types)
+    ctx.out.println(s"\t%$tag = extractvalue $uIrType $value, 0 ")
+    ctx.out.println(s"\tswitch i8 %$tag, label %$endBranch [")
+
+    val toGen: Seq[(String, Int, TypeRef)] =
+      variants.zipWithIndex map {
+        case (v, idx) =>
+          val br = "br" + dctx.nextBranch()
+          ctx.out.println(s"\t\ti8 ${idx + 1}, label %$br")
+          (br, idx, v)
+      }
+
+    ctx.out.println(s"\t]")
+
+    toGen.foreach {
+      case (branch, idx, typeRef) =>
+        ctx.out.println(s"$branch:")
+        if (typeRef.isRef(ctx.types)) {
+          val fn = if (doInc) "@rcInc" else "@rcDec"
+          val reg = dctx.nextReg()
+          val irType = typeRef.toValue(ctx.types)
+          ctx.out.println(s"\t%$reg = extractvalue $uIrType $value, ${idx + 1}")
+          ctx.out.println(s"\tcall void $fn($irType %$reg)")
+        } else {
+
+        }
+        ctx.out.println(s"\tbr label %$endBranch")
+    }
+
+    ctx.out.println(s"$endBranch:")
+
+    variants
+  }
+
   def evalStore(ctx: IrContext,
                 dctx: DefContext,
                 dest: Id, src: Storable, init: Boolean) = {
-    val (toTref, to) = requirePtr(evalId(ctx, dctx, dest))
-
+    ctx.out.println(s"; store $dest <- $src")
+    // вычисляем что store
     val (whatTref, what) =
       src match {
         case id: Id =>
           val (whatTref, what) = requireValue(ctx, dctx, evalId(ctx, dctx, id))
-          val irType = toTref.toValue(ctx.types)
-
-          if (whatTref.isRef(ctx.types)) {
-            val r1 = dctx.nextReg()
-            ctx.out.println(s"\t%$r1 = bitcast $irType ${irLocalName(what)} to i8*")
-            ctx.out.println(s"\tcall void @rcInc(i8* %$r1)")
-          }
-
           (whatTref, "%" + what)
         case call: Call =>
           val (whatTref, what) = evalCall(ctx, dctx, call).get
-          val irType = toTref.toValue(ctx.types)
-
-          if (toTref.isRef(ctx.types)) {
-            val r1 = dctx.nextReg()
-            ctx.out.println(s"\t%$r1 = bitcast $irType ${irLocalName(what)} to i8*")
-            ctx.out.println(s"\tcall void @rcInc(i8* %$r1)")
-          }
-
           (whatTref, "%" + what)
       }
 
-    val (irType, realTo) =
-      toTref match {
-        case self@ScalarRef(name) =>
-          if (self == whatTref) (toTref.toValue(ctx.types), to)
-          else
-            ctx.types(name) match {
-              case Union(name, variants) =>
-                val idx = variants.indexOf(whatTref)
-                val (tref, _, v) = evalGep(ctx, dctx, toTref, to, Seq(idx.toString))
-
-                val irType = toTref.toValue(ctx.types)
-                val r1 = dctx.nextReg()
-                ctx.out.println(s"\t%$r1 = getelementptr $irType, $irType* %$to, i64 0, i32 0")
-                ctx.out.println(s"\tstore i8 $idx, i8* %$r1")
-
-                (tref.toValue(ctx.types), v)
-              case _ => (toTref.toValue(ctx.types), to)
-            }
-        case UnionRef(variants) => null
-        case _ => (toTref.toValue(ctx.types), to)
-      }
-
-
-    if (!init && toTref.isRef(ctx.types)) {
-      val r2 = dctx.nextReg()
-      val r3 = dctx.nextReg()
-      ctx.out.println(s"\t%$r2 = load $irType, $irType* ${irLocalName(realTo)}")
-      ctx.out.println(s"\t%$r3 = bitcast $irType %$r2 to i8*")
-      ctx.out.println(s"\tcall void @rcDec(i8* %$r3)")
+    // делаем инкремент что store
+    if (whatTref.isRef(ctx.types)) {
+      val irType = whatTref.toValue(ctx.types)
+      val r1 = dctx.nextReg()
+      ctx.out.println(s"\t%$r1 = bitcast $irType $what to i8*")
+      ctx.out.println(s"\tcall void @rcInc(i8* %$r1)")
+    } else if (whatTref.isUnion(ctx.types)) {
+      val endBranch = "end" + dctx.nextBranch()
+      prepareUnionStore(ctx, dctx, endBranch, what, whatTref, doInc = true)
     }
+
+    // вычисляем куда store
+    val (toTref, to) = requirePtr(evalId(ctx, dctx, dest))
+
+    // ищем реальный адрес куда store с учетом изврата с union
+    val (irType, realTo) =
+      if (toTref == whatTref) (toTref.toValue(ctx.types), to)
+      else
+        ctx.types(toTref.name) match {
+          case Union(name, variants) =>
+            val idx = variants.indexOf(whatTref)
+            val (tref, _, v) = evalGep(ctx, dctx, toTref, to, Seq(idx.toString))
+
+            val irType = toTref.toValue(ctx.types)
+            val r1 = dctx.nextReg()
+            ctx.out.println(s"\t%$r1 = getelementptr $irType, $irType* %$to, i64 0, i32 0")
+            ctx.out.println(s"\tstore i8 ${idx + 1}, i8* %$r1")
+
+            (tref.toValue(ctx.types), v)
+          case _ => (toTref.toValue(ctx.types), to)
+        }
+
+
+    // делаем декремент куда store
+    if (!init)
+      if (toTref.isRef(ctx.types)) {
+        val r2 = dctx.nextReg()
+        val r3 = dctx.nextReg()
+        ctx.out.println(s"\t%$r2 = load $irType, $irType* ${irLocalName(realTo)}")
+        ctx.out.println(s"\t%$r3 = bitcast $irType %$r2 to i8*")
+        ctx.out.println(s"\tcall void @rcDec(i8* %$r3)")
+      } else if (whatTref.isUnion(ctx.types)) {
+        val endBranch = "end" + dctx.nextBranch()
+        prepareUnionStore(ctx, dctx, endBranch, what, whatTref, doInc = false)
+      }
 
     ctx.out.println(s"\tstore $irType $what, $irType* ${irLocalName(realTo)}")
   }
@@ -232,12 +269,14 @@ object IrGen2 {
       }
     }
 
-    val argsIr = fn.args.map { f =>
-      if (f.ref.isRegisterFit(ctx.types)) f.ref.toValue(ctx.types) + " " + irLocalName(f.name)
-      else f.ref.toPtr(ctx.types) + " " + irLocalName(f.name)
+    val fnType = ctx.types(fn.ref.name).asInstanceOf[Fn]
+    val argsIr = (fn.args zip fnType.args).map {
+      case (argName, argTypeRef) =>
+        if (argTypeRef.isRegisterFit(ctx.types)) argTypeRef.toValue(ctx.types) + " " + irLocalName(argName)
+        else argTypeRef.toPtr(ctx.types) + " " + irLocalName(argName)
     }.mkString(", ")
 
-    ctx.out.println(s"define ${fn.ret.toValue(ctx.types)} ${irDefName(fn.name)} ($argsIr) { ")
+    ctx.out.println(s"define ${fnType.ret.toValue(ctx.types)} ${irDefName(fn.name)} ($argsIr) { ")
     fn.code match {
       case LLCode(value) => ctx.out.println(value)
       case AbraCode(vars, stats) =>
@@ -279,6 +318,14 @@ object IrGen2 {
         |    store i64 %newRc, i64* %2
         |    ret void
         |}
+        |;define i8*  @abra$alloc(i64 %size) {
+        |;}
+        |;define void @abra$beforeStore(i8* src) {
+        |;}
+        |;define void @abra$afterStore(i8** dest, void (i8*) freeFunc) {
+        |;}
+        |; def add = macro.inline with \x: Int, y: Int -> x + y.
+        |; def add = macro.inline(macro.lambda(x + y))
         |define void @rcDec(i8* %obj) {
         |    %1 = getelementptr i8, i8* %obj, i64 -8
         |    %2 = bitcast i8* %1 to i64*
