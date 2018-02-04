@@ -5,30 +5,47 @@ import java.io.PrintStream
 import m3.codegen.Ast2._
 
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 
 /**
   * Created by over on 23.10.17.
   */
 object IrUtil {
+  case class Mod(val lowCode: ListBuffer[String] = ListBuffer(),
+                 val types: mutable.HashMap[String, Type] = mutable.HashMap(),
+                 val defs: mutable.HashMap[String, Def] = mutable.HashMap()) {
+
+    defineType(Low(ref = false, "Nil", "void"))
+    defineType(Low(ref = false, "Bool", "i8"))
+    defineType(Low(ref = false, "Int", "i32"))
+    defineType(Low(ref = false, "Float", "float"))
+    defineType(Low(ref = true, "String", "i8*"))
+
+    def addLow(lowCode: String) = this.lowCode += lowCode
+
+    def defineType(t: Type) =
+      types.put(t.name, t)
+
+    def defineDef(d: Def) =
+      defs.put(d.name, d)
+  }
+
   case class IrContext(out: PrintStream,
                        types: mutable.HashMap[String, Type],
+                       protos: mutable.HashMap[String, TypeRef],
                        defs: mutable.HashMap[String, Def])
 
-  case class DefContext(val fn: Def, val vars: Map[String, TypeRef]) {
-    val nextReg = new (() => Int) {
-      var anonSeq = 0
-      override def apply(): Int = {
-        anonSeq += 1
-        anonSeq
-      }
+  case class DefContext(val fn: Def, val vars: Map[String, TypeRef],
+                        var _nextReg: Int = 0,
+                        var _nextBranch: Int = 0) {
+    def nextReg() = {
+      _nextReg += 1
+      _nextReg
     }
 
-    val nextBranch = new (() => Int) {
-      var anonSeq = 0
-      override def apply(): Int = {
-        anonSeq += 1
-        anonSeq
-      }
+    def nextBranch() = {
+      _nextBranch += 1
+      _nextBranch
     }
   }
 
@@ -36,13 +53,35 @@ object IrUtil {
     def toDecl(types: mutable.HashMap[String, Type]): String = self match {
       case Low(ref, name, llValue) => throw new RuntimeException("oops")
       case Struct(name, fields) =>
-        s"""%"$name" = type """ +
-          s"{ ${fields.map(f => f.ref.toValue(types)).mkString(", ")} }"
+        s"{ ${fields.map(f => f.ref.toValue(types)).mkString(", ")} }"
       case Union(name, variants) =>
-        s"""%"$name" = type """ +
-          s"{ i8, ${variants.filter(v => !v.isVoid(types)).map(v => v.toValue(types)).mkString(", ")} }"
+        s"{ i8, ${variants.filter(v => !v.isVoid(types)).map(v => v.toValue(types)).mkString(", ")} }"
       case Fn(name, closure, args, ret) =>
-        s"""%"$name" = type ${ret.toValue(types)} (${args.map(a => a.toValue(types)).mkString(", ")})*"""
+        val argsIr = args.map { argRef =>
+          if (argRef.isRegisterFit(types)) argRef.toValue(types)
+          else argRef.toPtr(types)
+        }
+
+        val realArgsIr = if (closure.isEmpty) argsIr else argsIr :+ ("%" + name + "*")
+        val fnPtr = s"${ret.toValue(types)} (${realArgsIr.mkString(", ")})*"
+
+        if (closure.isEmpty) fnPtr
+        else {
+          val cl = closure.map {
+            case Local(ref) => ref.toPtr(types)
+            case Param(ref) => if (ref.isRegisterFit(types)) ref.toValue(types) else ref.toPtr(types)
+          }.mkString(", ")
+
+          s"""{ $fnPtr, $cl }"""
+        }
+    }
+
+    def isRef(types: mutable.HashMap[String, Type]): Boolean =
+      TypeRef(self.name).isRef(types)
+
+    def isUnion = self match {
+      case u: Union => true
+      case _ => false
     }
   }
 
@@ -54,7 +93,7 @@ object IrUtil {
         case Low(ref, name, llValue) => true
         case s: Struct => false
         case u: Union => false
-        case fn: Fn => true
+        case fn: Fn => if(fn.closure.isEmpty) true else false
       }
     }
 
@@ -106,9 +145,14 @@ object IrUtil {
         case Low(ref, name, llValue) => llValue
         case Struct(name, fields) => "%\"" + name + "\"" + refSuffix
         case Union(name, variants) => "%\"" + name + "\"" + refSuffix
-        case Fn(name, closure, args, ret) => "%\"" + name + "\"" + refSuffix
+        case fn: Fn =>
+          if(fn.closure.isEmpty) fn.toDecl(types)
+          else "%\"" + fn.name + "\"" + refSuffix
       }
     }
+
+    def isNeedBeforeAfterStore(types: mutable.HashMap[String, Type]) =
+      self.isUnion(types) || self.isRef(types)
   }
 
   def irDefName(name: String) = s"""@"$name""""

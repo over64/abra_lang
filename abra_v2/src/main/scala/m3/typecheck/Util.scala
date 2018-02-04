@@ -96,18 +96,6 @@ object Util {
   }
 
   implicit class RichExpression(self: Expression) {
-    def specMatchOver(mo: MatchOver, specMap: Map[GenericType, TypeHint], namespace: Namespace): MatchOver = mo match {
-      case e: Expression => e.spec(specMap, namespace)
-      case Dash => Dash
-      case bv: BindVar => bv
-      case Destruct(varName, scalarTypeHint, args) =>
-        Destruct(
-          varName,
-          scalarTypeHint.spec(specMap).asInstanceOf[ScalarTh], // so dirty
-          args.map(over => specMatchOver(over, specMap, namespace)))
-      case MatchType(varName, scalarTypeHint) =>
-        MatchType(varName, scalarTypeHint.spec(specMap).asInstanceOf[ScalarTh])
-    }
     def spec(specMap: Map[GenericType, TypeHint], namespace: Namespace): Expression = self match {
       case l: Literal => l
       case Prop(from, prop) => Prop(from.spec(specMap, namespace), prop)
@@ -132,7 +120,7 @@ object Util {
               specMap.foreach {
                 case (sth, th) =>
                   val lowScalarRef = th.toLow(namespace) // FIXME: no cast?
-                val replName = namespace.lowTypes(lowScalarRef.name) match {
+                val replName = namespace.lowMod.types(lowScalarRef.name) match {
                   case Ast2.Low(ref, name, llValue) => llValue
                   case _ => "%" + lowScalarRef.name
                 }
@@ -148,20 +136,11 @@ object Util {
           ifCond.spec(specMap, namespace),
           _do.map(e => e.spec(specMap, namespace)),
           _else.map(e => e.spec(specMap, namespace)))
-      case Match(on, cases) =>
-        Match(on.spec(specMap, namespace),
-          cases.map(c => Case(
-            specMatchOver(c.over, specMap, namespace),
-            c._if.map(e => e.spec(specMap, namespace)),
-            c.seq.map(e => e.spec(specMap, namespace))
-          )))
       case While(cond, _then) =>
         While(cond.spec(specMap, namespace), _then.map(e => e.spec(specMap, namespace)))
-      case Store(to, what) =>
-        Store(to, what.spec(specMap, namespace))
+      case Store(th, to, what) =>
+        Store(th.map(th => th.spec(specMap)), to, what.spec(specMap, namespace))
       case Ret(what) => Ret(what.map(e => e.spec(specMap, namespace)))
-      case Val(mutable, name, typeHint, init) =>
-        Val(mutable, name, typeHint.map(th => th.spec(specMap)), init.spec(specMap, namespace))
     }
   }
 
@@ -193,7 +172,7 @@ object Util {
       specMap.foreach {
         case (sth, th) =>
           val lowScalarRef = th.toLow(namespace)
-          val replName = namespace.lowTypes(lowScalarRef.name) match {
+          val replName = namespace.lowMod.types(lowScalarRef.name) match {
             case Ast2.Low(ref, name, llValue) => llValue
             case _ => "%" + lowScalarRef.name
           }
@@ -288,28 +267,28 @@ object Util {
           foundType match {
             case sd: ScalarDecl =>
               val low = sd.spec(params, namespace)
-              namespace.lowTypes.put(low.name, low)
+              namespace.lowMod.defineType(low)
               Ast2.TypeRef(name)
             case struct: StructDecl =>
               val lowStruct = struct.spec(params, namespace)
-              namespace.lowTypes.put(lowStruct.name, lowStruct)
+              namespace.lowMod.defineType(lowStruct)
               Ast2.TypeRef(lowStruct.name)
             case ud: UnionDecl =>
               val lowUnion = ud.spec(params, namespace)
-              namespace.lowTypes.put(lowUnion.name, lowUnion)
+              namespace.lowMod.defineType(lowUnion)
               Ast2.TypeRef(lowUnion.name)
           }
         case StructTh(fields) =>
           val lowFields = fields.map(f => Ast2.Field(f.name, f.typeHint.toLow(namespace)))
           val lowName = s"(${lowFields.map(_.ref.name).mkString(", ")})"
-          if (namespace.lowTypes.get(lowName) == None)
-            namespace.lowTypes.put(lowName, Ast2.Struct(lowName, lowFields))
+          if (namespace.lowMod.types.get(lowName) == None)
+            namespace.lowMod.defineType(Ast2.Struct(lowName, lowFields))
           Ast2.TypeRef(lowName)
         case UnionTh(variants) =>
           val lowVariants = variants.map(v => v.toLow(namespace))
           val lowName = s"(${lowVariants.map(_.name).mkString(" | ")})"
-          if (namespace.lowTypes.get(lowName) == None)
-            namespace.lowTypes.put(lowName, Ast2.Union(lowName, lowVariants))
+          if (namespace.lowMod.types.get(lowName) == None)
+            namespace.lowMod.defineType(Ast2.Union(lowName, lowVariants))
           Ast2.TypeRef(lowName)
         case FnTh(closure, args, ret) =>
           val lowClosure = closure.map {
@@ -327,9 +306,9 @@ object Util {
           val argsPart = lowArgs.map(_.name).mkString(", ")
           val retPart = lowRet.name
 
-          val lowName = s"""<$closurePart>\$argsPart -> $retPart"""
-          if (namespace.lowTypes.get(lowName) == None)
-            namespace.lowTypes.put(lowName, Ast2.Fn(lowName, lowClosure, lowArgs, lowRet))
+          val lowName = s"""<$closurePart>\\$argsPart -> $retPart"""
+          if (namespace.lowMod.types.get(lowName) == None)
+            namespace.lowMod.defineType(Ast2.Fn(lowName, lowClosure, lowArgs, lowRet))
           Ast2.TypeRef(lowName)
       }
     }

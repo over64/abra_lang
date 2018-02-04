@@ -40,7 +40,7 @@ class SpecTest extends FunSuite {
 
     println(ScalarTh(Seq(ScalarTh(Seq.empty, "Int", None), ScalarTh(Seq.empty, "String", None)), "A", None)
       .toLow(namespace))
-    namespace.lowTypes.values.foreach(println(_))
+    namespace.lowMod.types.values.foreach(println(_))
   }
 
   test("spec def") {
@@ -75,10 +75,10 @@ class SpecTest extends FunSuite {
           Arg("mapper", Some(thMapper))
         ),
         body = AbraCode(Seq(
-          Val(mutable = false, "ret", None, SelfCall(Seq(thU), "make", self = lId("seq"), args = Seq(
+          Store(None, Seq(lId("ret")), SelfCall(Seq(thU), "make", self = lId("seq"), args = Seq(
             Prop(lId("self"), lId("length"))
           ))),
-          Val(mutable = true, "i", None, lInt("0")),
+          Store(None, Seq(lId("i")), lInt("0")),
           While(
             cond = SelfCall(Seq.empty, "<", self = lId("i"), args = Seq(
               Prop(lId("self"), lId("length"))
@@ -89,7 +89,7 @@ class SpecTest extends FunSuite {
                 Call(Seq.empty, lId("mapper"), args = Seq(
                   SelfCall(Seq.empty, "get", lId("self"), args = Seq(lId("i")))
                 )),
-                Store(to = Seq(lId("i")), what = SelfCall(Seq.empty, "+", lId("i"), args = Seq(lInt("1"))))
+                Store(None, to = Seq(lId("i")), what = SelfCall(Seq.empty, "+", lId("i"), args = Seq(lInt("1"))))
               ))
             )),
           lId("ret")
@@ -118,7 +118,7 @@ class SpecTest extends FunSuite {
 
     val namespace = new Namespace(pkg = "", defs = Seq.empty, types = Seq(tInt, tSeq10), mods = Map.empty)
     println(thSeq10Int.toLow(namespace))
-    println(namespace.lowTypes)
+    println(namespace.lowMod.types)
   }
 
   test("spec low def") {
@@ -151,7 +151,7 @@ class SpecTest extends FunSuite {
     )
     val namespace = new Namespace(pkg = "", defs = Seq.empty, types = Seq(tInt, tMem), mods = Map.empty)
     println(defGet.spec(Seq(thInt), namespace))
-    println(namespace.lowTypes)
+    println(namespace.lowMod.types)
   }
 
   test("call generic") {
@@ -203,6 +203,6 @@ class SpecTest extends FunSuite {
 
     println(header)
     println(lowDef)
-    println(namespace.lowDefs)
+    println(namespace.lowMod.defs)
   }
 }

@@ -43,6 +43,8 @@ WITH : 'with' ;
 MATCH: 'match';
 OF: 'of';
 RETURN: 'return';
+IS: 'is';
+WHEN: 'when';
 REF: 'ref';
 DASH: '_';
 VERT_LINE: '|';

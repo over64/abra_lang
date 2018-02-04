@@ -24,13 +24,13 @@ expression: literal #exprLiteral
           | expression sp ('[' sp typeHint (sp ',' sp typeHint)* ']')?  sp tuple #exprCall
           | lambda #exprLambda
           | op='!' sp expression #exprUnaryCall
-          | expression sp op=('*' | '/') sp expression #exprInfixCall
-          | expression sp op=('+' | '-' | VarId) sp expression #exprInfixCall
-          | expression sp op=('>' | '<' | '<=' | '>=') sp expression #exprInfixCall
-          | expression sp op=('==' | '!=') sp expression #exprInfixCall
-          | expression sp op=('||' | '&&') sp expression #exprInfixCall
-          | 'if' sp cond=expression sp 'do' sp doStat+=blockBody* sp ('else' sp elseStat+=blockBody*)? DOT #exprIfElse
-          | 'match' sp expr=expression sp (matchCase sp)+ DOT #exprMatch
+          | expression WS* op=('*' | '/') sp expression #exprInfixCall
+          | expression WS* op=('+' | '-' | VarId) sp expression #exprInfixCall
+          | expression WS* op=('>' | '<' | '<=' | '>=') sp expression #exprInfixCall
+          | expression WS* op=('==' | '!=') sp expression #exprInfixCall
+          | expression WS* op=('||' | '&&') sp expression #exprInfixCall
+          | 'if' sp cond=expression sp ('do' sp doStat+=blockBody*) sp ('else' sp elseStat+=blockBody*)? DOT #exprIfElse
+          | 'when' expr=expression sp is+ sp ('else' sp elseStat+=blockBody*)? DOT #exprWnen
           ;
 
 tuple : '(' sp (expression sp (',' sp expression)*)? sp ')'
@@ -49,24 +49,15 @@ typeHint: scalarTh
         | unionTh
         ;
 
-matchDash: '_' ;
-bindVar: id ;
-matchId: MatchId | '$self' ;
-matchBracketsExpr: '$(' sp expression sp ')' ;
-matchExpression: literal | matchId | matchBracketsExpr ;
-destruct: (id '=')? scalarTh '(' (matchOver (',' NL* matchOver)*)? ')' ;
-matchType: VarId NL* ':' NL* scalarTh ;
-matchOver: matchDash | bindVar | matchExpression | destruct | matchType ;
-matchCase: 'of' sp matchOver sp ('if' sp cond=expression)? sp 'do' sp onMatch+=blockBody* ;
+is: 'is' sp VarId sp ':' sp typeHint sp 'do' sp blockBody* ;
 
-variable: valVar=('val' | 'var') sp VarId sp ( ':' sp typeHint)? sp '=' sp expression ;
-store: id ((NL WS?)? DOT VarId)* tuple? sp '=' sp expression ;
+store: id ((NL WS?)? DOT VarId)* sp (tuple | ( ':' sp typeHint))? sp '=' sp expression ;
 ret: 'return' sp expression?;
 while_stat: 'while' sp cond=expression sp 'do' sp blockBody* DOT ;
 
 fnArg: id sp (':' sp typeHint (sp '=' sp expression)?)? ;
-lambda: ('\\' sp fnArg sp (',' sp fnArg)*)? sp '->' sp (blockBody* | llvm);
-blockBody: (variable | store | while_stat | expression | ret) sp ';'? sp ;
+lambda: ('\\' sp fnArg sp (',' sp fnArg)*)? sp '->' sp (blockBody* sp DOT? | llvm);
+blockBody: (store | while_stat | expression | ret) sp ';'? sp ;
 
 scalarType: REF? sp 'type' sp tname=TypeId (sp '[' params+=TypeId (',' params+=TypeId)* ']')? sp '=' sp llvm ;
 typeField: 'self'? sp VarId sp ':' sp typeHint (sp '=' sp expression)? ;
@@ -80,12 +71,12 @@ type: scalarType
 
 function: 'def' sp name=(VarId | '!' | '*' | '/' | '+' | '-' | '>' | '<' | '<=' | '>=' | '==' | '!=')
     sp ('[' TypeId (',' TypeId)* ']')?
-    sp '=' sp (expression | lambda) DOT typeHint?;
+    sp '=' sp (expression | lambda) sp DOT typeHint?;
 
 import_: 'import' sp VarId ( sp '/' sp VarId)* ;
 
 level1: type | function ;
-module: (sp import_)* (sp level1)* sp EOF ;
+module: (sp import_)* sp (level1 sp)* EOF ;
 
 llvmBody: (LLVM_NL | LLVM_WS | IrLine | LL_Dot)* LL_End;
 llvm: LlBegin llvmBody ;

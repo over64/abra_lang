@@ -62,6 +62,18 @@ public interface M2ParserListener extends ParseTreeListener {
 	 */
 	void exitExprCall(M2Parser.ExprCallContext ctx);
 	/**
+	 * Enter a parse tree produced by the {@code exprWnen}
+	 * labeled alternative in {@link M2Parser#expression}.
+	 * @param ctx the parse tree
+	 */
+	void enterExprWnen(M2Parser.ExprWnenContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code exprWnen}
+	 * labeled alternative in {@link M2Parser#expression}.
+	 * @param ctx the parse tree
+	 */
+	void exitExprWnen(M2Parser.ExprWnenContext ctx);
+	/**
 	 * Enter a parse tree produced by the {@code exprProp}
 	 * labeled alternative in {@link M2Parser#expression}.
 	 * @param ctx the parse tree
@@ -109,18 +121,6 @@ public interface M2ParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitExprUnaryCall(M2Parser.ExprUnaryCallContext ctx);
-	/**
-	 * Enter a parse tree produced by the {@code exprMatch}
-	 * labeled alternative in {@link M2Parser#expression}.
-	 * @param ctx the parse tree
-	 */
-	void enterExprMatch(M2Parser.ExprMatchContext ctx);
-	/**
-	 * Exit a parse tree produced by the {@code exprMatch}
-	 * labeled alternative in {@link M2Parser#expression}.
-	 * @param ctx the parse tree
-	 */
-	void exitExprMatch(M2Parser.ExprMatchContext ctx);
 	/**
 	 * Enter a parse tree produced by the {@code exprInfixCall}
 	 * labeled alternative in {@link M2Parser#expression}.
@@ -262,105 +262,15 @@ public interface M2ParserListener extends ParseTreeListener {
 	 */
 	void exitTypeHint(M2Parser.TypeHintContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link M2Parser#matchDash}.
+	 * Enter a parse tree produced by {@link M2Parser#is}.
 	 * @param ctx the parse tree
 	 */
-	void enterMatchDash(M2Parser.MatchDashContext ctx);
+	void enterIs(M2Parser.IsContext ctx);
 	/**
-	 * Exit a parse tree produced by {@link M2Parser#matchDash}.
+	 * Exit a parse tree produced by {@link M2Parser#is}.
 	 * @param ctx the parse tree
 	 */
-	void exitMatchDash(M2Parser.MatchDashContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link M2Parser#bindVar}.
-	 * @param ctx the parse tree
-	 */
-	void enterBindVar(M2Parser.BindVarContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link M2Parser#bindVar}.
-	 * @param ctx the parse tree
-	 */
-	void exitBindVar(M2Parser.BindVarContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link M2Parser#matchId}.
-	 * @param ctx the parse tree
-	 */
-	void enterMatchId(M2Parser.MatchIdContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link M2Parser#matchId}.
-	 * @param ctx the parse tree
-	 */
-	void exitMatchId(M2Parser.MatchIdContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link M2Parser#matchBracketsExpr}.
-	 * @param ctx the parse tree
-	 */
-	void enterMatchBracketsExpr(M2Parser.MatchBracketsExprContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link M2Parser#matchBracketsExpr}.
-	 * @param ctx the parse tree
-	 */
-	void exitMatchBracketsExpr(M2Parser.MatchBracketsExprContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link M2Parser#matchExpression}.
-	 * @param ctx the parse tree
-	 */
-	void enterMatchExpression(M2Parser.MatchExpressionContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link M2Parser#matchExpression}.
-	 * @param ctx the parse tree
-	 */
-	void exitMatchExpression(M2Parser.MatchExpressionContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link M2Parser#destruct}.
-	 * @param ctx the parse tree
-	 */
-	void enterDestruct(M2Parser.DestructContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link M2Parser#destruct}.
-	 * @param ctx the parse tree
-	 */
-	void exitDestruct(M2Parser.DestructContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link M2Parser#matchType}.
-	 * @param ctx the parse tree
-	 */
-	void enterMatchType(M2Parser.MatchTypeContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link M2Parser#matchType}.
-	 * @param ctx the parse tree
-	 */
-	void exitMatchType(M2Parser.MatchTypeContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link M2Parser#matchOver}.
-	 * @param ctx the parse tree
-	 */
-	void enterMatchOver(M2Parser.MatchOverContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link M2Parser#matchOver}.
-	 * @param ctx the parse tree
-	 */
-	void exitMatchOver(M2Parser.MatchOverContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link M2Parser#matchCase}.
-	 * @param ctx the parse tree
-	 */
-	void enterMatchCase(M2Parser.MatchCaseContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link M2Parser#matchCase}.
-	 * @param ctx the parse tree
-	 */
-	void exitMatchCase(M2Parser.MatchCaseContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link M2Parser#variable}.
-	 * @param ctx the parse tree
-	 */
-	void enterVariable(M2Parser.VariableContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link M2Parser#variable}.
-	 * @param ctx the parse tree
-	 */
-	void exitVariable(M2Parser.VariableContext ctx);
+	void exitIs(M2Parser.IsContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link M2Parser#store}.
 	 * @param ctx the parse tree

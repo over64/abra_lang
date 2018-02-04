@@ -1,6 +1,9 @@
 package m3.codegen
 
-import m3.codegen.Ast2.Fn
+import java.util.Base64
+
+import m3.codegen.Ast2.{Fn, Id}
+import m3.codegen.IrUtil.Mod
 
 object ConstGen {
 
@@ -10,26 +13,44 @@ object ConstGen {
   val fnFloat = Fn("\\ -> Float", Seq.empty, Seq.empty, Ast2.TypeRef("Float"))
   val types = Seq(fnBool, fnInt, fnString, fnFloat)
 
-  def genBoolConst(id: String, value: String): Ast2.Def = {
+  def bool(mod: Mod, value: String): Ast2.Id = {
     val v = if (value == "true") 1 else 0
-    Ast2.Def(id, Ast2.TypeRef("\\ -> Bool"), Seq.empty, Seq.empty, Ast2.LLCode(
+    val id = "$bool." + value
+
+    mod.types.put(fnBool.name, fnBool)
+    mod.defs.put(id, Ast2.Def(id, Ast2.TypeRef("\\ -> Bool"), Seq.empty, Seq.empty, Ast2.LLCode(
       s"ret i8 $v"
-    ), isAnon = true)
-  }
-  def genIntConst(id: String, value: String): Ast2.Def =
-    Ast2.Def(id, Ast2.TypeRef("\\ -> Int"), Seq.empty, Seq.empty, Ast2.LLCode(
-      s"ret i32 $value"
-    ), isAnon = true)
+    ), isAnon = true))
 
-  def genFloatConst(id: String, value: String): Ast2.Def = {
+    Id(id)
+  }
+  def int(mod: Mod, value: String): Ast2.Id = {
+    val id = "$int." + value
+    mod.types.put(fnInt.name, fnInt)
+    mod.defs.put(id,
+      Ast2.Def(id, Ast2.TypeRef("\\ -> Int"), Seq.empty, Seq.empty, Ast2.LLCode(
+        s"ret i32 $value"
+      ), isAnon = true))
+    Id(id)
+  }
+
+  def float(mod: Mod, value: String): Ast2.Id = {
+    val id = "$float." + value
+    mod.types.put(fnFloat.name, fnFloat)
+
     val d = (new java.lang.Float(value)).toDouble
-    Ast2.Def(id, Ast2.TypeRef("\\ -> Float"), Seq.empty, Seq.empty, Ast2.LLCode(
+    mod.defs.put(id, Ast2.Def(id, Ast2.TypeRef("\\ -> Float"), Seq.empty, Seq.empty, Ast2.LLCode(
       s"ret float ${"0x" + java.lang.Long.toHexString(java.lang.Double.doubleToLongBits(d))}"
-    ), isAnon = true)
+    ), isAnon = true))
+
+    Id(id)
   }
 
-  def genStringConst(id: String, value: String): (Ast2.Def, String) = {
-    val name = id + "$const"
+  def string(mod: Mod, value: String): Ast2.Id = {
+    val hash = new String(Base64.getEncoder.encode(value.getBytes())).replace("=", "$")
+    val id = "$string." + hash
+    val name = "$string.const." + hash
+
     val encoded = HexUtil.singleByteNullTerminated(value.getBytes())
     val len = encoded.bytesLen
 
@@ -38,11 +59,14 @@ object ConstGen {
       s"""
          |%1 = call i8* @rcAlloc(i64 6)
          |call void @llvm.memcpy.p0i8.p0i8.i64(i8* %1, i8* getelementptr inbounds ([$len x i8], [$len x i8]* @$name, i32 0, i32 0), i64 6, i32 1, i1 false)
-         |call void @rcInc(i8* %1)
          |ret i8* %1
             """.stripMargin
     ), isAnon = true)
 
-    (lowDef, lowCode)
+    mod.types.put(fnString.name, fnString)
+    mod.defs.put(lowDef.name, lowDef)
+    mod.addLow(lowCode)
+
+    Id(lowDef.name)
   }
 }

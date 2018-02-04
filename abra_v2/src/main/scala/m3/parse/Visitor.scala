@@ -146,17 +146,7 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
       visitExpr(ctx.expression())
     else if (ctx.store() != null)
       visitStore(ctx.store())
-    else if (ctx.variable() != null)
-      visitVariable(ctx.variable())
     else visitWhile_stat(ctx.while_stat())
-
-  override def visitVariable(ctx: VariableContext): Val =
-    emit(ctx, Val(
-      if (ctx.valVar.getText == "val") false else true,
-      ctx.VarId().getText,
-      Option(ctx.typeHint()).map(th => visitTypeHint(th)),
-      ctx.expression().accept(this).asInstanceOf[Expression]
-    ))
 
   override def visitStore(ctx: StoreContext): Expression = {
     val first = visitId(ctx.id())
@@ -176,7 +166,9 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
 
       emit(ctx, SelfCall(Seq.empty, "set", to, indices :+ expr))
     } else
-      emit(ctx, Store(first +: ctx.VarId().map(vid => lId(vid.getText)), expr))
+      emit(ctx, Store(
+        Option(ctx.typeHint()).map(th => visitTypeHint(th)),
+        first +: ctx.VarId().map(vid => lId(vid.getText)), expr))
   }
 
   override def visitRet(ctx: RetContext): Ret = emit(ctx, Ret(
@@ -233,51 +225,22 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
     ))
   }
 
+  override def visitIs(ctx: IsContext) =
+    emit(ctx, Is(
+      lId(ctx.VarId().getSymbol.getText),
+      visitTypeHint(ctx.typeHint()),
+      ctx.blockBody().map(bb => visitBlockBody(bb))
+    ))
+
+  override def visitExprWnen(ctx: ExprWnenContext) =
+    emit(ctx, When(
+      visitExpr(ctx.expr),
+      ctx.is().map(i => visitIs(i)),
+      ctx.elseStat.map(e => visitBlockBody(e))
+    ))
+
   override def visitExprProp(ctx: ExprPropContext): Expression =
     emit(ctx, Prop(visitExpr(ctx.expression()), emit(ctx.op, lId(ctx.op.getText))))
-
-  override def visitMatchDash(ctx: MatchDashContext): MatchOver = emit(ctx, Dash)
-
-  override def visitMatchId(ctx: MatchIdContext): lId = {
-    val realId = if (ctx.MatchId() != null) ctx.MatchId() else ctx.getToken(MATCH_SELF, 0)
-    emit(realId.getSymbol, lId(realId.getSymbol.getText.replaceFirst("\\$", "")))
-  }
-
-  override def visitMatchType(ctx: MatchTypeContext): MatchType =
-    emit(ctx, MatchType(
-      varName = lId(ctx.VarId().getText),
-      scalarTypeHint = visitScalarTh(ctx.scalarTh())
-    ))
-
-  override def visitMatchBracketsExpr(ctx: MatchBracketsExprContext): Expression = visitExpr(ctx.expression())
-  Call
-  override def visitMatchExpression(ctx: MatchExpressionContext): Expression =
-    emit(ctx, visitChildren(ctx).asInstanceOf[Expression])
-
-  override def visitDestruct(ctx: DestructContext) =
-    emit(ctx, Destruct(
-      varName = if (ctx.id() == null) None else Some(visitId(ctx.id())),
-      scalarTypeHint = visitScalarTh(ctx.scalarTh()),
-      args = ctx.matchOver().map { mo => visitMatchOver(mo) }
-    ))
-
-  override def visitBindVar(ctx: BindVarContext) = BindVar(visitId(ctx.id()))
-
-  override def visitMatchOver(ctx: MatchOverContext) =
-    visitChildren(ctx).asInstanceOf[MatchOver]
-
-  override def visitMatchCase(ctx: MatchCaseContext): Case =
-    emit(ctx, Case(
-      over = visitMatchOver(ctx.matchOver()),
-      _if = if (ctx.cond == null) None else Some(visitExpr(ctx.cond)),
-      seq = ctx.onMatch.map { b => visitBlockBody(b) }
-    ))
-
-  override def visitExprMatch(ctx: ExprMatchContext) =
-    emit(ctx, Match(
-      on = visitExpr(ctx.expr),
-      cases = ctx.matchCase().map { mc => visitMatchCase(mc) }
-    ))
 
   override def visitFunction(ctx: FunctionContext): Def = {
     val tparams = ctx.TypeId().map(id => GenericType(id.getText))

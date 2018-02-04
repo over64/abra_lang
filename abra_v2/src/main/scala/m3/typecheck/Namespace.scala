@@ -1,6 +1,6 @@
 package m3.typecheck
 
-import m3.codegen.Ast2
+import m3.codegen.{Ast2, IrUtil}
 import m3.parse.Ast0._
 
 import scala.collection.mutable
@@ -31,9 +31,7 @@ class Namespace(val pkg: String,
   val inferedDefs = mutable.HashMap[DefSpec, DefHeader]()
   val inferedSelfDefs = mutable.HashMap[DefSpec, DefHeader]()
 
-  val lowTypes = mutable.HashMap[String, Ast2.Type]()
-  val lowDefs = mutable.HashMap[String, Ast2.Def]()
-  val lowCode = mutable.ListBuffer[String]()
+  val lowMod = IrUtil.Mod()
 
   def hasDef(name: String): Boolean = defs.exists(d => d.name == name)
   def hasSelfDef(name: String, selfType: TypeHint): Boolean = false
@@ -141,7 +139,7 @@ class Namespace(val pkg: String,
     val (header, lowDef) = inferCallback(advice, _def)
 
     // FIXME: inferedDefs.put()
-    lowDefs.put(lowDef.name, lowDef)
+    lowMod.defineDef(lowDef)
 
     val anonVar = "$c" + nextAnonId()
     scope.addLocal(mut = false, anonVar, header.th.ret)
@@ -149,7 +147,8 @@ class Namespace(val pkg: String,
     (
       header.th.ret,
       anonVar,
-      argsStats :+ Ast2.Init(
+      argsStats :+ Ast2.Store(
+        init = true,
         Ast2.Id(anonVar),
         Ast2.Call(
           Ast2.Id(lowDef.name),
@@ -194,7 +193,8 @@ class Namespace(val pkg: String,
     (
       th.ret,
       anonVar,
-      argsStats :+ Ast2.Init(
+      argsStats :+ Ast2.Store(
+        init = true,
         Ast2.Id(anonVar),
         Ast2.Call(
           Ast2.Id(name),
@@ -218,7 +218,6 @@ class Namespace(val pkg: String,
     null
   }
 
-  def dumpCode = (lowTypes, lowDefs)
   def dumpHeader: ModHeader = {
     null
   }

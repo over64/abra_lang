@@ -17,29 +17,20 @@ object TypeChecker {
       val vName = "$l" + namespace.nextAnonId()
       val (actualTh, lit) = x match {
         case lInt(value) =>
-          val fnName = "cInt" + namespace.nextAnonId().toString
-          val _def = ConstGen.genBoolConst(fnName, value)
-          namespace.lowDefs.put(fnName, _def)
-          (thInt, Ast2.Call(Ast2.Id(fnName), Seq.empty))
+          val id = ConstGen.int(namespace.lowMod, value)
+          (thInt, Ast2.Call(id, Seq.empty))
         case lFloat(value: String) =>
-          val fnName = "cFloat" + namespace.nextAnonId().toString
-          val _def = ConstGen.genBoolConst(fnName, value)
-          namespace.lowDefs.put(fnName, _def)
-          (thFloat, Ast2.Call(Ast2.Id(fnName), Seq.empty))
+          val id = ConstGen.float(namespace.lowMod, value)
+          (thFloat, Ast2.Call(id, Seq.empty))
         case lBoolean(value: String) =>
-          val fnName = "cBool" + namespace.nextAnonId().toString
-          val _def = ConstGen.genBoolConst(fnName, value)
-          namespace.lowDefs.put(fnName, _def)
-          (thBool, Ast2.Call(Ast2.Id(fnName), Seq.empty))
+          val id = ConstGen.bool(namespace.lowMod, value)
+          (thBool, Ast2.Call(id, Seq.empty))
         case lString(value: String) =>
-          val fnName = "cInt" + namespace.nextAnonId()
-          val (_def, code) = ConstGen.genStringConst(fnName, value)
-          namespace.lowCode.append(code)
-          namespace.lowDefs.put(fnName, _def)
-          (thString, Ast2.Call(Ast2.Id(fnName), Seq.empty))
+          val id = ConstGen.string(namespace.lowMod, value)
+          (thString, Ast2.Call(id, Seq.empty))
       }
       scope.addLocal(mut = false, vName, actualTh)
-      (actualTh, vName, Seq(Ast2.Init(Ast2.Id(vName, Seq.empty), lit)))
+      (actualTh, vName, Seq(Ast2.Store(init = true, Ast2.Id(vName, Seq.empty), lit)))
     case Prop(from, prop) => null
     case Tuple(seq) =>
       // val z: (x: Int, y: Int) = (1, 2)
@@ -100,12 +91,12 @@ object TypeChecker {
 
       val (header, lowDef) = evalDef(namespace, scope.mkChild(p => new FnScope(Some(p))), advice, _def)
       namespace.anonDefs.append(_def)
-      namespace.lowDefs.put(_def.name, lowDef)
+      namespace.lowMod.defineDef(lowDef)
 
       val vName = "$l" + namespace.nextAnonId()
       scope.addLocal(mut = false, vName, header.th)
 
-      (header.th, vName, Seq(Ast2.Init(Ast2.Id(vName), Ast2.Id(_def.name))))
+      (header.th, vName, Seq(Ast2.Store(init = true, Ast2.Id(vName), Ast2.Id(_def.name))))
     case andOr: AndOr =>
       val lowId = Ast2.Id("$and" + namespace.nextAnonId())
 
@@ -115,8 +106,8 @@ object TypeChecker {
       val (rightTh, rightName, rightStats) = evalExpr(namespace, scope, Some(adviceBool), andOr.right)
       if (rightTh != thBool) throw new RuntimeException(s"expected $thBool has $rightTh")
 
-      val leftFullStats = leftStats :+ Ast2.Init(lowId, Ast2.Id(leftName))
-      val rightFullStats = rightStats :+ Ast2.Init(lowId, Ast2.Id(rightName))
+      val leftFullStats = leftStats :+ Ast2.Store(init = true, lowId, Ast2.Id(leftName))
+      val rightFullStats = rightStats :+ Ast2.Store(init = true, lowId, Ast2.Id(rightName))
 
       val low =
         andOr match {
@@ -152,11 +143,10 @@ object TypeChecker {
 
       (actualTh,
         resultVar,
-        condStats :+ Ast2.Cond(
+        condStats :+ Ast2.If(
           Ast2.Id(condName),
-          doStats :+ Ast2.Init(Ast2.Id(resultVar), Ast2.Id(doName)),
-          elseStats :+ Ast2.Init(Ast2.Id(resultVar), Ast2.Id(elseName))))
-    case Match(on, cases) => null
+          doStats :+ Ast2.Store(init = true, Ast2.Id(resultVar), Ast2.Id(doName)),
+          elseStats :+ Ast2.Store(init = true, Ast2.Id(resultVar), Ast2.Id(elseName))))
     case While(cond, _do) =>
       val (condTh, condName, condStats) = evalExpr(namespace, scope, Some(adviceBool), cond)
       val stats =
@@ -165,26 +155,56 @@ object TypeChecker {
         }
 
       (thNil, null, Seq(Ast2.While(Ast2.Id(condName), condStats, stats)))
-    case Store(to, what) => null
+    case Store(typeHint, to, what) =>
+      // x: Int = 5 # ok
+      // x = 6 # ok
+      // x.y: Int = 8 # fail
+      // x.y = 8 # ok
       val toVarName = to.head.value
-      val toVar = scope.findVar(toVarName)
-      val toTh =
-        to.drop(1).foldLeft(toVar.th) {
-          case (th, id) => th match {
-            case StructTh(fields) =>
-              val f = fields.find(f => f.name == id.value).getOrElse(throw new RuntimeException(s"no such field ${id.value} in ${th}"))
-              f.typeHint
-            case ScalarTh(params, name, pkg) => null
-            case _ => throw new RuntimeException(s"no such field ${id.value} in ${th}")
+
+      typeHint match {
+        case Some(th) =>
+          if (to.length != 1) throw new RuntimeException("type hint unexpected here")
+
+          if (scope.findVarOpt(to.head.value) != None)
+            throw new RuntimeException(s"var with name $toVarName already declared")
+
+          val (whatTh, whatName, whatStats) =
+            evalExpr(namespace, scope, None, what)
+
+          scope.addLocal(mut = true, toVarName, whatTh)
+
+          (whatTh, toVarName, whatStats :+ Ast2.Store(init = true, Ast2.Id(toVarName), Ast2.Id(whatName)))
+        case None =>
+          scope.findVarOpt(toVarName) match {
+            case None =>
+              if (to.length != 1) throw new RuntimeException(s"variable with name $toVarName not found")
+
+              val (whatTh, whatName, whatStats) =
+                evalExpr(namespace, scope, None, what)
+
+              scope.addLocal(mut = true, toVarName, whatTh)
+
+              (whatTh, toVarName, whatStats :+ Ast2.Store(init = true, Ast2.Id(toVarName), Ast2.Id(whatName)))
+            case Some(toVar) =>
+              val toTh =
+                to.drop(1).foldLeft(toVar.th) {
+                  case (_th, id) => _th match {
+                    case StructTh(fields) =>
+                      val f = fields.find(f => f.name == id.value).getOrElse(throw new RuntimeException(s"no such field ${id.value} in ${_th}"))
+                      f.typeHint
+                    case _ => throw new RuntimeException(s"no such field ${id.value} in ${_th}")
+                  }
+                }
+
+              val (whatTh, whatName, whatStats) =
+                evalExpr(namespace, scope, toTh.toAdviceOpt(mutable.HashMap.empty), what)
+
+              if (whatTh != toTh) throw new RuntimeException(s"expected $toTh has $whatTh")
+
+              (toTh, toVarName, whatStats :+ Ast2.Store(init = true, Ast2.Id(toVarName), Ast2.Id(whatName)))
           }
-        }
-
-      val (whatTh, whatName, whatStats) =
-        evalExpr(namespace, scope, toTh.toAdviceOpt(mutable.HashMap.empty), what)
-
-      if (whatTh != toTh) throw new RuntimeException(s"expected $toTh has $whatTh")
-
-      (toTh, toVarName, whatStats :+ Ast2.Init(Ast2.Id(toVarName), Ast2.Id(whatName)))
+      }
     case Ret(optExpr) =>
       optExpr match {
         case Some(expr) =>
@@ -194,13 +214,6 @@ object TypeChecker {
         case None =>
           (thNil, "", Seq(Ast2.Ret(None)))
       }
-    case Val(mut, name, typeHint, init) =>
-      val advice = typeHint.flatMap(th => th.toAdviceOpt(mutable.HashMap.empty))
-      val (actualTh, vName, stats) = evalExpr(namespace, scope, advice, init)
-
-      scope.addLocal(mut, name, actualTh)
-
-      (actualTh, name, stats :+ Ast2.Init(Ast2.Id(name), Ast2.Id(vName)))
   }
 
   def evalDef(namespace: Namespace, scope: FnScope, advice: FnAdvice, fn: Def): (DefHeader, Ast2.Def) = {
@@ -274,7 +287,7 @@ object TypeChecker {
         ), fn)
         val to = if (fn.isSelf) namespace.inferedSelfDefs else namespace.inferedDefs
         to.put(fn.signature, header)
-        namespace.lowDefs.put(fn.name, lowDef)
+        namespace.lowMod.defineDef(lowDef)
       }
     }
   }

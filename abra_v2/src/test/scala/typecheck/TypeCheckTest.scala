@@ -102,7 +102,7 @@ class TypeCheckTest extends FunSuite {
       lambda = Lambda(
         args = Seq.empty,
         body = AbraCode(Seq(
-          Val(mutable = false, "i", None, lInt("42")),
+          Store(None, Seq(lId("i")), lInt("42")),
           Call(Seq.empty, lId("bar"), Seq(
             lInt("1"),
             Lambda(
@@ -115,6 +115,6 @@ class TypeCheckTest extends FunSuite {
 
     val namespace = new Namespace(pkg = "", defs = Seq(defBar, defMain), types = Seq(tInt), mods = Map.empty)
     prettyPrint(TypeChecker.evalDef(namespace, new FnScope(None), FnAdvice(Seq.empty, None), defMain))
-    prettyPrint(namespace.lowDefs)
+    prettyPrint(namespace.lowMod.defs)
   }
 }

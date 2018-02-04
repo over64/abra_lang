@@ -4,16 +4,14 @@ import java.io.{FileOutputStream, InputStream, PrintStream}
 import java.nio.file.{Files, Paths}
 import java.util.Scanner
 
-import m3.codegen.Ast2.{Def, Type}
 import m3.codegen.IrGen2
-
-import scala.collection.mutable
+import m3.codegen.IrUtil.Mod
 
 
 trait LowUtil {
   val testBase: String
 
-  implicit class TestModule(module: (Seq[String], mutable.HashMap[String, Type], mutable.HashMap[String, Def])) {
+  implicit class TestModule(module: Mod) {
     def assertRunEquals(exit: Option[Int], stdout: Option[String] = None, stderr: Option[String] = None, additionalLL: Option[String] = None) = {
       def run(args: String*)(onRun: (Int, String, String) => Unit): Unit = {
         def outToString(stream: InputStream): String = {
@@ -37,8 +35,7 @@ trait LowUtil {
 
       additionalLL.map(ll => file.write(ll.getBytes))
 
-      val (lowCode, types, defs) = module
-      IrGen2.gen(new PrintStream(file), lowCode, types, defs)
+      IrGen2.gen(new PrintStream(file), module.lowCode, module.types, module.defs)
       file.close()
 
       Files.copy(Paths.get(s"$testBase/test.out.ll"), System.out)

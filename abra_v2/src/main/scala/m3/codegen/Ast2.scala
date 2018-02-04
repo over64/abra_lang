@@ -25,15 +25,18 @@ object Ast2 {
   sealed trait Storable
 
   case class Id(v: String, props: Seq[String] = Seq.empty) extends Storable
-  case class Init(dest: Id, src: Storable) extends Stat
-  case class Store(dest: Id, src: Storable) extends Stat
-  case class Cond(id: Id, onTrue: Seq[Stat], onFalse: Seq[Stat]) extends Stat
+  case class Cons(ref: TypeRef, args: Seq[Id]) extends Stat with Storable
+  case class Free(id: Id) extends Stat
+  case class Closure(dest: String, src: String) extends Stat
+  case class Call(id: Id, args: Seq[Id] = Seq.empty) extends Stat with Storable
+  case class Ret(lit: Option[String]) extends Stat
+  case class Store(init: Boolean, dest: Id, src: Storable) extends Stat
   case class Or(id: Id, checkLeft: Seq[Stat], checkRight: Seq[Stat]) extends Stat
   case class And(id: Id, checkLeft: Seq[Stat], checkRight: Seq[Stat]) extends Stat
+  case class If(id: Id, onTrue: Seq[Stat], onFalse: Seq[Stat]) extends Stat
+  case class Is(v: String, ref: TypeRef, seq: Seq[Stat])
+  case class When(id: Id, is: Seq[Is], _else: Seq[Stat]) extends Stat
   case class While(id: Id, head: Seq[Stat], body: Seq[Stat]) extends Stat
-  case class Call(id: Id, args: Seq[Id]) extends Stat with Storable
-  case class Free(id: Id) extends Stat // ???
-  case class Ret(lit: Option[String]) extends Stat
 
   sealed trait Code
   case class LLCode(value: String) extends Code

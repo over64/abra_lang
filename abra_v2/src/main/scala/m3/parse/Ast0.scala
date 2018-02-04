@@ -2,9 +2,7 @@ package m3.parse
 
 object Ast0 {
   sealed trait ParseNode
-
-  sealed trait MatchOver extends ParseNode
-  sealed trait Expression extends MatchOver
+  sealed trait Expression extends ParseNode
   sealed trait FnBody
   sealed trait Level1Declaration extends ParseNode
   sealed trait Literal extends Expression {
@@ -56,18 +54,11 @@ object Ast0 {
   case class And(left: Expression, right: Expression) extends Expression with AndOr
   case class Or(left: Expression, right: Expression) extends Expression with AndOr
   case class If(cond: Expression, _do: Seq[Expression], _else: Seq[Expression]) extends Expression
-
-  case object Dash extends MatchOver
-  case class BindVar(varName: lId) extends MatchOver
-  case class Destruct(varName: Option[lId], scalarTypeHint: ScalarTh, args: Seq[MatchOver]) extends MatchOver
-  case class MatchType(varName: lId, scalarTypeHint: ScalarTh) extends MatchOver
-  case class Case(over: MatchOver, _if: Option[Expression], seq: Seq[Expression]) extends ParseNode
-  case class Match(on: Expression, cases: Seq[Case]) extends Expression
-
+  case class Is(vName: lId, typeRef: TypeHint, _do: Seq[Expression]) extends ParseNode
+  case class When(expr: Expression, is: Seq[Is], _else: Seq[Expression]) extends Expression
   case class While(cond: Expression, _do: Seq[Expression]) extends Expression
-  case class Store(to: Seq[lId], what: Expression) extends Expression
+  case class Store(th: Option[TypeHint], to: Seq[lId], what: Expression) extends Expression
   case class Ret(what: Option[Expression]) extends Expression
-  case class Val(mutable: Boolean, name: String, typeHint: Option[TypeHint], init: Expression) extends Expression
   case class Arg(name: String, typeHint: Option[TypeHint]) extends ParseNode
   case class Def(params: Seq[GenericType], name: String, lambda: Lambda, retTh: Option[TypeHint]) extends Level1Declaration
   case class Import(seq: Seq[lId]) extends Level1Declaration

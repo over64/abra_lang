@@ -113,15 +113,8 @@ class _01ExpressionParse extends FunSuite {
   //      Seq(Lambda(Seq(FnArg("x", None)), Seq(lId("x"))))))
   //  }
 
-  test("match") {
-    withStr("match 1 of 1 -> true", Match(lInt("1"), Seq(
-      Case(lInt("1"), None, Seq(lBoolean("true")))
-    )))
 
-    withStr("match 1 of 1 -> { true; true } of 2 -> false", Match(lInt("1"), Seq(
-      Case(lInt("1"), None, Seq(lBoolean("true"), lBoolean("true"))),
-      Case(lInt("2"), None, Seq(lBoolean("false")))
-    )))
-  }
+
+
 }
 

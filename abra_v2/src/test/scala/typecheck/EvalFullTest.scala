@@ -4,9 +4,10 @@ import java.io.{File, FileOutputStream, InputStream, PrintStream}
 import java.nio.file.{Files, Path, Paths}
 import java.util.Scanner
 
-import grammar.{M2Lexer, M2Parser}
+import grammar.{M2Lexer, M2LexerForIDE, M2Parser}
+import m3.codegen.Ast2.Low
 import m3.codegen.IrGen2
-import m3.parse.Ast0.Module
+import m3.parse.Ast0.{Module, ScalarDecl}
 import m3.parse.Visitor
 import m3.typecheck.{Namespace, TypeChecker}
 import org.antlr.v4.runtime.{ANTLRInputStream, CommonTokenStream}
@@ -36,24 +37,25 @@ class EvalFullTest extends FunSuite {
   }
 
   test("main") {
-    val lexer = new M2Lexer(new ANTLRInputStream(
-      """def main = 42"""))
+    val lexer = new M2LexerForIDE(new ANTLRInputStream(
+      """
+        # type Int = llvm i32 .
+        def main = 42 .
+      """))
 
     val tokens = new CommonTokenStream(lexer)
     val parser = new M2Parser(tokens)
     val tree = parser.module()
 
     val ast = new Visitor("test.abra", "test").visit(tree).asInstanceOf[Module]
-    val namespace = new Namespace("test", ast.defs, ast.types, Map.empty)
+    val namespace = new Namespace("test", ast.defs, ast.types :+ ScalarDecl(ref = false, Seq.empty, "Int", "i32"), Map.empty)
     TypeChecker.infer(namespace)
     println(ast)
     println(namespace.inferedDefs)
-    println(namespace.dumpCode)
-    val (lowTypes, lowDefs) = namespace.dumpCode
 
     val fname = "/tmp/test.ll"
     val ps = new PrintStream(new FileOutputStream(fname))
-    IrGen2.gen(ps, Seq(), lowTypes, lowDefs)
+    IrGen2.gen(ps, Seq(), namespace.lowMod.types, namespace.lowMod.defs)
     ps.close()
     Files.copy(Paths.get(fname), System.out)
 

@@ -24,7 +24,7 @@ lazy val abra2 = (project in file("abra_v2"))
   .settings(
     name := "abra-lang-compiler_v2",
     version := "1.0.0",
-    scalaVersion := "2.11.8",
+    scalaVersion := "2.11.11",
     assemblyJarName in assembly := "kadabra.jar",
     libraryDependencies ++= Seq(
       "com.github.scopt" %% "scopt" % "3.5.0",
