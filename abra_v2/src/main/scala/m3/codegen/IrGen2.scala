@@ -56,7 +56,7 @@ object IrGen2 {
                 }
               case None =>
                 // find global
-                ("@" + name, ctx.protos(name), false)
+                ("@" + "\"" + name + "\"", ctx.protos(name), false)
             }
         }
     }
@@ -185,7 +185,7 @@ object IrGen2 {
           val (whatTref, what) = evalCall(ctx, dctx, call).get
           (whatTref, what)
         case Cons(ref, args) =>
-          val (whatTref, what) = evalCall(ctx, dctx, Call(Id("\"" + ref.name + ".$cons\""), args)).get
+          val (whatTref, what) = evalCall(ctx, dctx, Call(Id(ref.name + ".$cons"), args)).get
           (ref, what)
       }
 
@@ -395,7 +395,7 @@ object IrGen2 {
       if (fnType.closure.isEmpty) argsIr
       else argsIr :+ (s"""%"${fnType.name}"* %$$closure""")
 
-    ctx.out.println(s"define ${fnType.ret.toValue(ctx.types)} @${fn.name} (${realArgs.mkString(", ")}) { ")
+    ctx.out.println(s"""define ${fnType.ret.toValue(ctx.types)} @"${fn.name}" (${realArgs.mkString(", ")}) { """)
     fn.code match {
       case LLCode(value) => ctx.out.println(value)
       case AbraCode(vars, stats) =>

@@ -2,7 +2,7 @@ package parse
 
 import java.io.File
 
-import grammar.{M2Lexer, M2Parser}
+import grammar.{M2LexerForIDE, M2Parser}
 import m3.parse.Ast0.ParseNode
 import m3.parse.{SourceMap, Visitor}
 import org.antlr.v4.runtime.tree.ParseTree
@@ -23,7 +23,7 @@ trait Util extends Matchers {
   }
 
   def parse[T <: ParseNode](input: ANTLRInputStream): (T, SourceMap) = {
-    val lexer = new M2Lexer(input)
+    val lexer = new M2LexerForIDE(input)
 
     val tokens = new CommonTokenStream(lexer)
     val parser = new M2Parser(tokens)

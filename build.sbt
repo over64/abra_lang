@@ -2,6 +2,7 @@ import sbt.Keys.{libraryDependencies, version}
 
 resolvers += Resolver.mavenLocal
 resolvers += Resolver.sonatypeRepo("public")
+concurrentRestrictions in Global += Tags.limit(Tags.Test, 1)
 
 lazy val abra1 = (project in file("abra_v1"))
   .settings(

@@ -55,7 +55,7 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
       })
   }
 
-  def visitLlvmBody(ctx: LlvmBodyContext): llVm = emit(ctx, llVm(ctx.getText))
+  def visitLlvmBody(ctx: LlvmBodyContext): llVm = emit(ctx, llVm(ctx.getText.trim))
 
   def visitLlvm(ctx: LlvmContext): llVm =
     visitLlvmBody(ctx.llvmBody())
@@ -108,7 +108,7 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
   override def visitStructType(ctx: StructTypeContext): StructDecl = {
     if (ctx.REF() != null) throw new RuntimeException("explicit ref declaration not allowed for struct type")
     emit(ctx, StructDecl(
-      ctx.TypeId().map { p => emit(p.getSymbol, GenericType(p.getText)) },
+      ctx.params.map { p => emit(p, GenericType(p.getText)) },
       ctx.name.getText,
       ctx.typeField().map { f => visitTypeField(f) }
     ))
@@ -116,7 +116,7 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
   override def visitUnionType(ctx: UnionTypeContext): UnionDecl = {
     if (ctx.REF() != null) throw new RuntimeException("explicit ref declaration not allowed for union type")
     emit(ctx, UnionDecl(
-      ctx.TypeId().map { p => emit(p.getSymbol, GenericType(p.getText)) },
+      ctx.params.map { p => emit(p, GenericType(p.getText)) },
       ctx.name.getText,
       ctx.scalarTh().map { sth => visitScalarTh(sth) }
     ))
@@ -134,10 +134,7 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
       Option(ctx.typeHint()).map(th => visitTypeHint(th))))
 
   override def visitLambda(ctx: LambdaContext): Lambda = {
-    val body =
-      if (ctx.llvm() != null) visitLlvm(ctx.llvm())
-      else AbraCode(ctx.blockBody().map { b => visitBlockBody(b) })
-
+    val body = AbraCode(ctx.blockBody().map { b => visitBlockBody(b) })
     emit(ctx, Lambda(ctx.fnArg().map(fa => visitFnArg(fa)), body))
   }
 
@@ -242,12 +239,13 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
   override def visitExprProp(ctx: ExprPropContext): Expression =
     emit(ctx, Prop(visitExpr(ctx.expression()), emit(ctx.op, lId(ctx.op.getText))))
 
-  override def visitFunction(ctx: FunctionContext): Def = {
+  override def visitDef(ctx: DefContext): Def = {
     val tparams = ctx.TypeId().map(id => GenericType(id.getText))
+    val args = ctx.fnArg().map(fa => visitFnArg(fa))
 
     val body =
-      if (ctx.expression() != null) Lambda(Seq(), AbraCode(Seq(visitExpr(ctx.expression()))))
-      else visitLambda(ctx.lambda())
+      if (ctx.llvm() != null) Lambda(args, visitLlvm(ctx.llvm()))
+      else Lambda(args, AbraCode(ctx.blockBody().map(bb => visitBlockBody(bb))))
 
     val retTh = Option(ctx.typeHint()).map { th => visitTypeHint(th) }
     emit(ctx, Def(tparams, ctx.name.getText, body, retTh))

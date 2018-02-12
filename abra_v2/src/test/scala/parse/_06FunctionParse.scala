@@ -10,19 +10,19 @@ import org.scalatest.FunSuite
   */
 class _06FunctionParse extends FunSuite {
   val parserFunction = new Util {
-    override def whatToParse: (M2Parser) => ParseTree = { parser => parser.function() }
+    override def whatToParse: (M2Parser) => ParseTree = { parser => parser.`def`() }
   }
 
   import parserFunction._
 
-//  test("lldef") {
-//    withStr("def + = lldef { x: Int, y: Int -> ;asm }: Int", Fn(
-//      tparams = Seq(),
-//      name = "+",
-//      body = LlDef(Seq(
-//        FnArg("x", Some(ScalarTh(Seq(), "Int", "", false))),
-//        FnArg("y", Some(ScalarTh(Seq(), "Int", "", false)))),
-//        code = " ;asm "),
-//      retTh = Some(ScalarTh(Seq(), "Int", "", false))))
-//  }
+  test("llvm function") {
+    withStr("f + = x: Int, y: Int -> llvm ;asm .Int", Def(
+      params = Seq(),
+      name = "+",
+      lambda = Lambda(Seq(
+        Arg("x", Some(ScalarTh(Seq(), "Int", None))),
+        Arg("y", Some(ScalarTh(Seq(), "Int", None)))),
+        body = llVm(";asm")),
+      retTh = Some(ScalarTh(Seq(), "Int", None))))
+  }
 }

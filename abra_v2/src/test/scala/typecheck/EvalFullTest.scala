@@ -4,6 +4,7 @@ import java.io.{File, FileOutputStream, InputStream, PrintStream}
 import java.nio.file.{Files, Path, Paths}
 import java.util.Scanner
 
+import codegen.LowUtil
 import grammar.{M2Lexer, M2LexerForIDE, M2Parser}
 import m3.codegen.Ast2.Low
 import m3.codegen.IrGen2
@@ -16,31 +17,52 @@ import org.scalatest.FunSuite
 /**
   * Created by over on 23.10.17.
   */
-class EvalFullTest extends FunSuite {
+class EvalFullTest extends FunSuite with LowUtil {
+  val testBase = "/tmp/"
 
-  def run(args: String*)(onRun: (Int, String, String) => Unit): Unit = {
-    def outToString(stream: InputStream): String = {
-      val buff = new StringBuffer()
-      val out = new Scanner(stream)
-      while (out.hasNextLine)
-        buff.append(out.nextLine())
-      buff.toString
+  def prettyPrint(any: Any): Unit = {
+    var showLine = true
+    var tabSize = 4
+    var level = 0
+    var inGeneric = false
+    any.toString.foreach {
+      case '[' => inGeneric = true; print('[')
+      case ']' => inGeneric = false; print(']')
+      case '(' =>
+        level += 1
+        println()
+        if (showLine) {
+          print(("|" + " " * (tabSize - 1)) * (level - 1))
+          print("|" + "-" * (tabSize - 1))
+        } else {
+          print(" " * tabSize * level)
+        }
+      case ')' =>
+        level -= 1
+      case ',' =>
+        if (!inGeneric) {
+          println()
+          if (showLine) {
+            print(("|" + " " * (tabSize - 1)) * (level - 1))
+            print("|" + "-" * (tabSize - 1))
+          } else {
+            print(" " * tabSize * level)
+          }
+        } else print(',')
+      case ' ' =>
+      case f => print(f)
     }
-
-    val program = Runtime.getRuntime.exec(args.toArray)
-    val exitCode = program.waitFor()
-
-    val stdout = outToString(program.getInputStream)
-    val stderr = outToString(program.getErrorStream)
-
-    onRun(exitCode, stdout, stderr)
+    println()
   }
 
   test("main") {
     val lexer = new M2LexerForIDE(new ANTLRInputStream(
       """
-        # type Int = llvm i32 .
-        def main = 42 .
+        f + = self: Int, other: Int -> llvm
+          %1 = add nsw i32 %self, %other
+          ret i32 %1 .Int
+        type Int = llvm i32 .
+        f main = 1 + 1 .
       """))
 
     val tokens = new CommonTokenStream(lexer)
@@ -48,20 +70,12 @@ class EvalFullTest extends FunSuite {
     val tree = parser.module()
 
     val ast = new Visitor("test.abra", "test").visit(tree).asInstanceOf[Module]
-    val namespace = new Namespace("test", ast.defs, ast.types :+ ScalarDecl(ref = false, Seq.empty, "Int", "i32"), Map.empty)
+    prettyPrint(ast)
+    val namespace = new Namespace("test", ast.defs, ast.types, Map.empty)
     TypeChecker.infer(namespace)
     println(ast)
     println(namespace.inferedDefs)
 
-    val fname = "/tmp/test.ll"
-    val ps = new PrintStream(new FileOutputStream(fname))
-    IrGen2.gen(ps, Seq(), namespace.lowMod.types, namespace.lowMod.defs)
-    ps.close()
-    Files.copy(Paths.get(fname), System.out)
-
-    run("llc-3.8", fname)({ case (exit, stdout, stderr) =>
-      println(stdout)
-      println(stderr)
-    })
+    namespace.lowMod.assertRunEquals(exit = Some(2))
   }
 }

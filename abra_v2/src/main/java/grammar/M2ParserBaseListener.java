@@ -436,13 +436,13 @@ public class M2ParserBaseListener implements M2ParserListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterFunction(M2Parser.FunctionContext ctx) { }
+	@Override public void enterDef(M2Parser.DefContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void exitFunction(M2Parser.FunctionContext ctx) { }
+	@Override public void exitDef(M2Parser.DefContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *

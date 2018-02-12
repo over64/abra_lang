@@ -36,6 +36,11 @@ object TypeChecker {
       // val z: (x: Int, y: Int) = (1, 2)
       null
     case SelfCall(params, fnName, self, args) =>
+      val argTasks = (self +: args).map(arg => new InferTask { // FIXME: self will be infered 2 times
+        override def infer(expected: Option[ThAdvice]) = {
+          evalExpr(namespace, scope, expected, arg)
+        }
+      })
       self match {
         case id: lId =>
           // 1. find mod
@@ -44,8 +49,10 @@ object TypeChecker {
           //   2.1 find self for fnName on var
           null
         case _expr: Expression =>
-          // find self fn where name == fnName
-          null
+          val (selfTh, vName, lowStats) = evalExpr(namespace, scope, None, _expr)
+          namespace.invokeSelfDef(scope, fnName, params, selfTh, argTasks.iterator, th, {
+            case (expected, fn) => evalDef(namespace, scope.mkChild(p => new FnScope(None)), expected, fn)
+          })
       }
     case Call(params, expr, args) =>
       val argTasks = args.map(arg => new InferTask {

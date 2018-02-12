@@ -37,7 +37,7 @@ TYPE : 'type' ;
 BACK_SLASH : '\\' ;
 SELF : 'self' ;
 MATCH_SELF : '$self' ;
-DEF : 'def' ;
+DEF : 'f' ;
 IMPORT : 'import' ;
 WITH : 'with' ;
 MATCH: 'match';

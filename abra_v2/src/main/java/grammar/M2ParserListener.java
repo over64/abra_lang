@@ -382,15 +382,15 @@ public interface M2ParserListener extends ParseTreeListener {
 	 */
 	void exitType(M2Parser.TypeContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link M2Parser#function}.
+	 * Enter a parse tree produced by {@link M2Parser#def}.
 	 * @param ctx the parse tree
 	 */
-	void enterFunction(M2Parser.FunctionContext ctx);
+	void enterDef(M2Parser.DefContext ctx);
 	/**
-	 * Exit a parse tree produced by {@link M2Parser#function}.
+	 * Exit a parse tree produced by {@link M2Parser#def}.
 	 * @param ctx the parse tree
 	 */
-	void exitFunction(M2Parser.FunctionContext ctx);
+	void exitDef(M2Parser.DefContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link M2Parser#import_}.
 	 * @param ctx the parse tree

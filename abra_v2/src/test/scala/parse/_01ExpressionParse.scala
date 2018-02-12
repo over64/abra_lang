@@ -61,16 +61,16 @@ class _01ExpressionParse extends FunSuite {
     withStr("a.b.c", Prop(Prop(lId("a"), lId("b")), lId("c")))
   }
 
-  //  test("call") {
-  //    withStr("a(1,2)", Call(lId("a"), Seq(lInt("1"), lInt("2"))))
-  //    withStr("1(1,2)", Call(lInt("1"), Seq(lInt("1"), lInt("2"))))
-  //  }
+  test("call") {
+    withStr("a(1,2)", Call(Seq.empty, lId("a"), Seq(lInt("1"), lInt("2"))))
+    withStr("1(1,2)", Call(Seq.empty, lInt("1"), Seq(lInt("1"), lInt("2"))))
+  }
 
-  //  test("haskell-like lambda") {
-  //    withStr("\\ -> 1 .", Lambda(Seq(), None, AbraExpressions(Seq(lInt("1")))))
-  //    withStr("\\self: Int -> self",
-  //      Lambda(Seq(FnArg("self", Some(ScalarTh(None, "Int", "")))), None, AbraExpressions(Seq(lId("self")))))
-  //  }
+  test("lambda") {
+    withStr("f 1 .", Lambda(Seq(), AbraCode(Seq(lInt("1")))))
+    withStr("f self: Int -> self",
+      Lambda(Seq(Arg("self", Some(ScalarTh(Seq.empty, "Int", None)))), AbraCode(Seq(lId("self")))))
+  }
 
   test("unary call") {
     withStr("!a", SelfCall(Seq.empty, "!", lId("a"), Seq()))
@@ -98,22 +98,16 @@ class _01ExpressionParse extends FunSuite {
     withStr("true || false", Or(lBoolean("true"), lBoolean("false")))
   }
 
-  //  test("cond") {
-  //    withStr("if true then 1", Cond(lBoolean("true"), Seq(lInt("1")), Seq()))
-  //    withStr("if 1 == 1 then 1", Cond(SelfCall("==", lInt("1"), Seq(lInt("1"))), Seq(lInt("1")), Seq()))
-  //    withStr("if true then 1 else 2", Cond(lBoolean("true"), Seq(lInt("1")), Seq(lInt("2"))))
-  //
-  //    withStr("if true then { 1 }", Cond(lBoolean("true"), Seq(lInt("1")), Seq()))
-  //    withStr("if true then ({ 1 })", Cond(lBoolean("true"), Seq(Lambda(Seq(), Seq(lInt("1")))), Seq()))
-  //
-  //    withStr("if true then { x -> x }", Cond(lBoolean("true"), Seq(Lambda(Seq(FnArg("x", None)), Seq(lId("x")))), Seq()))
-  //    withStr("if true then \\x -> x", Cond(lBoolean("true"), Seq(Lambda(Seq(FnArg("x", None)), Seq(lId("x")))), Seq()))
-  //    withStr("if true then 1 else { x -> x }", Cond(lBoolean("true"),
-  //      Seq(lInt("1")),
-  //      Seq(Lambda(Seq(FnArg("x", None)), Seq(lId("x"))))))
-  //  }
+  test("cond") {
+    withStr("if true do 1 .", If(lBoolean("true"), Seq(lInt("1")), Seq()))
+    withStr("if 1 == 1 do 1 .", If(SelfCall(Seq.empty, "==", lInt("1"), Seq(lInt("1"))), Seq(lInt("1")), Seq()))
+    withStr("if true do 1 else 2 .", If(lBoolean("true"), Seq(lInt("1")), Seq(lInt("2"))))
 
-
+    withStr("if true do f x -> x .", If(lBoolean("true"), Seq(Lambda(Seq(Arg("x", None)), AbraCode(Seq(lId("x"))))), Seq()))
+    withStr("if true do 1 else f x -> x .", If(lBoolean("true"),
+      Seq(lInt("1")),
+      Seq(Lambda(Seq(Arg("x", None)), AbraCode(Seq(lId("x")))))))
+  }
 
 
 }

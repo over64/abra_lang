@@ -15,38 +15,39 @@ class _02TypeHintParse extends FunSuite {
 
   import parser._
 
-//  test("scalar") {
-//    withStr("Int", ScalarTh(None, "Int", ""))
-//    withStr("*Int", ScalarTh(None, "Int", ""))
-//    withStr("Map[K, V]", ScalarTh(Some(TypeParams(Seq(
-//      ScalarTh(None, "K", ""),
-//      ScalarTh(None, "V", "")))),
-//      "Map", ""))
-//  }
-//
-//  test("fn") {
-//    withStr("() -> None", FnTh(Seq(), ScalarTh(None, "None", "")))
-//    withStr("(Int) -> None", FnTh(
-//      args = Seq(ScalarTh(None, "Int", "")),
-//      ret = ScalarTh(None, "None", "")))
-//
-//    withStr("(Int, Float) -> None", FnTh(
-//      args = Seq(
-//        ScalarTh(None, "Int", ""),
-//        ScalarTh(None, "Float", "")),
-//      ret = ScalarTh(None, "None", "")))
-//  }
-//
-////  test("struct") {
-////    withStr("(x: Int, y: Seq[Int])", StructTh(Seq(
-////      ScalarTh(None, "Int", ""),
-////      ScalarTh(Seq(ScalarTh("Int")), "Seq", ""))))
-////  }
-//
-//  test("union") {
-//    withStr("Int | Float", UnionTh(Seq(
-//      ScalarTh(None, "Int", ""),
-//      ScalarTh(None, "Float", "")
-//    )))
-//  }
+  test("scalar") {
+    withStr("Int", ScalarTh(Seq.empty, "Int", None))
+    withStr("Map[K, V]", ScalarTh(Seq(
+      ScalarTh(Seq.empty, "K", None),
+      ScalarTh(Seq.empty, "V", None)),
+      "Map", None))
+  }
+
+  test("fn") {
+    withStr(" -> None", FnTh(closure = Seq.empty, args = Seq.empty, ScalarTh(Seq.empty, "None", None)))
+    withStr("\\Int -> None", FnTh(
+      closure = Seq.empty,
+      args = Seq(ScalarTh(Seq.empty, "Int", None)),
+      ret = ScalarTh(Seq.empty, "None", None)))
+
+    withStr("\\Int, Float -> None", FnTh(
+      closure = Seq.empty,
+      args = Seq(
+        ScalarTh(Seq.empty, "Int", None),
+        ScalarTh(Seq.empty, "Float", None)),
+      ret = ScalarTh(Seq.empty, "None", None)))
+  }
+
+  test("struct") {
+    withStr("(x: Int, y: Seq[Int])", StructTh(Seq(
+      FieldTh("x", ScalarTh(Seq.empty, "Int", None)),
+      FieldTh("y", ScalarTh(Seq(ScalarTh(Seq.empty, "Int", None)), "Seq", None)))))
+  }
+
+  test("union") {
+    withStr("Int | Float", UnionTh(Seq(
+      ScalarTh(Seq.empty, "Int", None),
+      ScalarTh(Seq.empty, "Float", None)
+    )))
+  }
 }

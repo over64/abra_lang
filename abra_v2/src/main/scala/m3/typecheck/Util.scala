@@ -154,7 +154,7 @@ object Util {
 
     def spec(params: Seq[TypeHint], namespace: Namespace): Def = {
       val specMap = makeSpecMap(self.params, params)
-      val newName = s"${self.name}[${params.map(p => p.toGenericName(namespace)).mkString(", ")}]"
+      val newName = self.name + (if (params.nonEmpty) s"[${params.map(p => p.toGenericName(namespace)).mkString(", ")}]" else "")
 
       Def(
         params = Seq.empty,

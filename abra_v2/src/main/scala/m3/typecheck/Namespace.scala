@@ -93,14 +93,12 @@ class Namespace(val pkg: String,
       case (adv, th) => false
     }
 
-  def invokeDef(scope: BlockScope,
-                name: String,
-                params: Seq[TypeHint],
-                args: Iterator[InferTask],
-                ret: Option[ThAdvice],
-                inferCallback: (FnAdvice, Def) => (DefHeader, Ast2.Def)): (TypeHint, String, Seq[Ast2.Stat]) = {
-
-    val toCall = defs.find(d => d.name == name).get
+  def _invokeDef(scope: BlockScope,
+                 toCall: Def,
+                 params: Seq[TypeHint],
+                 args: Iterator[InferTask],
+                 ret: Option[ThAdvice],
+                 inferCallback: (FnAdvice, Def) => (DefHeader, Ast2.Def)): (TypeHint, String, Seq[Ast2.Stat]) = {
 
     val specMap: mutable.HashMap[GenericType, TypeHint] =
       if (params.nonEmpty) {
@@ -156,6 +154,34 @@ class Namespace(val pkg: String,
     )
   }
 
+  def invokeDef(scope: BlockScope,
+                name: String,
+                params: Seq[TypeHint],
+                args: Iterator[InferTask],
+                ret: Option[ThAdvice],
+                inferCallback: (FnAdvice, Def) => (DefHeader, Ast2.Def)): (TypeHint, String, Seq[Ast2.Stat]) = {
+    val toCall = defs.find(d => d.name == name).get
+    _invokeDef(scope, toCall, params, args, ret, inferCallback)
+  }
+
+  def invokeSelfDef(scope: BlockScope,
+                    name: String,
+                    params: Seq[TypeHint],
+                    selfType: TypeHint,
+                    args: Iterator[InferTask],
+                    ret: Option[ThAdvice],
+                    inferCallback: (FnAdvice, Def) => (DefHeader, Ast2.Def)): (TypeHint, String, Seq[Ast2.Stat]) = {
+    val toCall = defs.find { d =>
+      if (d.name != name) false
+      else
+        d.lambda.args.headOption match {
+          case None => false
+          case Some(arg) => arg.name == "self" && arg.typeHint.get == selfType
+        }
+    }.get
+    _invokeDef(scope, toCall, params, args, ret, inferCallback)
+  }
+
   def invokeLambda(scope: BlockScope,
                    name: String,
                    th: FnTh,
@@ -202,14 +228,6 @@ class Namespace(val pkg: String,
     )
   }
 
-  def invokeSelfDef(name: String,
-                    params: Seq[TypeHint],
-                    selfType: TypeHint,
-                    args: Iterator[InferTask],
-                    ret: Option[TypeHint],
-                    inferCallback: (Def) => (DefHeader, Ast2.Def)): (TypeHint, String, Seq[Ast2.Stat]) = {
-    null
-  }
   def invokeMod(name: String,
                 params: Seq[TypeHint],
                 args: Iterator[InferTask],

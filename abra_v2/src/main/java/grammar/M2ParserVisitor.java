@@ -233,11 +233,11 @@ public interface M2ParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitType(M2Parser.TypeContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link M2Parser#function}.
+	 * Visit a parse tree produced by {@link M2Parser#def}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitFunction(M2Parser.FunctionContext ctx);
+	T visitDef(M2Parser.DefContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link M2Parser#import_}.
 	 * @param ctx the parse tree
