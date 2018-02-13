@@ -257,11 +257,12 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
 
   override def visitModule(ctx: ModuleContext): Module = {
     val imports = ctx.import_().map { i => visitImport_(i) }
+    val lowCode = ctx.llvm().map(l => visitLlvm(l))
     val all = ctx.level1().map { l1 => visitLevel1(l1) }
     val types = all.filter(_.isInstanceOf[TypeDecl]).map(_.asInstanceOf[TypeDecl])
     val functions = all.filter(_.isInstanceOf[Def]).map(_.asInstanceOf[Def])
 
-    emit(ctx, Module(_package, types, functions))
+    emit(ctx, Module(_package, lowCode, types, functions))
   }
 
   override def visitImport_(ctx: Import_Context): ParseNode = {

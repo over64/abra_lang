@@ -9,7 +9,7 @@ import org.scalatest.FunSuite
   * Created by over on 29.04.17.
   */
 class _02TypeHintParse extends FunSuite {
-  val parser = new Util {
+  val parser = new ParseUtil {
     override def whatToParse: (M2Parser) => ParseTree = { parser => parser.typeHint() }
   }
 

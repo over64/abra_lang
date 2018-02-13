@@ -9,7 +9,7 @@ import org.antlr.v4.runtime.tree.ParseTree
 import org.antlr.v4.runtime.{ANTLRFileStream, ANTLRInputStream, CommonTokenStream}
 import org.scalatest.Matchers
 
-trait Util extends Matchers {
+trait ParseUtil extends Matchers {
   def whatToParse: M2Parser => ParseTree
 
   def withStr[T <: ParseNode](str: String, res: T): Unit = {

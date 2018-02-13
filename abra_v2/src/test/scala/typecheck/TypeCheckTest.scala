@@ -31,7 +31,7 @@ class TypeCheckTest extends FunSuite {
             _else = Seq(lString("hello")))))),
       retTh = None)
 
-    val namespace = new Namespace(pkg = "", defs = Seq(defBar), types = Seq(tInt, tBool, tString), mods = Map.empty)
+    val namespace = new Namespace(pkg = "", Seq(), defs = Seq(defBar), types = Seq(tInt, tBool, tString), mods = Map.empty)
     val advice = FnAdvice(Seq.empty, None)
     val (header, lowDef) = TypeChecker.evalDef(namespace, new FnScope(None), advice, defBar)
     println(header)
@@ -113,7 +113,7 @@ class TypeCheckTest extends FunSuite {
         ))),
       retTh = None)
 
-    val namespace = new Namespace(pkg = "", defs = Seq(defBar, defMain), types = Seq(tInt), mods = Map.empty)
+    val namespace = new Namespace(pkg = "", Seq(), defs = Seq(defBar, defMain), types = Seq(tInt), mods = Map.empty)
     prettyPrint(TypeChecker.evalDef(namespace, new FnScope(None), FnAdvice(Seq.empty, None), defMain))
     prettyPrint(namespace.lowMod.defs)
   }

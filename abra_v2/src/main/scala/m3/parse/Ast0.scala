@@ -62,5 +62,5 @@ object Ast0 {
   case class Arg(name: String, typeHint: Option[TypeHint]) extends ParseNode
   case class Def(params: Seq[GenericType], name: String, lambda: Lambda, retTh: Option[TypeHint]) extends Level1Declaration
   case class Import(seq: Seq[lId]) extends Level1Declaration
-  case class Module(pkg: String, types: Seq[TypeDecl], defs: Seq[Def]) extends ParseNode
+  case class Module(pkg: String, lowCode: Seq[llVm], types: Seq[TypeDecl], defs: Seq[Def]) extends ParseNode
 }

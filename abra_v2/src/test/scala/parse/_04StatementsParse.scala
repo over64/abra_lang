@@ -9,7 +9,7 @@ import org.scalatest.FunSuite
   * Created by over on 01.05.17.
   */
 class _04StatementsParse extends FunSuite {
-  val parserBlockBody = new Util {
+  val parserBlockBody = new ParseUtil {
     override def whatToParse: (M2Parser) => ParseTree = { parser => parser.blockBody() }
   }
 

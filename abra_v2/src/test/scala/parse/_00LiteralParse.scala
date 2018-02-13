@@ -6,7 +6,7 @@ import org.antlr.v4.runtime.tree.ParseTree
 import org.scalatest.FunSuite
 
 class _00LiteralParse extends FunSuite {
-  val literalParser = new Util {
+  val literalParser = new ParseUtil {
     override def whatToParse: (M2Parser) => ParseTree = { parser => parser.literal() }
   }
 

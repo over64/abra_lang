@@ -121,7 +121,7 @@ object IrGen2 {
 
   def requireValue(ctx: IrContext, dctx: DefContext, data: (TypeRef, Boolean, String)): (TypeRef, String) = {
     val (tref, isPtr, name) = data
-    if (isPtr == false) return (tref, name)
+    if (isPtr == false || tref.isVoid(ctx.types)) return (tref, name)
 
     val irType = tref.toValue(ctx.types)
     val reg = dctx.nextReg().toString
@@ -129,7 +129,7 @@ object IrGen2 {
     (tref, "%" + reg)
   }
 
-  def evalCall(ctx: IrContext, dctx: DefContext, call: Call): Option[(TypeRef, String)] = {
+  def evalCall(ctx: IrContext, dctx: DefContext, call: Call): (TypeRef, String) = {
     val (_tref, _isPtr, _vName) = evalId(ctx, dctx, call.id)
     val fnType = ctx.types(_tref.name).asInstanceOf[Fn]
 
@@ -160,20 +160,23 @@ object IrGen2 {
       else s"${tref.toPtr(ctx.types)} $name"
     }
 
-    val ret =
-      if (fnType.ret.isVoid(ctx.types)) None
-      else Some((fnType.ret, "%" + dctx.nextReg()))
+    val retType = fnType.ret.toValue(ctx.types)
 
-    val retType = ret.map(r => r._1.toValue(ctx.types)).getOrElse("void")
-    val retId = ret.map(r => r._2 + " = ").getOrElse("")
+    if (fnType.ret.isVoid(ctx.types)) {
+      ctx.out.println(s"\tcall $retType $vName(${irArgs.mkString(", ")})")
+      (fnType.ret, "")
+    } else {
+      val retId = "%" + dctx.nextReg()
+      ctx.out.println(s"\t${retId} = call $retType $vName(${irArgs.mkString(", ")})")
+      (fnType.ret, retId)
+    }
 
-    ctx.out.println(s"\t${retId}call $retType $vName(${irArgs.mkString(", ")})")
-    ret
+
   }
 
   def evalStore(ctx: IrContext,
                 dctx: DefContext,
-                dest: Id, src: Storable, init: Boolean) = {
+                dest: Id, src: Storable, init: Boolean): Unit = {
     ctx.out.println(s";@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ store begin")
     // вычисляем что store
     val (whatTref, what) =
@@ -182,12 +185,14 @@ object IrGen2 {
           val (whatTref, what) = requireValue(ctx, dctx, evalId(ctx, dctx, id))
           (whatTref, what)
         case call: Call =>
-          val (whatTref, what) = evalCall(ctx, dctx, call).get
+          val (whatTref, what) = evalCall(ctx, dctx, call)
           (whatTref, what)
         case Cons(ref, args) =>
-          val (whatTref, what) = evalCall(ctx, dctx, Call(Id(ref.name + ".$cons"), args)).get
+          val (whatTref, what) = evalCall(ctx, dctx, Call(Id(ref.name + ".$cons"), args))
           (ref, what)
       }
+
+    if (whatTref.isVoid(ctx.types)) return
 
     // делаем инкремент что store
     if (whatTref.isNeedBeforeAfterStore(ctx.types)) {
@@ -198,6 +203,8 @@ object IrGen2 {
 
     // вычисляем куда store
     val (toTref, to) = requirePtr(evalId(ctx, dctx, dest))
+
+    if (toTref.isVoid(ctx.types)) return
 
     // делаем декремент куда store
     if (!init)
@@ -293,7 +300,10 @@ object IrGen2 {
       idOpt match {
         case Some(id) =>
           val (typeRef, what) = requireValue(ctx, dctx, evalId(ctx, dctx, Id(id, Seq.empty)))
-          ctx.out.println(s"\tret ${typeRef.toValue(ctx.types)} $what")
+          if (typeRef.isVoid(ctx.types))
+            ctx.out.println("\tret void")
+          else
+            ctx.out.println(s"\tret ${typeRef.toValue(ctx.types)} $what")
         case None => ctx.out.println("\tret void")
       }
     case Or(id, left, right) =>
@@ -401,7 +411,8 @@ object IrGen2 {
       case AbraCode(vars, stats) =>
         vars.foreach {
           case (vName, typeRef) =>
-            ctx.out.println(s"\t${irLocalName(vName)} = alloca ${typeRef.toValue(ctx.types)}")
+            if (!typeRef.isVoid(ctx.types))
+              ctx.out.println(s"\t${irLocalName(vName)} = alloca ${typeRef.toValue(ctx.types)}")
         }
 
         val dctx = DefContext(fn, vars)

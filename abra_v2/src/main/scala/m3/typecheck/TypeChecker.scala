@@ -36,7 +36,7 @@ object TypeChecker {
       // val z: (x: Int, y: Int) = (1, 2)
       null
     case SelfCall(params, fnName, self, args) =>
-      val argTasks = (self +: args).map(arg => new InferTask { // FIXME: self will be infered 2 times
+      val argTasks = args.map(arg => new InferTask { // FIXME: self will be infered 2 times
         override def infer(expected: Option[ThAdvice]) = {
           evalExpr(namespace, scope, expected, arg)
         }
@@ -50,7 +50,10 @@ object TypeChecker {
           null
         case _expr: Expression =>
           val (selfTh, vName, lowStats) = evalExpr(namespace, scope, None, _expr)
-          namespace.invokeSelfDef(scope, fnName, params, selfTh, argTasks.iterator, th, {
+          val selfTask = new InferTask {
+            override def infer(expected: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat]) = (selfTh, vName, lowStats)
+          }
+          namespace.invokeSelfDef(scope, fnName, params, selfTh, (selfTask +: argTasks).iterator, th, {
             case (expected, fn) => evalDef(namespace, scope.mkChild(p => new FnScope(None)), expected, fn)
           })
       }

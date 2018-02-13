@@ -35,7 +35,7 @@ class SpecTest extends FunSuite {
       FieldDecl(isSelf = false, "xx", ScalarTh(params = Seq.empty, "V", None))
     ))
 
-    val namespace = new Namespace("", Seq(), Seq(declInt, declString, declC, declB, declA),
+    val namespace = new Namespace("", Seq(), Seq(), Seq(declInt, declString, declC, declB, declA),
       Map.empty)
 
     println(ScalarTh(Seq(ScalarTh(Seq.empty, "Int", None), ScalarTh(Seq.empty, "String", None)), "A", None)
@@ -106,7 +106,7 @@ class SpecTest extends FunSuite {
     //      mutated
     //    }
 
-    val namespace = new Namespace(pkg = "", defs = Seq(), types = Seq(tInt), mods = Map())
+    val namespace = new Namespace(pkg = "", Seq(), defs = Seq(), types = Seq(tInt), mods = Map())
     val ast = defMap.spec(Seq(thInt, thString), namespace)
     print(ast)
   }
@@ -116,7 +116,7 @@ class SpecTest extends FunSuite {
     val tSeq10 = ScalarDecl(ref = false, Seq(GenericType("T")), "Seq10", "[%T x 10]")
     val thSeq10Int = ScalarTh(Seq(ScalarTh(Seq.empty, "Int", None)), "Seq10", None)
 
-    val namespace = new Namespace(pkg = "", defs = Seq.empty, types = Seq(tInt, tSeq10), mods = Map.empty)
+    val namespace = new Namespace(pkg = "", Seq(), defs = Seq.empty, types = Seq(tInt, tSeq10), mods = Map.empty)
     println(thSeq10Int.toLow(namespace))
     println(namespace.lowMod.types)
   }
@@ -149,7 +149,7 @@ class SpecTest extends FunSuite {
       ),
       retTh = Some(ScalarTh(Seq.empty, "T", None))
     )
-    val namespace = new Namespace(pkg = "", defs = Seq.empty, types = Seq(tInt, tMem), mods = Map.empty)
+    val namespace = new Namespace(pkg = "", Seq(), defs = Seq.empty, types = Seq(tInt, tMem), mods = Map.empty)
     println(defGet.spec(Seq(thInt), namespace))
     println(namespace.lowMod.types)
   }
@@ -198,7 +198,7 @@ class SpecTest extends FunSuite {
         ))),
       retTh = None)
 
-    val namespace = new Namespace(pkg = "", defs = Seq(defBar, defMain), types = Seq(tNil, tInt, tString), mods = Map.empty)
+    val namespace = new Namespace(pkg = "", Seq(), defs = Seq(defBar, defMain), types = Seq(tNil, tInt, tString), mods = Map.empty)
     val (header, lowDef) = TypeChecker.evalDef(namespace, new FnScope(None), FnAdvice(Seq.empty, None), defMain)
 
     println(header)

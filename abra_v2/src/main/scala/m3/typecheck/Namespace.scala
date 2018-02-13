@@ -14,6 +14,7 @@ trait InferTask {
   def infer(expected: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat])
 }
 class Namespace(val pkg: String,
+                val lowCode: Seq[llVm],
                 val defs: Seq[Def],
                 val types: Seq[TypeDecl],
                 val mods: Map[String, ModHeader]) {
@@ -32,6 +33,8 @@ class Namespace(val pkg: String,
   val inferedSelfDefs = mutable.HashMap[DefSpec, DefHeader]()
 
   val lowMod = IrUtil.Mod()
+
+  lowCode.foreach { l => lowMod.addLow(l.code) }
 
   def hasDef(name: String): Boolean = defs.exists(d => d.name == name)
   def hasSelfDef(name: String, selfType: TypeHint): Boolean = false

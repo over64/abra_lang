@@ -11,7 +11,7 @@ import org.antlr.v4.runtime.tree.ParseTree
 import org.scalatest.FunSuite
 
 class _01ExpressionParse extends FunSuite {
-  val parser = new Util {
+  val parser = new ParseUtil {
     override def whatToParse: (M2Parser) => ParseTree = { parser => parser.expression() }
   }
 

@@ -9,7 +9,7 @@ import org.scalatest.FunSuite
   * Created by over on 01.05.17.
   */
 class _06FunctionParse extends FunSuite {
-  val parserFunction = new Util {
+  val parserFunction = new ParseUtil {
     override def whatToParse: (M2Parser) => ParseTree = { parser => parser.`def`() }
   }
 

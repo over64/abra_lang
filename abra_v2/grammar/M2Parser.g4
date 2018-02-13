@@ -77,7 +77,7 @@ def: 'f' sp name=(VarId | '!' | '*' | '/' | '+' | '-' | '>' | '<' | '<=' | '>=' 
 import_: 'import' sp VarId ( sp '/' sp VarId)* ;
 
 level1: type | def ;
-module: (sp import_)* sp (level1 sp)* EOF ;
+module: (sp import_)* sp (sp llvm)* sp (level1 sp)* EOF ;
 
-llvmBody: (LLVM_NL | LLVM_WS | IrLine | LL_Dot)*;
+llvmBody: (LLVM_NL | LLVM_WS | IrLine | LL_Dot)* ;
 llvm: LlBegin llvmBody LL_End;
