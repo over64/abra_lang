@@ -29,6 +29,41 @@ public interface M2ParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitId(M2Parser.IdContext ctx);
 	/**
+	 * Visit a parse tree produced by the {@code exprWnen}
+	 * labeled alternative in {@link M2Parser#expression}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitExprWnen(M2Parser.ExprWnenContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code exprTypeId}
+	 * labeled alternative in {@link M2Parser#expression}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitExprTypeId(M2Parser.ExprTypeIdContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code exprLiteral}
+	 * labeled alternative in {@link M2Parser#expression}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitExprLiteral(M2Parser.ExprLiteralContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code exprIfElse}
+	 * labeled alternative in {@link M2Parser#expression}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitExprIfElse(M2Parser.ExprIfElseContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code exprLambda}
+	 * labeled alternative in {@link M2Parser#expression}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitExprLambda(M2Parser.ExprLambdaContext ctx);
+	/**
 	 * Visit a parse tree produced by the {@code exprParen}
 	 * labeled alternative in {@link M2Parser#expression}.
 	 * @param ctx the parse tree
@@ -42,13 +77,6 @@ public interface M2ParserVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitExprCall(M2Parser.ExprCallContext ctx);
-	/**
-	 * Visit a parse tree produced by the {@code exprWnen}
-	 * labeled alternative in {@link M2Parser#expression}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitExprWnen(M2Parser.ExprWnenContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code exprProp}
 	 * labeled alternative in {@link M2Parser#expression}.
@@ -91,27 +119,6 @@ public interface M2ParserVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitExprSelfCall(M2Parser.ExprSelfCallContext ctx);
-	/**
-	 * Visit a parse tree produced by the {@code exprLiteral}
-	 * labeled alternative in {@link M2Parser#expression}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitExprLiteral(M2Parser.ExprLiteralContext ctx);
-	/**
-	 * Visit a parse tree produced by the {@code exprIfElse}
-	 * labeled alternative in {@link M2Parser#expression}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitExprIfElse(M2Parser.ExprIfElseContext ctx);
-	/**
-	 * Visit a parse tree produced by the {@code exprLambda}
-	 * labeled alternative in {@link M2Parser#expression}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitExprLambda(M2Parser.ExprLambdaContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link M2Parser#tuple}.
 	 * @param ctx the parse tree

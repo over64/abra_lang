@@ -66,6 +66,9 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
     emit(realId.getSymbol, lId(realId.getSymbol.getText))
   }
 
+  override def visitExprTypeId(ctx: ExprTypeIdContext) =
+    emit(ctx.TypeId().getSymbol, lId(ctx.TypeId().getText))
+
   override def visitScalarTh(ctx: ScalarThContext): ScalarTh =
     emit(ctx, ScalarTh(
       params = ctx.typeHint().map(th => visitTypeHint(th)),
@@ -151,15 +154,7 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
 
     if (ctx.tuple() != null) {
       val indices = visitTuple(ctx.tuple()).seq
-      val to: Expression =
-        if (ctx.VarId().isEmpty) first
-        else {
-          val firstProp = Prop(first, lId(ctx.VarId().head.getText))
-
-          ctx.VarId().drop(1).foldLeft(firstProp) {
-            case (prop, vid) => Prop(prop, lId(vid.getText))
-          }
-        }
+      val to: Expression = Prop(first, ctx.VarId().map(vi => lId(vi.getText)))
 
       emit(ctx, SelfCall(Seq.empty, "set", to, indices :+ expr))
     } else
@@ -237,7 +232,7 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
     ))
 
   override def visitExprProp(ctx: ExprPropContext): Expression =
-    emit(ctx, Prop(visitExpr(ctx.expression()), emit(ctx.op, lId(ctx.op.getText))))
+    emit(ctx, Prop(visitExpr(ctx.expression()), ctx.op.map(op => emit(op, lId(op.getText)))))
 
   override def visitDef(ctx: DefContext): Def = {
     val tparams = ctx.TypeId().map(id => GenericType(id.getText))

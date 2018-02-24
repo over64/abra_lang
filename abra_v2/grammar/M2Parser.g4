@@ -15,14 +15,14 @@ id: VarId | 'self' ;
 
 expression: literal #exprLiteral
           | id #exprId
-          | TypeId #exprId
+          | TypeId #exprTypeId
           | '(' sp expression sp ')' #exprParen
           | tuple #exprTuple
           | expression (NL WS?)? DOT op=(VarId  | '*' | '/' | '+' | '-' | '>' | '<' | '<=' | '>=' | '==' | '!=')
               (sp '[' sp typeHint (sp ',' sp typeHint)* ']')? sp tuple #exprSelfCall
-          | expression (NL WS?)? DOT op=VarId #exprProp
           | expression sp ('[' sp typeHint (sp ',' sp typeHint)* ']')?  sp tuple #exprCall
           | lambda #exprLambda
+          | expression ((NL WS?)? DOT op+=VarId)+ #exprProp
           | op='!' sp expression #exprUnaryCall
           | expression WS* op=('*' | '/') sp expression #exprInfixCall
           | expression WS* op=('+' | '-' | VarId) sp expression #exprInfixCall

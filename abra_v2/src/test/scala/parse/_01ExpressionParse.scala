@@ -57,8 +57,8 @@ class _01ExpressionParse extends FunSuite {
   }
 
   test("prop") {
-    withStr("a.b", Prop(lId("a"), lId("b")))
-    withStr("a.b.c", Prop(Prop(lId("a"), lId("b")), lId("c")))
+    withStr("a.b", Prop(lId("a"), Seq(lId("b"))))
+    withStr("a.b.c", Prop(lId("a"), Seq(lId("b"), lId("c"))))
   }
 
   test("call") {

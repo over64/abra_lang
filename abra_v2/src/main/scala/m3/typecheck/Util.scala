@@ -13,7 +13,7 @@ object Util {
   val thFloat = ScalarTh(params = Seq.empty, "Float", None)
   val thBool = ScalarTh(params = Seq.empty, "Bool", None)
   val thString = ScalarTh(params = Seq.empty, "String", None)
-  val thNil = ScalarTh(params = Seq.empty, "Nil", None)
+  val thNil = ScalarTh(params = Seq.empty, "None", None)
 
   val adviceBool = ScalarAdvice(Seq.empty, "Bool", pkg = None)
 
@@ -98,7 +98,7 @@ object Util {
   implicit class RichExpression(self: Expression) {
     def spec(specMap: Map[GenericType, TypeHint], namespace: Namespace): Expression = self match {
       case l: Literal => l
-      case Prop(from, prop) => Prop(from.spec(specMap, namespace), prop)
+      case p: Prop => p
       case Tuple(seq) => Tuple(seq.map(e => e.spec(specMap, namespace)))
       case SelfCall(params, fnName, self, args) =>
         SelfCall(
@@ -210,7 +210,7 @@ object Util {
         case ScalarTh(params, name, pkg) =>
           specMap.get(GenericType(name)) match {
             case Some(th: ScalarTh) if th.name.contains("*") => None
-            case Some(th) => th.toAdviceOpt(specMap)
+            case Some(th) => th.toAdviceOpt(specMap) //???
             case None => Some(ScalarAdvice(params.map(p => p.toAdviceOpt(specMap)), name, pkg))
           }
         case StructTh(fields) =>
@@ -286,7 +286,7 @@ object Util {
           Ast2.TypeRef(lowName)
         case UnionTh(variants) =>
           val lowVariants = variants.map(v => v.toLow(namespace))
-          val lowName = s"(${lowVariants.map(_.name).mkString(" | ")})"
+          val lowName = s"${lowVariants.map(_.name).mkString(" | ")}"
           if (namespace.lowMod.types.get(lowName) == None)
             namespace.lowMod.defineType(Ast2.Union(lowName, lowVariants))
           Ast2.TypeRef(lowName)
@@ -312,6 +312,102 @@ object Util {
           Ast2.TypeRef(lowName)
       }
     }
+  }
+
+  def inferCompatibleType(namespace: Namespace, advice: Option[ThAdvice], th: TypeHint): TypeHint = advice match {
+    case None => th
+    case Some(ad: ScalarAdvice) =>
+      th match {
+        case sth: ScalarTh =>
+          if (sth.name != ad.name) {
+            namespace.types.find(t => t.name == ad.name)
+              .getOrElse(throw new RuntimeException(s"no such type $sth")) match {
+              case ud: UnionDecl =>
+                val hasVariant = ud.variants.exists { v =>
+                  try {
+                    //                    println(v)
+                    //                    println(v.toAdviceOpt(new mutable.HashMap()))
+                    //                    println(sth)
+                    //                    println("***")
+                    inferCompatibleType(namespace, v.toAdviceOpt(new mutable.HashMap()), sth); true
+                  } catch {
+                    case e: Exception => false
+                  }
+                }
+
+                if (hasVariant) ad.toTh
+                else throw new RuntimeException(s"incompatible types. Expected $advice has $th")
+
+              case _ => throw new RuntimeException(s"incompatible types. Expected $advice has $th")
+            }
+          } else {
+            if (ad.params.length != sth.params.length) throw new RuntimeException(s"oops!")
+
+            val params =
+              (ad.params zip sth.params).map {
+                case (advParam, thParam) => inferCompatibleType(namespace, advParam, thParam)
+              }
+
+            ScalarTh(params, sth.name, sth.pkg)
+          }
+        case _ => throw new RuntimeException(s"incompatible types. Expected $advice has $th")
+      }
+    case Some(ad: StructAdvice) =>
+      th match {
+        case sth: StructTh =>
+          if (sth.seq.length != ad.fields.length) throw new RuntimeException(s"incompatible types. Expected $advice has $th")
+
+          val fields =
+            (sth.seq zip ad.fields).map {
+              case (fieldTh, (advFieldName, advField)) =>
+                if (fieldTh.name != advFieldName)
+                  throw new RuntimeException(s"incompatible types. Expected $advice has $th")
+                FieldTh(fieldTh.name, inferCompatibleType(namespace, advField, fieldTh.typeHint))
+            }
+          StructTh(fields)
+        case _ => throw new RuntimeException(s"incompatible types. Expected $advice has $th")
+      }
+    case Some(ad: UnionAdvice) =>
+      th match {
+        case sth: ScalarTh =>
+          val hasVariant = ad.variants.exists { v =>
+            try {
+              //              println(v)
+              //              println(sth)
+              //              println("***")
+              inferCompatibleType(namespace, v, sth); true
+            } catch {
+              case e: Exception => false
+            }
+          }
+
+          if (hasVariant) ad.toTh
+          else throw new RuntimeException(s"incompatible types. Expected $advice has $th")
+        case sth: UnionTh =>
+          if (sth.seq.length != ad.variants.length) throw new RuntimeException(s"incompatible types. Expected $advice has $th")
+
+          val variants =
+            (sth.seq zip ad.variants).map {
+              case (variant, advVariant) =>
+                inferCompatibleType(namespace, advVariant, variant)
+            }
+          UnionTh(variants)
+        case otherTh =>
+          throw new RuntimeException(s"incompatible types. Expected $advice has $th")
+      }
+    case Some(ad: FnAdvice) =>
+      th match {
+        case fth: FnTh =>
+          val args = (fth.args zip ad.args).map {
+            case (thArg, adArg) =>
+              inferCompatibleType(namespace, adArg, thArg)
+          }
+          FnTh(fth.closure, args, inferCompatibleType(namespace, ad.ret, fth.ret))
+        case _ => throw new RuntimeException(s"incompatible types. Expected $advice has $th")
+      }
+  }
+  def inferSuperType(hints: Seq[TypeHint]): TypeHint = {
+    null
   }
 
   def upToClosure(seq: Seq[(String, VarInfo)]) = seq.map {

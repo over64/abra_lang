@@ -12,10 +12,19 @@ import scala.collection.mutable
 object TypeChecker {
   def evalExpr(namespace: Namespace, scope: BlockScope, th: Option[ThAdvice], expr: Expression): (TypeHint, String, Seq[Ast2.Stat]) = expr match {
     case lId(value) =>
-      (scope.findVar(value).th, value, Seq.empty)
+      scope.findVarOpt(value) match {
+        case Some(vi) => (vi.th, value, Seq.empty)
+        case None =>
+          val d = namespace.defs.find(d => d.name == value)
+            .getOrElse(throw new RuntimeException(s"no local var, argument or global function with name $value"))
+          val header = namespace.inferCompatibleDef(d, null, {
+            case (expected, fn) => evalDef(namespace, scope.mkChild(p => new FnScope(None)), expected, fn)
+          })
+          (header.th, header.name, Seq.empty)
+      }
     case x: Literal =>
       val vName = "$l" + namespace.nextAnonId()
-      val (actualTh, lit) = x match {
+      val (litTh, lit) = x match {
         case lInt(value) =>
           val id = ConstGen.int(namespace.lowMod, value)
           (thInt, Ast2.Call(id, Seq.empty))
@@ -29,14 +38,52 @@ object TypeChecker {
           val id = ConstGen.string(namespace.lowMod, value)
           (thString, Ast2.Call(id, Seq.empty))
       }
+      val realTh = inferCompatibleType(namespace, th, litTh)
+
+      scope.addLocal(mut = false, vName, realTh)
+      (realTh, vName, Seq(Ast2.Store(init = true, Ast2.Id(vName, Seq.empty), lit)))
+
+
+    case Prop(from, props) =>
+      val (eth, evName, lowCode) = evalExpr(namespace, scope, None, from)
+
+      val actualTh = props.foldLeft(eth) {
+        case (fth, fieldId) =>
+          fth match {
+            case sth: ScalarTh =>
+              namespace.types.find(td => td.name == sth.name)
+                .getOrElse(throw new RuntimeException(s"no such type ${sth.name}"))
+              match {
+                case sd: StructDecl =>
+                  sd.fields.find(fd => fd.name == fieldId.value).get.th
+                case _ => throw new RuntimeException(s"no such field ${fieldId.value} on type $fth")
+              }
+            case sth: StructTh =>
+              sth.seq.find(f => f.name == fieldId.value).get.typeHint
+            case _ => throw new RuntimeException(s"no such field $fieldId on type $fth")
+          }
+      }
+      val vName = "$l" + namespace.nextAnonId()
       scope.addLocal(mut = false, vName, actualTh)
-      (actualTh, vName, Seq(Ast2.Store(init = true, Ast2.Id(vName, Seq.empty), lit)))
-    case Prop(from, prop) => null
+      (actualTh, vName, lowCode :+ Ast2.Store(init = true,
+        Ast2.Id(vName),
+        Ast2.Id(evName, props.map(_.value))))
     case Tuple(seq) =>
-      // val z: (x: Int, y: Int) = (1, 2)
-      null
+      val actualTh = th.getOrElse(throw new RuntimeException("typehint required")).toTh
+      val argTasks = seq.map { arg =>
+        new InferTask {
+          override def infer(expected: Option[ThAdvice]) = {
+            evalExpr(namespace, scope, expected, arg)
+          }
+        }
+      }
+      actualTh match {
+        case sth: StructTh =>
+          namespace.invokeAnonConstructor(scope, sth, argTasks.iterator)
+        case _ => throw new RuntimeException(s"unexpected value of $actualTh here")
+      }
     case SelfCall(params, fnName, self, args) =>
-      val argTasks = args.map(arg => new InferTask { // FIXME: self will be infered 2 times
+      val argTasks = args.map(arg => new InferTask {
         override def infer(expected: Option[ThAdvice]) = {
           evalExpr(namespace, scope, expected, arg)
         }
@@ -47,7 +94,13 @@ object TypeChecker {
           //   1.1 find fnName in mod
           // 2. find var
           //   2.1 find self for fnName on var
-          null
+          val vi = scope.findVar(id.value)
+          val selfTask = new InferTask {
+            override def infer(expected: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat]) = (vi.th, id.value, Seq.empty)
+          }
+          namespace.invokeSelfDef(scope, fnName, params, vi.th, (selfTask +: argTasks).iterator, th, {
+            case (expected, fn) => evalDef(namespace, scope.mkChild(p => new FnScope(None)), expected, fn)
+          })
         case _expr: Expression =>
           val (selfTh, vName, lowStats) = evalExpr(namespace, scope, None, _expr)
           val selfTask = new InferTask {
@@ -65,24 +118,30 @@ object TypeChecker {
       })
       expr match {
         case id: lId =>
-          // 1. find function
-          // 2. find var
-          if (namespace.hasDef(id.value)) {
-            namespace.invokeDef(scope, id.value, params, argTasks.iterator, th, {
-              case (expected, fn) => evalDef(namespace, scope.mkChild(p => new FnScope(None)), expected, fn)
-            })
+          // is it constructor?
+          if (id.value.head.isUpper) {
+            namespace.invokeConstructor(scope, id.value, params, argTasks.iterator)
           } else {
-            val vi = scope.findVarOpt(id.value)
-              .getOrElse(throw new RuntimeException(s"no such var of function with name ${id.value}"))
+            // 1. find function
+            // 2. find var
+            if (namespace.hasDef(id.value)) {
+              namespace.invokeDef(scope, id.value, params, argTasks.iterator, th, {
+                case (expected, fn) => evalDef(namespace, scope.mkChild(p => new FnScope(None)), expected, fn)
+              })
+            } else {
+              val vi = scope.findVarOpt(id.value)
+                .getOrElse(throw new RuntimeException(s"no such var of function with name ${id.value}"))
 
-            val fnTh =
-              vi.th match {
-                case fth: FnTh => fth
-                case _ => throw new RuntimeException(s"${id.value} is not callable")
-              }
+              val fnTh =
+                vi.th match {
+                  case fth: FnTh => fth
+                  case _ => throw new RuntimeException(s"${id.value} is not callable")
+                }
 
-            namespace.invokeLambda(scope, id.value, fnTh, argTasks.iterator)
+              namespace.invokeLambda(scope, id.value, fnTh, argTasks.iterator)
+            }
           }
+
         case _expr: Expression =>
           // 1. eval
           // 2. if th == FnTh -> call
@@ -180,11 +239,12 @@ object TypeChecker {
             throw new RuntimeException(s"var with name $toVarName already declared")
 
           val (whatTh, whatName, whatStats) =
-            evalExpr(namespace, scope, None, what)
+            evalExpr(namespace, scope, th.toAdviceOpt(mutable.HashMap()), what)
 
-          scope.addLocal(mut = true, toVarName, whatTh)
+          scope.addLocal(mut = true, toVarName, th)
 
-          (whatTh, toVarName, whatStats :+ Ast2.Store(init = true, Ast2.Id(toVarName), Ast2.Id(whatName)))
+          //FIXME: check types compatibility
+          (th, toVarName, whatStats :+ Ast2.Store(init = true, Ast2.Id(toVarName), Ast2.Id(whatName)))
         case None =>
           scope.findVarOpt(toVarName) match {
             case None =>
@@ -199,20 +259,44 @@ object TypeChecker {
             case Some(toVar) =>
               val toTh =
                 to.drop(1).foldLeft(toVar.th) {
-                  case (_th, id) => _th match {
-                    case StructTh(fields) =>
-                      val f = fields.find(f => f.name == id.value).getOrElse(throw new RuntimeException(s"no such field ${id.value} in ${_th}"))
-                      f.typeHint
-                    case _ => throw new RuntimeException(s"no such field ${id.value} in ${_th}")
-                  }
+                  case (fth, fieldId) =>
+                    fth match {
+                      case sth: ScalarTh =>
+                        namespace.types.find(td => td.name == sth.name)
+                          .getOrElse(throw new RuntimeException(s"no such type ${sth.name}"))
+                        match {
+                          case sd: StructDecl =>
+                            sd.fields.find(fd => fd.name == fieldId.value).get.th
+                          case _ => throw new RuntimeException(s"no such field $fieldId on type $fth")
+                        }
+                      case sth: StructTh =>
+                        sth.seq.find(f => f.name == fieldId.value).get.typeHint
+                      case _ => throw new RuntimeException(s"no such field $fieldId on type $fth")
+                    }
                 }
 
               val (whatTh, whatName, whatStats) =
                 evalExpr(namespace, scope, toTh.toAdviceOpt(mutable.HashMap.empty), what)
 
-              if (whatTh != toTh) throw new RuntimeException(s"expected $toTh has $whatTh")
+              if (whatTh != toTh)
+                toTh match {
+                  case sth: ScalarTh =>
+                    namespace.types.find(td => td.name == sth.name)
+                      .getOrElse(throw new RuntimeException(s"no such type $sth")) match {
+                      case ud: UnionDecl =>
+                        if (!ud.variants.contains(whatTh))
+                          throw new RuntimeException(s"expected $toTh has $whatTh")
+                      case _ => throw new RuntimeException(s"expected $toTh has $whatTh")
+                    }
+                  case uth: UnionTh =>
+                    if (!uth.seq.contains(whatTh))
+                      throw new RuntimeException(s"expected $toTh has $whatTh")
+                  case _ => throw new RuntimeException(s"expected $toTh has $whatTh")
+                }
 
-              (toTh, toVarName, whatStats :+ Ast2.Store(init = true, Ast2.Id(toVarName), Ast2.Id(whatName)))
+              (toTh, toVarName, whatStats :+ Ast2.Store(init = false,
+                Ast2.Id(toVarName, to.drop(1).map(v => v.value)),
+                Ast2.Id(whatName)))
           }
       }
     case Ret(optExpr) =>
@@ -248,16 +332,28 @@ object TypeChecker {
           (Seq[(String, ClosureType)](), th, Ast2.LLCode(code))
         case AbraCode(seq) =>
           val bodyScope = scope.mkChild({ parent => new BlockScope(Some(parent)) })
-          val (expressions, last) = (seq.dropRight(1), seq.last)
+          val (expressions, last) =
+            if (seq.isEmpty) (Seq.empty, Ret(None))
+            else (seq.dropRight(1), seq.last)
 
           val realLast = last match {
             case ret: Ret => ret
             case other => Ret(Some(other))
           }
 
-          val stats = expressions.map(expr => evalExpr(namespace, bodyScope, th = None, expr)._3)
-          val (_, vName, lastStat) = evalExpr(namespace, bodyScope,
+          val stats = expressions.map(expr => evalExpr(namespace, bodyScope, th = None, expr)._3).flatten
+          val (_, vName, lastStats) = evalExpr(namespace, bodyScope,
             fn.retTh.flatMap(th => th.toAdviceOpt(mutable.HashMap.empty)), realLast)
+
+          val lowRetStat = lastStats.last.asInstanceOf[Ast2.Ret]
+
+          val freeStats = bodyScope.vars
+            .filter {
+              case (vName, _) => Some(vName) != lowRetStat.lit
+            }
+            .map {
+              case (vName, _) => Ast2.Free(Ast2.Id(vName))
+            }
 
           val vars = downToLow(namespace, scope.down(root = true))
           val closure = upToClosure(scope.closures.toSeq)
@@ -268,7 +364,7 @@ object TypeChecker {
             case seq => UnionTh(seq)
           }
 
-          (closure, retTh, Ast2.AbraCode(vars, (stats :+ lastStat).flatten))
+          (closure, retTh, Ast2.AbraCode(vars, stats ++ lastStats.dropRight(1) ++ freeStats ++ lastStats.takeRight(1)))
       }
 
     val header = DefHeader(namespace.pkg, fn.name, FnTh(closure.map(_._2), argsTh, retTh))
@@ -287,11 +383,10 @@ object TypeChecker {
   }
 
   def infer(namespace: Namespace): Unit = {
-    val root = new FnScope(None)
     // non generic functions only
     namespace.defs.filter(d => !d.isGeneric).foreach { fn =>
       if (isNeedEvalDef(namespace, fn)) {
-        val (header, lowDef) = evalDef(namespace, root, FnAdvice(
+        val (header, lowDef) = evalDef(namespace, new FnScope(None), FnAdvice(
           args = fn.lambda.args.map(x => None),
           ret = None
         ), fn)

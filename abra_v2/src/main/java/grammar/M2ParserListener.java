@@ -38,6 +38,66 @@ public interface M2ParserListener extends ParseTreeListener {
 	 */
 	void exitId(M2Parser.IdContext ctx);
 	/**
+	 * Enter a parse tree produced by the {@code exprWnen}
+	 * labeled alternative in {@link M2Parser#expression}.
+	 * @param ctx the parse tree
+	 */
+	void enterExprWnen(M2Parser.ExprWnenContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code exprWnen}
+	 * labeled alternative in {@link M2Parser#expression}.
+	 * @param ctx the parse tree
+	 */
+	void exitExprWnen(M2Parser.ExprWnenContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code exprTypeId}
+	 * labeled alternative in {@link M2Parser#expression}.
+	 * @param ctx the parse tree
+	 */
+	void enterExprTypeId(M2Parser.ExprTypeIdContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code exprTypeId}
+	 * labeled alternative in {@link M2Parser#expression}.
+	 * @param ctx the parse tree
+	 */
+	void exitExprTypeId(M2Parser.ExprTypeIdContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code exprLiteral}
+	 * labeled alternative in {@link M2Parser#expression}.
+	 * @param ctx the parse tree
+	 */
+	void enterExprLiteral(M2Parser.ExprLiteralContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code exprLiteral}
+	 * labeled alternative in {@link M2Parser#expression}.
+	 * @param ctx the parse tree
+	 */
+	void exitExprLiteral(M2Parser.ExprLiteralContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code exprIfElse}
+	 * labeled alternative in {@link M2Parser#expression}.
+	 * @param ctx the parse tree
+	 */
+	void enterExprIfElse(M2Parser.ExprIfElseContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code exprIfElse}
+	 * labeled alternative in {@link M2Parser#expression}.
+	 * @param ctx the parse tree
+	 */
+	void exitExprIfElse(M2Parser.ExprIfElseContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code exprLambda}
+	 * labeled alternative in {@link M2Parser#expression}.
+	 * @param ctx the parse tree
+	 */
+	void enterExprLambda(M2Parser.ExprLambdaContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code exprLambda}
+	 * labeled alternative in {@link M2Parser#expression}.
+	 * @param ctx the parse tree
+	 */
+	void exitExprLambda(M2Parser.ExprLambdaContext ctx);
+	/**
 	 * Enter a parse tree produced by the {@code exprParen}
 	 * labeled alternative in {@link M2Parser#expression}.
 	 * @param ctx the parse tree
@@ -61,18 +121,6 @@ public interface M2ParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitExprCall(M2Parser.ExprCallContext ctx);
-	/**
-	 * Enter a parse tree produced by the {@code exprWnen}
-	 * labeled alternative in {@link M2Parser#expression}.
-	 * @param ctx the parse tree
-	 */
-	void enterExprWnen(M2Parser.ExprWnenContext ctx);
-	/**
-	 * Exit a parse tree produced by the {@code exprWnen}
-	 * labeled alternative in {@link M2Parser#expression}.
-	 * @param ctx the parse tree
-	 */
-	void exitExprWnen(M2Parser.ExprWnenContext ctx);
 	/**
 	 * Enter a parse tree produced by the {@code exprProp}
 	 * labeled alternative in {@link M2Parser#expression}.
@@ -145,42 +193,6 @@ public interface M2ParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitExprSelfCall(M2Parser.ExprSelfCallContext ctx);
-	/**
-	 * Enter a parse tree produced by the {@code exprLiteral}
-	 * labeled alternative in {@link M2Parser#expression}.
-	 * @param ctx the parse tree
-	 */
-	void enterExprLiteral(M2Parser.ExprLiteralContext ctx);
-	/**
-	 * Exit a parse tree produced by the {@code exprLiteral}
-	 * labeled alternative in {@link M2Parser#expression}.
-	 * @param ctx the parse tree
-	 */
-	void exitExprLiteral(M2Parser.ExprLiteralContext ctx);
-	/**
-	 * Enter a parse tree produced by the {@code exprIfElse}
-	 * labeled alternative in {@link M2Parser#expression}.
-	 * @param ctx the parse tree
-	 */
-	void enterExprIfElse(M2Parser.ExprIfElseContext ctx);
-	/**
-	 * Exit a parse tree produced by the {@code exprIfElse}
-	 * labeled alternative in {@link M2Parser#expression}.
-	 * @param ctx the parse tree
-	 */
-	void exitExprIfElse(M2Parser.ExprIfElseContext ctx);
-	/**
-	 * Enter a parse tree produced by the {@code exprLambda}
-	 * labeled alternative in {@link M2Parser#expression}.
-	 * @param ctx the parse tree
-	 */
-	void enterExprLambda(M2Parser.ExprLambdaContext ctx);
-	/**
-	 * Exit a parse tree produced by the {@code exprLambda}
-	 * labeled alternative in {@link M2Parser#expression}.
-	 * @param ctx the parse tree
-	 */
-	void exitExprLambda(M2Parser.ExprLambdaContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link M2Parser#tuple}.
 	 * @param ctx the parse tree

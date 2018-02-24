@@ -30,16 +30,16 @@ object StoreUtil {
 
     val irType = TypeRef(s.name).toValue(ctx.types)
 
-    ctx.out.println(s"%r = alloca $irType")
+    ctx.out.println(s"\t%r = alloca $irType")
 
     if (TypeRef(s.name).isRef(ctx.types)) {
       val stripped = irType.stripSuffix("*")
       val r1, r2, r3, r4 = dctx.nextReg()
-      ctx.out.println(s"%$r1 = getelementptr $stripped, $stripped* null, i64 1")
-      ctx.out.println(s"%$r2 = ptrtoint $stripped* %$r1 to i64")
-      ctx.out.println(s"%$r3 = call i8* @rcAlloc(i64 %$r2)")
-      ctx.out.println(s"%$r4 = bitcast i8* %$r3 to $irType")
-      ctx.out.println(s"store $irType %$r4, $irType* %r")
+      ctx.out.println(s"\t%$r1 = getelementptr $stripped, $stripped* null, i64 1")
+      ctx.out.println(s"\t%$r2 = ptrtoint $stripped* %$r1 to i64")
+      ctx.out.println(s"\t%$r3 = call i8* @rcAlloc(i64 %$r2)")
+      ctx.out.println(s"\t%$r4 = bitcast i8* %$r3 to $irType")
+      ctx.out.println(s"\tstore $irType %$r4, $irType* %r")
     }
 
     val lowStats = s.fields.map { f =>

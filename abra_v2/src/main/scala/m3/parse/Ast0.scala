@@ -39,7 +39,7 @@ object Ast0 {
   case class CParam(th: TypeHint) extends ClosureType
   case class FnTh(closure: Seq[ClosureType], args: Seq[TypeHint], ret: TypeHint) extends TypeHint
 
-  case class Prop(from: Expression, prop: lId) extends Expression
+  case class Prop(from: Expression, props: Seq[lId]) extends Expression
   case class Tuple(seq: Seq[Expression]) extends Expression
   case class SelfCall(params: Seq[TypeHint], fnName: String, self: Expression, args: Seq[Expression]) extends Expression
   case class Call(params: Seq[TypeHint], expr: Expression, args: Seq[Expression]) extends Expression

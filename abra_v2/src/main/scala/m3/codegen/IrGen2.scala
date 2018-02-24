@@ -179,23 +179,23 @@ object IrGen2 {
                 dest: Id, src: Storable, init: Boolean): Unit = {
     ctx.out.println(s";@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ store begin")
     // вычисляем что store
-    val (whatTref, what) =
+    val (whatTref, what, needAcquier) =
       src match {
         case id: Id =>
           val (whatTref, what) = requireValue(ctx, dctx, evalId(ctx, dctx, id))
-          (whatTref, what)
+          (whatTref, what, true)
         case call: Call =>
           val (whatTref, what) = evalCall(ctx, dctx, call)
-          (whatTref, what)
+          (whatTref, what, false)
         case Cons(ref, args) =>
           val (whatTref, what) = evalCall(ctx, dctx, Call(Id(ref.name + ".$cons"), args))
-          (ref, what)
+          (ref, what, false)
       }
 
     if (whatTref.isVoid(ctx.types)) return
 
     // делаем инкремент что store
-    if (whatTref.isNeedBeforeAfterStore(ctx.types)) {
+    if (needAcquier && whatTref.isNeedBeforeAfterStore(ctx.types)) {
       val fRelease = "\"" + whatTref.name + ".$acquire" + "\""
       val irType = whatTref.toValue(ctx.types)
       ctx.out.println(s"\tcall void @$fRelease($irType $what)")
@@ -441,7 +441,7 @@ object IrGen2 {
         |    %realSize = add nsw i64 %size, 8
         |    %block = call i8* @malloc(i64 %realSize)
         |    %1 = bitcast i8* %block to i64*
-        |    store i64 0, i64* %1
+        |    store i64 1, i64* %1
         |    %ptr = getelementptr i8, i8* %block, i64 8
         |    ret i8* %ptr
         |}

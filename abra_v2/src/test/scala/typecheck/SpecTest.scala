@@ -76,12 +76,12 @@ class SpecTest extends FunSuite {
         ),
         body = AbraCode(Seq(
           Store(None, Seq(lId("ret")), SelfCall(Seq(thU), "make", self = lId("seq"), args = Seq(
-            Prop(lId("self"), lId("length"))
+            Prop(lId("self"), Seq(lId("length")))
           ))),
           Store(None, Seq(lId("i")), lInt("0")),
           While(
             cond = SelfCall(Seq.empty, "<", self = lId("i"), args = Seq(
-              Prop(lId("self"), lId("length"))
+              Prop(lId("self"), Seq(lId("length")))
             )),
             _do = Seq(
               SelfCall(Seq.empty, "set", lId("ret"), args = Seq(

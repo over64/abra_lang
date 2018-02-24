@@ -11,7 +11,7 @@ import scala.collection.mutable.ListBuffer
   * Created by over on 23.10.17.
   */
 object IrUtil {
-  case class Mod(val lowCode: ListBuffer[String] = ListBuffer(),
+  case class Mod(var lowCode: ListBuffer[String] = ListBuffer(),
                  val types: mutable.HashMap[String, Type] = mutable.HashMap(),
                  val defs: mutable.HashMap[String, Def] = mutable.HashMap()) {
 
@@ -21,7 +21,11 @@ object IrUtil {
     defineType(Low(ref = false, "Float", "float"))
     defineType(Low(ref = true, "String", "i8*"))
 
-    def addLow(lowCode: String) = this.lowCode += lowCode
+    def addLow(lowCode: String) = {
+      // FIXME: vary hacky
+      this.lowCode += lowCode
+      this.lowCode = this.lowCode.distinct
+    }
 
     def defineType(t: Type) =
       types.put(t.name, t)
@@ -93,7 +97,7 @@ object IrUtil {
         case Low(ref, name, llValue) => true
         case s: Struct => false
         case u: Union => false
-        case fn: Fn => if(fn.closure.isEmpty) true else false
+        case fn: Fn => if (fn.closure.isEmpty) true else false
       }
     }
 
@@ -146,7 +150,7 @@ object IrUtil {
         case Struct(name, fields) => "%\"" + name + "\"" + refSuffix
         case Union(name, variants) => "%\"" + name + "\"" + refSuffix
         case fn: Fn =>
-          if(fn.closure.isEmpty) fn.toDecl(types)
+          if (fn.closure.isEmpty) fn.toDecl(types)
           else "%\"" + fn.name + "\"" + refSuffix
       }
     }

@@ -40,25 +40,6 @@ class Namespace(val pkg: String,
   def hasSelfDef(name: String, selfType: TypeHint): Boolean = false
   def hasMod(name: String): Boolean = false
 
-  // go left to right ->
-  // def map[U] = \self: Seq[Int], mapper: \Int -> U -> // declaration for specialized generic type disallowed
-  // def map[T, U] = \self: Seq[T], mapper: \T -> U ->
-  //   .
-  // s.map(\x -> x.toString)
-  // def bar[T] = \t: T ->
-  //   (t, 1) .(x: T, y: T)
-  // val z = bar(1.toLong)
-  // val l = Long(1231231231424)
-  // val l: Long = 123123123123
-  // val pi: Double = 3.14
-  // val pi = Double(3.14)
-  // type Long = llvm i64 .
-  // macro Long = \ctx: Context, args: Seq[Expr] ->
-  //   if args.len != 1 do raise MacroErr('expected 1 arg of IConst') .
-  //   match args(0)
-  //     case IConst(v) do
-  //     else e do raise MacroErr('expected IConst') ..
-
   def checkAndInfer(specMap: mutable.HashMap[GenericType, TypeHint], expected: TypeHint, has: TypeHint): Boolean =
     (expected, has) match {
       case (adv: ScalarTh, th: ScalarTh) =>
@@ -136,7 +117,8 @@ class Namespace(val pkg: String,
     if (args.hasNext) throw new RuntimeException("too much args")
 
     val advice = FnAdvice(argsInferedTh.map(th => th.toAdviceOpt(specMap)), ret)
-    val _def = toCall.spec(specMap.values.toSeq, this)
+    val flatSpecs = toCall.params.map(cp => specMap(cp))
+    val _def = toCall.spec(flatSpecs, this)
     val (header, lowDef) = inferCallback(advice, _def)
 
     // FIXME: inferedDefs.put()
@@ -155,6 +137,16 @@ class Namespace(val pkg: String,
           Ast2.Id(lowDef.name),
           argsVars.map(av => Ast2.Id(av))))
     )
+  }
+
+  def inferCompatibleDef(toSpec: Def,
+                         advice: FnAdvice,
+                         inferCallback: (FnAdvice, Def) => (DefHeader, Ast2.Def)): DefHeader = {
+    val specMap = mutable.HashMap[GenericType, TypeHint]()
+    val advice = FnAdvice(
+      toSpec.lambda.args.map(arg => arg.typeHint.flatMap(x => x.toAdviceOpt(specMap))),
+      toSpec.retTh.flatMap(x => x.toAdviceOpt(specMap)))
+    inferCallback(advice, toSpec)._1
   }
 
   def invokeDef(scope: BlockScope,
@@ -181,8 +173,120 @@ class Namespace(val pkg: String,
           case None => false
           case Some(arg) => arg.name == "self" && arg.typeHint.get == selfType
         }
-    }.get
+    }.getOrElse(throw new RuntimeException(s"no function with name $name"))
     _invokeDef(scope, toCall, params, args, ret, inferCallback)
+  }
+
+  // type S[T, U] = (t1: T, t2: T, u: U)
+  // S[String, Long]
+  def invokeConstructor(scope: BlockScope,
+                        typeName: String,
+                        params: Seq[TypeHint],
+                        args: Iterator[InferTask]): (TypeHint, String, Seq[Ast2.Stat]) = {
+    val consType =
+      types.find(t => t.name == typeName).getOrElse(throw new RuntimeException(s"has no type with name $typeName")) match {
+        case sd: StructDecl => sd
+        case _ => throw new RuntimeException(s"$typeName is not struct type")
+      }
+    val specMap: mutable.HashMap[GenericType, TypeHint] =
+      if (params.nonEmpty) {
+        if (consType.params.length != params.length)
+          throw new RuntimeException(s"expected ${consType.params.length} params but has ${params.length}")
+        mutable.HashMap(consType.params zip params: _*)
+      } else
+        mutable.HashMap(consType.params.map(p => (p, ScalarTh(Seq.empty, p.name + "*", None))): _*)
+
+    val defArgs = consType.fields.map(f => Arg(f.name, Some(f.th))).toIterator
+    val argsStats = mutable.ListBuffer[Ast2.Stat]()
+    val argsVars = mutable.ListBuffer[String]()
+    val argsInferedTh = mutable.ListBuffer[TypeHint]()
+
+    while (defArgs.hasNext) {
+      val defArg = defArgs.next()
+      val arg = if (!args.hasNext) throw new RuntimeException("too least args") else args.next()
+
+      val argTh = defArg.typeHint.get.spec(specMap.toMap)
+      val argAdvice = defArg.typeHint.get.toAdviceOpt(specMap)
+      val (th, vName, stats) = arg.infer(argAdvice)
+
+      argsVars += vName
+      argsStats ++= stats
+
+      if (!checkAndInfer(specMap, argTh, th))
+        throw new RuntimeException(s"expected ${defArg.typeHint} has $th")
+
+      argsInferedTh += th
+    }
+
+    if (args.hasNext) throw new RuntimeException("too much args")
+
+    val flatSpecs = consType.params.map(cp => specMap(cp))
+    val retTh = ScalarTh(flatSpecs, consType.name, None)
+
+    // code generation will be performed on codegen part
+    val virtualArgs = consType.fields.map(f => Arg(f.name, Some(f.th)))
+    val virtualDef = Def(consType.params, consType.name, Lambda(virtualArgs, AbraCode(Seq.empty)), Some(retTh))
+    val _def = virtualDef.spec(flatSpecs, this)
+
+    val anonVar = "$c" + nextAnonId()
+    scope.addLocal(mut = false, anonVar, retTh)
+
+    (
+      retTh,
+      anonVar,
+      argsStats :+ Ast2.Store(
+        init = true,
+        Ast2.Id(anonVar),
+        Ast2.Call(
+          Ast2.Id(_def.name + ".$cons"),
+          argsVars.map(av => Ast2.Id(av))))
+    )
+  }
+
+  def invokeAnonConstructor(scope: BlockScope,
+                            forType: StructTh,
+                            args: Iterator[InferTask]): (TypeHint, String, Seq[Ast2.Stat]) = {
+    val specMap = mutable.HashMap[GenericType, TypeHint]()
+
+    val defArgs = forType.seq.map(f => Arg(f.name, Some(f.typeHint))).toIterator
+    val argsStats = mutable.ListBuffer[Ast2.Stat]()
+    val argsVars = mutable.ListBuffer[String]()
+    val argsInferedTh = mutable.ListBuffer[TypeHint]()
+
+    while (defArgs.hasNext) {
+      val defArg = defArgs.next()
+      val arg = if (!args.hasNext) throw new RuntimeException("too least args") else args.next()
+
+      val argTh = defArg.typeHint.get.spec(specMap.toMap)
+      val argAdvice = defArg.typeHint.get.toAdviceOpt(specMap)
+      val (th, vName, stats) = arg.infer(argAdvice)
+
+      argsVars += vName
+      argsStats ++= stats
+
+      if (!checkAndInfer(specMap, argTh, th))
+        throw new RuntimeException(s"expected ${defArg.typeHint} has $th")
+
+      argsInferedTh += th
+    }
+
+    if (args.hasNext) throw new RuntimeException("too much args")
+
+    // code generation will be performed on codegen part
+
+    val anonVar = "$c" + nextAnonId()
+    scope.addLocal(mut = false, anonVar, forType)
+
+    (
+      forType,
+      anonVar,
+      argsStats :+ Ast2.Store(
+        init = true,
+        Ast2.Id(anonVar),
+        Ast2.Call(
+          Ast2.Id(forType.toLow(this).name + ".$cons"),
+          argsVars.map(av => Ast2.Id(av))))
+    )
   }
 
   def invokeLambda(scope: BlockScope,

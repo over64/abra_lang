@@ -19,7 +19,7 @@ class _04StatementsParse extends FunSuite {
     withStr("x: Int = 1", Store(Some(ScalarTh(Seq(), "Int", None)), Seq(lId("x")), lInt("1")))
     withStr("x = 1", Store(None, Seq(lId("x")), lInt("1")))
     withStr("x.y.z = 1", Store(None, Seq(lId("x"), lId("y"), lId("z")), lInt("1")))
-    withStr("m(0, 0) = 1", SelfCall(Seq.empty, "set", lId("m"), Seq(lInt("0"), lInt("0"), lInt("1"))))
+    withStr("m(0, 0) = 1", SelfCall(Seq.empty, "set", Prop(lId("m"), Seq.empty), Seq(lInt("0"), lInt("0"), lInt("1"))))
   }
 
   test("while") {

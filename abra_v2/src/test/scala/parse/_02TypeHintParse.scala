@@ -30,6 +30,11 @@ class _02TypeHintParse extends FunSuite {
       args = Seq(ScalarTh(Seq.empty, "Int", None)),
       ret = ScalarTh(Seq.empty, "None", None)))
 
+    withStr(" -> None", FnTh(
+      closure = Seq.empty,
+      args = Seq.empty,
+      ret = ScalarTh(Seq.empty, "None", None)))
+
     withStr("\\Int, Float -> None", FnTh(
       closure = Seq.empty,
       args = Seq(
