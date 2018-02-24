@@ -148,7 +148,12 @@ object TypeChecker {
           // 3. if arg.empty -> err not callable
           // 4. if !arg.empty -> find self get
           val (th, vName, stats) = evalExpr(namespace, scope, None, _expr)
-          null
+          th match {
+            case fth: FnTh =>
+              val (retTh, retVName, callStats) = namespace.invokeProto(scope, vName, fth, argTasks.iterator)
+              (retTh, retVName, stats ++ callStats)
+            case _ => throw new RuntimeException("other need to call")
+          }
       }
     case lambda: Lambda =>
       val _def = Def(Seq.empty, "$def" + namespace.nextAnonId(), lambda, None)
@@ -165,7 +170,7 @@ object TypeChecker {
       val vName = "$l" + namespace.nextAnonId()
       scope.addLocal(mut = false, vName, header.th)
 
-      (header.th, vName, Seq(Ast2.Store(init = true, Ast2.Id(vName), Ast2.Id(_def.name))))
+      (header.th, vName, Seq(Ast2.Closure(vName, _def.name)))
     case andOr: AndOr =>
       val lowId = Ast2.Id("$and" + namespace.nextAnonId())
 
@@ -244,7 +249,7 @@ object TypeChecker {
           scope.addLocal(mut = true, toVarName, th)
 
           //FIXME: check types compatibility
-          (th, toVarName, whatStats :+ Ast2.Store(init = true, Ast2.Id(toVarName), Ast2.Id(whatName)))
+          (thNil, toVarName, whatStats :+ Ast2.Store(init = true, Ast2.Id(toVarName), Ast2.Id(whatName)))
         case None =>
           scope.findVarOpt(toVarName) match {
             case None =>
@@ -255,7 +260,7 @@ object TypeChecker {
 
               scope.addLocal(mut = true, toVarName, whatTh)
 
-              (whatTh, toVarName, whatStats :+ Ast2.Store(init = true, Ast2.Id(toVarName), Ast2.Id(whatName)))
+              (thNil, toVarName, whatStats :+ Ast2.Store(init = true, Ast2.Id(toVarName), Ast2.Id(whatName)))
             case Some(toVar) =>
               val toTh =
                 to.drop(1).foldLeft(toVar.th) {
@@ -294,7 +299,7 @@ object TypeChecker {
                   case _ => throw new RuntimeException(s"expected $toTh has $whatTh")
                 }
 
-              (toTh, toVarName, whatStats :+ Ast2.Store(init = false,
+              (thNil, toVarName, whatStats :+ Ast2.Store(init = false,
                 Ast2.Id(toVarName, to.drop(1).map(v => v.value)),
                 Ast2.Id(whatName)))
           }
@@ -303,8 +308,13 @@ object TypeChecker {
       optExpr match {
         case Some(expr) =>
           val (actualTh, vName, lowStats) = evalExpr(namespace, scope, th, expr)
-          scope.setRet(actualTh)
-          (thNil, "", lowStats :+ Ast2.Ret(Some(vName)))
+
+          if (actualTh == thNil)
+            (thNil, "", lowStats :+ Ast2.Ret(None))
+          else {
+            scope.setRet(actualTh)
+            (thNil, "", lowStats :+ Ast2.Ret(Some(vName)))
+          }
         case None =>
           (thNil, "", Seq(Ast2.Ret(None)))
       }

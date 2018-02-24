@@ -32,7 +32,7 @@ object IrGen2 {
                     val r2 = dctx.nextReg().toString
                     val irType = fnType.closure(idx).ref.toValue(ctx.types)
 
-                    ctx.out.println(s"\t%$r1 = getelementptr %${fnType.name}, %${fnType.name}* %$$closure, i64 0, i32 ${idx + 1}")
+                    ctx.out.println(s"""\t%$r1 = getelementptr %\"${fnType.name}\", %"${fnType.name}"* %$$closure, i64 0, i32 ${idx + 1}""")
                     ctx.out.println(s"\t%$r2 = load $irType*, $irType** %$r1")
                     ("%" + r2, ref, true)
                   case Param(ref) =>
@@ -41,7 +41,7 @@ object IrGen2 {
                       val r2 = dctx.nextReg().toString
                       val irType = fnType.closure(idx).ref.toValue(ctx.types)
 
-                      ctx.out.println(s"\t%$r1 = getelementptr %${fnType.name}, %${fnType.name}* %$$closure, i64 0, i32 ${idx + 1}")
+                      ctx.out.println(s"""\t%$r1 = getelementptr %"${fnType.name}", %"${fnType.name}"* %$$closure, i64 0, i32 ${idx + 1}""")
                       ctx.out.println(s"\t%$r2 = load $irType, $irType* %$r1")
                       ("%" + r2, ref, false)
                     } else {
@@ -49,7 +49,7 @@ object IrGen2 {
                       val r2 = dctx.nextReg().toString
                       val irType = fnType.closure(idx).ref.toValue(ctx.types)
 
-                      ctx.out.println(s"\t%$r1 = getelementptr %${fnType.name}, %${fnType.name}* %$$closure, i64 0, i32 ${idx + 1}")
+                      ctx.out.println(s"""\t%$r1 = getelementptr %"${fnType.name}", %"${fnType.name}"* %$$closure, i64 0, i32 ${idx + 1}""")
                       ctx.out.println(s"\t%$r2 = load $irType*, $irType** %$r1")
                       ("%" + r2, ref, true)
                     }
@@ -252,7 +252,7 @@ object IrGen2 {
 
       val (destName, _, _) = findSymbol(ctx, dctx, dest)
       val closureType = ctx.types(_def.ref.name).asInstanceOf[Fn]
-      val closureIr = _def.ref.name
+      val closureIr = "\"" + _def.ref.name + "\""
       val r1 = dctx.nextReg().toString
       ctx.out.println(s"\t%$r1 = getelementptr %$closureIr, %$closureIr* $destName, i64 0, i32 0")
 

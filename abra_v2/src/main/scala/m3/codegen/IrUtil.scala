@@ -66,7 +66,7 @@ object IrUtil {
           else argRef.toPtr(types)
         }
 
-        val realArgsIr = if (closure.isEmpty) argsIr else argsIr :+ ("%" + name + "*")
+        val realArgsIr = if (closure.isEmpty) argsIr else argsIr :+ ("%\"" + name + "\"*")
         val fnPtr = s"${ret.toValue(types)} (${realArgsIr.mkString(", ")})*"
 
         if (closure.isEmpty) fnPtr

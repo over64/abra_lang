@@ -139,6 +139,49 @@ class Namespace(val pkg: String,
     )
   }
 
+  def invokeProto(scope: BlockScope,
+                   vName: String,
+                   proto: FnTh,
+                   args: Iterator[InferTask]) = {
+
+    val specMap = mutable.HashMap[GenericType, TypeHint]()
+    val defArgs = proto.args.toIterator
+    val argsStats = mutable.ListBuffer[Ast2.Stat]()
+    val argsVars = mutable.ListBuffer[String]()
+
+    while (defArgs.hasNext) {
+      val defArg = defArgs.next()
+      val arg = if (!args.hasNext) throw new RuntimeException("too least args") else args.next()
+
+      val argTh = defArg.spec(specMap.toMap)
+      val argAdvice = defArg.toAdviceOpt(specMap)
+      val (th, vName, stats) = arg.infer(argAdvice)
+
+      argsVars += vName
+      argsStats ++= stats
+
+      if (!checkAndInfer(specMap, argTh, th))
+        throw new RuntimeException(s"expected ${defArg} has $th")
+    }
+
+    if (args.hasNext) throw new RuntimeException("too much args")
+
+
+    val anonVar = "$c" + nextAnonId()
+    scope.addLocal(mut = false, anonVar, proto.ret)
+
+    (
+      proto.ret,
+      anonVar,
+      argsStats :+ Ast2.Store(
+        init = true,
+        Ast2.Id(anonVar),
+        Ast2.Call(
+          Ast2.Id(vName),
+          argsVars.map(av => Ast2.Id(av))))
+    )
+  }
+
   def inferCompatibleDef(toSpec: Def,
                          advice: FnAdvice,
                          inferCallback: (FnAdvice, Def) => (DefHeader, Ast2.Def)): DefHeader = {

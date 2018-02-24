@@ -12,7 +12,7 @@ class _03StructStoreTest extends FunSuite with IntegrationUtil {
         type Vec2 = (x: String, y: Int)
 
         f main =
-          v = Vec2('i', 42, bar)
+          v = Vec2('i', 42)
           v.x = 'hellooooooooooooooooooooooooooooo'
           v.y .
       """, exit = Some(42))

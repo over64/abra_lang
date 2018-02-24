@@ -20,7 +20,7 @@ expression: literal #exprLiteral
           | tuple #exprTuple
           | expression (NL WS?)? DOT op=(VarId  | '*' | '/' | '+' | '-' | '>' | '<' | '<=' | '>=' | '==' | '!=')
               (sp '[' sp typeHint (sp ',' sp typeHint)* ']')? sp tuple #exprSelfCall
-          | expression sp ('[' sp typeHint (sp ',' sp typeHint)* ']')?  sp tuple #exprCall
+          | expression WS* ('[' sp typeHint (sp ',' sp typeHint)* ']')?  WS* tuple #exprCall
           | lambda #exprLambda
           | expression ((NL WS?)? DOT op+=VarId)+ #exprProp
           | op='!' sp expression #exprUnaryCall
