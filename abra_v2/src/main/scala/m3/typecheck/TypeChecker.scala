@@ -224,12 +224,17 @@ object TypeChecker {
           elseStats :+ Ast2.Store(init = true, Ast2.Id(resultVar), Ast2.Id(elseName))))
     case While(cond, _do) =>
       val (condTh, condName, condStats) = evalExpr(namespace, scope, Some(adviceBool), cond)
+      val blockScope = scope.mkChild(p => new BlockScope(Some(p)))
       val stats =
         _do.foldLeft(Seq[Ast2.Stat]()) {
-          case (stats, expr) => stats ++ evalExpr(namespace, scope, None, expr)._3
+          case (stats, expr) => stats ++ evalExpr(namespace, blockScope, None, expr)._3
         }
 
-      (thNil, null, Seq(Ast2.While(Ast2.Id(condName), condStats, stats)))
+      val freeStats = blockScope.vars.map {
+        case (vName, _) => Ast2.Free(Ast2.Id(vName))
+      }
+
+      (thNil, null, Seq(Ast2.While(Ast2.Id(condName), condStats, stats ++ freeStats)))
     case Store(typeHint, to, what) =>
       // x: Int = 5 # ok
       // x = 6 # ok
