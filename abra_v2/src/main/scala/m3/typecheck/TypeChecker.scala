@@ -172,7 +172,8 @@ object TypeChecker {
 
       (header.th, vName, Seq(Ast2.Closure(vName, _def.name)))
     case andOr: AndOr =>
-      val lowId = Ast2.Id("$and" + namespace.nextAnonId())
+      val lowId = Ast2.Id("$andOr" + namespace.nextAnonId())
+      scope.addLocal(mut = false, lowId.v, thBool)
 
       val (leftTh, leftName, leftStats) = evalExpr(namespace, scope, Some(adviceBool), andOr.left)
       if (leftTh != thBool) throw new RuntimeException(s"expected $thBool has $leftTh")

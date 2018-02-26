@@ -1,60 +1,38 @@
-type Node = (left: Node | None, right: Node | None)
-type Stat = (iters: Int, depth: Int, sum: Int)
+type None = llvm void .
+type Int = llvm i32 .
+ref type String = llvm i8* .
+type Vec2 = (x: Int, y: Int)
+type S = (x: String, y: Int)
+type U1 = Int | String
 
-f mkTree = depth: Int ->
-  if depth > 0 do
-    Node(mkTree(depth - 1), mkTree(depth - 1))
-  else
-    Node(None, None) ..
+f baz = x1: Int, x2: String, x3: Vec2, x4: S, x5: U1,
+                l1: Int, l2: String, l3: Vec2, l4: S, l5: U1 -> .
 
-f checksum = self: Node ->
-  sum = 1
+f bar = x1: Int, x2: String, x3: Vec2, x4: S, x5: U1 ->
+  l1 = 1
+  l2 = 'ho'
+  l3 = Vec2(1, 1)
+  l4 = S('hh', 1)
+  l5: U1 = 10
 
-  when self.left is l: Node do
-     sum = sum + l.checksum() .
-  when self.right is r: Node do
-     sum = sum + r.checksum() .
+  f
+    def
+      l1   = 2
+      l2   = 'ss'
+      l3   = V
+    seq.map(lambda x -> x + 1) ec2(10, 10)
+      l4.x = 'hhh'
+      l5   = 'hhhi'
 
-  sum .
+      x3.x = 42
+      x4.x = 'world'
+      baz(x1, x2, x3, x4, x5, l1, l2, l3, l4, l5)
+    .()
+  .()
+.
 
 f main =
-  minDepth = 4
-  maxDepth = sys.arg(0).toInt()
-
-  if maxDepth < minDepth + 2 do
-    maxDepth = minDepth + 2 .
-
-  pool.use with f
-    tree = mkTree(maxDepth + 1)
-    fmt.print(
-      io.stdout,
-      'stretch tree of depth %v %t check: %v%n',
-      maxDepth + 1,
-      tree.checksum()) .
-
-  longLiveTree: Pool[Node] =
-    pool.alloc with f
-      mkTree(maxDepth) .
-
-  outBuf = seq.uninitialized[Stat](maxDepth + 1)
-
-  thread.par with 4, f tp ->
-    range.of(minDepth, maxDepth, 2).forEach with f depth ->
-      tp.spawn[Int, None] with f depth ->
-        iters    = 1 shl (maxDepth + minDepth - depth)
-        totalSum = 0
-
-        (1 to iters + 1).forEach with f i ->
-          pool.use with f
-            totalSum = totalSum + mkTree(depth).checksum() ..
-
-        outBuff(depth) = Stat(iters, depth, totalSum) ...
-
-  outBuff.forEach with f stat ->
-    fmt.print(io.stdout, '%v%t trees of depth %v%t check: %v%n',
-      stat.iters, stat.depth, stat.sum) .
-
-  longLiveTree.view with f tree ->
-    fmt.print('long lived tree of depth %v%t check: %v%n',
-      maxDepth, tree.checkSum())
-  longLiveTree.free() .
+  v = Vec2(1, 1)
+  s = S('hello', 1)
+  bar(1, 'hi', v, s, 'union 1')
+  v.x .
