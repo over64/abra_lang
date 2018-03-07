@@ -27,7 +27,7 @@ object _00Types_Test extends FunSuite {
   val u4 = TypeRef("U4")
 
   val tU1 = Union("U1", Seq(string, int))
-  val tU2 = Union("U2", Seq(u1, string, nil))
+  val tU2 = Union("U2", Seq(nil, u1, string))
   val tU3 = Union("U3", Seq(bool, int))
   val tU4 = Union("U4", Seq(bool, int, string))
 

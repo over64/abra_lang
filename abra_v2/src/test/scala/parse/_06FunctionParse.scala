@@ -16,7 +16,7 @@ class _06FunctionParse extends FunSuite {
   import parserFunction._
 
   test("llvm function") {
-    withStr("f + = x: Int, y: Int -> llvm ;asm .Int", Def(
+    withStr("def + = x: Int, y: Int -> llvm ;asm .Int", Def(
       params = Seq(),
       name = "+",
       lambda = Lambda(Seq(

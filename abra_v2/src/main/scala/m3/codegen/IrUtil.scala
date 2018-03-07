@@ -59,7 +59,7 @@ object IrUtil {
       case Struct(name, fields) =>
         s"{ ${fields.map(f => f.ref.toValue(types)).mkString(", ")} }"
       case Union(name, variants) =>
-        s"{ i8, ${variants.filter(v => !v.isVoid(types)).map(v => v.toValue(types)).mkString(", ")} }"
+        s"{ i8, ${variants.map(v => if (v.isVoid(types)) "{}" else v.toValue(types)).mkString(", ")} }"
       case Fn(name, closure, args, ret) =>
         val argsIr = args.map { argRef =>
           if (argRef.isRegisterFit(types)) argRef.toValue(types)
@@ -157,6 +157,11 @@ object IrUtil {
 
     def isNeedBeforeAfterStore(types: mutable.HashMap[String, Type]) =
       self.isUnion(types) || self.isRef(types)
+  }
+
+  implicit class RichUnion(self: Union) {
+    def fieldTagValue(typeRef: TypeRef): Int = self.variants.indexOf(typeRef)
+    def fieldIrIndex(typeRef: TypeRef): Int = fieldTagValue(typeRef) + 1
   }
 
   def irDefName(name: String) = s"""@"$name""""

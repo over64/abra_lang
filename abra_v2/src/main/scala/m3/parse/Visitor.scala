@@ -109,7 +109,6 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
     emit(ctx, FieldDecl(ctx.getToken(SELF, 0) != null, ctx.VarId().getText, visitTypeHint(ctx.typeHint())))
 
   override def visitStructType(ctx: StructTypeContext): StructDecl = {
-    if (ctx.REF() != null) throw new RuntimeException("explicit ref declaration not allowed for struct type")
     emit(ctx, StructDecl(
       ctx.params.map { p => emit(p, GenericType(p.getText)) },
       ctx.name.getText,
@@ -117,7 +116,6 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
     ))
   }
   override def visitUnionType(ctx: UnionTypeContext): UnionDecl = {
-    if (ctx.REF() != null) throw new RuntimeException("explicit ref declaration not allowed for union type")
     emit(ctx, UnionDecl(
       ctx.params.map { p => emit(p, GenericType(p.getText)) },
       ctx.name.getText,

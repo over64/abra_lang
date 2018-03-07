@@ -7,12 +7,12 @@ class _04UnionStoreTest extends FunSuite with IntegrationUtil {
     assertCodeEquals(
       """
         type None = llvm void .
-        ref type String = llvm i8* .
+        type String = ref llvm i8* .
         type Int = llvm i32 .
 
         type IntOrString = Int | String
 
-        f main =
+        def main =
           x: IntOrString = 'hi'
           x = 42
           42 .

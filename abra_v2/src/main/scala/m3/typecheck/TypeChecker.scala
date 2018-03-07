@@ -1,6 +1,6 @@
 package m3.typecheck
 
-import m3.codegen.{Ast2, ConstGen, HexUtil}
+import m3.codegen.{Ast2, ConstGen}
 import m3.parse.Ast0._
 import m3.typecheck.Util._
 
@@ -24,26 +24,30 @@ object TypeChecker {
       }
     case x: Literal =>
       val vName = "$l" + namespace.nextAnonId()
-      val (litTh, lit) = x match {
-        case lInt(value) =>
-          val id = ConstGen.int(namespace.lowMod, value)
-          (thInt, Ast2.Call(id, Seq.empty))
-        case lFloat(value: String) =>
-          val id = ConstGen.float(namespace.lowMod, value)
-          (thFloat, Ast2.Call(id, Seq.empty))
-        case lBoolean(value: String) =>
-          val id = ConstGen.bool(namespace.lowMod, value)
-          (thBool, Ast2.Call(id, Seq.empty))
-        case lString(value: String) =>
-          val id = ConstGen.string(namespace.lowMod, value)
-          (thString, Ast2.Call(id, Seq.empty))
+      x match {
+        case none: lNone =>
+          scope.addLocal(mut = false, vName, thNil)
+          (thNil, vName, Seq.empty)
+        case _ =>
+          val (litTh, lit) = x match {
+            case lInt(value) =>
+              val id = ConstGen.int(namespace.lowMod, value)
+              (thInt, Ast2.Call(id, Seq.empty))
+            case lFloat(value: String) =>
+              val id = ConstGen.float(namespace.lowMod, value)
+              (thFloat, Ast2.Call(id, Seq.empty))
+            case lBoolean(value: String) =>
+              val id = ConstGen.bool(namespace.lowMod, value)
+              (thBool, Ast2.Call(id, Seq.empty))
+            case lString(value: String) =>
+              val id = ConstGen.string(namespace.lowMod, value)
+              (thString, Ast2.Call(id, Seq.empty))
+          }
+          val realTh = inferCompatibleType(namespace, th, litTh)
+
+          scope.addLocal(mut = false, vName, realTh)
+          (realTh, vName, Seq(Ast2.Store(init = true, Ast2.Id(vName, Seq.empty), lit)))
       }
-      val realTh = inferCompatibleType(namespace, th, litTh)
-
-      scope.addLocal(mut = false, vName, realTh)
-      (realTh, vName, Seq(Ast2.Store(init = true, Ast2.Id(vName, Seq.empty), lit)))
-
-
     case Prop(from, props) =>
       val (eth, evName, lowCode) = evalExpr(namespace, scope, None, from)
 
@@ -192,22 +196,29 @@ object TypeChecker {
 
       (thBool, lowId.v, Seq(low))
     case If(cond, _do, _else) =>
-      def evalBlock(seq: Seq[Expression]): (TypeHint, String, Seq[Ast2.Stat]) = {
+      def evalBlock(seq: Seq[Expression]): (TypeHint, String, Seq[Ast2.Stat], Seq[Ast2.Stat]) = {
         val blockScope = scope.mkChild(p => new BlockScope(Some(p)))
-        val (expressions, last) = (seq.dropRight(1), seq.last)
+        val (expressions, last) = seq match {
+          case Seq() => (Seq.empty, lNone())
+          case s => (s.dropRight(1), s.last)
+        }
 
         val stats =
           expressions.map { expr => evalExpr(namespace, blockScope, None, expr)._3 }.flatten
         val (lastTh, vName, lastStat) = evalExpr(namespace, blockScope, th, last)
 
-        (lastTh, vName, stats ++ lastStat)
+        val freeStats = blockScope.vars.map {
+          case (vName, _) => Ast2.Free(Ast2.Id(vName))
+        }.toSeq
+
+        (lastTh, vName, stats ++ lastStat, freeStats)
       }
 
       val (condTh, condName, condStats) = evalExpr(namespace, scope, Some(adviceBool), cond)
       if (condTh != thBool) throw new RuntimeException(s"expected $thBool has $condTh")
 
-      val (doTh, doName, doStats) = evalBlock(_do)
-      val (elseTh, elseName, elseStats) = evalBlock(_else)
+      val (doTh, doName, doStats, doFree) = evalBlock(_do)
+      val (elseTh, elseName, elseStats, elseFree) = evalBlock(_else)
 
       val actualTh =
         if (doTh != elseTh) UnionTh(Seq(doTh, elseTh))
@@ -220,8 +231,8 @@ object TypeChecker {
         resultVar,
         condStats :+ Ast2.If(
           Ast2.Id(condName),
-          doStats :+ Ast2.Store(init = true, Ast2.Id(resultVar), Ast2.Id(doName)),
-          elseStats :+ Ast2.Store(init = true, Ast2.Id(resultVar), Ast2.Id(elseName))))
+          (doStats :+ Ast2.Store(init = true, Ast2.Id(resultVar), Ast2.Id(doName))) ++ doFree,
+          (elseStats :+ Ast2.Store(init = true, Ast2.Id(resultVar), Ast2.Id(elseName))) ++ elseFree))
     case While(cond, _do) =>
       val (condTh, condName, condStats) = evalExpr(namespace, scope, Some(adviceBool), cond)
       val blockScope = scope.mkChild(p => new BlockScope(Some(p)))
@@ -235,6 +246,85 @@ object TypeChecker {
       }
 
       (thNil, null, Seq(Ast2.While(Ast2.Id(condName), condStats, stats ++ freeStats)))
+    case When(expr, isSeq, _) =>
+      def evalBlock(is: Is): (TypeHint, String, Seq[Ast2.Stat], Seq[Ast2.Stat]) = {
+        val blockScope = scope.mkChild(p => new BlockScope(Some(p)))
+        blockScope.addLocal(mut = false, is.vName.value, is.typeRef)
+
+        val (expressions, last) = is._do match {
+          case Seq() => (Seq.empty, lNone())
+          case s => (s.dropRight(1), s.last)
+        }
+
+        val stats =
+          expressions.map { expr => evalExpr(namespace, blockScope, None, expr)._3 }.flatten
+        val (lastTh, vName, lastStat) = evalExpr(namespace, blockScope, th, last)
+
+        val freeStats = blockScope.vars
+          .filter({ case (vName, _) => vName != is.vName.value })
+          .map { case (vName, _) => Ast2.Free(Ast2.Id(vName))
+          }.toSeq
+
+        (lastTh, vName, stats ++ lastStat, freeStats)
+      }
+
+      def isUnionVariant(matched: TypeHint, variant: TypeHint): Boolean = matched match {
+        case sth: ScalarTh =>
+          namespace.types.find(t => t.name == sth.name) match {
+            case Some(ud: UnionDecl) =>
+              ud.variants.contains(variant)
+            case _ => false
+          }
+        case uth: UnionTh => uth.seq.contains(variant)
+        case _ => false
+      }
+
+      def inferSuperType(variants: Seq[TypeHint]): UnionTh =
+        UnionTh(variants.distinct)
+
+      val (exprTh, exprName, exprStats) = evalExpr(namespace, scope, Some(adviceBool), expr)
+      val retValName = "_w" + namespace.nextAnonId()
+      val lowIsSeq =
+        isSeq.map { is =>
+          if (!isUnionVariant(exprTh, is.typeRef))
+            throw new RuntimeException(s"expected ${is.typeRef} as union member of $exprTh but no")
+
+          val (bth, bvName, stats, freeStats) = evalBlock(is)
+          val storeRet = Seq(Ast2.Store(init = true, Ast2.Id(retValName), Ast2.Id(bvName)))
+          (bth, Ast2.Is(is.vName.value, is.typeRef.toLow(namespace), stats ++ storeRet ++ freeStats))
+        }
+
+      val overallType: UnionTh = inferSuperType(lowIsSeq.map(_._1))
+
+      // check compatibility
+      val retValTh =
+        th match {
+          case None => overallType
+          case Some(advice) =>
+            val expectedTh = advice.toTh
+            expectedTh match {
+              case sth: ScalarTh =>
+                namespace.types.find(t => t.name == sth.name) match {
+                  case None => throw new RuntimeException(s"no such type $sth")
+                  case Some(ud: UnionDecl) =>
+                    overallType.seq.foreach { variant =>
+                      if (!ud.variants.contains(variant))
+                        throw new RuntimeException(s"expected $sth has $overallType")
+                    }
+                  case _ => throw new RuntimeException(s"expected $sth has $overallType")
+                }
+                sth
+              case uth: UnionTh =>
+                overallType.seq.foreach { variant =>
+                  if (!uth.seq.contains(variant))
+                    throw new RuntimeException(s"expected $uth has $overallType")
+                }
+                uth
+            }
+        }
+
+      scope.addLocal(mut = false, retValName, retValTh)
+      (retValTh, retValName, exprStats ++ Seq(Ast2.When(Ast2.Id(exprName), lowIsSeq.map(_._2), Seq.empty)))
     case Store(typeHint, to, what) =>
       // x: Int = 5 # ok
       // x = 6 # ok

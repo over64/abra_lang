@@ -67,8 +67,8 @@ class _01ExpressionParse extends FunSuite {
   }
 
   test("lambda") {
-    withStr("f 1 .", Lambda(Seq(), AbraCode(Seq(lInt("1")))))
-    withStr("f self: Int -> self",
+    withStr("lambda 1 .", Lambda(Seq(), AbraCode(Seq(lInt("1")))))
+    withStr("lambda self: Int -> self",
       Lambda(Seq(Arg("self", Some(ScalarTh(Seq.empty, "Int", None)))), AbraCode(Seq(lId("self")))))
   }
 
@@ -103,8 +103,8 @@ class _01ExpressionParse extends FunSuite {
     withStr("if 1 == 1 do 1 .", If(SelfCall(Seq.empty, "==", lInt("1"), Seq(lInt("1"))), Seq(lInt("1")), Seq()))
     withStr("if true do 1 else 2 .", If(lBoolean("true"), Seq(lInt("1")), Seq(lInt("2"))))
 
-    withStr("if true do f x -> x .", If(lBoolean("true"), Seq(Lambda(Seq(Arg("x", None)), AbraCode(Seq(lId("x"))))), Seq()))
-    withStr("if true do 1 else f x -> x .", If(lBoolean("true"),
+    withStr("if true do lambda x -> x .", If(lBoolean("true"), Seq(Lambda(Seq(Arg("x", None)), AbraCode(Seq(lId("x"))))), Seq()))
+    withStr("if true do 1 else lambda x -> x .", If(lBoolean("true"),
       Seq(lInt("1")),
       Seq(Lambda(Seq(Arg("x", None)), AbraCode(Seq(lId("x")))))))
   }

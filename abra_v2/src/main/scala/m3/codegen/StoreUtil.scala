@@ -133,24 +133,27 @@ object StoreUtil {
           ctx.out.println(s"\t%tag = extractvalue $uIrType %self, 0 ")
           ctx.out.println(s"\tswitch i8 %tag, label %end [")
 
-          val toGen: Seq[(String, Int, TypeRef)] =
-            u.variants.zipWithIndex map {
-              case (v, idx) =>
-                val br = "br" + idx
-                ctx.out.println(s"\t\ti8 ${idx + 1}, label %$br")
-                (br, idx, v)
+          val toGen: Seq[(String, TypeRef)] =
+            u.variants.map { v =>
+              val idx = u.fieldTagValue(v)
+              val br = "br" + idx
+              ctx.out.println(s"\t\ti8 $idx, label %$br")
+              (br, v)
             }
 
           ctx.out.println(s"\t]")
 
           toGen.foreach {
-            case (branch, idx, typeRef) =>
+            case (branch, typeRef) =>
+              val tagIdx = u.fieldTagValue(typeRef)
+              val irIdx = u.fieldIrIndex(typeRef)
+
               ctx.out.println(s"$branch:")
               if (typeRef.isNeedBeforeAfterStore(ctx.types)) {
                 val irType = typeRef.toValue(ctx.types)
                 val fAquire = "\"" + s"${typeRef.name}.$$acquire" + "\""
-                ctx.out.println(s"\t%x${idx + 1} = extractvalue $uIrType %self, ${idx + 1}")
-                ctx.out.println(s"\tcall void @$fAquire($irType %x${idx + 1})")
+                ctx.out.println(s"\t%x$tagIdx = extractvalue $uIrType %self, $irIdx")
+                ctx.out.println(s"\tcall void @$fAquire($irType %x$tagIdx)")
               }
               ctx.out.println(s"\tbr label %end")
           }
@@ -175,24 +178,27 @@ object StoreUtil {
           ctx.out.println(s"\t%tag = extractvalue $uIrType %self, 0 ")
           ctx.out.println(s"\tswitch i8 %tag, label %end [")
 
-          val toGen: Seq[(String, Int, TypeRef)] =
-            u.variants.zipWithIndex map {
-              case (v, idx) =>
-                val br = "br" + idx
-                ctx.out.println(s"\t\ti8 ${idx + 1}, label %$br")
-                (br, idx, v)
+          val toGen: Seq[(String, TypeRef)] =
+            u.variants.map { v =>
+              val idx = u.fieldTagValue(v)
+              val br = "br" + idx
+              ctx.out.println(s"\t\ti8 $idx, label %$br")
+              (br, v)
             }
 
           ctx.out.println(s"\t]")
 
           toGen.foreach {
-            case (branch, idx, typeRef) =>
+            case (branch, typeRef) =>
+              val tagIdx = u.fieldTagValue(typeRef)
+              val irIdx = u.fieldIrIndex(typeRef)
+
               ctx.out.println(s"$branch:")
               if (typeRef.isNeedBeforeAfterStore(ctx.types)) {
                 val irType = typeRef.toValue(ctx.types)
                 val fRelease = "\"" + s"${typeRef.name}.$$release" + "\""
-                ctx.out.println(s"\t%x${idx + 1} = extractvalue $uIrType %self, ${idx + 1}")
-                ctx.out.println(s"\tcall void @$fRelease($irType %x${idx + 1})")
+                ctx.out.println(s"\t%x$tagIdx = extractvalue $uIrType %self, $irIdx")
+                ctx.out.println(s"\tcall void @$fRelease($irType %x$tagIdx)")
               }
               ctx.out.println(s"\tbr label %end")
           }

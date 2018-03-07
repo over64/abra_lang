@@ -1,0 +1,16 @@
+llvm declare i32 @puts(i8*) .
+
+type Bool = llvm i8 .
+type Int = llvm i32 .
+ref type String = llvm i8* .
+type None = llvm void .
+
+def print = self: String -> llvm
+  %1 = call i32 @puts(i8* %self)
+  ret void .None
+
+
+def main =
+  msg = if true do 'hello' else 'world' .
+  print(msg)
+  3 .

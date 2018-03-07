@@ -9,8 +9,8 @@ class _05FnStoreTest  extends FunSuite with IntegrationUtil {
     type None = llvm void .
     type Int = llvm i32 .
 
-    f bar = 42 .
-    f main =
+    def bar = 42 .
+    def main =
       ptr: -> Int = bar
       1 .
   """, exit = Some(1))

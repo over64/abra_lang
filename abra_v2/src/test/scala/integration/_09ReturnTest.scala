@@ -7,22 +7,22 @@ class _09ReturnTest extends FunSuite with IntegrationUtil {
     assertCodeEquals(
       """
         type None = llvm void .
-        type Int = llvm i32 .
+        type Int  = llvm i32 .
 
-        f const = 42 .
-        f main = const() .
+        def const = 42 .
+        def main = const() .
       """, exit = Some(42))
   }
 
   test("ret scalar ref") {
     assertCodeEquals(
       """
-        type None = llvm void .
-        type Int = llvm i32 .
-        ref type String = llvm i8* .
+        type None   = llvm void .
+        type Int    = llvm i32 .
+        type String = ref llvm i8* .
 
-        f const = 'hello, abra-kadabra!' .
-        f main = const(); 42 .
+        def const = 'hello, abra-kadabra!' .
+        def main = const(); 42 .
       """, exit = Some(42))
   }
 
@@ -30,24 +30,24 @@ class _09ReturnTest extends FunSuite with IntegrationUtil {
     assertCodeEquals(
       """
         type None = llvm void .
-        type Int = llvm i32 .
+        type Int  = llvm i32 .
         type Vec2 = (x: Int, y: Int)
 
-        f const = Vec2(1, 42) .
-        f main = const().y .
+        def const = Vec2(1, 42) .
+        def main = const().y .
       """, exit = Some(42))
   }
 
   test("ret struct ref") {
     assertCodeEquals(
       """
-        type None = llvm void .
-        type Int = llvm i32 .
-        ref type String = llvm i8* .
-        type Vec2 = (x: String, y: Int)
+        type None   = llvm void .
+        type Int    = llvm i32 .
+        type String = ref llvm i8* .
+        type Vec2   = (x: String, y: Int)
 
-        f const = Vec2('hi', 42) .
-        f main = const().y .
+        def const = Vec2('hi', 42) .
+        def main = const().y .
       """, exit = Some(42))
   }
 
@@ -55,48 +55,48 @@ class _09ReturnTest extends FunSuite with IntegrationUtil {
     assertCodeEquals(
       """
         type None = llvm void .
-        type Int = llvm i32 .
+        type Int  = llvm i32 .
 
-        f const = (42, 13) .(x: Int, y: Int)
-        f main = const().y .
+        def const = (42, 13) .(x: Int, y: Int)
+        def main = const().y .
       """, exit = Some(13))
   }
 
   test("ret union") {
     assertCodeEquals(
       """
-        type None = llvm void .
-        type Int = llvm i32 .
-        ref type String = llvm i8* .
-        type U1 = Int | String
+        type None   = llvm void .
+        type Int    = llvm i32 .
+        type String = ref llvm i8* .
+        type U1     = Int | String
 
-        f const = 'hi' .U1
-        f main = const(); 13 .
+        def const = 'hi' .U1
+        def main = const(); 13 .
       """, exit = Some(13))
   }
 
   test("ret union anon") {
     assertCodeEquals(
       """
-        type None = llvm void .
-        type Int = llvm i32 .
-        ref type String = llvm i8* .
+        type None   = llvm void .
+        type Int    = llvm i32 .
+        type String = ref llvm i8* .
 
-        f const = 'hi' .Int | String
-        f main = const(); 13 .
+        def const = 'hi' .Int | String
+        def main = const(); 13 .
       """, exit = Some(13))
   }
 
   test("ret function pointer") {
     assertCodeEquals(
       """
-        type None = llvm void .
-        type Int = llvm i32 .
-        ref type String = llvm i8* .
+        type None   = llvm void .
+        type Int    = llvm i32 .
+        type String = ref llvm i8* .
 
-        f bar = 42 .
-        f const = bar .
-        f main = const(); 13 .
+        def bar = 42 .
+        def const = bar .
+        def main = const(); 13 .
       """, exit = Some(13))
   }
 }

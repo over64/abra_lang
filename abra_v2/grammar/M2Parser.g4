@@ -30,7 +30,7 @@ expression: literal #exprLiteral
           | expression WS* op=('==' | '!=') sp expression #exprInfixCall
           | expression WS* op=('||' | '&&') sp expression #exprInfixCall
           | 'if' sp cond=expression sp ('do' sp doStat+=blockBody*) sp ('else' sp elseStat+=blockBody*)? DOT #exprIfElse
-          | 'when' expr=expression sp is+ sp ('else' sp elseStat+=blockBody*)? DOT #exprWnen
+          | 'when' sp expr=expression sp is+ sp ('else' sp elseStat+=blockBody*)? DOT #exprWnen
           ;
 
 tuple : '(' sp (expression sp (',' sp expression)*)? sp ')'
@@ -56,20 +56,20 @@ ret: 'return' sp expression?;
 while_stat: 'while' sp cond=expression sp 'do' sp blockBody* DOT ;
 
 fnArg: id sp (':' sp typeHint (sp '=' sp expression)?)? ;
-lambda: 'f' (sp fnArg sp (',' sp fnArg)* sp '->')? sp blockBody* sp DOT?;
+lambda: 'lambda' (sp fnArg sp (',' sp fnArg)* sp '->')? sp blockBody* sp DOT?;
 blockBody: (store | while_stat | expression | ret) sp ';'? sp ;
 
-scalarType: REF? sp 'type' sp tname=TypeId (sp '[' params+=TypeId (',' params+=TypeId)* ']')? sp '=' sp llvm ;
+scalarType: 'type' sp tname=TypeId (sp '[' params+=TypeId (',' params+=TypeId)* ']')? sp '=' sp REF? sp llvm ;
 typeField: 'self'? sp VarId sp ':' sp typeHint (sp '=' sp expression)? ;
-structType: REF? sp 'type' sp name=TypeId (sp '[' params+=TypeId (',' params+=TypeId)* ']')? sp '=' sp  '(' NL* typeField (',' NL* typeField)* NL*')' ;
-unionType: REF? sp 'type' sp name=TypeId sp ('[' params+=TypeId (',' params+=TypeId)* ']')? sp '=' sp scalarTh sp ('|' sp scalarTh)+ ;
+structType: 'type' sp name=TypeId (sp '[' params+=TypeId (',' params+=TypeId)* ']')? sp '=' sp  '(' NL* typeField (',' NL* typeField)* NL*')' ;
+unionType: 'type' sp name=TypeId sp ('[' params+=TypeId (',' params+=TypeId)* ']')? sp '=' sp scalarTh sp ('|' sp scalarTh)+ ;
 
 type: scalarType
     | structType
     | unionType
     ;
 
-def: 'f' sp name=(VarId | '!' | '*' | '/' | '+' | '-' | '>' | '<' | '<=' | '>=' | '==' | '!=')
+def: 'def' sp name=(VarId | '!' | '*' | '/' | '+' | '-' | '>' | '<' | '<=' | '>=' | '==' | '!=')
     sp ('[' TypeId (',' TypeId)* ']')?
     sp '=' sp
     (fnArg sp (',' sp fnArg)* sp '->')? sp ((blockBody* sp DOT) | llvm) typeHint? ;

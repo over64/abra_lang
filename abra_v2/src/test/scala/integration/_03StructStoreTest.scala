@@ -7,11 +7,11 @@ class _03StructStoreTest extends FunSuite with IntegrationUtil {
     assertCodeEquals(
       """
         type None = llvm void .
-        ref type String = llvm i8* .
+        type String = ref llvm i8* .
         type Int = llvm i32 .
         type Vec2 = (x: String, y: Int)
 
-        f main =
+        def main =
           v = Vec2('i', 42)
           v.x = 'hellooooooooooooooooooooooooooooo'
           v.y .

@@ -222,15 +222,17 @@ object IrGen2 {
     if (toTref == whatTref) (toTref, to)
     else
       ctx.types(toTref.name) match {
-        case Union(name, variants) =>
-          val idx = variants.indexOf(whatTref)
+        case u: Union =>
+          val tag = u.fieldTagValue(whatTref)
+          val idx = u.fieldIrIndex(whatTref)
+
           val irType = toTref.toValue(ctx.types)
 
           val r1 = dctx.nextReg()
           ctx.out.println(s"\t%$r1 = getelementptr $irType, $irType* $to, i64 0, i32 0")
-          ctx.out.println(s"\tstore i8 ${idx + 1}, i8* %$r1")
+          ctx.out.println(s"\tstore i8 $tag, i8* %$r1")
 
-          val (tref, _, v) = evalGep(ctx, dctx, toTref, to, Seq(idx.toString))
+          val (tref, _, v) = evalGep(ctx, dctx, toTref, to, Seq(tag.toString))
 
           (tref, v)
         case _ => (toTref, to)
@@ -371,9 +373,9 @@ object IrGen2 {
       ctx.out.println(s"\tswitch i8 %$tag, label %$brElse [")
       val isAndBranch = isSeq.map { is =>
         val br = "is" + dctx.nextBranch()
-        val idx = uType.variants.indexOf(is.ref)
-        ctx.out.println(s"\t\ti8 ${idx + 1}, label %$br")
-        (is, idx, br)
+        val tagValue = uType.fieldTagValue(is.ref)
+        ctx.out.println(s"\t\ti8 $tagValue, label %$br")
+        (is, tagValue, br)
       }
       ctx.out.println(s"\t]")
 
@@ -472,7 +474,7 @@ object IrGen2 {
       """.stripMargin)
 
 
-    types.values.filter {
+    ctx.types.values.filter {
       case l: Low => false
       case fn: Fn if fn.closure.isEmpty => false
       case _ => true

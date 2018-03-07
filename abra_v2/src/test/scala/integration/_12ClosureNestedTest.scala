@@ -6,25 +6,25 @@ class _12ClosureNestedTest extends FunSuite with IntegrationUtil {
   test("closure nested (full qualified evil test)") {
     assertCodeEquals(
       """
-        type None = llvm void .
-        type Int = llvm i32 .
-        ref type String = llvm i8* .
-        type Vec2 = (x: Int, y: Int)
-        type S = (x: String, y: Int)
-        type U1 = Int | String
+        type None   = llvm void .
+        type Int    = llvm i32 .
+        type String = ref llvm i8* .
+        type Vec2   = (x: Int, y: Int)
+        type S      = (x: String, y: Int)
+        type U1     = Int | String
 
-        f baz = x1: Int, x2: String, x3: Vec2, x4: S, x5: U1,
+        def baz = x1: Int, x2: String, x3: Vec2, x4: S, x5: U1,
                 l1: Int, l2: String, l3: Vec2, l4: S, l5: U1 -> .
 
-        f bar = x1: Int, x2: String, x3: Vec2, x4: S, x5: U1 ->
+        def bar = x1: Int, x2: String, x3: Vec2, x4: S, x5: U1 ->
            l1 = 1
            l2 = 'ho'
            l3 = Vec2(1, 1)
            l4 = S('hh', 1)
            l5: U1 = 10
 
-           f
-             f
+           lambda
+             lambda
                l1   = 2
                l2   = 'ss'
                l3   = Vec2(10, 10)
@@ -39,7 +39,7 @@ class _12ClosureNestedTest extends FunSuite with IntegrationUtil {
            .()
         .
 
-        f main =
+        def main =
           v = Vec2(1, 1)
           s = S('hello', 1)
           bar(1, 'hi', v, s, 'union 1')

@@ -9,6 +9,9 @@ object Ast0 {
     val value: String
   }
 
+  case class lNone() extends Literal {
+    override val value: String = "none"
+  }
   case class lInt(value: String) extends Literal
   case class lFloat(value: String) extends Literal
   case class lBoolean(value: String) extends Literal
