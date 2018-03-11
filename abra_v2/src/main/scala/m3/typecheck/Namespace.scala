@@ -249,8 +249,6 @@ class Namespace(val pkg: String,
     _invokeDef(scope, toCall, params, args, ret, inferCallback)
   }
 
-  // type S[T, U] = (t1: T, t2: T, u: U)
-  // S[String, Long]
   def invokeConstructor(scope: BlockScope,
                         typeName: String,
                         params: Seq[TypeHint],
@@ -270,8 +268,7 @@ class Namespace(val pkg: String,
 
     val defArgs = consType.fields.map(f => Arg(f.name, Some(f.th))).toIterator
     val argsStats = mutable.ListBuffer[Ast2.Stat]()
-    val argsVars = mutable.ListBuffer[String]()
-    val argsInferedTh = mutable.ListBuffer[TypeHint]()
+    val argsVars = mutable.ListBuffer[(String, TypeHint)]()
 
     while (defArgs.hasNext) {
       val defArg = defArgs.next()
@@ -281,16 +278,27 @@ class Namespace(val pkg: String,
       val argAdvice = defArg.typeHint.get.toAdviceOpt(specMap)
       val (th, vName, stats) = arg.infer(argAdvice)
 
-      argsVars += vName
+      argsVars += ((vName, th))
       argsStats ++= stats
 
       if (!checkAndInfer(specMap, argTh, th))
         throw new RuntimeException(s"expected ${defArg.typeHint} has $th")
-
-      argsInferedTh += th
     }
 
     if (args.hasNext) throw new RuntimeException("too much args")
+
+    val bridgedArgs =
+      (consType.fields.map(f => Arg(f.name, Some(f.th))) zip argsVars).map {
+        case (defArg, (argVarName, argVarTh)) =>
+          val argTh = defArg.typeHint.get.spec(specMap.toMap)
+          if (argTh != argVarTh) {
+            val vName = "_bridge" + nextAnonId()
+            scope.addLocal(mut = false, vName, argTh)
+            argsStats += Ast2.Store(init = true, Ast2.Id(vName), Ast2.Id(argVarName))
+            vName
+          } else argVarName
+      }
+
 
     val flatSpecs = consType.params.map(cp => specMap(cp))
     val retTh = ScalarTh(flatSpecs, consType.name, None)
@@ -311,7 +319,7 @@ class Namespace(val pkg: String,
         Ast2.Id(anonVar),
         Ast2.Call(
           Ast2.Id(_def.name + ".$cons"),
-          argsVars.map(av => Ast2.Id(av))))
+          bridgedArgs.map(av => Ast2.Id(av))))
     )
   }
 

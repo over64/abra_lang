@@ -192,8 +192,6 @@ object IrGen2 {
           (ref, what, false)
       }
 
-    if (whatTref.isVoid(ctx.types)) return
-
     // делаем инкремент что store
     if (needAcquier && whatTref.isNeedBeforeAfterStore(ctx.types)) {
       val fRelease = "\"" + whatTref.name + ".$acquire" + "\""
@@ -204,7 +202,10 @@ object IrGen2 {
     // вычисляем куда store
     val (toTref, to) = requirePtr(evalId(ctx, dctx, dest))
 
-    if (toTref.isVoid(ctx.types)) return
+    if(toTref.isVoid(ctx.types) && whatTref.isVoid(ctx.types)) {
+      ctx.out.println(s";@@ void store eliminated")
+      return
+    }
 
     // делаем декремент куда store
     if (!init)
@@ -277,13 +278,16 @@ object IrGen2 {
               ctx.out.println(s"\t%$r1 = getelementptr $irType, $irType* $to, i64 0, i32 0")
               ctx.out.println(s"\tstore i8 $tag, i8* %$r1")
 
-              val (tref, _, v) = evalGep(ctx, dctx, toTref, to, Seq(tag.toString))
+              if(!whatTref.isVoid(ctx.types)) {
+                val (tref, _, v) = evalGep(ctx, dctx, toTref, to, Seq(tag.toString))
 
-              val toIrType = tref.toValue(ctx.types)
-              ctx.out.println(s"\tstore $toIrType $what, $toIrType* $v")
+                val toIrType = tref.toValue(ctx.types)
+                ctx.out.println(s"\tstore $toIrType $what, $toIrType* $v")
+              }
               ctx.out.println(s";@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ store end")
           }
-        case _ => throw new RuntimeException("unexpected")
+        case _ =>
+          if (!toTref.isVoid(ctx.types)) throw new RuntimeException(s"unexpected store $src -> $dest")
       }
   }
   def evalStat(ctx: IrContext,

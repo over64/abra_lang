@@ -31,6 +31,9 @@ def checksum = self: Node ->
   when self.right is r: Node do
      sum = sum + r.checksum() .
 
-  sum .
+  sum .Int
 
-def main = 0 .
+def main =
+  tree = mkTree(20)
+  checksum(tree)
+  13 .

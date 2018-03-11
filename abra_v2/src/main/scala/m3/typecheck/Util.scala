@@ -138,6 +138,11 @@ object Util {
           _else.map(e => e.spec(specMap, namespace)))
       case While(cond, _then) =>
         While(cond.spec(specMap, namespace), _then.map(e => e.spec(specMap, namespace)))
+      case When(expr, isSeq, elseSeq) =>
+        When(expr.spec(specMap, namespace),
+          isSeq.map(is =>
+            Is(is.vName, is.typeRef.spec(specMap), is._do.map(expr => expr.spec(specMap, namespace)))),
+          elseSeq.map(expr => expr.spec(specMap, namespace)))
       case Store(th, to, what) =>
         Store(th.map(th => th.spec(specMap)), to, what.spec(specMap, namespace))
       case Ret(what) => Ret(what.map(e => e.spec(specMap, namespace)))
@@ -169,6 +174,7 @@ object Util {
       val specMap = makeSpecMap(self.params, params)
       val lowName = ScalarTh(params, self.name, pkg = None).toGenericName(namespace)
       var llType = self.llType
+
       specMap.foreach {
         case (sth, th) =>
           val lowScalarRef = th.toLow(namespace)
@@ -179,7 +185,9 @@ object Util {
 
           llType = llType.replace("%" + sth.name, replName)
       }
-      Ast2.Low(self.ref, lowName, llType)
+
+      namespace.lowMod.defineType(Ast2.Low(self.ref, lowName, llType))
+      Ast2.TypeRef(lowName)
     }
   }
 
@@ -187,9 +195,19 @@ object Util {
     def spec(params: Seq[TypeHint], namespace: Namespace) = {
       val specMap = makeSpecMap(self.params, params)
       val lowName = ScalarTh(params, self.name, pkg = None).toGenericName(namespace)
-      Ast2.Struct(lowName, self.fields.map { field =>
-        Ast2.Field(field.name, field.th.spec(specMap).toLow(namespace))
-      })
+
+      namespace.lowMod.types.get(lowName) match {
+        case Some(lowType) => Ast2.TypeRef(lowName)
+        case None =>
+          // avoid stack overflow
+          namespace.lowMod.defineType(Ast2.Struct(lowName, Seq.empty))
+
+          namespace.lowMod.defineType(Ast2.Struct(lowName, self.fields.map { field =>
+            Ast2.Field(field.name, field.th.spec(specMap).toLow(namespace))
+          }))
+
+          Ast2.TypeRef(lowName)
+      }
     }
   }
 
@@ -197,13 +215,14 @@ object Util {
     def spec(params: Seq[TypeHint], namespace: Namespace) = {
       val specMap = makeSpecMap(self.params, params)
       val lowName = ScalarTh(params, self.name, pkg = None).toGenericName(namespace)
-      Ast2.Union(lowName, self.variants.map { th =>
-        th.spec(specMap).toLow(namespace)
-      })
+      namespace.lowMod.defineType(
+        Ast2.Union(lowName, self.variants.map { th =>
+          th.spec(specMap).toLow(namespace)
+        }))
+      Ast2.TypeRef(lowName)
     }
   }
 
-  // %"S[Int, (Int, String), K | V, \X -> Y]" = type {i32, {i32, i8*}, {i8, %"K", %"V"}, }
   implicit class RichTypeHint(self: TypeHint) {
     def toAdviceOpt(specMap: mutable.HashMap[GenericType, TypeHint]): Option[ThAdvice] =
       self match {
@@ -265,18 +284,9 @@ object Util {
             throw new RuntimeException(s"cannot find type for $name")
           }
           foundType match {
-            case sd: ScalarDecl =>
-              val low = sd.spec(params, namespace)
-              namespace.lowMod.defineType(low)
-              Ast2.TypeRef(name)
-            case struct: StructDecl =>
-              val lowStruct = struct.spec(params, namespace)
-              namespace.lowMod.defineType(lowStruct)
-              Ast2.TypeRef(lowStruct.name)
-            case ud: UnionDecl =>
-              val lowUnion = ud.spec(params, namespace)
-              namespace.lowMod.defineType(lowUnion)
-              Ast2.TypeRef(lowUnion.name)
+            case sd: ScalarDecl => sd.spec(params, namespace)
+            case struct: StructDecl => struct.spec(params, namespace)
+            case ud: UnionDecl => ud.spec(params, namespace)
           }
         case StructTh(fields) =>
           val lowFields = fields.map(f => Ast2.Field(f.name, f.typeHint.toLow(namespace)))

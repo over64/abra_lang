@@ -400,6 +400,7 @@ object TypeChecker {
               val (whatTh, whatName, whatStats) =
                 evalExpr(namespace, scope, toTh.toAdviceOpt(mutable.HashMap.empty), what)
 
+              // FIXME: user namespace.checkAndInfer() instead?
               if (whatTh != toTh)
                 (whatTh, toTh) match {
                   case (whatSth: ScalarTh, toSth: ScalarTh) =>
