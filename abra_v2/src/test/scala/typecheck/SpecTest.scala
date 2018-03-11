@@ -1,7 +1,7 @@
 package typecheck
 
 import m3.parse.Ast0._
-import m3.typecheck.{FnScope, Namespace, TypeChecker}
+import m3.typecheck.{DefSpec, FnScope, Namespace, TypeChecker}
 import org.scalatest.FunSuite
 import m3.typecheck.Util._
 
@@ -199,7 +199,7 @@ class SpecTest extends FunSuite {
       retTh = None)
 
     val namespace = new Namespace(pkg = "", Seq(), defs = Seq(defBar, defMain), types = Seq(tNil, tInt, tString), mods = Map.empty)
-    val (header, lowDef) = TypeChecker.evalDef(namespace, new FnScope(None), FnAdvice(Seq.empty, None), defMain)
+    val (header, lowDef) = TypeChecker.evalDef(namespace, new FnScope(None), DefSpec("main", Seq.empty), defMain)
 
     println(header)
     println(lowDef)

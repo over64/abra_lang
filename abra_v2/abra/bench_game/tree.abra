@@ -1,0 +1,36 @@
+type None = llvm void .
+type Bool = llvm i8 .
+type Int  = llvm i32 .
+type Node = (left: Node | None, right: Node | None)
+type Stat = (iters: Int, depth: Int, sum: Int)
+
+def + = self: Int, other: Int -> llvm
+  %1 = add nsw i32 %self, %other
+  ret i32 %1 .Int
+
+def - = self: Int, other: Int -> llvm
+  %1 = sub nsw i32 %self, %other
+  ret i32 %1 .Int
+
+def > = self: Int, other: Int -> llvm
+  %1 = icmp sgt i32 %self, %other
+  %2 = zext i1 %1 to i8
+  ret i8 %2 .Bool
+
+def mkTree = depth: Int ->
+  if depth > 0 do
+    Node(mkTree(depth - 1), mkTree(depth - 1))
+  else
+    Node(none, none) ..Node
+
+def checksum = self: Node ->
+  sum = 1
+
+  when self.left  is l: Node do
+     sum = sum + l.checksum() .
+  when self.right is r: Node do
+     sum = sum + r.checksum() .
+
+  sum .
+
+def main = 0 .

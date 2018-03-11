@@ -6,6 +6,8 @@ import m3.parse.Ast0._
 import scala.collection.mutable
 import Util._
 
+import scala.collection.mutable.ListBuffer
+
 /**
   * Created by over on 20.10.17.
   */
@@ -27,6 +29,7 @@ class Namespace(val pkg: String,
     }
   }
 
+  val inferStack = mutable.Stack[String]()
   val anonDefs = mutable.ListBuffer[Def]()
 
   val inferedDefs = mutable.HashMap[DefSpec, DefHeader]()
@@ -40,6 +43,11 @@ class Namespace(val pkg: String,
   def hasSelfDef(name: String, selfType: TypeHint): Boolean = false
   def hasMod(name: String): Boolean = false
 
+  def checkAndInferSeq(specMap: mutable.HashMap[GenericType, TypeHint], expected: Seq[TypeHint], has: Seq[TypeHint]): Boolean = {
+    if (expected.length != has.length) return false
+    (expected zip has).forall { case (e, h) => checkAndInfer(specMap, e, h) }
+  }
+
   def checkAndInfer(specMap: mutable.HashMap[GenericType, TypeHint], expected: TypeHint, has: TypeHint): Boolean =
     (expected, has) match {
       case (adv: ScalarTh, th: ScalarTh) =>
@@ -48,31 +56,43 @@ class Namespace(val pkg: String,
             case Some(ScalarTh(_, name, pkg)) if name.contains("*") => true // ok replacement
             case _ => false
           }
-        else {
-          if (adv.name != th.name) return false
-          if (adv.params.length != th.params.length) return false
+        else if (adv.name != th.name) {
+          types.find(t => t.name == adv.name).getOrElse(throw new RuntimeException(s"no such type ${adv}")) match {
+            case ud: UnionDecl =>
+              if (ud.params.length != adv.params.length) throw new RuntimeException(s"expected ${ud.params.length} for $ud has ${adv.params.length}")
 
-          (adv.params zip th.params).forall {
-            case (_expected, _has) => checkAndInfer(specMap, _expected, _has)
+              ud.variants.exists { udVariant =>
+                val (variantSpec, isSpec) = ud.params.zipWithIndex
+                  .find { case (g, idx) => g.name == udVariant.name }
+                  .map { case (g, idx) => (adv.params(idx), true) }
+                  .getOrElse((udVariant, false))
+
+                checkAndInfer(specMap, variantSpec, th)
+              }
+            case _ => false
           }
-        }
-      case (adv: StructTh, th: StructTh) =>
-        if (adv.seq.length != th.seq.length) return false
+        } else checkAndInferSeq(specMap, adv.params, th.params)
+      case (adv: ScalarTh, uth: UnionTh) =>
+        types.find(t => t.name == adv.name).getOrElse(throw new RuntimeException(s"no such type ${adv}")) match {
+          case ud: UnionDecl =>
+            if (ud.params.length != adv.params.length) throw new RuntimeException(s"expected ${ud.params.length} for $ud has ${adv.params.length}")
 
-        (adv.seq zip th.seq).forall {
-          case (_expected, _has) => checkAndInfer(specMap, _expected.typeHint, _has.typeHint)
+            uth.seq.forall { variant =>
+              ud.variants.exists { udVariant =>
+                checkAndInfer(specMap, udVariant, variant)
+              }
+            }
+          case _ => false
         }
+
+      case (adv: UnionTh, th: ScalarTh) =>
+        adv.seq.exists { advVariant => checkAndInfer(specMap, advVariant, th) }
       case (adv: UnionTh, th: UnionTh) =>
-        if (adv.seq.length != th.seq.length) return false
-
-        (adv.seq zip th.seq).forall {
-          case (_expected, _has) => checkAndInfer(specMap, _expected, _has)
-        }
+        th.seq.forall { variant => checkAndInfer(specMap, adv, variant) }
+      case (adv: StructTh, th: StructTh) =>
+        checkAndInferSeq(specMap, adv.seq.map(_.typeHint), th.seq.map(_.typeHint))
       case (adv: FnTh, th: FnTh) =>
-        if (adv.args.length != th.args.length) return false
-        (adv.args zip th.args).forall {
-          case (_expected, _has) => checkAndInfer(specMap, _expected, _has)
-        }
+        checkAndInferSeq(specMap, adv.args, th.args)
         checkAndInfer(specMap, adv.ret, th.ret)
       case (adv, th) => false
     }
@@ -82,7 +102,7 @@ class Namespace(val pkg: String,
                  params: Seq[TypeHint],
                  args: Iterator[InferTask],
                  ret: Option[ThAdvice],
-                 inferCallback: (FnAdvice, Def) => (DefHeader, Ast2.Def)): (TypeHint, String, Seq[Ast2.Stat]) = {
+                 inferCallback: (DefSpec, Def) => (DefHeader, Ast2.Def)): (TypeHint, String, Seq[Ast2.Stat]) = {
 
     val specMap: mutable.HashMap[GenericType, TypeHint] =
       if (params.nonEmpty) {
@@ -94,8 +114,7 @@ class Namespace(val pkg: String,
 
     val defArgs = toCall.lambda.args.toIterator
     val argsStats = mutable.ListBuffer[Ast2.Stat]()
-    val argsVars = mutable.ListBuffer[String]()
-    val argsInferedTh = mutable.ListBuffer[TypeHint]()
+    val argsVars = mutable.ListBuffer[(String, TypeHint)]()
 
     while (defArgs.hasNext) {
       val defArg = defArgs.next()
@@ -105,24 +124,37 @@ class Namespace(val pkg: String,
       val argAdvice = defArg.typeHint.get.toAdviceOpt(specMap)
       val (th, vName, stats) = arg.infer(argAdvice)
 
-      argsVars += vName
+      argsVars += ((vName, th))
       argsStats ++= stats
 
       if (!checkAndInfer(specMap, argTh, th))
         throw new RuntimeException(s"expected ${defArg.typeHint} has $th")
-
-      argsInferedTh += th
     }
 
     if (args.hasNext) throw new RuntimeException("too much args")
 
-    val advice = FnAdvice(argsInferedTh.map(th => th.toAdviceOpt(specMap)), ret)
-    val flatSpecs = toCall.params.map(cp => specMap(cp))
-    val _def = toCall.spec(flatSpecs, this)
-    val (header, lowDef) = inferCallback(advice, _def)
+    val bridgedArgs =
+      (toCall.lambda.args zip argsVars).map {
+        case (defArg, (argVarName, argVarTh)) =>
+          val argTh = defArg.typeHint.get.spec(specMap.toMap)
+          if (argTh != argVarTh) {
+            val vName = "_bridge" + nextAnonId()
+            scope.addLocal(mut = false, vName, argTh)
+            argsStats += Ast2.Store(init = true, Ast2.Id(vName), Ast2.Id(argVarName))
+            vName
+          } else argVarName
+      }
 
-    // FIXME: inferedDefs.put()
-    lowMod.defineDef(lowDef)
+    val flatSpecs = toCall.params.map(cp => specMap(cp))
+    val defSpec = DefSpec(toCall.name, flatSpecs)
+    val header =
+      inferedDefs.get(defSpec) match {
+        case Some(header) => header
+        case None =>
+          val _def = toCall.spec(flatSpecs, this)
+          val (header, lowDef) = inferCallback(defSpec, _def)
+          header
+      }
 
     val anonVar = "$c" + nextAnonId()
     scope.addLocal(mut = false, anonVar, header.th.ret)
@@ -134,15 +166,15 @@ class Namespace(val pkg: String,
         init = true,
         Ast2.Id(anonVar),
         Ast2.Call(
-          Ast2.Id(lowDef.name),
-          argsVars.map(av => Ast2.Id(av))))
+          Ast2.Id(header.name),
+          bridgedArgs.map(av => Ast2.Id(av))))
     )
   }
 
   def invokeProto(scope: BlockScope,
-                   vName: String,
-                   proto: FnTh,
-                   args: Iterator[InferTask]) = {
+                  vName: String,
+                  proto: FnTh,
+                  args: Iterator[InferTask]): (TypeHint, String, ListBuffer[Ast2.Stat]) = {
 
     val specMap = mutable.HashMap[GenericType, TypeHint]()
     val defArgs = proto.args.toIterator
@@ -184,12 +216,9 @@ class Namespace(val pkg: String,
 
   def inferCompatibleDef(toSpec: Def,
                          advice: FnAdvice,
-                         inferCallback: (FnAdvice, Def) => (DefHeader, Ast2.Def)): DefHeader = {
+                         inferCallback: (DefSpec, Def) => (DefHeader, Ast2.Def)): DefHeader = {
     val specMap = mutable.HashMap[GenericType, TypeHint]()
-    val advice = FnAdvice(
-      toSpec.lambda.args.map(arg => arg.typeHint.flatMap(x => x.toAdviceOpt(specMap))),
-      toSpec.retTh.flatMap(x => x.toAdviceOpt(specMap)))
-    inferCallback(advice, toSpec)._1
+    inferCallback(DefSpec(toSpec.name, Seq.empty), toSpec)._1
   }
 
   def invokeDef(scope: BlockScope,
@@ -197,7 +226,7 @@ class Namespace(val pkg: String,
                 params: Seq[TypeHint],
                 args: Iterator[InferTask],
                 ret: Option[ThAdvice],
-                inferCallback: (FnAdvice, Def) => (DefHeader, Ast2.Def)): (TypeHint, String, Seq[Ast2.Stat]) = {
+                inferCallback: (DefSpec, Def) => (DefHeader, Ast2.Def)): (TypeHint, String, Seq[Ast2.Stat]) = {
     val toCall = defs.find(d => d.name == name).get
     _invokeDef(scope, toCall, params, args, ret, inferCallback)
   }
@@ -208,7 +237,7 @@ class Namespace(val pkg: String,
                     selfType: TypeHint,
                     args: Iterator[InferTask],
                     ret: Option[ThAdvice],
-                    inferCallback: (FnAdvice, Def) => (DefHeader, Ast2.Def)): (TypeHint, String, Seq[Ast2.Stat]) = {
+                    inferCallback: (DefSpec, Def) => (DefHeader, Ast2.Def)): (TypeHint, String, Seq[Ast2.Stat]) = {
     val toCall = defs.find { d =>
       if (d.name != name) false
       else

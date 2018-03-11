@@ -218,29 +218,73 @@ object IrGen2 {
 
     // делаем store
     // ищем реальный адрес куда store с учетом изврата с union
-    val (realToTref, realTo) =
-    if (toTref == whatTref) (toTref, to)
-    else
+    if (toTref == whatTref) {
+      val irType = toTref.toValue(ctx.types)
+      ctx.out.println(s"\tstore $irType $what, $irType* $to")
+      ctx.out.println(s";@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ store end")
+    } else
       ctx.types(toTref.name) match {
         case u: Union =>
-          val tag = u.fieldTagValue(whatTref)
-          val idx = u.fieldIrIndex(whatTref)
+          u.fieldTagValue(whatTref) match {
+            case -1 =>
+              // u1 is part of u4
+              // store u1 -> u4 must be possible
+              // U1 = String | Int
+              // U4 = Bool | Int | String
+              val uWhat = ctx.types(whatTref.name).asInstanceOf[Union]
+              val uIrType = whatTref.toValue(ctx.types)
+              val r1 = dctx.nextReg()
+              val brEnd = "brEnd" + dctx.nextBranch()
+              ctx.out.println(s"\t%$r1 = extractvalue $uIrType $what, 0 ")
+              ctx.out.println(s"\tswitch i8 %$r1, label %$brEnd [")
 
-          val irType = toTref.toValue(ctx.types)
+              val toGen: Seq[(String, TypeRef)] =
+                uWhat.variants.map { v =>
+                  val idx = uWhat.fieldTagValue(v)
+                  val br = "br" + dctx.nextBranch()
+                  ctx.out.println(s"\t\ti8 $idx, label %$br")
+                  (br, v)
+                }
 
-          val r1 = dctx.nextReg()
-          ctx.out.println(s"\t%$r1 = getelementptr $irType, $irType* $to, i64 0, i32 0")
-          ctx.out.println(s"\tstore i8 $tag, i8* %$r1")
+              ctx.out.println(s"\t]")
 
-          val (tref, _, v) = evalGep(ctx, dctx, toTref, to, Seq(tag.toString))
+              toGen.foreach {
+                case (branch, typeRef) =>
+                  val whatTagIdx = uWhat.fieldTagValue(typeRef)
+                  val whatIrIdx = uWhat.fieldIrIndex(typeRef)
+                  val toTagIdx = u.fieldTagValue(typeRef)
+                  val toIrIdx = uWhat.fieldIrIndex(typeRef)
+                  val whatIrType = whatTref.toValue(ctx.types)
+                  val toIrType = toTref.toValue(ctx.types)
+                  val irType = typeRef.toValue(ctx.types)
+                  val r1 = dctx.nextReg()
 
-          (tref, v)
-        case _ => (toTref, to)
+                  ctx.out.println(s"$branch:")
+                  ctx.out.println(s"\t%$r1 = getelementptr $toIrType, $toIrType* $to, i64 0, i32 0")
+                  ctx.out.println(s"\tstore i8 $toTagIdx, i8* %$r1")
+
+                  val (_, _, toPtr) = evalGep(ctx, dctx, toTref, to, Seq(toTagIdx.toString))
+
+                  val r2 = dctx.nextReg()
+                  ctx.out.println(s"\t%$r2 = extractvalue $whatIrType $what, $whatIrIdx")
+                  ctx.out.println(s"\tstore $irType %$r2, $irType* $toPtr")
+                  ctx.out.println(s"\tbr label %$brEnd")
+              }
+              ctx.out.println(s"$brEnd:    ;@@ store end")
+            case tag =>
+              val irType = toTref.toValue(ctx.types)
+              val r1 = dctx.nextReg()
+              ctx.out.println(s"\t%$r1 = getelementptr $irType, $irType* $to, i64 0, i32 0")
+              ctx.out.println(s"\tstore i8 $tag, i8* %$r1")
+
+              val (tref, _, v) = evalGep(ctx, dctx, toTref, to, Seq(tag.toString))
+
+              val toIrType = tref.toValue(ctx.types)
+              ctx.out.println(s"\tstore $toIrType $what, $toIrType* $v")
+              ctx.out.println(s";@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ store end")
+          }
+        case _ => throw new RuntimeException("unexpected")
       }
-
-    val irType = realToTref.toValue(ctx.types)
-    ctx.out.println(s"\tstore $irType $what, $irType* $realTo")
-    ctx.out.println(s";@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ store end")
   }
   def evalStat(ctx: IrContext,
                dctx: DefContext,

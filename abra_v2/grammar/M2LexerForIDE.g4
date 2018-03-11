@@ -63,6 +63,7 @@ IntLiteral   : '-'? ('0' | NonZeroDigit Digit*) ;
 HexLiteral   : '0' [xX] HexDigit+ ;
 FloatLiteral : '-'? (Digit+ '.' Digit+ ExponentPart? | Digit+ ExponentPart) ;
 BooleanLiteral   :  'true' | 'false';
+NoneLiteral   :  'none';
 
 StringLiteral    : '\'' StringElement* '\'' ;
 VarId  : [\p{Ll}]+ ([\p{Lu}\p{Ll}] | '_' | Digit)* ;

@@ -2,7 +2,7 @@ package typecheck
 
 import m3.parse.Ast0._
 import m3.typecheck.Util.FnAdvice
-import m3.typecheck.{FnScope, Namespace, TypeChecker}
+import m3.typecheck.{DefSpec, FnScope, Namespace, TypeChecker}
 import org.scalatest.FunSuite
 
 class TypeCheckTest extends FunSuite {
@@ -32,7 +32,7 @@ class TypeCheckTest extends FunSuite {
       retTh = None)
 
     val namespace = new Namespace(pkg = "", Seq(), defs = Seq(defBar), types = Seq(tInt, tBool, tString), mods = Map.empty)
-    val advice = FnAdvice(Seq.empty, None)
+    val advice = DefSpec("bar", Seq.empty)
     val (header, lowDef) = TypeChecker.evalDef(namespace, new FnScope(None), advice, defBar)
     println(header)
     println(lowDef)
@@ -107,14 +107,13 @@ class TypeCheckTest extends FunSuite {
             lInt("1"),
             Lambda(
               Seq(Arg("x", None)),
-              AbraCode(Seq(
-                lId("i"))))
+              AbraCode(Seq(lId("i"))))
           ))
         ))),
       retTh = None)
 
     val namespace = new Namespace(pkg = "", Seq(), defs = Seq(defBar, defMain), types = Seq(tInt), mods = Map.empty)
-    prettyPrint(TypeChecker.evalDef(namespace, new FnScope(None), FnAdvice(Seq.empty, None), defMain))
+    prettyPrint(TypeChecker.evalDef(namespace, new FnScope(None), DefSpec("main", Seq.empty), defMain))
     prettyPrint(namespace.lowMod.defs)
   }
 }

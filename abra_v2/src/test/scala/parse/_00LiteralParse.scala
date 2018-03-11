@@ -13,6 +13,10 @@ class _00LiteralParse extends FunSuite {
 
   import literalParser._
 
+  test("none") {
+    withStr("none", lNone())
+  }
+
   test("boolean") {
     withStr("true", lBoolean("true"))
     withStr("false", lBoolean("false"))

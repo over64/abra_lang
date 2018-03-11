@@ -39,6 +39,8 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
         terminal = ctx.HexLiteral()
       if (terminal == null)
         terminal = ctx.StringLiteral()
+      if (terminal == null)
+        terminal = ctx.NoneLiteral()
 
       terminal.getSymbol
     }
@@ -52,6 +54,7 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
         case IntLiteral => lInt(token.getText)
         case HexLiteral => lInt(new BigInteger(token.getText.stripPrefix("0x"), 16).toString())
         case BooleanLiteral => lBoolean(token.getText)
+        case NoneLiteral => lNone()
       })
   }
 

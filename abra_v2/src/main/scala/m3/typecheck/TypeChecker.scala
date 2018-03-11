@@ -18,7 +18,7 @@ object TypeChecker {
           val d = namespace.defs.find(d => d.name == value)
             .getOrElse(throw new RuntimeException(s"no local var, argument or global function with name $value"))
           val header = namespace.inferCompatibleDef(d, null, {
-            case (expected, fn) => evalDef(namespace, scope.mkChild(p => new FnScope(None)), expected, fn)
+            case (defSpec, fn) => evalDef(namespace, scope.mkChild(p => new FnScope(None)), defSpec, fn)
           })
           (header.th, header.name, Seq.empty)
       }
@@ -43,13 +43,12 @@ object TypeChecker {
               val id = ConstGen.string(namespace.lowMod, value)
               (thString, Ast2.Call(id, Seq.empty))
           }
-          val realTh = inferCompatibleType(namespace, th, litTh)
 
-          scope.addLocal(mut = false, vName, realTh)
-          (realTh, vName, Seq(Ast2.Store(init = true, Ast2.Id(vName, Seq.empty), lit)))
+          scope.addLocal(mut = false, vName, litTh)
+          (litTh, vName, Seq(Ast2.Store(init = true, Ast2.Id(vName, Seq.empty), lit)))
       }
     case Prop(from, props) =>
-      val (eth, evName, lowCode) = evalExpr(namespace, scope, None, from)
+      val (eth, evName, lowCode) = evalExpr(namespace, scope, th, from)
 
       val actualTh = props.foldLeft(eth) {
         case (fth, fieldId) =>
@@ -67,6 +66,7 @@ object TypeChecker {
             case _ => throw new RuntimeException(s"no such field $fieldId on type $fth")
           }
       }
+
       val vName = "$l" + namespace.nextAnonId()
       scope.addLocal(mut = false, vName, actualTh)
       (actualTh, vName, lowCode :+ Ast2.Store(init = true,
@@ -103,7 +103,7 @@ object TypeChecker {
             override def infer(expected: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat]) = (vi.th, id.value, Seq.empty)
           }
           namespace.invokeSelfDef(scope, fnName, params, vi.th, (selfTask +: argTasks).iterator, th, {
-            case (expected, fn) => evalDef(namespace, scope.mkChild(p => new FnScope(None)), expected, fn)
+            case (defSpec, fn) => evalDef(namespace, scope.mkChild(p => new FnScope(None)), defSpec, fn)
           })
         case _expr: Expression =>
           val (selfTh, vName, lowStats) = evalExpr(namespace, scope, None, _expr)
@@ -111,7 +111,7 @@ object TypeChecker {
             override def infer(expected: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat]) = (selfTh, vName, lowStats)
           }
           namespace.invokeSelfDef(scope, fnName, params, selfTh, (selfTask +: argTasks).iterator, th, {
-            case (expected, fn) => evalDef(namespace, scope.mkChild(p => new FnScope(None)), expected, fn)
+            case (defSpec, fn) => evalDef(namespace, scope.mkChild(p => new FnScope(None)), defSpec, fn)
           })
       }
     case Call(params, expr, args) =>
@@ -130,7 +130,7 @@ object TypeChecker {
             // 2. find var
             if (namespace.hasDef(id.value)) {
               namespace.invokeDef(scope, id.value, params, argTasks.iterator, th, {
-                case (expected, fn) => evalDef(namespace, scope.mkChild(p => new FnScope(None)), expected, fn)
+                case (defSpec, fn) => evalDef(namespace, scope.mkChild(p => new FnScope(None)), defSpec, fn)
               })
             } else {
               val vi = scope.findVarOpt(id.value)
@@ -162,12 +162,33 @@ object TypeChecker {
     case lambda: Lambda =>
       val _def = Def(Seq.empty, "$def" + namespace.nextAnonId(), lambda, None)
 
+      //      def mapAndCheck()
+      //
+      //      val argsTh = th match {
+      //        case Some(fna: FnAdvice) =>
+      //          if (fna.args.length != lambda.args.length)
+      //            throw new RuntimeException(s"expected ${fna.args.length} has ${lambda.args.length}")
+      //          (fna.args zip lambda.args).map {
+      //            case (Some(argAdvice), Arg(name, Some(argTh))) =>
+      //              argAdvice.toThOpt match {
+      //                case Some(advTh) =>
+      //                  if (advTh != argTh) throw new RuntimeException(s"expected $advTh has $argTh")
+      //                  argTh
+      //                case None => argTh
+      //              }
+      //            case (Some(argAdvice), Arg(name, None)) => argAdvice.toTh
+      //            case (None, Arg(name, Some(argTh))) => argTh
+      //            case (None, Arg(name, None)) => throw new RuntimeException("expected type hint")
+      //          }
+      //        case _ => FnAdvice(lambda.args.map(arg => None), None)
+      //      }
+
       val advice = th match {
         case Some(fn: FnAdvice) => fn
         case _ => FnAdvice(lambda.args.map(arg => None), None)
       }
 
-      val (header, lowDef) = evalDef(namespace, scope.mkChild(p => new FnScope(Some(p))), advice, _def)
+      val (header, lowDef) = evalDef(namespace, scope.mkChild(p => new FnScope(Some(p))), DefSpec(_def.name, Seq.empty), _def)
       namespace.anonDefs.append(_def)
       namespace.lowMod.defineDef(lowDef)
 
@@ -380,18 +401,28 @@ object TypeChecker {
                 evalExpr(namespace, scope, toTh.toAdviceOpt(mutable.HashMap.empty), what)
 
               if (whatTh != toTh)
-                toTh match {
-                  case sth: ScalarTh =>
-                    namespace.types.find(td => td.name == sth.name)
-                      .getOrElse(throw new RuntimeException(s"no such type $sth")) match {
+                (whatTh, toTh) match {
+                  case (whatSth: ScalarTh, toSth: ScalarTh) =>
+                    namespace.types.find(td => td.name == toSth.name)
+                      .getOrElse(throw new RuntimeException(s"no such type $toSth")) match {
                       case ud: UnionDecl =>
-                        if (!ud.variants.contains(whatTh))
+                        if (!ud.variants.contains(whatSth)) {
+                          throw new RuntimeException(s"expected $toTh has $whatTh")
+                        }
+                      case _ => throw new RuntimeException(s"expected $toTh has $whatTh")
+                    }
+                  case (whatSth: ScalarTh, toUth: UnionTh) =>
+                    if (!toUth.seq.contains(whatSth)) throw new RuntimeException(s"expected $toTh has $whatTh")
+                  case (whatUth: UnionTh, toUth: UnionTh) =>
+                    if (!whatUth.seq.forall(v => toUth.seq.contains(v)))
+                      throw new RuntimeException(s"expected $toTh has $whatTh")
+                  case (whatUth: UnionTh, toSth: ScalarTh) =>
+                    namespace.types.find(td => td.name == toSth.name).getOrElse(throw new RuntimeException(s"no such type $toSth")) match {
+                      case ud: UnionDecl =>
+                        if (!whatUth.seq.forall(v => ud.variants.contains(v)))
                           throw new RuntimeException(s"expected $toTh has $whatTh")
                       case _ => throw new RuntimeException(s"expected $toTh has $whatTh")
                     }
-                  case uth: UnionTh =>
-                    if (!uth.seq.contains(whatTh))
-                      throw new RuntimeException(s"expected $toTh has $whatTh")
                   case _ => throw new RuntimeException(s"expected $toTh has $whatTh")
                 }
 
@@ -416,15 +447,20 @@ object TypeChecker {
       }
   }
 
-  def evalDef(namespace: Namespace, scope: FnScope, advice: FnAdvice, fn: Def): (DefHeader, Ast2.Def) = {
-    val argsTh = (advice.args zip fn.lambda.args).map {
-      case (adv, arg) =>
-        (adv, arg.typeHint) match {
-          case (_, Some(th)) => th
-          case (Some(ad), None) =>
-            ad.toThOpt.getOrElse(throw new RuntimeException(s"Expected type hint for arg ${arg.name}"))
-          case (None, None) => throw new RuntimeException(s"Expected type hint for arg ${arg.name}")
-        }
+  def evalDef(namespace: Namespace, scope: FnScope, defSpec: DefSpec, fn: Def): (DefHeader, Ast2.Def) = {
+    if (namespace.inferStack.contains(fn.name))
+      throw new RuntimeException(s"expected type hint for recursive function ${fn.name}")
+    namespace.inferStack.push(fn.name)
+
+    val argsTh = fn.lambda.args.map { arg =>
+      arg.typeHint.getOrElse(throw new RuntimeException(s"Expected type hint for arg ${arg.name}"))
+    }
+
+    fn.retTh match {
+      case Some(retTh) =>
+        namespace.inferedDefs.put(DefSpec(fn.name, Seq.empty), DefHeader(namespace.pkg, fn.name, FnTh(
+          Seq.empty, argsTh, retTh)))
+      case None =>
     }
 
     (fn.lambda.args zip argsTh).foreach {
@@ -447,7 +483,7 @@ object TypeChecker {
             case other => Ret(Some(other))
           }
 
-          val stats = expressions.map(expr => evalExpr(namespace, bodyScope, th = None, expr)._3).flatten
+          val stats = expressions.map(expr => evalExpr(namespace, bodyScope, None, expr)._3).flatten
           val (_, vName, lastStats) = evalExpr(namespace, bodyScope,
             fn.retTh.flatMap(th => th.toAdviceOpt(mutable.HashMap.empty)), realLast)
 
@@ -479,7 +515,9 @@ object TypeChecker {
     val lowClosure = closure.map(_._1)
 
     val lowDef = Ast2.Def(fn.name, lowType, lowClosure, lowArgs, code, isAnon = false)
+    namespace.lowMod.defineDef(lowDef)
 
+    namespace.inferStack.pop()
     (header, lowDef)
   }
 
@@ -492,10 +530,7 @@ object TypeChecker {
     // non generic functions only
     namespace.defs.filter(d => !d.isGeneric).foreach { fn =>
       if (isNeedEvalDef(namespace, fn)) {
-        val (header, lowDef) = evalDef(namespace, new FnScope(None), FnAdvice(
-          args = fn.lambda.args.map(x => None),
-          ret = None
-        ), fn)
+        val (header, lowDef) = evalDef(namespace, new FnScope(None), DefSpec(fn.name, Seq.empty), fn)
         val to = if (fn.isSelf) namespace.inferedSelfDefs else namespace.inferedDefs
         to.put(fn.signature, header)
         namespace.lowMod.defineDef(lowDef)

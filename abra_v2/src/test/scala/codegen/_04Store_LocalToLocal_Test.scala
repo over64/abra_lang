@@ -93,4 +93,37 @@ class _04Store_LocalToLocal_Test extends FunSuite with LowUtil {
 
     mod.assertRunEquals(exit = Some(0))
   }
+
+  test("local store: union to another compatible union type") {
+    // u1 is part of u4
+    // store u1 -> u4 must be possible
+    // U1 = String | Int
+    // U4 = Bool | Int | String
+
+    val mod = Mod()
+    val i0 = ConstGen.int(mod, "0")
+    val sHi = ConstGen.string(mod, "hi")
+
+    mod.defineType(tU1)
+    mod.defineType(tU4)
+
+    mod.defineDef(Def("main", TypeRef("\\ -> Int"), Seq.empty, Seq.empty, AbraCode(
+      vars = Map(
+        "r" -> int,
+        "s" -> string,
+        "u1" -> u1,
+        "u4" -> u4),
+      stats = Seq(
+        Store(init = true, Id("u1"), Call(i0)),
+        Store(init = true, Id("u4"), Call(sHi)),
+        Store(init = false, Id("u4"), Id("u1")),
+
+        Store(init = true, Id("r"), Call(i0)),
+        Free(Id("u1")),
+        Free(Id("u4")),
+        Ret(Some("r"))
+      ))))
+
+    mod.assertRunEquals(exit = Some(0))
+  }
 }

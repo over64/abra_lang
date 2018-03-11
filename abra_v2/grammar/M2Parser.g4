@@ -9,6 +9,7 @@ literal: IntLiteral
        | FloatLiteral
        | BooleanLiteral
        | StringLiteral
+       | NoneLiteral
        ;
 
 id: VarId | 'self' ;
@@ -62,7 +63,7 @@ blockBody: (store | while_stat | expression | ret) sp ';'? sp ;
 scalarType: 'type' sp tname=TypeId (sp '[' params+=TypeId (',' params+=TypeId)* ']')? sp '=' sp REF? sp llvm ;
 typeField: 'self'? sp VarId sp ':' sp typeHint (sp '=' sp expression)? ;
 structType: 'type' sp name=TypeId (sp '[' params+=TypeId (',' params+=TypeId)* ']')? sp '=' sp  '(' NL* typeField (',' NL* typeField)* NL*')' ;
-unionType: 'type' sp name=TypeId sp ('[' params+=TypeId (',' params+=TypeId)* ']')? sp '=' sp scalarTh sp ('|' sp scalarTh)+ ;
+unionType: 'type' sp name=TypeId sp ('[' params+=TypeId (',' params+=TypeId)* ']')? sp '=' sp scalarTh (sp '|' sp scalarTh)+ ;
 
 type: scalarType
     | structType

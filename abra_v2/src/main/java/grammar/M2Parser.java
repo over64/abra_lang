@@ -24,8 +24,9 @@ public class M2Parser extends Parser {
 		SELF=33, MATCH_SELF=34, DEF=35, LAMBDA=36, IMPORT=37, WITH=38, MATCH=39, 
 		OF=40, RETURN=41, IS=42, WHEN=43, REF=44, DASH=45, VERT_LINE=46, BRACKET_LEFT=47, 
 		BRACKET_RIGTH=48, LlBegin=49, WS=50, NL=51, COMMENT=52, IntLiteral=53, 
-		HexLiteral=54, FloatLiteral=55, BooleanLiteral=56, StringLiteral=57, VarId=58, 
-		TypeId=59, MatchId=60, LLVM_NL=61, LLVM_WS=62, IrLine=63, LL_End=64, LL_Dot=65;
+		HexLiteral=54, FloatLiteral=55, BooleanLiteral=56, NoneLiteral=57, StringLiteral=58, 
+		VarId=59, TypeId=60, MatchId=61, LLVM_NL=62, LLVM_WS=63, IrLine=64, LL_End=65, 
+		LL_Dot=66;
 	public static final int
 		RULE_sp = 0, RULE_literal = 1, RULE_id = 2, RULE_expression = 3, RULE_tuple = 4, 
 		RULE_fieldTh = 5, RULE_scalarTh = 6, RULE_fnTh = 7, RULE_structTh = 8, 
@@ -49,7 +50,7 @@ public class M2Parser extends Parser {
 		"'{'", "'$('", "'}'", "'||'", "'&&'", "'while'", "'val'", "'var'", "':'", 
 		"'->'", "'type'", "'\\'", "'self'", "'$self'", "'def'", "'lambda'", "'import'", 
 		"'with'", "'match'", "'of'", "'return'", "'is'", "'when'", "'ref'", "'_'", 
-		"'|'", "'['", "']'"
+		"'|'", "'['", "']'", null, null, null, null, null, null, null, null, "'none'"
 	};
 	private static final String[] _SYMBOLIC_NAMES = {
 		null, "MINUS", "PLUS", "MUL", "DIV", "EXCL", "DOT", "RB", "LB", "COMMA", 
@@ -59,8 +60,8 @@ public class M2Parser extends Parser {
 		"MATCH_SELF", "DEF", "LAMBDA", "IMPORT", "WITH", "MATCH", "OF", "RETURN", 
 		"IS", "WHEN", "REF", "DASH", "VERT_LINE", "BRACKET_LEFT", "BRACKET_RIGTH", 
 		"LlBegin", "WS", "NL", "COMMENT", "IntLiteral", "HexLiteral", "FloatLiteral", 
-		"BooleanLiteral", "StringLiteral", "VarId", "TypeId", "MatchId", "LLVM_NL", 
-		"LLVM_WS", "IrLine", "LL_End", "LL_Dot"
+		"BooleanLiteral", "NoneLiteral", "StringLiteral", "VarId", "TypeId", "MatchId", 
+		"LLVM_NL", "LLVM_WS", "IrLine", "LL_End", "LL_Dot"
 	};
 	public static final Vocabulary VOCABULARY = new VocabularyImpl(_LITERAL_NAMES, _SYMBOLIC_NAMES);
 
@@ -194,6 +195,7 @@ public class M2Parser extends Parser {
 		public TerminalNode FloatLiteral() { return getToken(M2Parser.FloatLiteral, 0); }
 		public TerminalNode BooleanLiteral() { return getToken(M2Parser.BooleanLiteral, 0); }
 		public TerminalNode StringLiteral() { return getToken(M2Parser.StringLiteral, 0); }
+		public TerminalNode NoneLiteral() { return getToken(M2Parser.NoneLiteral, 0); }
 		public LiteralContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -222,7 +224,7 @@ public class M2Parser extends Parser {
 			{
 			setState(66);
 			_la = _input.LA(1);
-			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << IntLiteral) | (1L << HexLiteral) | (1L << FloatLiteral) | (1L << BooleanLiteral) | (1L << StringLiteral))) != 0)) ) {
+			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << IntLiteral) | (1L << HexLiteral) | (1L << FloatLiteral) | (1L << BooleanLiteral) | (1L << NoneLiteral) | (1L << StringLiteral))) != 0)) ) {
 			_errHandler.recoverInline(this);
 			}
 			else {
@@ -785,7 +787,7 @@ public class M2Parser extends Parser {
 				setState(95);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
-				while ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << EXCL) | (1L << LB) | (1L << IF) | (1L << WHILE) | (1L << SELF) | (1L << LAMBDA) | (1L << WITH) | (1L << RETURN) | (1L << WHEN) | (1L << IntLiteral) | (1L << HexLiteral) | (1L << FloatLiteral) | (1L << BooleanLiteral) | (1L << StringLiteral) | (1L << VarId) | (1L << TypeId))) != 0)) {
+				while ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << EXCL) | (1L << LB) | (1L << IF) | (1L << WHILE) | (1L << SELF) | (1L << LAMBDA) | (1L << WITH) | (1L << RETURN) | (1L << WHEN) | (1L << IntLiteral) | (1L << HexLiteral) | (1L << FloatLiteral) | (1L << BooleanLiteral) | (1L << NoneLiteral) | (1L << StringLiteral) | (1L << VarId) | (1L << TypeId))) != 0)) {
 					{
 					{
 					setState(92);
@@ -812,7 +814,7 @@ public class M2Parser extends Parser {
 					setState(104);
 					_errHandler.sync(this);
 					_la = _input.LA(1);
-					while ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << EXCL) | (1L << LB) | (1L << IF) | (1L << WHILE) | (1L << SELF) | (1L << LAMBDA) | (1L << WITH) | (1L << RETURN) | (1L << WHEN) | (1L << IntLiteral) | (1L << HexLiteral) | (1L << FloatLiteral) | (1L << BooleanLiteral) | (1L << StringLiteral) | (1L << VarId) | (1L << TypeId))) != 0)) {
+					while ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << EXCL) | (1L << LB) | (1L << IF) | (1L << WHILE) | (1L << SELF) | (1L << LAMBDA) | (1L << WITH) | (1L << RETURN) | (1L << WHEN) | (1L << IntLiteral) | (1L << HexLiteral) | (1L << FloatLiteral) | (1L << BooleanLiteral) | (1L << NoneLiteral) | (1L << StringLiteral) | (1L << VarId) | (1L << TypeId))) != 0)) {
 						{
 						{
 						setState(101);
@@ -872,7 +874,7 @@ public class M2Parser extends Parser {
 					setState(126);
 					_errHandler.sync(this);
 					_la = _input.LA(1);
-					while ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << EXCL) | (1L << LB) | (1L << IF) | (1L << WHILE) | (1L << SELF) | (1L << LAMBDA) | (1L << WITH) | (1L << RETURN) | (1L << WHEN) | (1L << IntLiteral) | (1L << HexLiteral) | (1L << FloatLiteral) | (1L << BooleanLiteral) | (1L << StringLiteral) | (1L << VarId) | (1L << TypeId))) != 0)) {
+					while ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << EXCL) | (1L << LB) | (1L << IF) | (1L << WHILE) | (1L << SELF) | (1L << LAMBDA) | (1L << WITH) | (1L << RETURN) | (1L << WHEN) | (1L << IntLiteral) | (1L << HexLiteral) | (1L << FloatLiteral) | (1L << BooleanLiteral) | (1L << NoneLiteral) | (1L << StringLiteral) | (1L << VarId) | (1L << TypeId))) != 0)) {
 						{
 						{
 						setState(123);
@@ -1370,7 +1372,7 @@ public class M2Parser extends Parser {
 				setState(282);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
-				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << EXCL) | (1L << LB) | (1L << IF) | (1L << SELF) | (1L << LAMBDA) | (1L << WITH) | (1L << WHEN) | (1L << IntLiteral) | (1L << HexLiteral) | (1L << FloatLiteral) | (1L << BooleanLiteral) | (1L << StringLiteral) | (1L << VarId) | (1L << TypeId))) != 0)) {
+				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << EXCL) | (1L << LB) | (1L << IF) | (1L << SELF) | (1L << LAMBDA) | (1L << WITH) | (1L << WHEN) | (1L << IntLiteral) | (1L << HexLiteral) | (1L << FloatLiteral) | (1L << BooleanLiteral) | (1L << NoneLiteral) | (1L << StringLiteral) | (1L << VarId) | (1L << TypeId))) != 0)) {
 					{
 					setState(271);
 					expression(0);
@@ -1413,7 +1415,7 @@ public class M2Parser extends Parser {
 				setState(300);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
-				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << EXCL) | (1L << LB) | (1L << IF) | (1L << SELF) | (1L << LAMBDA) | (1L << WITH) | (1L << WHEN) | (1L << IntLiteral) | (1L << HexLiteral) | (1L << FloatLiteral) | (1L << BooleanLiteral) | (1L << StringLiteral) | (1L << VarId) | (1L << TypeId))) != 0)) {
+				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << EXCL) | (1L << LB) | (1L << IF) | (1L << SELF) | (1L << LAMBDA) | (1L << WITH) | (1L << WHEN) | (1L << IntLiteral) | (1L << HexLiteral) | (1L << FloatLiteral) | (1L << BooleanLiteral) | (1L << NoneLiteral) | (1L << StringLiteral) | (1L << VarId) | (1L << TypeId))) != 0)) {
 					{
 					setState(289);
 					expression(0);
@@ -2120,7 +2122,7 @@ public class M2Parser extends Parser {
 			setState(406);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
-			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << EXCL) | (1L << LB) | (1L << IF) | (1L << WHILE) | (1L << SELF) | (1L << LAMBDA) | (1L << WITH) | (1L << RETURN) | (1L << WHEN) | (1L << IntLiteral) | (1L << HexLiteral) | (1L << FloatLiteral) | (1L << BooleanLiteral) | (1L << StringLiteral) | (1L << VarId) | (1L << TypeId))) != 0)) {
+			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << EXCL) | (1L << LB) | (1L << IF) | (1L << WHILE) | (1L << SELF) | (1L << LAMBDA) | (1L << WITH) | (1L << RETURN) | (1L << WHEN) | (1L << IntLiteral) | (1L << HexLiteral) | (1L << FloatLiteral) | (1L << BooleanLiteral) | (1L << NoneLiteral) | (1L << StringLiteral) | (1L << VarId) | (1L << TypeId))) != 0)) {
 				{
 				{
 				setState(403);
@@ -2417,7 +2419,7 @@ public class M2Parser extends Parser {
 			setState(450);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
-			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << EXCL) | (1L << LB) | (1L << IF) | (1L << WHILE) | (1L << SELF) | (1L << LAMBDA) | (1L << WITH) | (1L << RETURN) | (1L << WHEN) | (1L << IntLiteral) | (1L << HexLiteral) | (1L << FloatLiteral) | (1L << BooleanLiteral) | (1L << StringLiteral) | (1L << VarId) | (1L << TypeId))) != 0)) {
+			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << EXCL) | (1L << LB) | (1L << IF) | (1L << WHILE) | (1L << SELF) | (1L << LAMBDA) | (1L << WITH) | (1L << RETURN) | (1L << WHEN) | (1L << IntLiteral) | (1L << HexLiteral) | (1L << FloatLiteral) | (1L << BooleanLiteral) | (1L << NoneLiteral) | (1L << StringLiteral) | (1L << VarId) | (1L << TypeId))) != 0)) {
 				{
 				{
 				setState(447);
@@ -3189,6 +3191,7 @@ public class M2Parser extends Parser {
 		enterRule(_localctx, 44, RULE_unionType);
 		int _la;
 		try {
+			int _alt;
 			enterOuterAlt(_localctx, 1);
 			{
 			setState(601);
@@ -3239,26 +3242,32 @@ public class M2Parser extends Parser {
 			sp();
 			setState(620);
 			scalarTh();
-			setState(621);
-			sp();
 			setState(626); 
 			_errHandler.sync(this);
-			_la = _input.LA(1);
+			_alt = 1;
 			do {
-				{
-				{
-				setState(622);
-				match(VERT_LINE);
-				setState(623);
-				sp();
-				setState(624);
-				scalarTh();
-				}
+				switch (_alt) {
+				case 1:
+					{
+					{
+					setState(621);
+					sp();
+					setState(622);
+					match(VERT_LINE);
+					setState(623);
+					sp();
+					setState(624);
+					scalarTh();
+					}
+					}
+					break;
+				default:
+					throw new NoViableAltException(this);
 				}
 				setState(628); 
 				_errHandler.sync(this);
-				_la = _input.LA(1);
-			} while ( _la==VERT_LINE );
+				_alt = getInterpreter().adaptivePredict(_input,68,_ctx);
+			} while ( _alt!=2 && _alt!=org.antlr.v4.runtime.atn.ATN.INVALID_ALT_NUMBER );
 			}
 		}
 		catch (RecognitionException re) {
@@ -3509,6 +3518,7 @@ public class M2Parser extends Parser {
 			case HexLiteral:
 			case FloatLiteral:
 			case BooleanLiteral:
+			case NoneLiteral:
 			case StringLiteral:
 			case VarId:
 			case TypeId:
@@ -3517,7 +3527,7 @@ public class M2Parser extends Parser {
 				setState(674);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
-				while ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << EXCL) | (1L << LB) | (1L << IF) | (1L << WHILE) | (1L << SELF) | (1L << LAMBDA) | (1L << WITH) | (1L << RETURN) | (1L << WHEN) | (1L << IntLiteral) | (1L << HexLiteral) | (1L << FloatLiteral) | (1L << BooleanLiteral) | (1L << StringLiteral) | (1L << VarId) | (1L << TypeId))) != 0)) {
+				while ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << EXCL) | (1L << LB) | (1L << IF) | (1L << WHILE) | (1L << SELF) | (1L << LAMBDA) | (1L << WITH) | (1L << RETURN) | (1L << WHEN) | (1L << IntLiteral) | (1L << HexLiteral) | (1L << FloatLiteral) | (1L << BooleanLiteral) | (1L << NoneLiteral) | (1L << StringLiteral) | (1L << VarId) | (1L << TypeId))) != 0)) {
 					{
 					{
 					setState(671);
@@ -3877,12 +3887,12 @@ public class M2Parser extends Parser {
 			setState(734);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
-			while (((((_la - 61)) & ~0x3f) == 0 && ((1L << (_la - 61)) & ((1L << (LLVM_NL - 61)) | (1L << (LLVM_WS - 61)) | (1L << (IrLine - 61)) | (1L << (LL_Dot - 61)))) != 0)) {
+			while (((((_la - 62)) & ~0x3f) == 0 && ((1L << (_la - 62)) & ((1L << (LLVM_NL - 62)) | (1L << (LLVM_WS - 62)) | (1L << (IrLine - 62)) | (1L << (LL_Dot - 62)))) != 0)) {
 				{
 				{
 				setState(731);
 				_la = _input.LA(1);
-				if ( !(((((_la - 61)) & ~0x3f) == 0 && ((1L << (_la - 61)) & ((1L << (LLVM_NL - 61)) | (1L << (LLVM_WS - 61)) | (1L << (IrLine - 61)) | (1L << (LL_Dot - 61)))) != 0)) ) {
+				if ( !(((((_la - 62)) & ~0x3f) == 0 && ((1L << (_la - 62)) & ((1L << (LLVM_NL - 62)) | (1L << (LLVM_WS - 62)) | (1L << (IrLine - 62)) | (1L << (LL_Dot - 62)))) != 0)) ) {
 				_errHandler.recoverInline(this);
 				}
 				else {
@@ -3989,7 +3999,7 @@ public class M2Parser extends Parser {
 	}
 
 	public static final String _serializedATN =
-		"\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\3C\u02e8\4\2\t\2\4"+
+		"\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\3D\u02e8\4\2\t\2\4"+
 		"\3\t\3\4\4\t\4\4\5\t\5\4\6\t\6\4\7\t\7\4\b\t\b\4\t\t\t\4\n\t\n\4\13\t"+
 		"\13\4\f\t\f\4\r\t\r\4\16\t\16\4\17\t\17\4\20\t\20\4\21\t\21\4\22\t\22"+
 		"\4\23\t\23\4\24\t\24\4\25\t\25\4\26\t\26\4\27\t\27\4\30\t\30\4\31\t\31"+
@@ -4050,8 +4060,8 @@ public class M2Parser extends Parser {
 		"\35\3\35\3\35\3\35\3\35\7\35\u02d7\n\35\f\35\16\35\u02da\13\35\3\35\3"+
 		"\35\3\36\7\36\u02df\n\36\f\36\16\36\u02e2\13\36\3\37\3\37\3\37\3\37\3"+
 		"\37\2\3\b \2\4\6\b\n\f\16\20\22\24\26\30\32\34\36 \"$&(*,.\60\62\64\66"+
-		"8:<\2\r\3\2\64\66\3\2\67;\4\2##<<\3\2\5\6\4\2\3\4<<\3\2\f\17\3\2\21\22"+
-		"\3\2\32\33\6\2\3\6\f\17\21\22<<\6\2\3\7\f\17\21\22<<\4\2?ACC\2\u0330\2"+
+		"8:<\2\r\3\2\64\66\3\2\67<\4\2##==\3\2\5\6\4\2\3\4==\3\2\f\17\3\2\21\22"+
+		"\3\2\32\33\6\2\3\6\f\17\21\22==\6\2\3\7\f\17\21\22==\4\2@BDD\2\u0330\2"+
 		"A\3\2\2\2\4D\3\2\2\2\6F\3\2\2\2\b\u0087\3\2\2\2\n\u0133\3\2\2\2\f\u0135"+
 		"\3\2\2\2\16\u0140\3\2\2\2\20\u0161\3\2\2\2\22\u0168\3\2\2\2\24\u0179\3"+
 		"\2\2\2\26\u017b\3\2\2\2\30\u0189\3\2\2\2\32\u018b\3\2\2\2\34\u019b\3\2"+
@@ -4060,7 +4070,7 @@ public class M2Parser extends Parser {
 		"\u027b\3\2\2\2\62\u027d\3\2\2\2\64\u02b0\3\2\2\2\66\u02bf\3\2\2\28\u02c6"+
 		"\3\2\2\2:\u02e0\3\2\2\2<\u02e3\3\2\2\2>@\t\2\2\2?>\3\2\2\2@C\3\2\2\2A"+
 		"?\3\2\2\2AB\3\2\2\2B\3\3\2\2\2CA\3\2\2\2DE\t\3\2\2E\5\3\2\2\2FG\t\4\2"+
-		"\2G\7\3\2\2\2HI\b\5\1\2I\u0088\5\4\3\2J\u0088\5\6\4\2K\u0088\7=\2\2LM"+
+		"\2G\7\3\2\2\2HI\b\5\1\2I\u0088\5\4\3\2J\u0088\5\6\4\2K\u0088\7>\2\2LM"+
 		"\7\n\2\2MN\5\2\2\2NO\5\b\5\2OP\5\2\2\2PQ\7\t\2\2Q\u0088\3\2\2\2R\u0088"+
 		"\5\n\6\2S\u0088\5$\23\2TU\7\7\2\2UV\5\2\2\2VW\5\b\5\nW\u0088\3\2\2\2X"+
 		"Y\7\24\2\2YZ\5\2\2\2Z[\5\b\5\2[\\\5\2\2\2\\]\7\25\2\2]a\5\2\2\2^`\5&\24"+
@@ -4114,7 +4124,7 @@ public class M2Parser extends Parser {
 		"\6\2\u00fd\u0106\f\13\2\2\u00fe\u0100\7\65\2\2\u00ff\u0101\7\64\2\2\u0100"+
 		"\u00ff\3\2\2\2\u0100\u0101\3\2\2\2\u0101\u0103\3\2\2\2\u0102\u00fe\3\2"+
 		"\2\2\u0102\u0103\3\2\2\2\u0103\u0104\3\2\2\2\u0104\u0105\7\b\2\2\u0105"+
-		"\u0107\7<\2\2\u0106\u0102\3\2\2\2\u0107\u0108\3\2\2\2\u0108\u0106\3\2"+
+		"\u0107\7=\2\2\u0106\u0102\3\2\2\2\u0107\u0108\3\2\2\2\u0108\u0106\3\2"+
 		"\2\2\u0108\u0109\3\2\2\2\u0109\u010b\3\2\2\2\u010a\u0089\3\2\2\2\u010a"+
 		"\u0094\3\2\2\2\u010a\u009f\3\2\2\2\u010a\u00aa\3\2\2\2\u010a\u00b5\3\2"+
 		"\2\2\u010a\u00c0\3\2\2\2\u010a\u00de\3\2\2\2\u010a\u00fd\3\2\2\2\u010b"+
@@ -4135,7 +4145,7 @@ public class M2Parser extends Parser {
 		"\2\u0137\u0138\7\37\2\2\u0138\u0139\5\2\2\2\u0139\u013a\5\30\r\2\u013a"+
 		"\r\3\2\2\2\u013b\u013c\5\6\4\2\u013c\u013d\5\2\2\2\u013d\u013e\7\b\2\2"+
 		"\u013e\u013f\5\2\2\2\u013f\u0141\3\2\2\2\u0140\u013b\3\2\2\2\u0140\u0141"+
-		"\3\2\2\2\u0141\u0142\3\2\2\2\u0142\u0152\7=\2\2\u0143\u0144\7\61\2\2\u0144"+
+		"\3\2\2\2\u0141\u0142\3\2\2\2\u0142\u0152\7>\2\2\u0143\u0144\7\61\2\2\u0144"+
 		"\u0145\5\2\2\2\u0145\u014d\5\30\r\2\u0146\u0147\5\2\2\2\u0147\u0148\7"+
 		"\13\2\2\u0148\u0149\5\2\2\2\u0149\u014a\5\30\r\2\u014a\u014c\3\2\2\2\u014b"+
 		"\u0146\3\2\2\2\u014c\u014f\3\2\2\2\u014d\u014b\3\2\2\2\u014d\u014e\3\2"+
@@ -4159,14 +4169,14 @@ public class M2Parser extends Parser {
 		"\2\2\u0183\u0184\3\2\2\2\u0184\27\3\2\2\2\u0185\u018a\5\16\b\2\u0186\u018a"+
 		"\5\22\n\2\u0187\u018a\5\20\t\2\u0188\u018a\5\26\f\2\u0189\u0185\3\2\2"+
 		"\2\u0189\u0186\3\2\2\2\u0189\u0187\3\2\2\2\u0189\u0188\3\2\2\2\u018a\31"+
-		"\3\2\2\2\u018b\u018c\7,\2\2\u018c\u018d\5\2\2\2\u018d\u018e\7<\2\2\u018e"+
+		"\3\2\2\2\u018b\u018c\7,\2\2\u018c\u018d\5\2\2\2\u018d\u018e\7=\2\2\u018e"+
 		"\u018f\5\2\2\2\u018f\u0190\7\37\2\2\u0190\u0191\5\2\2\2\u0191\u0192\5"+
 		"\30\r\2\u0192\u0193\5\2\2\2\u0193\u0194\7\25\2\2\u0194\u0198\5\2\2\2\u0195"+
 		"\u0197\5&\24\2\u0196\u0195\3\2\2\2\u0197\u019a\3\2\2\2\u0198\u0196\3\2"+
 		"\2\2\u0198\u0199\3\2\2\2\u0199\33\3\2\2\2\u019a\u0198\3\2\2\2\u019b\u01a6"+
 		"\5\6\4\2\u019c\u019e\7\65\2\2\u019d\u019f\7\64\2\2\u019e\u019d\3\2\2\2"+
 		"\u019e\u019f\3\2\2\2\u019f\u01a1\3\2\2\2\u01a0\u019c\3\2\2\2\u01a0\u01a1"+
-		"\3\2\2\2\u01a1\u01a2\3\2\2\2\u01a2\u01a3\7\b\2\2\u01a3\u01a5\7<\2\2\u01a4"+
+		"\3\2\2\2\u01a1\u01a2\3\2\2\2\u01a2\u01a3\7\b\2\2\u01a3\u01a5\7=\2\2\u01a4"+
 		"\u01a0\3\2\2\2\u01a5\u01a8\3\2\2\2\u01a6\u01a4\3\2\2\2\u01a6\u01a7\3\2"+
 		"\2\2\u01a7\u01a9\3\2\2\2\u01a8\u01a6\3\2\2\2\u01a9\u01af\5\2\2\2\u01aa"+
 		"\u01b0\5\n\6\2\u01ab\u01ac\7\37\2\2\u01ac\u01ad\5\2\2\2\u01ad\u01ae\5"+
@@ -4197,22 +4207,22 @@ public class M2Parser extends Parser {
 		"\u01f5\3\2\2\2\u01f8\u01f6\3\2\2\2\u01f8\u01f7\3\2\2\2\u01f9\u01fa\3\2"+
 		"\2\2\u01fa\u01fc\5\2\2\2\u01fb\u01fd\7\23\2\2\u01fc\u01fb\3\2\2\2\u01fc"+
 		"\u01fd\3\2\2\2\u01fd\u01fe\3\2\2\2\u01fe\u01ff\5\2\2\2\u01ff\'\3\2\2\2"+
-		"\u0200\u0201\7!\2\2\u0201\u0202\5\2\2\2\u0202\u020f\7=\2\2\u0203\u0204"+
-		"\5\2\2\2\u0204\u0205\7\61\2\2\u0205\u020a\7=\2\2\u0206\u0207\7\13\2\2"+
-		"\u0207\u0209\7=\2\2\u0208\u0206\3\2\2\2\u0209\u020c\3\2\2\2\u020a\u0208"+
+		"\u0200\u0201\7!\2\2\u0201\u0202\5\2\2\2\u0202\u020f\7>\2\2\u0203\u0204"+
+		"\5\2\2\2\u0204\u0205\7\61\2\2\u0205\u020a\7>\2\2\u0206\u0207\7\13\2\2"+
+		"\u0207\u0209\7>\2\2\u0208\u0206\3\2\2\2\u0209\u020c\3\2\2\2\u020a\u0208"+
 		"\3\2\2\2\u020a\u020b\3\2\2\2\u020b\u020d\3\2\2\2\u020c\u020a\3\2\2\2\u020d"+
 		"\u020e\7\62\2\2\u020e\u0210\3\2\2\2\u020f\u0203\3\2\2\2\u020f\u0210\3"+
 		"\2\2\2\u0210\u0211\3\2\2\2\u0211\u0212\5\2\2\2\u0212\u0213\7\20\2\2\u0213"+
 		"\u0215\5\2\2\2\u0214\u0216\7.\2\2\u0215\u0214\3\2\2\2\u0215\u0216\3\2"+
 		"\2\2\u0216\u0217\3\2\2\2\u0217\u0218\5\2\2\2\u0218\u0219\5<\37\2\u0219"+
 		")\3\2\2\2\u021a\u021c\7#\2\2\u021b\u021a\3\2\2\2\u021b\u021c\3\2\2\2\u021c"+
-		"\u021d\3\2\2\2\u021d\u021e\5\2\2\2\u021e\u021f\7<\2\2\u021f\u0220\5\2"+
+		"\u021d\3\2\2\2\u021d\u021e\5\2\2\2\u021e\u021f\7=\2\2\u021f\u0220\5\2"+
 		"\2\2\u0220\u0221\7\37\2\2\u0221\u0222\5\2\2\2\u0222\u0228\5\30\r\2\u0223"+
 		"\u0224\5\2\2\2\u0224\u0225\7\20\2\2\u0225\u0226\5\2\2\2\u0226\u0227\5"+
 		"\b\5\2\u0227\u0229\3\2\2\2\u0228\u0223\3\2\2\2\u0228\u0229\3\2\2\2\u0229"+
-		"+\3\2\2\2\u022a\u022b\7!\2\2\u022b\u022c\5\2\2\2\u022c\u0239\7=\2\2\u022d"+
-		"\u022e\5\2\2\2\u022e\u022f\7\61\2\2\u022f\u0234\7=\2\2\u0230\u0231\7\13"+
-		"\2\2\u0231\u0233\7=\2\2\u0232\u0230\3\2\2\2\u0233\u0236\3\2\2\2\u0234"+
+		"+\3\2\2\2\u022a\u022b\7!\2\2\u022b\u022c\5\2\2\2\u022c\u0239\7>\2\2\u022d"+
+		"\u022e\5\2\2\2\u022e\u022f\7\61\2\2\u022f\u0234\7>\2\2\u0230\u0231\7\13"+
+		"\2\2\u0231\u0233\7>\2\2\u0232\u0230\3\2\2\2\u0233\u0236\3\2\2\2\u0234"+
 		"\u0232\3\2\2\2\u0234\u0235\3\2\2\2\u0235\u0237\3\2\2\2\u0236\u0234\3\2"+
 		"\2\2\u0237\u0238\7\62\2\2\u0238\u023a\3\2\2\2\u0239\u022d\3\2\2\2\u0239"+
 		"\u023a\3\2\2\2\u023a\u023b\3\2\2\2\u023b\u023c\5\2\2\2\u023c\u023d\7\20"+
@@ -4226,19 +4236,19 @@ public class M2Parser extends Parser {
 		"\u0250\3\2\2\2\u0253\u0255\7\65\2\2\u0254\u0253\3\2\2\2\u0255\u0258\3"+
 		"\2\2\2\u0256\u0254\3\2\2\2\u0256\u0257\3\2\2\2\u0257\u0259\3\2\2\2\u0258"+
 		"\u0256\3\2\2\2\u0259\u025a\7\t\2\2\u025a-\3\2\2\2\u025b\u025c\7!\2\2\u025c"+
-		"\u025d\5\2\2\2\u025d\u025e\7=\2\2\u025e\u0269\5\2\2\2\u025f\u0260\7\61"+
-		"\2\2\u0260\u0265\7=\2\2\u0261\u0262\7\13\2\2\u0262\u0264\7=\2\2\u0263"+
+		"\u025d\5\2\2\2\u025d\u025e\7>\2\2\u025e\u0269\5\2\2\2\u025f\u0260\7\61"+
+		"\2\2\u0260\u0265\7>\2\2\u0261\u0262\7\13\2\2\u0262\u0264\7>\2\2\u0263"+
 		"\u0261\3\2\2\2\u0264\u0267\3\2\2\2\u0265\u0263\3\2\2\2\u0265\u0266\3\2"+
 		"\2\2\u0266\u0268\3\2\2\2\u0267\u0265\3\2\2\2\u0268\u026a\7\62\2\2\u0269"+
 		"\u025f\3\2\2\2\u0269\u026a\3\2\2\2\u026a\u026b\3\2\2\2\u026b\u026c\5\2"+
-		"\2\2\u026c\u026d\7\20\2\2\u026d\u026e\5\2\2\2\u026e\u026f\5\16\b\2\u026f"+
-		"\u0274\5\2\2\2\u0270\u0271\7\60\2\2\u0271\u0272\5\2\2\2\u0272\u0273\5"+
-		"\16\b\2\u0273\u0275\3\2\2\2\u0274\u0270\3\2\2\2\u0275\u0276\3\2\2\2\u0276"+
+		"\2\2\u026c\u026d\7\20\2\2\u026d\u026e\5\2\2\2\u026e\u0274\5\16\b\2\u026f"+
+		"\u0270\5\2\2\2\u0270\u0271\7\60\2\2\u0271\u0272\5\2\2\2\u0272\u0273\5"+
+		"\16\b\2\u0273\u0275\3\2\2\2\u0274\u026f\3\2\2\2\u0275\u0276\3\2\2\2\u0276"+
 		"\u0274\3\2\2\2\u0276\u0277\3\2\2\2\u0277/\3\2\2\2\u0278\u027c\5(\25\2"+
 		"\u0279\u027c\5,\27\2\u027a\u027c\5.\30\2\u027b\u0278\3\2\2\2\u027b\u0279"+
 		"\3\2\2\2\u027b\u027a\3\2\2\2\u027c\61\3\2\2\2\u027d\u027e\7%\2\2\u027e"+
 		"\u027f\5\2\2\2\u027f\u0280\t\13\2\2\u0280\u028b\5\2\2\2\u0281\u0282\7"+
-		"\61\2\2\u0282\u0287\7=\2\2\u0283\u0284\7\13\2\2\u0284\u0286\7=\2\2\u0285"+
+		"\61\2\2\u0282\u0287\7>\2\2\u0283\u0284\7\13\2\2\u0284\u0286\7>\2\2\u0285"+
 		"\u0283\3\2\2\2\u0286\u0289\3\2\2\2\u0287\u0285\3\2\2\2\u0287\u0288\3\2"+
 		"\2\2\u0288\u028a\3\2\2\2\u0289\u0287\3\2\2\2\u028a\u028c\7\62\2\2\u028b"+
 		"\u0281\3\2\2\2\u028b\u028c\3\2\2\2\u028c\u028d\3\2\2\2\u028d\u028e\5\2"+
@@ -4253,9 +4263,9 @@ public class M2Parser extends Parser {
 		"\2\2\u02a7\u02a8\5\2\2\2\u02a8\u02a9\7\b\2\2\u02a9\u02ac\3\2\2\2\u02aa"+
 		"\u02ac\5<\37\2\u02ab\u02a4\3\2\2\2\u02ab\u02aa\3\2\2\2\u02ac\u02ae\3\2"+
 		"\2\2\u02ad\u02af\5\30\r\2\u02ae\u02ad\3\2\2\2\u02ae\u02af\3\2\2\2\u02af"+
-		"\63\3\2\2\2\u02b0\u02b1\7\'\2\2\u02b1\u02b2\5\2\2\2\u02b2\u02ba\7<\2\2"+
+		"\63\3\2\2\2\u02b0\u02b1\7\'\2\2\u02b1\u02b2\5\2\2\2\u02b2\u02ba\7=\2\2"+
 		"\u02b3\u02b4\5\2\2\2\u02b4\u02b5\7\6\2\2\u02b5\u02b6\5\2\2\2\u02b6\u02b7"+
-		"\7<\2\2\u02b7\u02b9\3\2\2\2\u02b8\u02b3\3\2\2\2\u02b9\u02bc\3\2\2\2\u02ba"+
+		"\7=\2\2\u02b7\u02b9\3\2\2\2\u02b8\u02b3\3\2\2\2\u02b9\u02bc\3\2\2\2\u02ba"+
 		"\u02b8\3\2\2\2\u02ba\u02bb\3\2\2\2\u02bb\65\3\2\2\2\u02bc\u02ba\3\2\2"+
 		"\2\u02bd\u02c0\5\60\31\2\u02be\u02c0\5\62\32\2\u02bf\u02bd\3\2\2\2\u02bf"+
 		"\u02be\3\2\2\2\u02c0\67\3\2\2\2\u02c1\u02c2\5\2\2\2\u02c2\u02c3\5\64\33"+
@@ -4269,7 +4279,7 @@ public class M2Parser extends Parser {
 		"\2\2\u02d9\u02db\3\2\2\2\u02da\u02d8\3\2\2\2\u02db\u02dc\7\2\2\3\u02dc"+
 		"9\3\2\2\2\u02dd\u02df\t\f\2\2\u02de\u02dd\3\2\2\2\u02df\u02e2\3\2\2\2"+
 		"\u02e0\u02de\3\2\2\2\u02e0\u02e1\3\2\2\2\u02e1;\3\2\2\2\u02e2\u02e0\3"+
-		"\2\2\2\u02e3\u02e4\7\63\2\2\u02e4\u02e5\5:\36\2\u02e5\u02e6\7B\2\2\u02e6"+
+		"\2\2\2\u02e3\u02e4\7\63\2\2\u02e4\u02e5\5:\36\2\u02e5\u02e6\7C\2\2\u02e6"+
 		"=\3\2\2\2UAajmx\u0080\u0083\u0087\u008d\u0098\u00a3\u00ae\u00b9\u00c3"+
 		"\u00c5\u00d4\u00d9\u00e2\u00ef\u00f4\u00f9\u0100\u0102\u0108\u010a\u010c"+
 		"\u0119\u011c\u012b\u012e\u0133\u0140\u014d\u0152\u015e\u0161\u0172\u0179"+
