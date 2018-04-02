@@ -30,8 +30,8 @@ expression: literal #exprLiteral
           | expression WS* op=('>' | '<' | '<=' | '>=') sp expression #exprInfixCall
           | expression WS* op=('==' | '!=') sp expression #exprInfixCall
           | expression WS* op=('||' | '&&') sp expression #exprInfixCall
-          | 'if' sp cond=expression sp ('do' sp doStat+=blockBody*) sp ('else' sp elseStat+=blockBody*)? DOT #exprIfElse
-          | 'when' sp expr=expression sp is+ sp ('else' sp elseStat+=blockBody*)? DOT #exprWnen
+          | 'if' sp cond=expression sp 'do' sp doStat+=blockBody* (sp 'else' sp elseStat+=blockBody*)? (NL | WS)+ DOT #exprIfElse
+          | 'when' sp expr=expression sp is+ sp ('else' sp elseStat+=blockBody*)? (WS | NL) DOT #exprWnen
           ;
 
 tuple : '(' sp (expression sp (',' sp expression)*)? sp ')'

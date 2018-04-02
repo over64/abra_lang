@@ -124,11 +124,11 @@ class Namespace(val pkg: String,
       val argAdvice = defArg.typeHint.get.toAdviceOpt(specMap)
       val (th, vName, stats) = arg.infer(argAdvice)
 
-      argsVars += ((vName, th))
-      argsStats ++= stats
-
       if (!checkAndInfer(specMap, argTh, th))
         throw new RuntimeException(s"expected ${defArg.typeHint} has $th")
+
+      argsVars += ((vName, th))
+      argsStats ++= stats
     }
 
     if (args.hasNext) throw new RuntimeException("too much args")
@@ -137,7 +137,7 @@ class Namespace(val pkg: String,
       (toCall.lambda.args zip argsVars).map {
         case (defArg, (argVarName, argVarTh)) =>
           val argTh = defArg.typeHint.get.spec(specMap.toMap)
-          if (argTh != argVarTh) {
+          if (argTh != argVarTh && (!argTh.isInstanceOf[FnTh] && !argVarTh.isInstanceOf[FnTh])) {
             val vName = "_bridge" + nextAnonId()
             scope.addLocal(mut = false, vName, argTh)
             argsStats += Ast2.Store(init = true, Ast2.Id(vName), Ast2.Id(argVarName))
@@ -291,7 +291,7 @@ class Namespace(val pkg: String,
       (consType.fields.map(f => Arg(f.name, Some(f.th))) zip argsVars).map {
         case (defArg, (argVarName, argVarTh)) =>
           val argTh = defArg.typeHint.get.spec(specMap.toMap)
-          if (argTh != argVarTh) {
+          if (argTh != argVarTh && (!argTh.isInstanceOf[FnTh] && !argVarTh.isInstanceOf[FnTh])) {
             val vName = "_bridge" + nextAnonId()
             scope.addLocal(mut = false, vName, argTh)
             argsStats += Ast2.Store(init = true, Ast2.Id(vName), Ast2.Id(argVarName))

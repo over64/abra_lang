@@ -89,6 +89,21 @@ object IrUtil {
     }
   }
 
+  implicit class RichFnType(self: Fn) {
+    def toDisclosure(types: mutable.HashMap[String, Type], ptr: Boolean): String = {
+      if (self.closure.nonEmpty) throw new RuntimeException("unexpected closure here")
+
+      val fnIrType = Fn("", Seq.empty, self.args :+ TypeRef("String"), self.ret).toDecl(types)
+      s"{ ${fnIrType}, i8* }" + (if (ptr) "*" else "")
+    }
+
+    def toDisclosureFn(types: mutable.HashMap[String, Type]): String = {
+      if (self.closure.nonEmpty) throw new RuntimeException("unexpected closure here")
+
+      Fn("", Seq.empty, self.args :+ TypeRef("String"), self.ret).toDecl(types)
+    }
+  }
+
   implicit class RichTypeRef(self: TypeRef) {
     def isRegisterFit(types: mutable.HashMap[String, Type]): Boolean = {
       if (self.isRef(types)) return true
@@ -127,12 +142,8 @@ object IrUtil {
         case Fn(name, closure, args, ret) => false
       }
 
-    def isUnion(types: mutable.HashMap[String, Type]): Boolean =
-      types(self.name) match {
-        case Union(name, variants) => true
-        case _ => false
-      }
-
+    def isFn(types: mutable.HashMap[String, Type]): Boolean = types(self.name).isInstanceOf[Fn]
+    def isUnion(types: mutable.HashMap[String, Type]): Boolean = types(self.name).isInstanceOf[Union]
     def isValue(types: mutable.HashMap[String, Type]): Boolean = !self.isRef(types)
 
     def isVoid(types: mutable.HashMap[String, Type]): Boolean =

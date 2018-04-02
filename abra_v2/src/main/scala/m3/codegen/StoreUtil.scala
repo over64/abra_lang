@@ -34,12 +34,13 @@ object StoreUtil {
 
     if (TypeRef(s.name).isRef(ctx.types)) {
       val stripped = irType.stripSuffix("*")
-      val r1, r2, r3, r4 = dctx.nextReg()
+      val r1, r2, r3, r4, r5 = dctx.nextReg()
       ctx.out.println(s"\t%$r1 = getelementptr $stripped, $stripped* null, i64 1")
       ctx.out.println(s"\t%$r2 = ptrtoint $stripped* %$r1 to i64")
-      ctx.out.println(s"\t%$r3 = call i8* @rcAlloc(i64 %$r2)")
-      ctx.out.println(s"\t%$r4 = bitcast i8* %$r3 to $irType")
-      ctx.out.println(s"\tstore $irType %$r4, $irType* %r")
+      ctx.out.println(s"\t%$r3 = load i8* (i64)*,  i8* (i64)** @rcAlloc")
+      ctx.out.println(s"\t%$r4 = call i8* %$r3(i64 %$r2)")
+      ctx.out.println(s"\t%$r5 = bitcast i8* %$r4 to $irType")
+      ctx.out.println(s"\tstore $irType %$r5, $irType* %r")
     }
 
     val lowStats = s.fields.map { f =>
@@ -65,7 +66,8 @@ object StoreUtil {
 
           ctx.out.println(s"""define void @"$dname" ($irType %self) { """)
           ctx.out.println(s"\t%1 = bitcast $irType %self to i8*")
-          ctx.out.println(s"\tcall void @rcInc(i8* %1)")
+          ctx.out.println(s"\t%2 = load void (i8*)*, void (i8*)** @rcInc")
+          ctx.out.println(s"\tcall void %2(i8* %1)")
           ctx.out.println(s"\tret void")
           ctx.out.println("}")
 
@@ -93,7 +95,8 @@ object StoreUtil {
 
           // do free
           ctx.out.println(s"\t%$$cast = bitcast $irType %$$self to i8*")
-          ctx.out.println(s"\t%$$freed = call i8 @rcRelease(i8* %$$cast)")
+          ctx.out.println(s"\t%$$freeFn = load i8 (i8*)*, i8 (i8*)** @rcRelease")
+          ctx.out.println(s"\t%$$freed = call i8 %$$freeFn(i8* %$$cast)")
 
           // free fields if need
           ctx.out.println(s"\t%cond = icmp eq i8 %$$freed, 1")
@@ -222,7 +225,8 @@ object StoreUtil {
 
           ctx.out.println(s"""define void @"$dname" ($irType %self) { """)
           ctx.out.println(s"\t%cast = bitcast $irType %self to i8*")
-          ctx.out.println(s"\tcall void @rcInc(i8* %cast)")
+          ctx.out.println(s"\t%incFn = load void (i8*)*, void (i8*)** @rcInc")
+          ctx.out.println(s"\tcall void %incFn(i8* %cast)")
           ctx.out.println(s"\tret void")
           ctx.out.println("}")
 
@@ -239,7 +243,8 @@ object StoreUtil {
 
           ctx.out.println(s"""define void @"$dname" ($irType %self) { """)
           ctx.out.println(s"\t%cast = bitcast $irType %self to i8*")
-          ctx.out.println(s"\t%freed = call i8 @rcRelease(i8* %cast)")
+          ctx.out.println(s"\t%freeFn = load i8 (i8*)*, i8 (i8*)** @rcRelease")
+          ctx.out.println(s"\t%freed = call i8 %freeFn(i8* %cast)")
           ctx.out.println(s"\tret void")
           ctx.out.println("}")
 

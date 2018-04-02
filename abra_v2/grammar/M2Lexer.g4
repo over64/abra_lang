@@ -69,7 +69,7 @@ MatchId: '$' VarId ;
 mode llvm ;
 LLVM_NL: '\r'? '\n' { start_llvm_ws = true; System.out.println("nl");  };
 LLVM_WS: [ \t]+ { start_llvm_ws = true; System.out.println("ws");  };
-IrLine: ~[ \t\r\n\\.]+ { start_llvm_ws = false; System.out.println("ir_line"); };
+IrLine: ~[ \t\r\n.]+ { start_llvm_ws = false; System.out.println("ir_line"); };
 LL_End: { start_llvm_ws ==  true }? '.' { popMode(); System.out.println("ir_end"); };
 LL_Dot: '.' { System.out.println("ir_dot"); } ;
 //IrLiteral: (LLVM_NL | LLVM_WS | IrLine | LL_Dot)* LL_End ;

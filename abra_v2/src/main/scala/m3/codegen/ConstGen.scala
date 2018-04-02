@@ -57,9 +57,10 @@ object ConstGen {
     val lowCode = s"""@$name = private unnamed_addr constant [${encoded.bytesLen} x i8] c"${encoded.str}""""
     val lowDef = Ast2.Def(id, Ast2.TypeRef("\\ -> String"), Seq.empty, Seq.empty, Ast2.LLCode(
       s"""
-         |%1 = call i8* @rcAlloc(i64 $len)
-         |call void @llvm.memcpy.p0i8.p0i8.i64(i8* %1, i8* getelementptr inbounds ([$len x i8], [$len x i8]* @$name, i32 0, i32 0), i64 $len, i32 1, i1 false)
-         |ret i8* %1
+         |%1 = load i8* (i64)*, i8* (i64)** @rcAlloc
+         |%2 = call i8* %1(i64 $len)
+         |call void @llvm.memcpy.p0i8.p0i8.i64(i8* %2, i8* getelementptr inbounds ([$len x i8], [$len x i8]* @$name, i32 0, i32 0), i64 $len, i32 1, i1 false)
+         |ret i8* %2
             """.stripMargin
     ), isAnon = true)
 

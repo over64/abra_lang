@@ -1,9 +1,9 @@
 llvm
   @.printfInt = private constant [3 x i8] c"%d\00", align 1
   @.printfStr = private constant [3 x i8] c"%s\00", align 1
+  @pool = global %MemPool zeroinitializer
   declare i32 @printf(i8*,...)
   declare i32 @puts(i8*)
-  @pool = global %MemPool zeroinitializer
   .
 
 type None = llvm void .
@@ -11,12 +11,18 @@ type Bool = llvm i8 .
 type Int  = llvm i32 .
 type Long = llvm i64 .
 type String = ref llvm i8* .
-type Node = (left: Node | None, right: Node | None)
-type Stat = (iters: Int, depth: Int, sum: Int)
+
+def toLong = self: Int -> llvm
+  %1 = zext i32 %self to i64
+  ret i64 %1 .Long
 
 def + = self: Int, other: Int -> llvm
   %1 = add nsw i32 %self, %other
   ret i32 %1 .Int
+
+def add = self: Long, other: Long -> llvm
+  %1 = add nsw i64 %self, %other
+  ret i64 %1 .Long
 
 def - = self: Int, other: Int -> llvm
   %1 = sub nsw i32 %self, %other
@@ -27,57 +33,6 @@ def > = self: Int, other: Int -> llvm
   %2 = zext i1 %1 to i8
   ret i8 %2 .Bool
 
-def < = self: Int, other: Int -> llvm
-  %1 = icmp slt i32 %self, %other
-  %2 = zext i1 %1 to i8
-  ret i8 %2 .Bool
-
-def shl = self: Int, shift: Int -> llvm
-  %1 = shl i32 %self, %shift
-  ret i32 %1 .Int
-
-def print = self: String -> llvm
-  %format = bitcast [3 x i8]* @.printfStr to i8*
-  call i32 (i8*,...) @printf(i8* %format, i8* %self)
-  ret void .None
-
-def printInt = self: Int -> llvm
-    %format = bitcast [3 x i8]* @.printfInt to i8*
-    call i32 (i8*,...) @printf(i8* %format, i32 %self)
-    ret void .None
-
-type Range = (from: Int, to: Int, step: Int)
-
-def each = self: Range, fn: \Int -> None ->
-  i = self.from
-  while i < self.to do
-    fn(i)
-    i = i + self.step ..
-
-def mkTree = depth: Int ->
-  if depth > 0 do
-    Node(mkTree(depth - 1), mkTree(depth - 1))
-  else
-    Node(none, none) ..Node
-
-def checksum = self: Node ->
-  sum = 1
-
-  when self.left  is l: Node do
-     sum = sum + l.checksum() .
-  when self.right is r: Node do
-     sum = sum + r.checksum() .
-
-  sum .Int
-
-def toLong = self: Int -> llvm
-  %1 = zext i32 %self to i64
-  ret i64 %1 .Long
-
-def add = self: Long, other: Long -> llvm
-  %1 = add nsw i64 %self, %other
-  ret i64 %1 .Long
-
 def >= = self: Long, other: Long -> llvm
   %1 = icmp sge i64 %self, %other
   %2 = zext i1 %1 to i8
@@ -87,6 +42,17 @@ def <= = self: Long, other: Long -> llvm
   %1 = icmp sle i64 %self, %other
   %2 = zext i1 %1 to i8
   ret i8 %2 .Bool
+
+def < = self: Int, other: Int -> llvm
+  %1 = icmp slt i32 %self, %other
+  %2 = zext i1 %1 to i8
+  ret i8 %2 .Bool
+
+def print = self: String -> llvm
+  %format = bitcast [3 x i8]* @.printfStr to i8*
+  call i32 (i8*,...) @printf(i8* %format, i8* %self)
+  ret void .None
+
 
 type Ptr = llvm i8* .
 type Allocator = (alloc  : \Long -> Ptr,
@@ -133,7 +99,7 @@ type MemPage = llvm {i8*, i64}* .
 
 def mkMemPage = llvm
   %1 = load i8* (i64)*, i8* (i64)** @rcAlloc
-  %2 = call i8* %1(i64 1048576) ; 1 page
+  %2 = call i8* %1(i64 4096) ; 1 page
   %mp = bitcast i8* %2 to {i8*, i64}*
 
   %mp.next = getelementptr {i8*, i64}, {i8*, i64}* %mp, i64 0, i32 0
@@ -151,12 +117,6 @@ def chain = self: MemPage, child: MemPage -> llvm
   ret void .None
 
 def mpFree = self: MemPage -> llvm
-  %selfAddr = ptrtoint {i8*, i64}* %self to i64
-  %nullCheck = icmp eq i64 %selfAddr, 0
-  br i1 %nullCheck, label %endNull, label %begin
-endNull:
-  ret void
-begin:
   %1 = getelementptr {i8*, i64}, {i8*, i64}* %self, i64 0, i32 0
   %2 = load i8*, i8** %1
   %3 = bitcast i8* %2 to {i8*, i64}*
@@ -173,21 +133,10 @@ end:
   %6 = call i8 %5(i8* %4)
   ret void .None
 
-def nextPage = self: MemPage -> llvm
-  %1 = getelementptr {i8*, i64}, {i8*, i64}* %self, i64 0, i32 0
-  %2 = load i8*, i8** %1
-  %3 = bitcast i8* %2 to {i8*, i64}*
-  ret {i8*, i64}* %3 .MemPage
-
 def offset = self: MemPage -> llvm
   %offsetPtr  = getelementptr {i8*, i64}, {i8*, i64}* %self, i64 0, i32 1
   %offset = load i64, i64* %offsetPtr
   ret i64 %offset .Long
-
-def setOffset = self: MemPage, offset: Long -> llvm
-  %offsetPtr  = getelementptr {i8*, i64}, {i8*, i64}* %self, i64 0, i32 1
-  store i64 %offset, i64* %offsetPtr
-  ret void .None
 
 def alloc = self: MemPage, newOffset: Long -> llvm
   %offsetPtr  = getelementptr {i8*, i64}, {i8*, i64}* %self, i64 0, i32 1
@@ -220,7 +169,7 @@ def poolAlloc = size: Long ->
   root = loadRoot()
   rootNewOffset = root.offset() add size
 
-  if rootNewOffset <= 1048576.toLong() do
+  if rootNewOffset <= 4096.toLong() do
     root.alloc(rootNewOffset)
   else
     pool = loadPool()
@@ -243,9 +192,7 @@ def poolRelease = obj: Ptr -> llvm
 
 def poolFree = self: MemPool ->
   root = self.root
-  root.setOffset(24.toLong())
-  next = root.nextPage()
-  next.mpFree() .
+  root.mpFree() .
 
 
 def withPool = self: MemPool, action: -> None ->
@@ -262,29 +209,26 @@ def withPool = self: MemPool, action: -> None ->
   self.poolFree() .
 
 def main =
-  minDepth = 4
-  maxDepth = 21 # sys.arg(0).toInt()
-
-  if maxDepth < minDepth + 2 do
-    maxDepth = minDepth + 2 .
+  x = 0
 
   mkMemPool() withPool lambda
-    tree = mkTree(maxDepth + 1)
-    print('stretch tree of depth '); printInt(maxDepth + 1); print('\t check: '); printInt(tree.checksum()); print('\n') .
-
-  Range(minDepth, maxDepth, 2) each lambda depth: Int ->
-    iters    = 1 shl (maxDepth + minDepth - depth)
-    totalSum = 0
-    pool = mkMemPool()
-
-    Range(1, iters + 1, 1) each lambda i: Int ->
-      pool withPool lambda
-        totalSum = totalSum + mkTree(depth).checksum() ..
-
-    printInt(iters); print('\t trees of depth '); printInt(depth); print('\t check: '); printInt(totalSum); print('\n') .
+    x = 1 # Fixme: workaround
+    i = 0
+    while i < 1024 do
+      print('hello, kitty!')
+      i = i + 1 ..
 
   mkMemPool() withPool lambda
-    llTree = mkTree(maxDepth)
-    print('long lived tree of depth '); printInt(maxDepth); print('\t check: '); printInt(llTree.checksum()); print('\n') .
+    x = 1 # Fixme: workaround
+    i = 0
+    while i < 1024 do
+      print('hello, kitty!')
+      i = i + 1 ..
 
+  mkMemPool() withPool lambda
+    x = 1 # Fixme: workaround
+    i = 0
+    while i < 1024 do
+      print('hello, kitty!')
+      i = i + 1 ..
   0 .

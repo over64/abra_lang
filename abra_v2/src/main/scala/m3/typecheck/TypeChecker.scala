@@ -58,7 +58,7 @@ object TypeChecker {
                 .getOrElse(throw new RuntimeException(s"no such type ${sth.name}"))
               match {
                 case sd: StructDecl =>
-                  sd.fields.find(fd => fd.name == fieldId.value).get.th
+                  sd.fields.find(fd => fd.name == fieldId.value).getOrElse(throw new RuntimeException(s"no such field $fieldId")).th
                 case _ => throw new RuntimeException(s"no such field ${fieldId.value} on type $fth")
               }
             case sth: StructTh =>

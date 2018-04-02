@@ -20,24 +20,25 @@ class _01Pass_Test extends FunSuite with LowUtil {
     mod.defineType(tIntAndString)
     mod.defineType(Fn("\\ -> None", Seq.empty, Seq.empty, nil))
     mod.defineType(Fn("Closure1", Seq(Local(int)), Seq.empty, int))
+    mod.defineType(Fn("\\ -> Int", Seq.empty, Seq.empty, int))
     mod.defineType(Fn("TBar",
       closure = Seq.empty,
-      args = Seq(int, vec2, u3, TypeRef("\\ -> None"), TypeRef("Closure1"), string, intAndString, u1, TypeRef("\\ -> Int")),
+      args = Seq(int, vec2, u3, TypeRef("\\ -> None"), TypeRef("\\ -> Int"), string, intAndString, u1, TypeRef("\\ -> Int")),
       ret = nil))
 
     mod.defineDef(Def("baz", TypeRef("TBar"), Seq.empty,
-      args = Seq("x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9"),
+      args = Seq("x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8"),
       code = AbraCode(
         vars = Map(),
         stats = Seq(Ret(None))
       )))
 
     mod.defineDef(Def("bar", TypeRef("TBar"), Seq.empty,
-      args = Seq("x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9"),
+      args = Seq("x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8"),
       code = AbraCode(
         vars = Map(),
         stats = Seq(
-          Call(Id("baz"), Seq(Id("x1"), Id("x2"), Id("x3"), Id("x4"), Id("x5"), Id("x6"), Id("x7"), Id("x8"), Id("x9"))),
+          Call(Id("baz"), Seq(Id("x1"), Id("x2"), Id("x3"), Id("x4"), Id("x5"), Id("x6"), Id("x7"), Id("x8"))),
           Ret(None))
       )))
 
@@ -53,7 +54,7 @@ class _01Pass_Test extends FunSuite with LowUtil {
         "x8" -> u1
       ),
       stats = Seq(
-        Call(Id("bar"), Seq(Id("x1"), Id("x2"), Id("x3"), Id("x4"), Id("x5"), Id("x6"), Id("x7"), Id("x8"), Id("main"))),
+        Call(Id("bar"), Seq(Id("x1"), Id("x2"), Id("x3"), Id("x4"), Id("x5"), Id("x6"), Id("x7"), Id("x8"))),
         Store(init = true, Id("x1"), Call(i0)),
         Ret(Some("x1"))
       ))))
