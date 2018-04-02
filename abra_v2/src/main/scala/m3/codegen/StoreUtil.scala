@@ -82,38 +82,26 @@ object StoreUtil {
           val irType = TypeRef(s.name).toValue(ctx.types)
           val stripped = irType.stripSuffix("*")
 
-          ctx.out.println(s"""define void @"$dname" ($irType %$$self) { """)
-          // backup fields
+
+          ctx.out.println(s"""define void @"$dname.inner" (i8* %obj) { """)
+          ctx.out.println(s"\t%$$self = bitcast i8* %obj to $stripped*")
           s.fields.zipWithIndex.foreach {
             case (f, idx) =>
               if (f.ref.isNeedBeforeAfterStore(ctx.types)) {
                 val typeRef = f.ref.toValue(ctx.types)
                 ctx.out.println(s"\t%${f.name} = getelementptr $stripped, $stripped* %$$self, i64 0, i32 $idx")
                 ctx.out.println(s"\t%${f.name}.v = load $typeRef, $typeRef* %${f.name}")
-              }
-          }
-
-          // do free
-          ctx.out.println(s"\t%$$cast = bitcast $irType %$$self to i8*")
-          ctx.out.println(s"\t%$$freeFn = load i8 (i8*)*, i8 (i8*)** @rcRelease")
-          ctx.out.println(s"\t%$$freed = call i8 %$$freeFn(i8* %$$cast)")
-
-          // free fields if need
-          ctx.out.println(s"\t%cond = icmp eq i8 %$$freed, 1")
-          ctx.out.println(s"\tbr i1 %cond, label %free, label %end")
-          ctx.out.println(s"free:")
-
-          s.fields.zipWithIndex.foreach {
-            case (f, idx) =>
-              if (f.ref.isNeedBeforeAfterStore(ctx.types)) {
-                val typeRef = f.ref.toValue(ctx.types)
                 val fRelease = "\"" + s"${f.ref.name}.$$release" + "\""
                 ctx.out.println(s"\tcall void @$fRelease($typeRef %${f.name}.v)")
               }
           }
-          ctx.out.println(s"\tbr label %end")
+          ctx.out.println(s"\tret void")
+          ctx.out.println("}")
 
-          ctx.out.println(s"end:")
+          ctx.out.println(s"""define void @"$dname" ($irType %$$self) { """)
+          ctx.out.println(s"\t%$$freeFn = load void (i8*, void (i8*)*)*, void (i8*, void (i8*)*)** @rcRelease")
+          ctx.out.println(s"\t%obj = bitcast $stripped* %$$self to i8*")
+          ctx.out.println(s"""\tcall void %$$freeFn(i8* %obj, void (i8*)* @"$dname.inner")""")
           ctx.out.println(s"\tret void")
           ctx.out.println("}")
 
@@ -241,10 +229,14 @@ object StoreUtil {
           val irType = TypeRef(l.name).toValue(ctx.types)
           val stripped = irType.stripSuffix("*")
 
+          ctx.out.println(s"""define void @"$dname.inner" (i8* %obj) { """)
+          ctx.out.println(s"\tret void")
+          ctx.out.println("}")
+
           ctx.out.println(s"""define void @"$dname" ($irType %self) { """)
           ctx.out.println(s"\t%cast = bitcast $irType %self to i8*")
-          ctx.out.println(s"\t%freeFn = load i8 (i8*)*, i8 (i8*)** @rcRelease")
-          ctx.out.println(s"\t%freed = call i8 %freeFn(i8* %cast)")
+          ctx.out.println(s"\t%freeFn = load void (i8*, void (i8*)*)*, void (i8*, void (i8*)*)** @rcRelease")
+          ctx.out.println(s"""\tcall void %freeFn(i8* %cast,  void (i8*)* @"$dname.inner")""")
           ctx.out.println(s"\tret void")
           ctx.out.println("}")
 

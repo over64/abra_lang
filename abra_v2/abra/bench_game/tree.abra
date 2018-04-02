@@ -4,6 +4,9 @@ llvm
   declare i32 @printf(i8*,...)
   declare i32 @puts(i8*)
   @pool = global %MemPool zeroinitializer
+  define void @poolRelease(i8* %obj, void (i8*)* %releaseCallback) {
+    ret void
+  }
   .
 
 type None = llvm void .
@@ -91,12 +94,8 @@ def <= = self: Long, other: Long -> llvm
 type Ptr = llvm i8* .
 type Allocator = (alloc  : \Long -> Ptr,
                   inc    : \Ptr -> None,
-                  release: \Ptr -> Bool)
+                  release: \Ptr, \Ptr -> None -> None)
 
-def emptyAlloc = llvm
-  %a = alloca %Allocator
-  %ret = load %Allocator, %Allocator* %a
-  ret %Allocator %ret .Allocator
 
 def loadAlloc = llvm
   %a = alloca %Allocator
@@ -107,11 +106,11 @@ def loadAlloc = llvm
 
   %old.alloc   = load i8* (i64)*,  i8* (i64)**   @rcAlloc
   %old.inc     = load void (i8*)*, void (i8*)**  @rcInc
-  %old.release = load i8 (i8*)*,   i8 (i8*)**    @rcRelease
+  %old.release = load void (i8*, void (i8*)*)*, void (i8*, void (i8*)*)**    @rcRelease
 
   store i8* (i64)* %old.alloc, i8* (i64)**  %a.alloc
   store void (i8*)* %old.inc, void (i8*)**  %a.inc
-  store i8 (i8*)* %old.release, i8 (i8*)**  %a.release
+  store void (i8*, void (i8*)*)* %old.release, void (i8*, void (i8*)*)**  %a.release
 
   %ret = load %Allocator, %Allocator* %a
   ret %Allocator %ret .Allocator
@@ -124,7 +123,7 @@ def storeAlloc = alloc: Allocator -> llvm
 
   store i8* (i64)* %a.alloc, i8* (i64)**  @rcAlloc
   store void (i8*)* %a.inc, void (i8*)**  @rcInc
-  store i8 (i8*)* %a.release, i8 (i8*)**  @rcRelease
+  store void (i8*, void (i8*)*)* %a.release, void (i8*, void (i8*)*)**  @rcRelease
 
   ret void .None
 
@@ -150,6 +149,9 @@ def chain = self: MemPage, child: MemPage -> llvm
   store i8* %2, i8** %1
   ret void .None
 
+def mpFreeInner = self: Ptr -> llvm
+  ret void .None
+
 def mpFree = self: MemPage -> llvm
   %selfAddr = ptrtoint {i8*, i64}* %self to i64
   %nullCheck = icmp eq i64 %selfAddr, 0
@@ -169,8 +171,8 @@ freeChild:
   br label %end
 end:
   %4 = bitcast {i8*, i64}* %self to i8*
-  %5 = load i8 (i8*)*, i8 (i8*)** @rcRelease
-  %6 = call i8 %5(i8* %4)
+  %5 = load void (i8*, void (i8*)*)*, void (i8*, void (i8*)*)** @rcRelease
+  call void %5(i8* %4, void (i8*)* @mpFreeInner)
   ret void .None
 
 def nextPage = self: MemPage -> llvm
@@ -202,6 +204,21 @@ def alloc = self: MemPage, newOffset: Long -> llvm
 
 type MemPool = (parent: Allocator, root: MemPage)
 def mkMemPool = MemPool(loadAlloc(), mkMemPage()) .
+
+def mkPoolAlloc = llvm
+  %a = alloca %Allocator
+
+  %a.alloc   = getelementptr %Allocator, %Allocator* %a, i64 0, i32 0
+  %a.inc     = getelementptr %Allocator, %Allocator* %a, i64 0, i32 1
+  %a.release = getelementptr %Allocator, %Allocator* %a, i64 0, i32 2
+
+  store i8* (i64)* @poolAlloc, i8* (i64)**  %a.alloc
+  store void (i8*)* @poolInc, void (i8*)**  %a.inc
+  store void (i8*, void (i8*)*)* @poolRelease, void (i8*, void (i8*)*)**  %a.release
+
+  %ret = load %Allocator, %Allocator* %a
+  ret %Allocator %ret .Allocator
+
 def bind = self: MemPool -> llvm
   %1 = load %MemPool, %MemPool* %self
   store %MemPool %1, %MemPool* @pool
@@ -238,9 +255,6 @@ def poolAlloc = size: Long ->
 def poolInc = obj: Ptr -> llvm
   ret void .None
 
-def poolRelease = obj: Ptr -> llvm
-  ret i8 0 .Bool
-
 def poolFree = self: MemPool ->
   root = self.root
   root.setOffset(24.toLong())
@@ -249,11 +263,7 @@ def poolFree = self: MemPool ->
 
 
 def withPool = self: MemPool, action: -> None ->
-   # Fixme: workaround for pass fn ptr to struct constructor
-  curr = emptyAlloc()
-  curr.alloc = poolAlloc
-  curr.inc = poolInc
-  curr.release = poolRelease
+  curr = mkPoolAlloc()
 
   self.bind()
   storeAlloc(curr)

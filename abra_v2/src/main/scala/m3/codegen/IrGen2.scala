@@ -563,7 +563,7 @@ object IrGen2 {
         |    store i64 %newRc, i64* %2
         |    ret void
         |}
-        |define i8 @defRcRelease(i8* %obj) {
+        |define void @defRcRelease(i8* %obj, void (i8*)* %releaseFn) {
         |    %1 = getelementptr i8, i8* %obj, i64 -8
         |    %2 = bitcast i8* %1 to i64*
         |    %3 = getelementptr i64, i64* %2, i64 0
@@ -572,16 +572,17 @@ object IrGen2 {
         |
         |    br i1 %4, label %free, label %store
         |  free:
+        |    call void %releaseFn(i8* %obj)
         |    call void @free(i8* %1)
-        |    ret i8 1
+        |    ret void
         |  store:
         |    %newRc = add nsw i64 %rc, -1
         |    store i64 %newRc, i64* %3
-        |    ret i8 0
+        |    ret void
         |}
         |@rcAlloc = global i8* (i64)* @defRcAlloc
         |@rcInc = global void (i8*)* @defRcInc
-        |@rcRelease = global i8 (i8*)* @defRcRelease
+        |@rcRelease = global void (i8*, void (i8*)*)* @defRcRelease
       """.stripMargin)
 
 
