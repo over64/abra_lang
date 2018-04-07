@@ -120,36 +120,47 @@ object StoreUtil {
 
           ctx.out.println(s"""define void @"$dname" ($irType %self) { """)
 
-          val uIrType = TypeRef(u.name).toValue(ctx.types)
-          ctx.out.println(s"\t%tag = extractvalue $uIrType %self, 0 ")
-          ctx.out.println(s"\tswitch i8 %tag, label %end [")
-
-          val toGen: Seq[(String, TypeRef)] =
-            u.variants.map { v =>
-              val idx = u.fieldTagValue(v)
-              val br = "br" + idx
-              ctx.out.println(s"\t\ti8 $idx, label %$br")
-              (br, v)
-            }
-
-          ctx.out.println(s"\t]")
-
-          toGen.foreach {
-            case (branch, typeRef) =>
-              val tagIdx = u.fieldTagValue(typeRef)
-              val irIdx = u.fieldIrIndex(typeRef)
-
-              ctx.out.println(s"$branch:")
-              if (typeRef.isNeedBeforeAfterStore(ctx.types)) {
-                val irType = typeRef.toValue(ctx.types)
-                val fAquire = "\"" + s"${typeRef.name}.$$acquire" + "\""
-                ctx.out.println(s"\t%x$tagIdx = extractvalue $uIrType %self, $irIdx")
-                ctx.out.println(s"\tcall void @$fAquire($irType %x$tagIdx)")
-              }
+          u.isNullableUnion(ctx.types) match {
+            case Some(tref) =>
+              ctx.out.println(s"\t%1 = icmp eq $irType %self, null ")
+              ctx.out.println(s"\tbr i1 %1, label %end, label %free")
+              ctx.out.println(s"free:")
+              val fAquire = "\"" + s"${tref.name}.$$acquire" + "\""
+              ctx.out.println(s"\tcall void @$fAquire($irType %self)")
               ctx.out.println(s"\tbr label %end")
-          }
+              ctx.out.println(s"end:")
+            case None =>
+              val uIrType = TypeRef(u.name).toValue(ctx.types)
+              ctx.out.println(s"\t%tag = extractvalue $uIrType %self, 0 ")
+              ctx.out.println(s"\tswitch i8 %tag, label %end [")
 
-          ctx.out.println(s"end:")
+              val toGen: Seq[(String, TypeRef)] =
+                u.variants.map { v =>
+                  val idx = u.fieldTagValue(v)
+                  val br = "br" + idx
+                  ctx.out.println(s"\t\ti8 $idx, label %$br")
+                  (br, v)
+                }
+
+              ctx.out.println(s"\t]")
+
+              toGen.foreach {
+                case (branch, typeRef) =>
+                  val tagIdx = u.fieldTagValue(typeRef)
+                  val irIdx = u.fieldIrIndex(typeRef)
+
+                  ctx.out.println(s"$branch:")
+                  if (typeRef.isNeedBeforeAfterStore(ctx.types)) {
+                    val irType = typeRef.toValue(ctx.types)
+                    val fAquire = "\"" + s"${typeRef.name}.$$acquire" + "\""
+                    ctx.out.println(s"\t%x$tagIdx = extractvalue $uIrType %self, $irIdx")
+                    ctx.out.println(s"\tcall void @$fAquire($irType %x$tagIdx)")
+                  }
+                  ctx.out.println(s"\tbr label %end")
+              }
+
+              ctx.out.println(s"end:")
+          }
           ctx.out.println(s"\tret void")
           ctx.out.println("}")
 
@@ -165,36 +176,48 @@ object StoreUtil {
 
           ctx.out.println(s"""define void @"$dname" ($irType %self) { """)
 
-          val uIrType = TypeRef(u.name).toValue(ctx.types)
-          ctx.out.println(s"\t%tag = extractvalue $uIrType %self, 0 ")
-          ctx.out.println(s"\tswitch i8 %tag, label %end [")
-
-          val toGen: Seq[(String, TypeRef)] =
-            u.variants.map { v =>
-              val idx = u.fieldTagValue(v)
-              val br = "br" + idx
-              ctx.out.println(s"\t\ti8 $idx, label %$br")
-              (br, v)
-            }
-
-          ctx.out.println(s"\t]")
-
-          toGen.foreach {
-            case (branch, typeRef) =>
-              val tagIdx = u.fieldTagValue(typeRef)
-              val irIdx = u.fieldIrIndex(typeRef)
-
-              ctx.out.println(s"$branch:")
-              if (typeRef.isNeedBeforeAfterStore(ctx.types)) {
-                val irType = typeRef.toValue(ctx.types)
-                val fRelease = "\"" + s"${typeRef.name}.$$release" + "\""
-                ctx.out.println(s"\t%x$tagIdx = extractvalue $uIrType %self, $irIdx")
-                ctx.out.println(s"\tcall void @$fRelease($irType %x$tagIdx)")
-              }
+          u.isNullableUnion(ctx.types) match {
+            case Some(tref) =>
+              ctx.out.println(s"\t%1 = icmp eq $irType %self, null ")
+              ctx.out.println(s"\tbr i1 %1, label %end, label %free")
+              ctx.out.println(s"free:")
+              val fRelease = "\"" + s"${tref.name}.$$release" + "\""
+              ctx.out.println(s"\tcall void @$fRelease($irType %self)")
               ctx.out.println(s"\tbr label %end")
+              ctx.out.println(s"end:")
+            case None =>
+              val uIrType = TypeRef(u.name).toValue(ctx.types)
+              ctx.out.println(s"\t%tag = extractvalue $uIrType %self, 0 ")
+              ctx.out.println(s"\tswitch i8 %tag, label %end [")
+
+              val toGen: Seq[(String, TypeRef)] =
+                u.variants.map { v =>
+                  val idx = u.fieldTagValue(v)
+                  val br = "br" + idx
+                  ctx.out.println(s"\t\ti8 $idx, label %$br")
+                  (br, v)
+                }
+
+              ctx.out.println(s"\t]")
+
+              toGen.foreach {
+                case (branch, typeRef) =>
+                  val tagIdx = u.fieldTagValue(typeRef)
+                  val irIdx = u.fieldIrIndex(typeRef)
+
+                  ctx.out.println(s"$branch:")
+                  if (typeRef.isNeedBeforeAfterStore(ctx.types)) {
+                    val irType = typeRef.toValue(ctx.types)
+                    val fRelease = "\"" + s"${typeRef.name}.$$release" + "\""
+                    ctx.out.println(s"\t%x$tagIdx = extractvalue $uIrType %self, $irIdx")
+                    ctx.out.println(s"\tcall void @$fRelease($irType %x$tagIdx)")
+                  }
+                  ctx.out.println(s"\tbr label %end")
+              }
+
+              ctx.out.println(s"end:")
           }
 
-          ctx.out.println(s"end:")
           ctx.out.println(s"\tret void")
           ctx.out.println("}")
 

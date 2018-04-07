@@ -252,7 +252,6 @@ object IrGen2 {
       }
 
     // делаем store
-    // ищем реальный адрес куда store с учетом изврата с union
     if (toTref == whatTref) {
       val irType = toTref.toValue(ctx.types)
       ctx.out.println(s"\tstore $irType $what, $irType* $to")
@@ -307,16 +306,24 @@ object IrGen2 {
               }
               ctx.out.println(s"$brEnd:    ;@@ store end")
             case tag =>
-              val irType = toTref.toValue(ctx.types)
-              val r1 = dctx.nextReg()
-              ctx.out.println(s"\t%$r1 = getelementptr $irType, $irType* $to, i64 0, i32 0")
-              ctx.out.println(s"\tstore i8 $tag, i8* %$r1")
+              u.isNullableUnion(ctx.types) match {
+                case Some(tref) =>
+                  val toIrType = TypeRef(u.name).toValue(ctx.types)
+                  val whatIrType = if (whatTref.isVoid(ctx.types)) toIrType else whatTref.toValue(ctx.types)
+                  val whatStore = if (whatTref.isVoid(ctx.types)) "null" else what
+                  ctx.out.println(s"\tstore $whatIrType $whatStore, $toIrType* $to")
+                case None =>
+                  val irType = toTref.toValue(ctx.types)
+                  val r1 = dctx.nextReg()
+                  ctx.out.println(s"\t%$r1 = getelementptr $irType, $irType* $to, i64 0, i32 0")
+                  ctx.out.println(s"\tstore i8 $tag, i8* %$r1")
 
-              if (!whatTref.isVoid(ctx.types)) {
-                val (tref, _, v) = evalGep(ctx, dctx, toTref, to, Seq(tag.toString))
+                  if (!whatTref.isVoid(ctx.types)) {
+                    val (tref, _, v) = evalGep(ctx, dctx, toTref, to, Seq(tag.toString))
 
-                val toIrType = tref.toValue(ctx.types)
-                ctx.out.println(s"\tstore $toIrType $what, $toIrType* $v")
+                    val toIrType = tref.toValue(ctx.types)
+                    ctx.out.println(s"\tstore $toIrType $what, $toIrType* $v")
+                  }
               }
               ctx.out.println(s";@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ store end")
           }
@@ -464,8 +471,19 @@ object IrGen2 {
       ctx.out.println(s";@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ when begin")
       val (tref, exp) = requireValue(ctx, dctx, evalId(ctx, dctx, id))
       val uIrType = tref.toValue(ctx.types)
-      val tag = dctx.nextReg()
-      ctx.out.println(s"\t%$tag = extractvalue $uIrType $exp, 0 ")
+      var tag: Int = 0
+      val u = ctx.types(tref.name).asInstanceOf[Union]
+
+      u.isNullableUnion(ctx.types) match {
+        case Some(tref) =>
+          val preTag = dctx.nextReg()
+          tag = dctx.nextReg()
+          ctx.out.println(s"\t%$preTag = icmp eq $uIrType $exp, null")
+          ctx.out.println(s"\t%$tag = zext i1 %$preTag to i8")
+        case None =>
+          tag = dctx.nextReg()
+          ctx.out.println(s"\t%$tag = extractvalue $uIrType $exp, 0 ")
+      }
 
       val uType = ctx.types(tref.name).asInstanceOf[Union]
 
@@ -484,7 +502,17 @@ object IrGen2 {
       isAndBranch.foreach {
         case (is, idx, br) =>
           ctx.out.println(s"$br:")
-          evalStat(ctx, dctx, Store(init = true, Id(is.v), Id(id.v, id.props :+ idx.toString)))
+          u.isNullableUnion(ctx.types) match {
+            case Some(tref) =>
+              val destIrType = tref.toPtr(ctx.types);
+              val r = dctx.nextReg()
+              ctx.out.println(s"\t%$r = load $uIrType, $uIrType*  %${id.v}")
+              val fRelease = "\"" + tref.name + ".$acquire" + "\""
+              ctx.out.println(s"\tcall void @$fRelease($uIrType %$r)")
+              ctx.out.println(s"\tstore $uIrType %$r, $destIrType %${is.v}")
+            case None =>
+              evalStat(ctx, dctx, Store(init = true, Id(is.v), Id(id.v, id.props :+ idx.toString)))
+          }
           is.seq.foreach(stat => evalStat(ctx, dctx, stat))
           evalStat(ctx, dctx, Free(Id(is.v)))
           ctx.out.println(s"\tbr label %$brEnd")
@@ -580,9 +608,9 @@ object IrGen2 {
         |    store i64 %newRc, i64* %3
         |    ret void
         |}
-        |@rcAlloc = global i8* (i64)* @defRcAlloc
-        |@rcInc = global void (i8*)* @defRcInc
-        |@rcRelease = global void (i8*, void (i8*)*)* @defRcRelease
+        |@rcAlloc = thread_local(initialexec) global i8* (i64)* @defRcAlloc
+        |@rcInc = thread_local(initialexec) global void (i8*)* @defRcInc
+        |@rcRelease = thread_local(initialexec) global void (i8*, void (i8*)*)* @defRcRelease
       """.stripMargin)
 
 

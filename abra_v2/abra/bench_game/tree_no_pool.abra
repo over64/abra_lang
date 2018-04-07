@@ -264,14 +264,10 @@ def asNode = self: Node | None, callback: \Node -> None -> llvm
   ret void .None
 
 def mkTree = depth: Int ->
-  if depth > 1 do
-    l = Node(mkTree(depth - 2), mkTree(depth - 2))
-    r = Node(mkTree(depth - 2), mkTree(depth - 2))
-    Node(l, r)
-  else if depth > 0 do
+  if depth > 0 do
     Node(mkTree(depth - 1), mkTree(depth - 1))
   else
-    Node(none, none) ...Node
+    Node(none, none) ..Node
 
 def checksum = self: Node ->
   sum = 1
@@ -289,23 +285,19 @@ def main =
   if maxDepth < minDepth + 2 do
     maxDepth = minDepth + 2 .
 
-  mkMemPool() withPool lambda
-    tree = mkTree(maxDepth + 1)
-    print('stretch tree of depth '); printInt(maxDepth + 1); print('\t check: '); printInt(tree.checksum()); print('\n') .
+  tree = mkTree(maxDepth + 1)
+  print('stretch tree of depth '); printInt(maxDepth + 1); print('\t check: '); printInt(tree.checksum()); print('\n')
+
+  llTree = mkTree(maxDepth)
+  print('long lived tree of depth '); printInt(maxDepth); print('\t check: '); printInt(llTree.checksum()); print('\n')
 
   Range(minDepth, maxDepth, 2) each lambda depth: Int ->
     iters    = 1 shl (maxDepth + minDepth - depth)
     totalSum = 0
-    pool = mkMemPool()
 
     Range(1, iters + 1, 1) each lambda i: Int ->
-      pool withPool lambda
-        totalSum = totalSum + mkTree(depth).checksum() ..
+      totalSum = totalSum + mkTree(depth).checksum() .
 
     printInt(iters); print('\t trees of depth '); printInt(depth); print('\t check: '); printInt(totalSum); print('\n') .
-
-  mkMemPool() withPool lambda
-    llTree = mkTree(maxDepth)
-    print('long lived tree of depth '); printInt(maxDepth); print('\t check: '); printInt(llTree.checksum()); print('\n') .
 
   0 .

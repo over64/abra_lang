@@ -58,8 +58,12 @@ object IrUtil {
       case Low(ref, name, llValue) => throw new RuntimeException("oops")
       case Struct(name, fields) =>
         s"{ ${fields.map(f => f.ref.toValue(types)).mkString(", ")} }"
-      case Union(name, variants) =>
-        s"{ i8, ${variants.map(v => if (v.isVoid(types)) "{}" else v.toValue(types)).mkString(", ")} }"
+      case u: Union =>
+        u.isNullableUnion(types) match {
+          case Some(tref) => tref.toValue(types)
+          case None =>
+            s"{ i8, ${u.variants.map(v => if (v.isVoid(types)) "{}" else v.toValue(types)).mkString(", ")} }"
+        }
       case Fn(name, closure, args, ret) =>
         val argsIr = args.map { argRef =>
           if (argRef.isRegisterFit(types)) argRef.toValue(types)
@@ -173,6 +177,14 @@ object IrUtil {
   implicit class RichUnion(self: Union) {
     def fieldTagValue(typeRef: TypeRef): Int = self.variants.indexOf(typeRef)
     def fieldIrIndex(typeRef: TypeRef): Int = fieldTagValue(typeRef) + 1
+    def isNullableUnion(types: mutable.HashMap[String, Type]): Option[TypeRef] = {
+      val tNone = TypeRef("None")
+      if (self.variants.length == 2 && self.variants.contains(tNone)) {
+        val tref = self.variants.find(t => t != tNone).get
+        if (tref.isRef(types)) Some(tref)
+        else None
+      } else None
+    }
   }
 
   def irDefName(name: String) = s"""@"$name""""
