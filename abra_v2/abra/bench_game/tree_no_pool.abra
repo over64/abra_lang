@@ -55,14 +55,14 @@ def <= = self: Long, other: Long -> llvm
   %2 = zext i1 %1 to i8
   ret i8 %2 .Bool
 
-def print = self: String -> llvm
+def print = s: String -> llvm
   %format = bitcast [3 x i8]* @.printfStr to i8*
-  call i32 (i8*,...) @printf(i8* %format, i8* %self)
+  call i32 (i8*,...) @printf(i8* %format, i8* %s)
   ret void .None
 
-def printInt = self: Int -> llvm
+def printInt = i: Int -> llvm
     %format = bitcast [3 x i8]* @.printfInt to i8*
-    call i32 (i8*,...) @printf(i8* %format, i32 %self)
+    call i32 (i8*,...) @printf(i8* %format, i32 %i)
     ret void .None
 
 type Range = (from: Int, to: Int, step: Int)

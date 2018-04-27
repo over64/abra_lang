@@ -2,7 +2,7 @@ package integration
 
 import org.scalatest.FunSuite
 
-class _15IfTest extends FunSuite with IntegrationUtil {
+class _16IfTest extends FunSuite with IntegrationUtil {
   test("if do else test") {
     assertCodeEquals(
       """
@@ -13,8 +13,8 @@ class _15IfTest extends FunSuite with IntegrationUtil {
         type String = ref llvm i8* .
         type None   = llvm void .
 
-        def print = self: String -> llvm
-         %1 = call i32 @puts(i8* %self)
+        def print = s: String -> llvm
+         %1 = call i32 @puts(i8* %s)
          ret void .None
 
         def main =
@@ -37,8 +37,8 @@ class _15IfTest extends FunSuite with IntegrationUtil {
         type String = ref llvm i8* .
         type None   = llvm void .
 
-        def print = self: String -> llvm
-         %1 = call i32 @puts(i8* %self)
+        def print = s: String -> llvm
+         %1 = call i32 @puts(i8* %s)
          ret void .None
 
         def main =
@@ -59,8 +59,8 @@ class _15IfTest extends FunSuite with IntegrationUtil {
         type String = ref llvm i8* .
         type None   = llvm void .
 
-        def print = self: String -> llvm
-         %1 = call i32 @puts(i8* %self)
+        def print = s: String -> llvm
+         %1 = call i32 @puts(i8* %s)
          ret void .None
 
         def main =

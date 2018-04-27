@@ -2,7 +2,7 @@ package integration
 
 import org.scalatest.FunSuite
 
-class _14WhileTest extends FunSuite with IntegrationUtil {
+class _15WhileTest extends FunSuite with IntegrationUtil {
   test("while loop test") {
     assertCodeEquals(
       """

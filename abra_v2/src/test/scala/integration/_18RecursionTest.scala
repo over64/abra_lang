@@ -2,8 +2,8 @@ package integration
 
 import org.scalatest.FunSuite
 
-class _17RecursionTest extends FunSuite with IntegrationUtil {
-  test("when expression") {
+class _18RecursionTest extends FunSuite with IntegrationUtil {
+  test("recursion expression") {
     assertCodeEquals(
       """
         type Bool = llvm i8 .

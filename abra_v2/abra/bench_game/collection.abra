@@ -1,0 +1,12 @@
+import range
+
+def main =
+  s = seq.of(1, 2, 3)
+
+  mappedFilteredTaked =
+    for (x, i) in s.reversed().enumerated() do
+      y = x * 2
+      if y > 3 && i < 5 do
+        yield y .
+
+  fp.reduce(mappedAndFiltered, 0, lambda a, b do a + b)

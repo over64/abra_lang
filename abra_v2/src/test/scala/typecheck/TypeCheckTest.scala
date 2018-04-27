@@ -2,8 +2,10 @@ package typecheck
 
 import m3.parse.Ast0._
 import m3.typecheck.Util.FnAdvice
-import m3.typecheck.{DefSpec, FnScope, Namespace, TypeChecker}
+import m3.typecheck._
 import org.scalatest.FunSuite
+
+import scala.collection.mutable
 
 class TypeCheckTest extends FunSuite {
   val tInt = ScalarDecl(ref = false, Seq(), "Int", "i32")
@@ -31,9 +33,11 @@ class TypeCheckTest extends FunSuite {
             _else = Seq(lString("hello")))))),
       retTh = None)
 
-    val namespace = new Namespace(pkg = "", Seq(), defs = Seq(defBar), types = Seq(tInt, tBool, tString), mods = Map.empty)
-    val advice = DefSpec("bar", Seq.empty)
-    val (header, lowDef) = TypeChecker.evalDef(namespace, new FnScope(None), advice, defBar)
+    val bar = DefCont(defBar, mutable.ListBuffer.empty);
+    val namespace = new Namespace(pkg = "", Seq(), selfDefs = Map(),
+      defs = Map("bar" -> bar),
+      types = Seq(tInt, tBool, tString), mods = Map.empty)
+    val (header, lowDef) = TypeChecker.evalDef(namespace, new FnScope(None), bar, Seq.empty)
     println(header)
     println(lowDef)
   }

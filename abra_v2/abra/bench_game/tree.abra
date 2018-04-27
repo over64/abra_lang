@@ -55,14 +55,14 @@ def <= = self: Long, other: Long -> llvm
   %2 = zext i1 %1 to i8
   ret i8 %2 .Bool
 
-def print = self: String -> llvm
+def print = s: String -> llvm
   %format = bitcast [3 x i8]* @.printfStr to i8*
-  call i32 (i8*,...) @printf(i8* %format, i8* %self)
+  call i32 (i8*,...) @printf(i8* %format, i8* %s)
   ret void .None
 
-def printInt = self: Int -> llvm
+def printInt = i: Int -> llvm
     %format = bitcast [3 x i8]* @.printfInt to i8*
-    call i32 (i8*,...) @printf(i8* %format, i32 %self)
+    call i32 (i8*,...) @printf(i8* %format, i32 %i)
     ret void .None
 
 type Range = (from: Int, to: Int, step: Int)
@@ -114,7 +114,7 @@ type MemPage = llvm {i8*, i64}* .
 
 def mkMemPage = llvm
   %1 = load i8* (i64)*, i8* (i64)** @rcAlloc
-  %2 = call i8* %1(i64 4050) ; 1 page 1048576
+  %2 = call i8* %1(i64 41943040) ; 1 page
   %mp = bitcast i8* %2 to {i8*, i64}*
 
   %mp.next = getelementptr {i8*, i64}, {i8*, i64}* %mp, i64 0, i32 0
@@ -131,7 +131,7 @@ def chain = self: MemPage, child: MemPage -> llvm
   store i8* %2, i8** %1
   ret void .None
 
-def mpFreeInner = self: Ptr -> llvm
+def mpFreeInner = p: Ptr -> llvm
   ret void .None
 
 def mpFree = self: MemPage -> llvm
@@ -149,7 +149,7 @@ begin:
   %isNull = icmp eq i64 %child, 0
   br i1 %isNull, label %end, label %freeChild
 freeChild:
-  call void @mpFree({i8*, i64}* %3)
+  call void @MemPage.mpFree({i8*, i64}* %3)
   br label %end
 end:
   %4 = bitcast {i8*, i64}* %self to i8*
@@ -219,7 +219,7 @@ def poolAlloc = size: Long ->
   root = loadRoot()
   rootNewOffset = root.offset() add size
 
-  if rootNewOffset <= 4050.toLong() do #1048576
+  if rootNewOffset <= 41943040.toLong() do
     root.alloc(rootNewOffset)
   else
     pool = loadPool()
@@ -271,7 +271,7 @@ def mkTree = depth: Int ->
   else if depth > 0 do
     Node(mkTree(depth - 1), mkTree(depth - 1))
   else
-    Node(none, none) ...Node
+    Node(none, none) . ..Node
 
 def checksum = self: Node ->
   sum = 1

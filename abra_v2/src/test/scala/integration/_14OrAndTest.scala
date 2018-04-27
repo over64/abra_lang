@@ -2,7 +2,7 @@ package integration
 
 import org.scalatest.FunSuite
 
-class _13OrAndTest extends FunSuite with IntegrationUtil {
+class _14OrAndTest extends FunSuite with IntegrationUtil {
   val common =
     """
       llvm declare i32 @puts(i8*) .
@@ -11,8 +11,8 @@ class _13OrAndTest extends FunSuite with IntegrationUtil {
       ref type String = llvm i8* .
       type Bool = llvm i8 .
 
-      def print = self: String -> llvm
-        %1 = call i32 @puts(i8* %self)
+      def print = s: String -> llvm
+        %1 = call i32 @puts(i8* %s)
         ret void .None
 
       def exprTrue = print('expr true'); true .

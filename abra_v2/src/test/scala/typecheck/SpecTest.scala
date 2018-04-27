@@ -1,9 +1,12 @@
 package typecheck
 
 import m3.parse.Ast0._
-import m3.typecheck.{DefSpec, FnScope, Namespace, TypeChecker}
+import m3.typecheck._
 import org.scalatest.FunSuite
 import m3.typecheck.Util._
+
+import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 
 /**
   * Created by over on 24.10.17.
@@ -35,7 +38,7 @@ class SpecTest extends FunSuite {
       FieldDecl(isSelf = false, "xx", ScalarTh(params = Seq.empty, "V", None))
     ))
 
-    val namespace = new Namespace("", Seq(), Seq(), Seq(declInt, declString, declC, declB, declA),
+    val namespace = new Namespace("", Seq(), Map(), Map(), Seq(declInt, declString, declC, declB, declA),
       Map.empty)
 
     println(ScalarTh(Seq(ScalarTh(Seq.empty, "Int", None), ScalarTh(Seq.empty, "String", None)), "A", None)
@@ -106,7 +109,7 @@ class SpecTest extends FunSuite {
     //      mutated
     //    }
 
-    val namespace = new Namespace(pkg = "", Seq(), defs = Seq(), types = Seq(tInt), mods = Map())
+    val namespace = new Namespace(pkg = "", Seq(), selfDefs = Map(), defs = Map(), types = Seq(tInt), mods = Map())
     val ast = defMap.spec(Seq(thInt, thString), namespace)
     print(ast)
   }
@@ -116,7 +119,7 @@ class SpecTest extends FunSuite {
     val tSeq10 = ScalarDecl(ref = false, Seq(GenericType("T")), "Seq10", "[%T x 10]")
     val thSeq10Int = ScalarTh(Seq(ScalarTh(Seq.empty, "Int", None)), "Seq10", None)
 
-    val namespace = new Namespace(pkg = "", Seq(), defs = Seq.empty, types = Seq(tInt, tSeq10), mods = Map.empty)
+    val namespace = new Namespace(pkg = "", Seq(), selfDefs = Map(), defs = Map(), types = Seq(tInt, tSeq10), mods = Map.empty)
     println(thSeq10Int.toLow(namespace))
     println(namespace.lowMod.types)
   }
@@ -149,7 +152,7 @@ class SpecTest extends FunSuite {
       ),
       retTh = Some(ScalarTh(Seq.empty, "T", None))
     )
-    val namespace = new Namespace(pkg = "", Seq(), defs = Seq.empty, types = Seq(tInt, tMem), mods = Map.empty)
+    val namespace = new Namespace(pkg = "", Seq(), selfDefs = Map(), defs = Map(), types = Seq(tInt, tMem), mods = Map.empty)
     println(defGet.spec(Seq(thInt), namespace))
     println(namespace.lowMod.types)
   }
@@ -198,8 +201,13 @@ class SpecTest extends FunSuite {
         ))),
       retTh = None)
 
-    val namespace = new Namespace(pkg = "", Seq(), defs = Seq(defBar, defMain), types = Seq(tNil, tInt, tString), mods = Map.empty)
-    val (header, lowDef) = TypeChecker.evalDef(namespace, new FnScope(None), DefSpec("main", Seq.empty), defMain)
+    val main = DefCont(defMain, ListBuffer.empty)
+    val namespace = new Namespace(pkg = "", Seq(), selfDefs = Map(),
+      defs = Map(
+        "bar" -> DefCont(defBar, mutable.ListBuffer.empty),
+        "main" -> DefCont(defMain, mutable.ListBuffer.empty)),
+      types = Seq(tNil, tInt, tString), mods = Map.empty)
+    val (header, lowDef) = TypeChecker.evalDef(namespace, new FnScope(None), main, Seq.empty)
 
     println(header)
     println(lowDef)

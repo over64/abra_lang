@@ -2,22 +2,24 @@ package m3.typecheck
 
 import m3.codegen.{Ast2, IrUtil}
 import m3.parse.Ast0._
+import m3.typecheck.Util._
 
 import scala.collection.mutable
-import Util._
-
 import scala.collection.mutable.ListBuffer
 
 /**
   * Created by over on 20.10.17.
   */
-case class DefSpec(name: String, tparams: Seq[TypeHint])
+case class DefSpec(params: Seq[TypeHint], th: FnTh, lowName: String)
+case class DefCont(fn: Def, specs: mutable.ListBuffer[DefSpec])
+
 trait InferTask {
   def infer(expected: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat])
 }
 class Namespace(val pkg: String,
                 val lowCode: Seq[llVm],
-                val defs: Seq[Def],
+                val selfDefs: Map[String, Seq[DefCont]],
+                val defs: Map[String, DefCont],
                 val types: Seq[TypeDecl],
                 val mods: Map[String, ModHeader]) {
 
@@ -39,8 +41,7 @@ class Namespace(val pkg: String,
 
   lowCode.foreach { l => lowMod.addLow(l.code) }
 
-  def hasDef(name: String): Boolean = defs.exists(d => d.name == name)
-  def hasSelfDef(name: String, selfType: TypeHint): Boolean = false
+  def hasDef(name: String): Boolean = defs.contains(name)
   def hasMod(name: String): Boolean = false
 
   def checkAndInferSeq(specMap: mutable.HashMap[GenericType, TypeHint], expected: Seq[TypeHint], has: Seq[TypeHint]): Boolean = {
@@ -98,12 +99,13 @@ class Namespace(val pkg: String,
     }
 
   def _invokeDef(scope: BlockScope,
-                 toCall: Def,
+                 cont: DefCont,
                  params: Seq[TypeHint],
                  args: Iterator[InferTask],
                  ret: Option[ThAdvice],
-                 inferCallback: (DefSpec, Def) => (DefHeader, Ast2.Def)): (TypeHint, String, Seq[Ast2.Stat]) = {
+                 inferCallback: (DefCont, Seq[TypeHint]) => (DefHeader, Ast2.Def)): (TypeHint, String, Seq[Ast2.Stat]) = {
 
+    val toCall = cont.fn
     val specMap: mutable.HashMap[GenericType, TypeHint] =
       if (params.nonEmpty) {
         if (toCall.params.length != params.length)
@@ -146,27 +148,25 @@ class Namespace(val pkg: String,
       }
 
     val flatSpecs = toCall.params.map(cp => specMap(cp))
-    val defSpec = DefSpec(toCall.name, flatSpecs)
-    val header =
-      inferedDefs.get(defSpec) match {
-        case Some(header) => header
+    val defSpec =
+      cont.specs.find(ds => ds.params == flatSpecs) match {
+        case Some(spec) => spec
         case None =>
-          val _def = toCall.spec(flatSpecs, this)
-          val (header, lowDef) = inferCallback(defSpec, _def)
-          header
+          val (header, lowDef) = inferCallback(cont, flatSpecs)
+          cont.specs.find(ds => ds.params == flatSpecs).get
       }
 
     val anonVar = "$c" + nextAnonId()
-    scope.addLocal(mut = false, anonVar, header.th.ret)
+    scope.addLocal(mut = false, anonVar, defSpec.th.ret)
 
     (
-      header.th.ret,
+      defSpec.th.ret,
       anonVar,
       argsStats :+ Ast2.Store(
         init = true,
         Ast2.Id(anonVar),
         Ast2.Call(
-          Ast2.Id(header.name),
+          Ast2.Id(defSpec.lowName),
           bridgedArgs.map(av => Ast2.Id(av))))
     )
   }
@@ -214,21 +214,14 @@ class Namespace(val pkg: String,
     )
   }
 
-  def inferCompatibleDef(toSpec: Def,
-                         advice: FnAdvice,
-                         inferCallback: (DefSpec, Def) => (DefHeader, Ast2.Def)): DefHeader = {
-    val specMap = mutable.HashMap[GenericType, TypeHint]()
-    inferCallback(DefSpec(toSpec.name, Seq.empty), toSpec)._1
-  }
-
   def invokeDef(scope: BlockScope,
                 name: String,
                 params: Seq[TypeHint],
                 args: Iterator[InferTask],
                 ret: Option[ThAdvice],
-                inferCallback: (DefSpec, Def) => (DefHeader, Ast2.Def)): (TypeHint, String, Seq[Ast2.Stat]) = {
-    val toCall = defs.find(d => d.name == name).get
-    _invokeDef(scope, toCall, params, args, ret, inferCallback)
+                inferCallback: (DefCont, Seq[TypeHint]) => (DefHeader, Ast2.Def)): (TypeHint, String, Seq[Ast2.Stat]) = {
+    val cont = defs.getOrElse(name, throw new RuntimeException(s"no such function with name $name"))
+    _invokeDef(scope, cont, params, args, ret, inferCallback)
   }
 
   def invokeSelfDef(scope: BlockScope,
@@ -237,16 +230,13 @@ class Namespace(val pkg: String,
                     selfType: TypeHint,
                     args: Iterator[InferTask],
                     ret: Option[ThAdvice],
-                    inferCallback: (DefSpec, Def) => (DefHeader, Ast2.Def)): (TypeHint, String, Seq[Ast2.Stat]) = {
-    val toCall = defs.find { d =>
-      if (d.name != name) false
-      else
-        d.lambda.args.headOption match {
-          case None => false
-          case Some(arg) => arg.name == "self" && arg.typeHint.get == selfType
-        }
+                    inferCallback: (DefCont, Seq[TypeHint]) => (DefHeader, Ast2.Def)): (TypeHint, String, Seq[Ast2.Stat]) = {
+    val bucket = selfDefs.getOrElse(name, throw new RuntimeException(s"no function with name $name"))
+    val cont = bucket.find { _cont =>
+      _cont.fn.lambda.args(0).typeHint.get == selfType
     }.getOrElse(throw new RuntimeException(s"no function with name $name"))
-    _invokeDef(scope, toCall, params, args, ret, inferCallback)
+
+    _invokeDef(scope, cont, params, args, ret, inferCallback)
   }
 
   def invokeConstructor(scope: BlockScope,
@@ -411,8 +401,7 @@ class Namespace(val pkg: String,
         Ast2.Id(anonVar),
         Ast2.Call(
           Ast2.Id(name),
-          argsVars.map(av => Ast2.Id(av))))
-    )
+          argsVars.map(av => Ast2.Id(av)))))
   }
 
   def invokeMod(name: String,

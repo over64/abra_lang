@@ -154,8 +154,16 @@ object Util {
       self.lambda.args.headOption.map(arg => arg.name == "self").getOrElse(false)
     def isGeneric: Boolean =
       self.params.nonEmpty
-    def signature: DefSpec = // FIXME
-      DefSpec(self.name, Seq.empty)
+    def isNotGeneric: Boolean = !isGeneric
+
+    def lowName(namespace: Namespace) =
+      if (self.isSelf) self.lambda.args(0).typeHint.get.toLow(namespace).name + "." + self.name else self.name
+
+    def typeHint: Option[FnTh] = {
+      if (self.lambda.args.forall(arg => arg.typeHint != None) && self.retTh != None)
+        Some(FnTh(Seq.empty, self.lambda.args.map(arg => arg.typeHint.get), self.retTh.get))
+      else None
+    }
 
     def spec(params: Seq[TypeHint], namespace: Namespace): Def = {
       val specMap = makeSpecMap(self.params, params)
