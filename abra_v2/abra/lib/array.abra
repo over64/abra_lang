@@ -1,0 +1,117 @@
+type None = llvm void .
+type Bool = llvm i8 .
+type Int  = llvm i32 .
+type Long = llvm i64 .
+type String = ref llvm i8* .
+type Array[T] = ref llvm %T* .
+
+def + = self: Int, other: Int -> llvm
+  %1 = add nsw i32 %self, %other
+  ret i32 %1 .Int
+
+def < = self: Int, other: Int -> llvm
+  %1 = icmp slt i32 %self, %other
+  %2 = zext i1 %1 to i8
+  ret i8 %2 .Bool
+
+def allocArray[T] = length: Int -> llvm
+  %ptr = getelementptr %T, %T* null, i32 %length
+  %sizeNoLength = ptrtoint %T* %ptr to i64
+  %size = add nsw i64 %sizeNoLength, 4
+  %alloc = load i8* (i64)*, i8* (i64)** @rcAlloc
+  %mem = call i8* %alloc(i64 %size)
+  %lcast = bitcast i8* %mem to i32*
+  %lptr = getelementptr i32, i32* %lcast, i32 0
+  store i32 %length, i32* %lptr
+  %larray = getelementptr i32, i32* %lcast, i32 1
+  %array = bitcast i32* %larray to %T*
+  ret %T* %array .Array[T]
+
+
+def acquire[T] = self: Array[T] -> llvm
+  %cast32 = bitcast %"Array[T]" %self to i32*
+  %realPtr = getelementptr i32, i32* %cast32, i32 -1
+  %cast = bitcast i32* %realPtr to i8*
+  %incFn = load void (i8*)*, void (i8*)** @rcInc
+  call void %incFn(i8* %cast)
+  ret void .None
+
+def release[T] = self: Array[T] -> llvm
+  %cast32 = bitcast %"Array[T]" %self to i32*
+  %realPtr = getelementptr i32, i32* %cast32, i32 -1
+  %cast = bitcast i32* %realPtr to i8*
+  %freeFn = load void (i8*, void (i8*)*)*, void (i8*, void (i8*)*)** @rcRelease
+  %cFree = bitcast void (%"Array[T]")* @"Array[T].childFree" to void (i8*)*
+  call void %freeFn(i8* %cast,  void (i8*)* %cFree)
+  ret void .None
+
+def setInit[T] = self: Array[T], idx: Int, value: T -> llvm
+  %ptr = getelementptr %T, %T* %self, i32 %idx
+  %old = load %T, %T* %ptr
+  call void @T.acquire(%T %value)
+  store %T %value, %T* %ptr
+  ret void .None
+
+def childFree[T] = self: Array[T] -> llvm
+  %cast32 = bitcast %"Array[T]" %self to i32*
+  %length = load i32, i32* %cast32
+  %dataPtr = getelementptr i32, i32* %cast32, i32 1
+  %data = bitcast i32* %dataPtr to %"Array[T]"
+
+  %i = alloca i32
+  store i32 0, i32* %i
+  br label %head
+head:
+  %iv = load i32, i32* %i
+  %cond = icmp eq i32 %iv, %length
+  br i1 %cond, label %end, label %free
+free:
+  %tPtr = getelementptr %T, %T* %data, i32 %iv
+  %t = load %T, %T* %tPtr
+  call void @T.release(%T %t)
+  %ii = add nsw i32 %iv, 1
+  store i32 %ii, i32* %i
+  br label %head
+end:
+  ret void .None
+
+def set[T] = self: Array[T], idx: Int, value: T -> llvm
+  %ptr = getelementptr %T, %T* %self, i32 %idx
+  %old = load %T, %T* %ptr
+  call void @T.acquire(%T %value)
+  call void @T.release(%T %old)
+  store %T %value, %T* %ptr
+  ret void .None
+
+def get[T] = self: Array[T], idx: Int -> llvm
+  %ptr = getelementptr %T, %T* %self, i32 %idx
+  %value = load %T, %T* %ptr
+  ret %T %value .T
+
+def mkArray[T] = length: Int, init: \Int -> T ->
+  array = allocArray[T](length)
+
+  # hacky way to spec acquire / release functions
+  if false do
+    array.acquire()
+    array.release()
+    array.childFree() .
+
+  i = 0
+  while i < length do
+    array.setInit(i, init(i))
+    i = i + 1 .
+
+  array .
+
+def main =
+  # must be like this when type infer will become smarter
+  # array1 = mkArray(5, lambda i -> 0)
+  # array2 = mkArray(5, lambda i -> 'hello')
+
+  array1 = mkArray[Int](5, lambda i: Int -> 0)
+  array2 = mkArray[String](1000, lambda i: Int -> 'hello')
+
+  array1(1) = 13
+  array2(1) = 'world'
+  array1(1) .

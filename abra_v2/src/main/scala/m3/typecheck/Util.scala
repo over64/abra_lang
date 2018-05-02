@@ -117,14 +117,13 @@ object Util {
           body match {
             case l: llVm =>
               var code = l.code
-              specMap.foreach {
-                case (sth, th) =>
-                  val lowScalarRef = th.toLow(namespace) // FIXME: no cast?
+              specMap.foreach { case (sth, th) =>
+                val lowScalarRef = th.toLow(namespace) // FIXME: no cast?
                 val replName = namespace.lowMod.types(lowScalarRef.name) match {
-                  case Ast2.Low(ref, name, llValue) => llValue
-                  case _ => "%" + lowScalarRef.name
+                  case Ast2.Low(ref, name, llValue) => name
+                  case _ => lowScalarRef.name
                 }
-                  code = code.replace("%" + sth.name, replName)
+                code = code.replace(sth.name, replName)
               }
               llVm(code)
             case AbraCode(seq) => AbraCode(seq.map(e => e.spec(specMap, namespace)))
@@ -157,7 +156,9 @@ object Util {
     def isNotGeneric: Boolean = !isGeneric
 
     def lowName(namespace: Namespace) =
-      if (self.isSelf) self.lambda.args(0).typeHint.get.toLow(namespace).name + "." + self.name else self.name
+      if (self.isSelf)
+        self.lambda.args(0).typeHint.get.toLow(namespace).name + "." + self.name
+      else self.name
 
     def typeHint: Option[FnTh] = {
       if (self.lambda.args.forall(arg => arg.typeHint != None) && self.retTh != None)
@@ -167,7 +168,15 @@ object Util {
 
     def spec(params: Seq[TypeHint], namespace: Namespace): Def = {
       val specMap = makeSpecMap(self.params, params)
-      val newName = self.name + (if (params.nonEmpty) s"[${params.map(p => p.toGenericName(namespace)).mkString(", ")}]" else "")
+      val skip = if (self.isSelf)
+        self.lambda.args(0).typeHint.get match {
+          case sth: ScalarTh => sth.params.length
+          case _ => 0
+        }
+      else 0
+
+      val neededParams = params.drop(skip)
+      val newName = self.name + (if (neededParams.nonEmpty) s"[${neededParams.drop(skip).map(p => p.toGenericName(namespace)).mkString(", ")}]" else "")
 
       Def(
         params = Seq.empty,

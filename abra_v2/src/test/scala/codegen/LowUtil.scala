@@ -46,10 +46,10 @@ trait LowUtil {
           throw new Exception("llc error")
         }
       }
-      run("gcc", s"$testBase/test.out.o", "-o", s"$testBase/test", "--static") { (exit, stdout, stderr) =>
+      run("clang-3.9", s"$testBase/test.out.o", "-o", s"$testBase/test") { (exit, stdout, stderr) =>
         if (exit != 0) {
           print(stderr)
-          throw new Exception("gcc error")
+          throw new Exception("clang error")
         }
       }
       run(s"$testBase/test") { (realExit, realStdout, realStderr) =>

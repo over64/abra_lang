@@ -1,0 +1,31 @@
+def main = x: Int, y: Int -> None
+  z = if x < 3 do 1 else 2
+
+  io.some with x, bar(a, b), z,
+    lambda x + y ->
+      callSomeFn()
+      callOther()
+      io.println(x + y),
+    lambda e, f ->
+      e + f .
+
+  ff = when someCall is s: String do 1 else 2
+  ff = when someCall
+    is s: String do 1 else 2
+  ff = when someCall
+    is s: String do 1
+    else 2
+
+  xx = if cond1 do 1 else if cond2 do 2 else
+    doSomeEpicThing()
+    doSomeEpicThing2()
+    queryXX()
+
+  xx =
+    if cond1 do 1
+    elif cond2 do 2
+    else
+      doSomeEpicThing()
+      doSomeEpicThing2()
+      queryXX()
+

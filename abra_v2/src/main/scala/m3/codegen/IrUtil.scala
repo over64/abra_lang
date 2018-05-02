@@ -55,7 +55,7 @@ object IrUtil {
 
   implicit class RichType(self: Type) {
     def toDecl(types: mutable.HashMap[String, Type]): String = self match {
-      case Low(ref, name, llValue) => throw new RuntimeException("oops")
+      case Low(ref, name, llValue) => llValue
       case Struct(name, fields) =>
         s"{ ${fields.map(f => f.ref.toValue(types)).mkString(", ")} }"
       case u: Union =>
@@ -159,14 +159,15 @@ object IrUtil {
     def toPtr(types: mutable.HashMap[String, Type]): String = self.toValue(types) + "*"
 
     def toValue(types: mutable.HashMap[String, Type]): String = {
-      val refSuffix = if (self.isRef(types)) "*" else ""
       types(self.name) match {
-        case Low(ref, name, llValue) => llValue
-        case Struct(name, fields) => "%\"" + name + "\"" + refSuffix
-        case Union(name, variants) => "%\"" + name + "\"" + refSuffix
+        case low@Low(ref, name, llValue) => if (llValue == "void") llValue else "%\"" + name + "\""
+        case Struct(name, fields) =>
+          val refSuffix = if (self.isRef(types)) "*" else ""
+          "%\"" + name + "\"" + refSuffix
+        case Union(name, variants) => "%\"" + name + "\""
         case fn: Fn =>
           if (fn.closure.isEmpty) fn.toDecl(types)
-          else "%\"" + fn.name + "\"" + refSuffix
+          else "%\"" + fn.name + "\""
       }
     }
 

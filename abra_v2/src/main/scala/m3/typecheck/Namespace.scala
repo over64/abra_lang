@@ -135,6 +135,13 @@ class Namespace(val pkg: String,
 
     if (args.hasNext) throw new RuntimeException("too much args")
 
+    specMap.values.foreach {
+      case ScalarTh(_, name, _) =>
+        if (name.contains("*"))
+          throw new RuntimeException(s"explicit type parameter for call ${toCall.name} expected. Like ${toCall.name}[${name.replace("*", "")}]")
+      case _ =>
+    }
+
     val bridgedArgs =
       (toCall.lambda.args zip argsVars).map {
         case (defArg, (argVarName, argVarTh)) =>
@@ -233,8 +240,12 @@ class Namespace(val pkg: String,
                     inferCallback: (DefCont, Seq[TypeHint]) => (DefHeader, Ast2.Def)): (TypeHint, String, Seq[Ast2.Stat]) = {
     val bucket = selfDefs.getOrElse(name, throw new RuntimeException(s"no function with name $name"))
     val cont = bucket.find { _cont =>
-      _cont.fn.lambda.args(0).typeHint.get == selfType
-    }.getOrElse(throw new RuntimeException(s"no function with name $name"))
+      val th = _cont.fn.lambda.args(0).typeHint.get
+      (th, selfType) match {
+        case (sth1: ScalarTh, sth2: ScalarTh) => sth1.name == sth2.name
+        case (th1, th2) => th1 == th2
+      }
+    }.getOrElse(throw new RuntimeException(s"no function with name $name for type $selfType"))
 
     _invokeDef(scope, cont, params, args, ret, inferCallback)
   }

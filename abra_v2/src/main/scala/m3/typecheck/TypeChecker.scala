@@ -136,13 +136,17 @@ object TypeChecker {
               val vi = scope.findVarOpt(id.value)
                 .getOrElse(throw new RuntimeException(s"no such var of function with name ${id.value}"))
 
-              val fnTh =
-                vi.th match {
-                  case fth: FnTh => fth
-                  case _ => throw new RuntimeException(s"${id.value} is not callable")
-                }
-
-              namespace.invokeLambda(scope, id.value, fnTh, argTasks.iterator)
+              vi.th match {
+                case fth: FnTh =>
+                  namespace.invokeLambda(scope, id.value, fth, argTasks.iterator)
+                case selfTh =>
+                  val selfTask = new InferTask {
+                    override def infer(expected: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat]) = (selfTh, id.value, Seq.empty)
+                  }
+                  namespace.invokeSelfDef(scope, "get", params, selfTh, (selfTask +: argTasks).iterator, th, {
+                    case (cont, specs) => evalDef(namespace, scope.mkChild(p => new FnScope(None)), cont, specs)
+                  })
+              }
             }
           }
 
@@ -195,7 +199,13 @@ object TypeChecker {
       val vName = "$l" + namespace.nextAnonId()
       scope.addLocal(mut = false, vName, header.th)
 
-      (header.th, vName, Seq(Ast2.Closure(vName, _def.name)))
+      val make =
+        if (header.th.closure.isEmpty)
+          Ast2.Store(init = true, Ast2.Id(vName), Ast2.Id(header.lowName))
+        else
+          Ast2.Closure(vName, _def.name)
+
+      (header.th, vName, Seq(make))
     case andOr: AndOr =>
       val lowId = Ast2.Id("$andOr" + namespace.nextAnonId())
       scope.addLocal(mut = false, lowId.v, thBool)
@@ -457,7 +467,7 @@ object TypeChecker {
 
     val alreadyDefined =
       fn.typeHint match {
-        case Some(th) => cont.specs += DefSpec(specs, th, cont.fn.lowName(namespace)); true
+        case Some(th) => cont.specs += DefSpec(specs, th, fn.lowName(namespace)); true
         case None => false
       }
 

@@ -228,7 +228,7 @@ object IrGen2 {
 
     // делаем инкремент что store
     if (needAcquier && whatTref.isNeedBeforeAfterStore(ctx.types)) {
-      val fRelease = "\"" + whatTref.name + ".$acquire" + "\""
+      val fRelease = "\"" + whatTref.name + ".acquire" + "\""
       val irType = whatTref.toValue(ctx.types)
       ctx.out.println(s"\tcall void @$fRelease($irType $what)")
     }
@@ -244,7 +244,7 @@ object IrGen2 {
     // делаем декремент куда store
     if (!init)
       if (toTref.isNeedBeforeAfterStore(ctx.types)) {
-        val fRelease = "\"" + toTref.name + ".$release" + "\""
+        val fRelease = "\"" + toTref.name + ".release" + "\""
         val irType = toTref.toValue(ctx.types)
         val r2 = dctx.nextReg()
         ctx.out.println(s"\t%$r2 = load $irType, $irType* $to")
@@ -343,9 +343,9 @@ object IrGen2 {
 
       val (destName, _, _) = findSymbol(ctx, dctx, dest)
       val closureType = ctx.types(_def.ref.name).asInstanceOf[Fn]
-      val closureIr = "\"" + _def.ref.name + "\""
+      val closureIr = _def.ref.toValue(ctx.types)
       val r1 = dctx.nextReg().toString
-      ctx.out.println(s"\t%$r1 = getelementptr %$closureIr, %$closureIr* $destName, i64 0, i32 0")
+      ctx.out.println(s"\t%$r1 = getelementptr $closureIr, $closureIr* $destName, i64 0, i32 0")
 
       val fnType = Fn(closureType.name, Seq.empty, closureType.args :+ TypeRef(closureType.name), closureType.ret)
       val fnIr = fnType.toDecl(ctx.types)
@@ -359,14 +359,14 @@ object IrGen2 {
               val fnIrType = ctx.types(ref.name).asInstanceOf[Fn].toDisclosure(ctx.types, ptr = true)
               val r1 = dctx.nextReg()
               val r2 = dctx.nextReg()
-              ctx.out.println(s"\t%$r1 = getelementptr %$closureIr, %$closureIr* $destName, i64 0, i32 ${idx + 1}")
+              ctx.out.println(s"\t%$r1 = getelementptr $closureIr, $closureIr* $destName, i64 0, i32 ${idx + 1}")
               ctx.out.println(s"\t%$r2 = bitcast $fnIrType %$argName to $irType")
               ctx.out.println(s"\tstore $irType %$r2, $irType* %$r1")
             } else {
               val irType = ref.toValue(ctx.types)
               val (_, vName) = requirePtr(evalId(ctx, dctx, Id(argName)))
               val r1 = dctx.nextReg().toString
-              ctx.out.println(s"\t%$r1 = getelementptr %$closureIr, %$closureIr* $destName, i64 0, i32 ${idx + 1}")
+              ctx.out.println(s"\t%$r1 = getelementptr $closureIr, $closureIr* $destName, i64 0, i32 ${idx + 1}")
               ctx.out.println(s"\tstore $irType* $vName, $irType** %$r1")
             }
           case Param(ref) =>
@@ -375,7 +375,7 @@ object IrGen2 {
               val fnIrType = ctx.types(ref.name).asInstanceOf[Fn].toDisclosure(ctx.types, ptr = true)
               val r1 = dctx.nextReg()
               val r2 = dctx.nextReg()
-              ctx.out.println(s"\t%$r1 = getelementptr %$closureIr, %$closureIr* $destName, i64 0, i32 ${idx + 1}")
+              ctx.out.println(s"\t%$r1 = getelementptr $closureIr, $closureIr* $destName, i64 0, i32 ${idx + 1}")
               ctx.out.println(s"\t%$r2 = bitcast $fnIrType %$argName to $irType")
               ctx.out.println(s"\tstore $irType %$r2, $irType* %$r1")
             } else {
@@ -383,13 +383,13 @@ object IrGen2 {
                 val irType = ref.toValue(ctx.types)
                 val (_, vName) = requireValue(ctx, dctx, evalId(ctx, dctx, Id(argName)))
                 val r1 = dctx.nextReg().toString
-                ctx.out.println(s"\t%$r1 = getelementptr %$closureIr, %$closureIr* $destName, i64 0, i32 ${idx + 1}")
+                ctx.out.println(s"\t%$r1 = getelementptr $closureIr, $closureIr* $destName, i64 0, i32 ${idx + 1}")
                 ctx.out.println(s"\tstore $irType $vName, $irType* %$r1")
               } else {
                 val irType = ref.toValue(ctx.types)
                 val (_, vName) = requirePtr(evalId(ctx, dctx, Id(argName)))
                 val r1 = dctx.nextReg().toString
-                ctx.out.println(s"\t%$r1 = getelementptr %$closureIr, %$closureIr* $destName, i64 0, i32 ${idx + 1}")
+                ctx.out.println(s"\t%$r1 = getelementptr $closureIr, $closureIr* $destName, i64 0, i32 ${idx + 1}")
                 ctx.out.println(s"\tstore $irType* $vName, $irType** %$r1")
               }
             }
@@ -399,7 +399,7 @@ object IrGen2 {
     case Free(id) =>
       val tref = dctx.vars(id.v)
       if (tref.isNeedBeforeAfterStore(ctx.types)) {
-        val fRelease = "\"" + tref.name + ".$release" + "\""
+        val fRelease = "\"" + tref.name + ".release" + "\""
         val irType = tref.toValue(ctx.types)
         val r1 = dctx.nextReg()
         ctx.out.println(s"\t%$r1 = load $irType, $irType* %${id.v}")
@@ -507,7 +507,7 @@ object IrGen2 {
               val destIrType = tref.toPtr(ctx.types);
               val r = dctx.nextReg()
               ctx.out.println(s"\t%$r = load $uIrType, $uIrType*  %${id.v}")
-              val fRelease = "\"" + tref.name + ".$acquire" + "\""
+              val fRelease = "\"" + tref.name + ".acquire" + "\""
               ctx.out.println(s"\tcall void @$fRelease($uIrType %$r)")
               ctx.out.println(s"\tstore $uIrType %$r, $destIrType %${is.v}")
             case None =>
@@ -615,9 +615,23 @@ object IrGen2 {
 
 
     ctx.types.values.filter {
-      case l: Low => false
-      case fn: Fn if fn.closure.isEmpty => false
-      case _ => true
+      case l: Low => l.llValue != "void"
+      case _ => false
+    }.foreach(t => out.println(s"""%"${t.name}" = type """ + t.toDecl(types)))
+
+    ctx.types.values.filter {
+      case u: Union => true
+      case _ => false
+    }.foreach(t => out.println(s"""%"${t.name}" = type """ + t.toDecl(types)))
+
+    ctx.types.values.filter {
+      case s: Struct => true
+      case _ => false
+    }.foreach(t => out.println(s"""%"${t.name}" = type """ + t.toDecl(types)))
+
+    ctx.types.values.filter {
+      case c: Fn => c.closure.nonEmpty
+      case _ => false
     }.foreach(t => out.println(s"""%"${t.name}" = type """ + t.toDecl(types)))
 
     ctx.types.values.toBuffer[Type].foreach {

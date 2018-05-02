@@ -59,7 +59,7 @@ object StoreUtil {
     t match {
       case s: Struct if TypeRef(s.name).isRef(ctx.types) =>
         def genAcquire() = {
-          val dname = s"${s.name}.$$acquire"
+          val dname = s"${s.name}.acquire"
           val dtypeName = "\"" + s"\\${s.name} -> Nil" + "\""
           val dtype = Fn(dtypeName, Seq.empty, Seq(TypeRef(s.name)), TypeRef("Nil"))
           val irType = TypeRef(s.name).toValue(ctx.types)
@@ -76,14 +76,15 @@ object StoreUtil {
         }
 
         def genRelease() = {
-          val dname = s"${s.name}.$$release"
+          val dname = s"${s.name}.release"
+          val childFree = s"${s.name}.childFree"
           val dtypeName = "\"" + s"\\${s.name} -> Nil" + "\""
           val dtype = Fn(dtypeName, Seq.empty, Seq(TypeRef(s.name)), TypeRef("Nil"))
           val irType = TypeRef(s.name).toValue(ctx.types)
           val stripped = irType.stripSuffix("*")
 
 
-          ctx.out.println(s"""define void @"$dname.inner" (i8* %obj) { """)
+          ctx.out.println(s"""define void @"$childFree" (i8* %obj) { """)
           ctx.out.println(s"\t%$$self = bitcast i8* %obj to $stripped*")
           s.fields.zipWithIndex.foreach {
             case (f, idx) =>
@@ -91,7 +92,7 @@ object StoreUtil {
                 val typeRef = f.ref.toValue(ctx.types)
                 ctx.out.println(s"\t%${f.name} = getelementptr $stripped, $stripped* %$$self, i64 0, i32 $idx")
                 ctx.out.println(s"\t%${f.name}.v = load $typeRef, $typeRef* %${f.name}")
-                val fRelease = "\"" + s"${f.ref.name}.$$release" + "\""
+                val fRelease = "\"" + s"${f.ref.name}.release" + "\""
                 ctx.out.println(s"\tcall void @$fRelease($typeRef %${f.name}.v)")
               }
           }
@@ -101,7 +102,7 @@ object StoreUtil {
           ctx.out.println(s"""define void @"$dname" ($irType %$$self) { """)
           ctx.out.println(s"\t%$$freeFn = load void (i8*, void (i8*)*)*, void (i8*, void (i8*)*)** @rcRelease")
           ctx.out.println(s"\t%obj = bitcast $stripped* %$$self to i8*")
-          ctx.out.println(s"""\tcall void %$$freeFn(i8* %obj, void (i8*)* @"$dname.inner")""")
+          ctx.out.println(s"""\tcall void %$$freeFn(i8* %obj, void (i8*)* @"$childFree")""")
           ctx.out.println(s"\tret void")
           ctx.out.println("}")
 
@@ -113,7 +114,7 @@ object StoreUtil {
         genRelease()
       case u: Union =>
         def genAcquire() = {
-          val dname = s"${u.name}.$$acquire"
+          val dname = s"${u.name}.acquire"
           val dtypeName = "\"" + s"\\${u.name} -> Nil" + "\""
           val dtype = Fn(dtypeName, Seq.empty, Seq(TypeRef(u.name)), TypeRef("Nil"))
           val irType = TypeRef(u.name).toValue(ctx.types)
@@ -125,7 +126,7 @@ object StoreUtil {
               ctx.out.println(s"\t%1 = icmp eq $irType %self, null ")
               ctx.out.println(s"\tbr i1 %1, label %end, label %free")
               ctx.out.println(s"free:")
-              val fAquire = "\"" + s"${tref.name}.$$acquire" + "\""
+              val fAquire = "\"" + s"${tref.name}.acquire" + "\""
               ctx.out.println(s"\tcall void @$fAquire($irType %self)")
               ctx.out.println(s"\tbr label %end")
               ctx.out.println(s"end:")
@@ -152,7 +153,7 @@ object StoreUtil {
                   ctx.out.println(s"$branch:")
                   if (typeRef.isNeedBeforeAfterStore(ctx.types)) {
                     val irType = typeRef.toValue(ctx.types)
-                    val fAquire = "\"" + s"${typeRef.name}.$$acquire" + "\""
+                    val fAquire = "\"" + s"${typeRef.name}.acquire" + "\""
                     ctx.out.println(s"\t%x$tagIdx = extractvalue $uIrType %self, $irIdx")
                     ctx.out.println(s"\tcall void @$fAquire($irType %x$tagIdx)")
                   }
@@ -169,7 +170,7 @@ object StoreUtil {
         }
 
         def genRelease() = {
-          val dname = s"${u.name}.$$release"
+          val dname = s"${u.name}.release"
           val dtypeName = "\"" + s"\\${u.name} -> Nil" + "\""
           val dtype = Fn(dtypeName, Seq.empty, Seq(TypeRef(u.name)), TypeRef("Nil"))
           val irType = TypeRef(u.name).toValue(ctx.types)
@@ -181,7 +182,7 @@ object StoreUtil {
               ctx.out.println(s"\t%1 = icmp eq $irType %self, null ")
               ctx.out.println(s"\tbr i1 %1, label %end, label %free")
               ctx.out.println(s"free:")
-              val fRelease = "\"" + s"${tref.name}.$$release" + "\""
+              val fRelease = "\"" + s"${tref.name}.release" + "\""
               ctx.out.println(s"\tcall void @$fRelease($irType %self)")
               ctx.out.println(s"\tbr label %end")
               ctx.out.println(s"end:")
@@ -208,7 +209,7 @@ object StoreUtil {
                   ctx.out.println(s"$branch:")
                   if (typeRef.isNeedBeforeAfterStore(ctx.types)) {
                     val irType = typeRef.toValue(ctx.types)
-                    val fRelease = "\"" + s"${typeRef.name}.$$release" + "\""
+                    val fRelease = "\"" + s"${typeRef.name}.release" + "\""
                     ctx.out.println(s"\t%x$tagIdx = extractvalue $uIrType %self, $irIdx")
                     ctx.out.println(s"\tcall void @$fRelease($irType %x$tagIdx)")
                   }
@@ -229,15 +230,67 @@ object StoreUtil {
         genRelease()
       case l: Low if l.ref == true =>
         def genAcquire() = {
-          val dname = s"${l.name}.$$acquire"
-          val dtypeName = "\"" + s"\\${l.name} -> Nil" + "\""
-          val dtype = Fn(dtypeName, Seq.empty, Seq(TypeRef(l.name)), TypeRef("Nil"))
-          val irType = TypeRef(l.name).toValue(ctx.types)
+          val dname = s"${l.name}.acquire"
 
-          ctx.out.println(s"""define void @"$dname" ($irType %self) { """)
-          ctx.out.println(s"\t%cast = bitcast $irType %self to i8*")
-          ctx.out.println(s"\t%incFn = load void (i8*)*, void (i8*)** @rcInc")
-          ctx.out.println(s"\tcall void %incFn(i8* %cast)")
+          if (!ctx.defs.contains(dname)) {
+            val dtypeName = "\"" + s"\\${l.name} -> Nil" + "\""
+            val dtype = Fn(dtypeName, Seq.empty, Seq(TypeRef(l.name)), TypeRef("Nil"))
+            val irType = TypeRef(l.name).toValue(ctx.types)
+
+            ctx.out.println(s"""define void @"$dname" ($irType %self) { """)
+            ctx.out.println(s"\t%cast = bitcast $irType %self to i8*")
+            ctx.out.println(s"\t%incFn = load void (i8*)*, void (i8*)** @rcInc")
+            ctx.out.println(s"\tcall void %incFn(i8* %cast)")
+            ctx.out.println(s"\tret void")
+            ctx.out.println("}")
+
+            ctx.types.put(dtype.name, dtype)
+            ctx.protos.put(dname, TypeRef(dtype.name))
+          }
+        }
+
+        def genRelease() = {
+          val dname = s"${l.name}.release"
+          val childFree = s"${l.name}.childFree"
+
+          if (!ctx.defs.contains(childFree)) {
+            ctx.out.println(s"""define void @"$childFree" (i8* %obj) { """)
+            ctx.out.println(s"\tret void")
+            ctx.out.println("}")
+          }
+
+          if (!ctx.defs.contains(dname)) {
+            val dtypeName = "\"" + s"\\${l.name} -> Nil" + "\""
+            val dtype = Fn(dtypeName, Seq.empty, Seq(TypeRef(l.name)), TypeRef("Nil"))
+            val irType = TypeRef(l.name).toValue(ctx.types)
+            val stripped = irType.stripSuffix("*")
+
+            ctx.out.println(s"""define void @"$dname" ($irType %self) { """)
+            ctx.out.println(s"\t%cast = bitcast $irType %self to i8*")
+            ctx.out.println(s"\t%freeFn = load void (i8*, void (i8*)*)*, void (i8*, void (i8*)*)** @rcRelease")
+            ctx.out.println(s"""\t%cFree = bitcast void ($irType)* @"$childFree" to void (i8*)*""")
+            ctx.out.println(s"""\tcall void %freeFn(i8* %cast,  void (i8*)* %cFree)""")
+            ctx.out.println(s"\tret void")
+            ctx.out.println("}")
+
+            ctx.types.put(dtype.name, dtype)
+            ctx.protos.put(dname, TypeRef(dtype.name))
+          }
+        }
+
+        genAcquire()
+        genRelease()
+      case Low(_, _, "void") =>
+      case _: Fn =>
+      case valueType =>
+        val valTypeName = valueType.name
+
+        def genAcquire() = {
+          val dname = s"${valTypeName}.acquire"
+          val dtypeName = "\"" + s"\\${valueType.name} -> Nil" + "\""
+          val dtype = Fn(dtypeName, Seq.empty, Seq(TypeRef(valueType.name)), TypeRef("Nil"))
+
+          ctx.out.println(s"""define void @"$dname" (%"$valTypeName" %self) { """)
           ctx.out.println(s"\tret void")
           ctx.out.println("}")
 
@@ -246,22 +299,14 @@ object StoreUtil {
         }
 
         def genRelease() = {
-          val dname = s"${l.name}.$$release"
-          val dtypeName = "\"" + s"\\${l.name} -> Nil" + "\""
-          val dtype = Fn(dtypeName, Seq.empty, Seq(TypeRef(l.name)), TypeRef("Nil"))
-          val irType = TypeRef(l.name).toValue(ctx.types)
-          val stripped = irType.stripSuffix("*")
+          val dname = s"${valTypeName}.release"
+          val dtypeName = "\"" + s"\\${valueType.name} -> Nil" + "\""
+          val dtype = Fn(dtypeName, Seq.empty, Seq(TypeRef(valueType.name)), TypeRef("Nil"))
 
-          ctx.out.println(s"""define void @"$dname.inner" (i8* %obj) { """)
+          ctx.out.println(s"""define void @"$dname" (%"$valTypeName" %self) { """)
           ctx.out.println(s"\tret void")
           ctx.out.println("}")
 
-          ctx.out.println(s"""define void @"$dname" ($irType %self) { """)
-          ctx.out.println(s"\t%cast = bitcast $irType %self to i8*")
-          ctx.out.println(s"\t%freeFn = load void (i8*, void (i8*)*)*, void (i8*, void (i8*)*)** @rcRelease")
-          ctx.out.println(s"""\tcall void %freeFn(i8* %cast,  void (i8*)* @"$dname.inner")""")
-          ctx.out.println(s"\tret void")
-          ctx.out.println("}")
 
           ctx.types.put(dtype.name, dtype)
           ctx.protos.put(dname, TypeRef(dtype.name))
@@ -269,7 +314,6 @@ object StoreUtil {
 
         genAcquire()
         genRelease()
-      case _ =>
     }
   }
 }

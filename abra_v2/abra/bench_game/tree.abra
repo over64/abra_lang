@@ -110,24 +110,27 @@ def storeAlloc = alloc: Allocator -> llvm
   ret void .None
 
 
-type MemPage = llvm {i8*, i64}* .
+type MemPageS = llvm {i8*, i64} .
+# FIXME: not all types evaluated if not used in function
+def someFn = mps: MemPageS -> .None
+type MemPage = llvm %MemPageS* .
 
 def mkMemPage = llvm
   %1 = load i8* (i64)*, i8* (i64)** @rcAlloc
   %2 = call i8* %1(i64 41943040) ; 1 page
-  %mp = bitcast i8* %2 to {i8*, i64}*
+  %mp = bitcast i8* %2 to %MemPageS*
 
-  %mp.next = getelementptr {i8*, i64}, {i8*, i64}* %mp, i64 0, i32 0
+  %mp.next = getelementptr %MemPageS, %MemPageS* %mp, i64 0, i32 0
   store i8* null, i8** %mp.next
 
-  %mp.offset = getelementptr {i8*, i64}, {i8*, i64}* %mp, i64 0, i32 1
+  %mp.offset = getelementptr %MemPageS, %MemPageS* %mp, i64 0, i32 1
   store i64 32, i64* %mp.offset ;  8 + 8 + 8 see data layout for MemPage
 
-  ret {i8*, i64}* %mp .MemPage
+  ret %MemPageS* %mp .MemPage
 
 def chain = self: MemPage, child: MemPage -> llvm
-  %1 = getelementptr {i8*, i64}, {i8*, i64}* %self, i64 0, i32 0
-  %2 = bitcast {i8*, i64}* %child to i8*
+  %1 = getelementptr %MemPageS, %MemPageS* %self, i64 0, i32 0
+  %2 = bitcast %MemPageS* %child to i8*
   store i8* %2, i8** %1
   ret void .None
 
@@ -135,50 +138,50 @@ def mpFreeInner = p: Ptr -> llvm
   ret void .None
 
 def mpFree = self: MemPage -> llvm
-  %selfAddr = ptrtoint {i8*, i64}* %self to i64
+  %selfAddr = ptrtoint %MemPageS* %self to i64
   %nullCheck = icmp eq i64 %selfAddr, 0
   br i1 %nullCheck, label %endNull, label %begin
 endNull:
   ret void
 begin:
-  %1 = getelementptr {i8*, i64}, {i8*, i64}* %self, i64 0, i32 0
+  %1 = getelementptr %MemPageS, %MemPageS* %self, i64 0, i32 0
   %2 = load i8*, i8** %1
-  %3 = bitcast i8* %2 to {i8*, i64}*
+  %3 = bitcast i8* %2 to %MemPageS*
 
   %child = ptrtoint i8* %2 to i64
   %isNull = icmp eq i64 %child, 0
   br i1 %isNull, label %end, label %freeChild
 freeChild:
-  call void @MemPage.mpFree({i8*, i64}* %3)
+  call void @MemPage.mpFree(%MemPageS* %3)
   br label %end
 end:
-  %4 = bitcast {i8*, i64}* %self to i8*
+  %4 = bitcast %MemPageS* %self to i8*
   %5 = load void (i8*, void (i8*)*)*, void (i8*, void (i8*)*)** @rcRelease
   call void %5(i8* %4, void (i8*)* @mpFreeInner)
   ret void .None
 
 def nextPage = self: MemPage -> llvm
-  %1 = getelementptr {i8*, i64}, {i8*, i64}* %self, i64 0, i32 0
+  %1 = getelementptr %MemPageS, %MemPageS* %self, i64 0, i32 0
   %2 = load i8*, i8** %1
-  %3 = bitcast i8* %2 to {i8*, i64}*
-  ret {i8*, i64}* %3 .MemPage
+  %3 = bitcast i8* %2 to %MemPageS*
+  ret %MemPageS* %3 .MemPage
 
 def offset = self: MemPage -> llvm
-  %offsetPtr  = getelementptr {i8*, i64}, {i8*, i64}* %self, i64 0, i32 1
+  %offsetPtr  = getelementptr %MemPageS, %MemPageS* %self, i64 0, i32 1
   %offset = load i64, i64* %offsetPtr
   ret i64 %offset .Long
 
 def setOffset = self: MemPage, offset: Long -> llvm
-  %offsetPtr  = getelementptr {i8*, i64}, {i8*, i64}* %self, i64 0, i32 1
+  %offsetPtr  = getelementptr %MemPageS, %MemPageS* %self, i64 0, i32 1
   store i64 %offset, i64* %offsetPtr
   ret void .None
 
 def alloc = self: MemPage, newOffset: Long -> llvm
-  %offsetPtr  = getelementptr {i8*, i64}, {i8*, i64}* %self, i64 0, i32 1
+  %offsetPtr  = getelementptr %MemPageS, %MemPageS* %self, i64 0, i32 1
   %offset = load i64, i64* %offsetPtr
   store i64 %newOffset, i64* %offsetPtr
 
-  %1 = ptrtoint {i8*, i64}* %self to i64
+  %1 = ptrtoint %MemPageS* %self to i64
   %2 = add nsw i64 %1, %offset
   %objPtr = inttoptr i64 %2 to i8*
   ret i8* %objPtr .Ptr
@@ -212,8 +215,8 @@ def loadPool = llvm
 
 def loadRoot = llvm
   %1 = getelementptr %MemPool, %MemPool* @pool, i64 0, i32 1
-  %2 = load {i8*, i64}*, {i8*, i64}** %1
-  ret {i8*, i64}* %2 .MemPage
+  %2 = load %MemPageS*, %MemPageS** %1
+  ret %MemPageS* %2 .MemPage
 
 def poolAlloc = size: Long ->
   root = loadRoot()
