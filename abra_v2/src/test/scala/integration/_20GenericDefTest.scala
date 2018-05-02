@@ -2,7 +2,7 @@ package integration
 
 import org.scalatest.FunSuite
 
-class _19GenericDefTest extends FunSuite with IntegrationUtil {
+class _20GenericDefTest extends FunSuite with IntegrationUtil {
   test("simple def spec") {
     assertCodeEquals(
       """
