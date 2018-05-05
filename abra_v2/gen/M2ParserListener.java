@@ -1,5 +1,4 @@
 // Generated from /home/over/build/abra_lang/abra_v2/grammar/M2Parser.g4 by ANTLR 4.7
-package grammar;
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 
 /**
@@ -403,6 +402,16 @@ public interface M2ParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitDef(M2Parser.DefContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link M2Parser#importEntry}.
+	 * @param ctx the parse tree
+	 */
+	void enterImportEntry(M2Parser.ImportEntryContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link M2Parser#importEntry}.
+	 * @param ctx the parse tree
+	 */
+	void exitImportEntry(M2Parser.ImportEntryContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link M2Parser#import_}.
 	 * @param ctx the parse tree

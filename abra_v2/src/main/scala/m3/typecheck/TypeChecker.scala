@@ -11,19 +11,19 @@ import scala.collection.mutable.ListBuffer
   * Created by over on 27.09.17.
   */
 object TypeChecker {
-  def evalExpr(namespace: Namespace, scope: BlockScope, th: Option[ThAdvice], expr: Expression): (TypeHint, String, Seq[Ast2.Stat]) = expr match {
+  def evalExpr(ctx: TContext, namespace: Namespace, scope: BlockScope, th: Option[ThAdvice], expr: Expression): (TypeHint, String, Seq[Ast2.Stat]) = expr match {
     case lId(value) =>
       scope.findVarOpt(value) match {
         case Some(vi) => (vi.th, value, Seq.empty)
         case None =>
           val cont = namespace.defs.getOrElse(value, throw new RuntimeException(s"no local var, argument or global function with name $value"))
-          val (header, lowDef) = evalDef(namespace, scope.mkChild(p => new FnScope(None)), cont, Seq.empty)
-          val vName = "$l" + namespace.nextAnonId()
+          val (header, lowDef) = evalDef(ctx, namespace, scope.mkChild(p => new FnScope(None)), cont, Seq.empty)
+          val vName = "$l" + ctx.nextAnonId()
           scope.addLocal(mut = false, vName, header.th)
           (header.th, vName, Seq(Ast2.Store(init = true, Ast2.Id(vName, Seq.empty), Ast2.Id(header.name))))
       }
     case x: Literal =>
-      val vName = "$l" + namespace.nextAnonId()
+      val vName = "$l" + ctx.nextAnonId()
       x match {
         case none: lNone =>
           scope.addLocal(mut = false, vName, thNil)
@@ -31,16 +31,16 @@ object TypeChecker {
         case _ =>
           val (litTh, lit) = x match {
             case lInt(value) =>
-              val id = ConstGen.int(namespace.lowMod, value)
+              val id = ConstGen.int(ctx.lowMod, value)
               (thInt, Ast2.Call(id, Seq.empty))
             case lFloat(value: String) =>
-              val id = ConstGen.float(namespace.lowMod, value)
+              val id = ConstGen.float(ctx.lowMod, value)
               (thFloat, Ast2.Call(id, Seq.empty))
             case lBoolean(value: String) =>
-              val id = ConstGen.bool(namespace.lowMod, value)
+              val id = ConstGen.bool(ctx.lowMod, value)
               (thBool, Ast2.Call(id, Seq.empty))
             case lString(value: String) =>
-              val id = ConstGen.string(namespace.lowMod, value)
+              val id = ConstGen.string(ctx.lowMod, value)
               (thString, Ast2.Call(id, Seq.empty))
           }
 
@@ -48,7 +48,7 @@ object TypeChecker {
           (litTh, vName, Seq(Ast2.Store(init = true, Ast2.Id(vName, Seq.empty), lit)))
       }
     case Prop(from, props) =>
-      val (eth, evName, lowCode) = evalExpr(namespace, scope, th, from)
+      val (eth, evName, lowCode) = evalExpr(ctx, namespace, scope, th, from)
 
       val actualTh = props.foldLeft(eth) {
         case (fth, fieldId) =>
@@ -67,7 +67,7 @@ object TypeChecker {
           }
       }
 
-      val vName = "$l" + namespace.nextAnonId()
+      val vName = "$l" + ctx.nextAnonId()
       scope.addLocal(mut = false, vName, actualTh)
       (actualTh, vName, lowCode :+ Ast2.Store(init = true,
         Ast2.Id(vName),
@@ -77,60 +77,60 @@ object TypeChecker {
       val argTasks = seq.map { arg =>
         new InferTask {
           override def infer(expected: Option[ThAdvice]) = {
-            evalExpr(namespace, scope, expected, arg)
+            evalExpr(ctx, namespace, scope, expected, arg)
           }
         }
       }
       actualTh match {
         case sth: StructTh =>
-          namespace.invokeAnonConstructor(scope, sth, argTasks.iterator)
+          namespace.invokeAnonConstructor(ctx, scope, sth, argTasks.iterator)
         case _ => throw new RuntimeException(s"unexpected value of $actualTh here")
       }
     case SelfCall(params, fnName, self, args) =>
       val argTasks = args.map(arg => new InferTask {
         override def infer(expected: Option[ThAdvice]) = {
-          evalExpr(namespace, scope, expected, arg)
+          evalExpr(ctx, namespace, scope, expected, arg)
         }
       })
       self match {
         case id: lId =>
-          // 1. find mod
-          //   1.1 find fnName in mod
-          // 2. find var
-          //   2.1 find self for fnName on var
-          val vi = scope.findVar(id.value)
-          val selfTask = new InferTask {
-            override def infer(expected: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat]) = (vi.th, id.value, Seq.empty)
+          if (namespace.imports.contains(id.value)) {
+            namespace.invokeMod(ctx, scope, id.value, fnName, params, argTasks.iterator, th)
+          } else {
+            val vi = scope.findVar(id.value)
+            val selfTask = new InferTask {
+              override def infer(expected: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat]) = (vi.th, id.value, Seq.empty)
+            }
+            namespace.invokeSelfDef(ctx, scope, fnName, params, vi.th, (selfTask +: argTasks).iterator, th, {
+              case (cont, specs) => evalDef(ctx, namespace, scope.mkChild(p => new FnScope(None)), cont, specs)
+            })
           }
-          namespace.invokeSelfDef(scope, fnName, params, vi.th, (selfTask +: argTasks).iterator, th, {
-            case (cont, specs) => evalDef(namespace, scope.mkChild(p => new FnScope(None)), cont, specs)
-          })
         case _expr: Expression =>
-          val (selfTh, vName, lowStats) = evalExpr(namespace, scope, None, _expr)
+          val (selfTh, vName, lowStats) = evalExpr(ctx, namespace, scope, None, _expr)
           val selfTask = new InferTask {
             override def infer(expected: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat]) = (selfTh, vName, lowStats)
           }
-          namespace.invokeSelfDef(scope, fnName, params, selfTh, (selfTask +: argTasks).iterator, th, {
-            case (cont, specs) => evalDef(namespace, scope.mkChild(p => new FnScope(None)), cont, specs)
+          namespace.invokeSelfDef(ctx, scope, fnName, params, selfTh, (selfTask +: argTasks).iterator, th, {
+            case (cont, specs) => evalDef(ctx, namespace, scope.mkChild(p => new FnScope(None)), cont, specs)
           })
       }
     case Call(params, expr, args) =>
       val argTasks = args.map(arg => new InferTask {
         override def infer(expected: Option[ThAdvice]) = {
-          evalExpr(namespace, scope, expected, arg)
+          evalExpr(ctx, namespace, scope, expected, arg)
         }
       })
       expr match {
         case id: lId =>
           // is it constructor?
           if (id.value.head.isUpper) {
-            namespace.invokeConstructor(scope, id.value, params, argTasks.iterator)
+            namespace.invokeConstructor(ctx, scope, id.value, params, argTasks.iterator)
           } else {
             // 1. find function
             // 2. find var
             if (namespace.hasDef(id.value)) {
-              namespace.invokeDef(scope, id.value, params, argTasks.iterator, th, {
-                case (cont, specs) => evalDef(namespace, scope.mkChild(p => new FnScope(None)), cont, specs)
+              namespace.invokeDef(ctx, scope, id.value, params, argTasks.iterator, th, {
+                case (cont, specs) => evalDef(ctx, namespace, scope.mkChild(p => new FnScope(None)), cont, specs)
               })
             } else {
               val vi = scope.findVarOpt(id.value)
@@ -138,13 +138,13 @@ object TypeChecker {
 
               vi.th match {
                 case fth: FnTh =>
-                  namespace.invokeLambda(scope, id.value, fth, argTasks.iterator)
+                  namespace.invokeLambda(ctx, scope, id.value, fth, argTasks.iterator)
                 case selfTh =>
                   val selfTask = new InferTask {
                     override def infer(expected: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat]) = (selfTh, id.value, Seq.empty)
                   }
-                  namespace.invokeSelfDef(scope, "get", params, selfTh, (selfTask +: argTasks).iterator, th, {
-                    case (cont, specs) => evalDef(namespace, scope.mkChild(p => new FnScope(None)), cont, specs)
+                  namespace.invokeSelfDef(ctx, scope, "get", params, selfTh, (selfTask +: argTasks).iterator, th, {
+                    case (cont, specs) => evalDef(ctx, namespace, scope.mkChild(p => new FnScope(None)), cont, specs)
                   })
               }
             }
@@ -155,16 +155,16 @@ object TypeChecker {
           // 2. if th == FnTh -> call
           // 3. if arg.empty -> err not callable
           // 4. if !arg.empty -> find self get
-          val (th, vName, stats) = evalExpr(namespace, scope, None, _expr)
+          val (th, vName, stats) = evalExpr(ctx, namespace, scope, None, _expr)
           th match {
             case fth: FnTh =>
-              val (retTh, retVName, callStats) = namespace.invokeProto(scope, vName, fth, argTasks.iterator)
+              val (retTh, retVName, callStats) = namespace.invokeProto(ctx, scope, vName, fth, argTasks.iterator)
               (retTh, retVName, stats ++ callStats)
             case _ => throw new RuntimeException("other need to call")
           }
       }
     case lambda: Lambda =>
-      val _def = Def(Seq.empty, "$def" + namespace.nextAnonId(), lambda, None)
+      val _def = Def(Seq.empty, "$def" + ctx.nextAnonId(), lambda, None)
 
       //      def mapAndCheck()
       //
@@ -192,11 +192,10 @@ object TypeChecker {
         case _ => FnAdvice(lambda.args.map(arg => None), None)
       }
 
-      val (header, lowDef) = evalDef(namespace, scope.mkChild(p => new FnScope(Some(p))), DefCont(_def, ListBuffer.empty), Seq.empty)
-      namespace.anonDefs.append(_def)
-      namespace.lowMod.defineDef(lowDef)
+      val (header, lowDef) = evalDef(ctx, namespace, scope.mkChild(p => new FnScope(Some(p))), DefCont(_def, ListBuffer.empty), Seq.empty)
+      ctx.lowMod.defineDef(lowDef)
 
-      val vName = "$l" + namespace.nextAnonId()
+      val vName = "$l" + ctx.nextAnonId()
       scope.addLocal(mut = false, vName, header.th)
 
       val make =
@@ -207,13 +206,13 @@ object TypeChecker {
 
       (header.th, vName, Seq(make))
     case andOr: AndOr =>
-      val lowId = Ast2.Id("$andOr" + namespace.nextAnonId())
+      val lowId = Ast2.Id("$andOr" + ctx.nextAnonId())
       scope.addLocal(mut = false, lowId.v, thBool)
 
-      val (leftTh, leftName, leftStats) = evalExpr(namespace, scope, Some(adviceBool), andOr.left)
+      val (leftTh, leftName, leftStats) = evalExpr(ctx, namespace, scope, Some(adviceBool), andOr.left)
       if (leftTh != thBool) throw new RuntimeException(s"expected $thBool has $leftTh")
 
-      val (rightTh, rightName, rightStats) = evalExpr(namespace, scope, Some(adviceBool), andOr.right)
+      val (rightTh, rightName, rightStats) = evalExpr(ctx, namespace, scope, Some(adviceBool), andOr.right)
       if (rightTh != thBool) throw new RuntimeException(s"expected $thBool has $rightTh")
 
       val leftFullStats = leftStats :+ Ast2.Store(init = true, lowId, Ast2.Id(leftName))
@@ -235,8 +234,8 @@ object TypeChecker {
         }
 
         val stats =
-          expressions.map { expr => evalExpr(namespace, blockScope, None, expr)._3 }.flatten
-        val (lastTh, vName, lastStat) = evalExpr(namespace, blockScope, th, last)
+          expressions.map { expr => evalExpr(ctx, namespace, blockScope, None, expr)._3 }.flatten
+        val (lastTh, vName, lastStat) = evalExpr(ctx, namespace, blockScope, th, last)
 
         val freeStats = blockScope.vars.map {
           case (vName, _) => Ast2.Free(Ast2.Id(vName))
@@ -245,7 +244,7 @@ object TypeChecker {
         (lastTh, vName, stats ++ lastStat, freeStats)
       }
 
-      val (condTh, condName, condStats) = evalExpr(namespace, scope, Some(adviceBool), cond)
+      val (condTh, condName, condStats) = evalExpr(ctx, namespace, scope, Some(adviceBool), cond)
       if (condTh != thBool) throw new RuntimeException(s"expected $thBool has $condTh")
 
       val (doTh, doName, doStats, doFree) = evalBlock(_do)
@@ -255,7 +254,7 @@ object TypeChecker {
         if (doTh != elseTh) UnionTh(Seq(doTh, elseTh))
         else doTh
 
-      val resultVar = "_i" + namespace.nextAnonId()
+      val resultVar = "_i" + ctx.nextAnonId()
       scope.addLocal(mut = false, resultVar, actualTh)
 
       (actualTh,
@@ -265,11 +264,11 @@ object TypeChecker {
           (doStats :+ Ast2.Store(init = true, Ast2.Id(resultVar), Ast2.Id(doName))) ++ doFree,
           (elseStats :+ Ast2.Store(init = true, Ast2.Id(resultVar), Ast2.Id(elseName))) ++ elseFree))
     case While(cond, _do) =>
-      val (condTh, condName, condStats) = evalExpr(namespace, scope, Some(adviceBool), cond)
+      val (condTh, condName, condStats) = evalExpr(ctx, namespace, scope, Some(adviceBool), cond)
       val blockScope = scope.mkChild(p => new BlockScope(Some(p)))
       val stats =
         _do.foldLeft(Seq[Ast2.Stat]()) {
-          case (stats, expr) => stats ++ evalExpr(namespace, blockScope, None, expr)._3
+          case (stats, expr) => stats ++ evalExpr(ctx, namespace, blockScope, None, expr)._3
         }
 
       val freeStats = blockScope.vars.map {
@@ -288,8 +287,8 @@ object TypeChecker {
         }
 
         val stats =
-          expressions.map { expr => evalExpr(namespace, blockScope, None, expr)._3 }.flatten
-        val (lastTh, vName, lastStat) = evalExpr(namespace, blockScope, th, last)
+          expressions.map { expr => evalExpr(ctx, namespace, blockScope, None, expr)._3 }.flatten
+        val (lastTh, vName, lastStat) = evalExpr(ctx, namespace, blockScope, th, last)
 
         val freeStats = blockScope.vars
           .filter({ case (vName, _) => vName != is.vName.value })
@@ -313,8 +312,8 @@ object TypeChecker {
       def inferSuperType(variants: Seq[TypeHint]): UnionTh =
         UnionTh(variants.distinct)
 
-      val (exprTh, exprName, exprStats) = evalExpr(namespace, scope, Some(adviceBool), expr)
-      val retValName = "_w" + namespace.nextAnonId()
+      val (exprTh, exprName, exprStats) = evalExpr(ctx, namespace, scope, Some(adviceBool), expr)
+      val retValName = "_w" + ctx.nextAnonId()
       val lowIsSeq =
         isSeq.map { is =>
           if (!isUnionVariant(exprTh, is.typeRef))
@@ -322,7 +321,7 @@ object TypeChecker {
 
           val (bth, bvName, stats, freeStats) = evalBlock(is)
           val storeRet = Seq(Ast2.Store(init = true, Ast2.Id(retValName), Ast2.Id(bvName)))
-          (bth, Ast2.Is(is.vName.value, is.typeRef.toLow(namespace), stats ++ storeRet ++ freeStats))
+          (bth, Ast2.Is(is.vName.value, is.typeRef.toLow(ctx, namespace), stats ++ storeRet ++ freeStats))
         }
 
       val overallType: UnionTh = inferSuperType(lowIsSeq.map(_._1))
@@ -371,7 +370,7 @@ object TypeChecker {
             throw new RuntimeException(s"var with name $toVarName already declared")
 
           val (whatTh, whatName, whatStats) =
-            evalExpr(namespace, scope, th.toAdviceOpt(mutable.HashMap()), what)
+            evalExpr(ctx, namespace, scope, th.toAdviceOpt(mutable.HashMap()), what)
 
           scope.addLocal(mut = true, toVarName, th)
 
@@ -383,7 +382,7 @@ object TypeChecker {
               if (to.length != 1) throw new RuntimeException(s"variable with name $toVarName not found")
 
               val (whatTh, whatName, whatStats) =
-                evalExpr(namespace, scope, None, what)
+                evalExpr(ctx, namespace, scope, None, what)
 
               scope.addLocal(mut = true, toVarName, whatTh)
 
@@ -408,7 +407,7 @@ object TypeChecker {
                 }
 
               val (whatTh, whatName, whatStats) =
-                evalExpr(namespace, scope, toTh.toAdviceOpt(mutable.HashMap.empty), what)
+                evalExpr(ctx, namespace, scope, toTh.toAdviceOpt(mutable.HashMap.empty), what)
 
               // FIXME: user namespace.checkAndInfer() instead?
               if (whatTh != toTh)
@@ -445,7 +444,7 @@ object TypeChecker {
     case Ret(optExpr) =>
       optExpr match {
         case Some(expr) =>
-          val (actualTh, vName, lowStats) = evalExpr(namespace, scope, th, expr)
+          val (actualTh, vName, lowStats) = evalExpr(ctx, namespace, scope, th, expr)
 
           if (actualTh == thNil)
             (thNil, "", lowStats :+ Ast2.Ret(None))
@@ -458,16 +457,17 @@ object TypeChecker {
       }
   }
 
-  def evalDef(namespace: Namespace, scope: FnScope, cont: DefCont, specs: Seq[TypeHint]): (DefHeader, Ast2.Def) = {
-    val fn = cont.fn.spec(specs, namespace)
+  def evalDef(ctx: TContext, namespace: Namespace, scope: FnScope, cont: DefCont, specs: Seq[TypeHint]): (DefHeader, Ast2.Def) = {
+    val fn = cont.fn.spec(specs, ctx, namespace)
+    println(s"eval ${namespace.pkg}.${fn.name}")
 
-    if (namespace.inferStack.contains(fn.name))
+    if (ctx.inferStack.contains(fn.name))
       throw new RuntimeException(s"expected type hint for recursive function ${fn.name}")
-    namespace.inferStack.push(fn.name)
+    ctx.inferStack.push(fn.name)
 
     val alreadyDefined =
       fn.typeHint match {
-        case Some(th) => cont.specs += DefSpec(specs, th, fn.lowName(namespace)); true
+        case Some(th) => cont.specs += DefSpec(specs, th, fn.lowName(ctx, namespace)); true
         case None => false
       }
 
@@ -495,8 +495,8 @@ object TypeChecker {
             case other => Ret(Some(other))
           }
 
-          val stats = expressions.map(expr => evalExpr(namespace, bodyScope, None, expr)._3).flatten
-          val (_, vName, lastStats) = evalExpr(namespace, bodyScope,
+          val stats = expressions.map(expr => evalExpr(ctx, namespace, bodyScope, None, expr)._3).flatten
+          val (_, vName, lastStats) = evalExpr(ctx, namespace, bodyScope,
             fn.retTh.flatMap(th => th.toAdviceOpt(mutable.HashMap.empty)), realLast)
 
           val lowRetStat = lastStats.last.asInstanceOf[Ast2.Ret]
@@ -505,7 +505,7 @@ object TypeChecker {
             .filter { case (vName, _) => Some(vName) != lowRetStat.lit }
             .map { case (vName, _) => Ast2.Free(Ast2.Id(vName)) }
 
-          val vars = downToLow(namespace, scope.down(root = true))
+          val vars = downToLow(ctx, namespace, scope.down(root = true))
           val closure = upToClosure(scope.closures.toSeq)
 
           val retTh = scope.retTypes match {
@@ -518,25 +518,27 @@ object TypeChecker {
       }
 
     val fnTh = FnTh(closure.map(_._2), argsTh, retTh)
-    val lowName = fn.lowName(namespace)
-    val lowType = fnTh.toLow(namespace)
+    val lowName = fn.lowName(ctx, namespace)
+    val lowType = fnTh.toLow(ctx, namespace)
     val lowArgs = fn.lambda.args.map(_.name)
     val lowClosure = closure.map(_._1)
     val lowDef = Ast2.Def(lowName, lowType, lowClosure, lowArgs, code, isAnon = false)
 
-    namespace.lowMod.defineDef(lowDef)
+    ctx.lowMod.defineDef(lowDef)
     if (!alreadyDefined)
       cont.specs += DefSpec(specs, fnTh, lowName)
-    namespace.inferStack.pop()
+    ctx.inferStack.pop()
 
     val header = DefHeader(namespace.pkg, fn.name, lowName, fnTh)
     (header, lowDef)
   }
 
-  def infer(namespace: Namespace): Unit =
+  def infer(ctx: TContext, namespace: Namespace): Unit = {
+    namespace.lowCode.foreach { l => ctx.lowMod.addLow(l.code) }
     namespace.defs.foreach { case (_, cont) =>
       if (cont.fn.isNotGeneric)
         if (cont.specs.isEmpty)
-          evalDef(namespace, new FnScope(None), cont, Seq.empty)
+          evalDef(ctx, namespace, new FnScope(None), cont, Seq.empty)
     }
+  }
 }

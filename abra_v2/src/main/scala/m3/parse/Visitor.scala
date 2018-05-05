@@ -76,7 +76,7 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
     emit(ctx, ScalarTh(
       params = ctx.typeHint().map(th => visitTypeHint(th)),
       name = ctx.typeName.getText,
-      pkg = Option(ctx.id()).map(_.getText)))
+      mod = Option(ctx.id()).map(_.getText)))
 
   override def visitFieldTh(ctx: FieldThContext): FieldTh =
     emit(ctx, FieldTh(
@@ -118,6 +118,7 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
       ctx.typeField().map { f => visitTypeField(f) }
     ))
   }
+
   override def visitUnionType(ctx: UnionTypeContext): UnionDecl = {
     emit(ctx, UnionDecl(
       ctx.params.map { p => emit(p, GenericType(p.getText)) },
@@ -252,17 +253,27 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
     visitChildren(ctx).asInstanceOf[Level1Declaration]
 
   override def visitModule(ctx: ModuleContext): Module = {
-    val imports = ctx.import_().map { i => visitImport_(i) }
+    val imp =
+      if (ctx.import_() != null)
+        visitImport_(ctx.import_())
+      else Import(Seq())
+
     val lowCode = ctx.llvm().map(l => visitLlvm(l))
     val all = ctx.level1().map { l1 => visitLevel1(l1) }
     val types = all.filter(_.isInstanceOf[TypeDecl]).map(_.asInstanceOf[TypeDecl])
     val functions = all.filter(_.isInstanceOf[Def]).map(_.asInstanceOf[Def])
 
-    emit(ctx, Module(_package, lowCode, types, functions))
+    emit(ctx, Module(_package, imp, lowCode, types, functions))
   }
 
-  override def visitImport_(ctx: Import_Context): ParseNode = {
-    ctx.VarId()
-    null
+  override def visitImportEntry(ctx: ImportEntryContext): ImportEntry = {
+    val path = ctx.VarId().map(vi => vi.getText)
+      .mkString(start = if (ctx.abs == null) "" else "/", sep = "/", end = "")
+    val modName = ctx.VarId().last.getText
+    val types = ctx.TypeId().map(ti => ti.getText)
+    emit(ctx, ImportEntry(modName, path, types))
   }
+
+  override def visitImport_(ctx: Import_Context): Import =
+    emit(ctx, Import(ctx.importEntry().map(ie => visitImportEntry(ie))))
 }

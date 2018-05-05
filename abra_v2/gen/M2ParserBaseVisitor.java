@@ -1,5 +1,4 @@
 // Generated from /home/over/build/abra_lang/abra_v2/grammar/M2Parser.g4 by ANTLR 4.7
-package grammar;
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor;
 
 /**

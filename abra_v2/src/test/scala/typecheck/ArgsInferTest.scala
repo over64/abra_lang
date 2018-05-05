@@ -16,9 +16,9 @@ class ArgsInferTest extends FunSuite {
 
   val tU1 = UnionDecl(Seq(gT, gU), "U1", Seq(thInt, thT, thU))
 
-  val thInt = ScalarTh(Seq.empty, "Int", pkg = None)
-  val thT = ScalarTh(Seq.empty, "T", pkg = None)
-  val thU = ScalarTh(Seq.empty, "U", pkg = None)
+  val thInt = ScalarTh(Seq.empty, "Int", mod = None)
+  val thT = ScalarTh(Seq.empty, "T", mod = None)
+  val thU = ScalarTh(Seq.empty, "U", mod = None)
 
 
 //  test("infer call args as union compatible") {

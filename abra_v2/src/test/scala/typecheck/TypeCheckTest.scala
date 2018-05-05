@@ -12,9 +12,9 @@ class TypeCheckTest extends FunSuite {
   val tString = ScalarDecl(ref = true, Seq(), "String", "i8*")
   val tBool = ScalarDecl(ref = true, Seq(), "Bool", "i8")
 
-  val thInt = ScalarTh(Seq.empty, "Int", pkg = None)
-  val thT = ScalarTh(Seq.empty, "T", pkg = None)
-  val thU = ScalarTh(Seq.empty, "U", pkg = None)
+  val thInt = ScalarTh(Seq.empty, "Int", mod = None)
+  val thT = ScalarTh(Seq.empty, "T", mod = None)
+  val thU = ScalarTh(Seq.empty, "U", mod = None)
 
   val gT = GenericType("T")
   val gU = GenericType("U")
@@ -33,11 +33,12 @@ class TypeCheckTest extends FunSuite {
             _else = Seq(lString("hello")))))),
       retTh = None)
 
-    val bar = DefCont(defBar, mutable.ListBuffer.empty);
-    val namespace = new Namespace(pkg = "", Seq(), selfDefs = Map(),
+    val bar = DefCont(defBar, mutable.ListBuffer.empty)
+    val ctx = new TContext()
+    val namespace = new Namespace(pkg = "",
       defs = Map("bar" -> bar),
-      types = Seq(tInt, tBool, tString), mods = Map.empty)
-    val (header, lowDef) = TypeChecker.evalDef(namespace, new FnScope(None), bar, Seq.empty)
+      types = Seq(tInt, tBool, tString))
+    val (header, lowDef) = TypeChecker.evalDef(ctx, namespace, new FnScope(None), bar, Seq.empty)
     println(header)
     println(lowDef)
   }

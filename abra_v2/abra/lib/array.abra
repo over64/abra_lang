@@ -1,18 +1,6 @@
-type None = llvm void .
-type Bool = llvm i8 .
-type Int  = llvm i32 .
-type Long = llvm i64 .
-type String = ref llvm i8* .
+import /universe with None, Int, String .
+
 type Array[T] = ref llvm %T* .
-
-def + = self: Int, other: Int -> llvm
-  %1 = add nsw i32 %self, %other
-  ret i32 %1 .Int
-
-def < = self: Int, other: Int -> llvm
-  %1 = icmp slt i32 %self, %other
-  %2 = zext i1 %1 to i8
-  ret i8 %2 .Bool
 
 def allocArray[T] = length: Int -> llvm
   %ptr = getelementptr %T, %T* null, i32 %length
@@ -88,7 +76,7 @@ def get[T] = self: Array[T], idx: Int -> llvm
   %value = load %T, %T* %ptr
   ret %T %value .T
 
-def mkArray[T] = length: Int, init: \Int -> T ->
+def mk[T] = length: Int, init: \Int -> T ->
   array = allocArray[T](length)
 
   # hacky way to spec acquire / release functions
@@ -103,15 +91,3 @@ def mkArray[T] = length: Int, init: \Int -> T ->
     i = i + 1 .
 
   array .
-
-def main =
-  # must be like this when type infer will become smarter
-  # array1 = mkArray(5, lambda i -> 0)
-  # array2 = mkArray(5, lambda i -> 'hello')
-
-  array1 = mkArray[Int](5, lambda i: Int -> 0)
-  array2 = mkArray[String](1000, lambda i: Int -> 'hello')
-
-  array1(1) = 13
-  array2(1) = 'world'
-  array1(1) .

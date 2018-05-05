@@ -1,7 +1,7 @@
 package m3.typecheck
 
-import m3.codegen.{Ast2, IrUtil}
-import m3.parse.Ast0._
+import m3.codegen.Ast2
+import m3.parse.Ast0.{TypeHint, _}
 import m3.typecheck.Util._
 
 import scala.collection.mutable
@@ -11,38 +11,31 @@ import scala.collection.mutable.ListBuffer
   * Created by over on 20.10.17.
   */
 case class DefSpec(params: Seq[TypeHint], th: FnTh, lowName: String)
+
 case class DefCont(fn: Def, specs: mutable.ListBuffer[DefSpec])
 
 trait InferTask {
   def infer(expected: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat])
 }
-class Namespace(val pkg: String,
-                val lowCode: Seq[llVm],
-                val selfDefs: Map[String, Seq[DefCont]],
-                val defs: Map[String, DefCont],
-                val types: Seq[TypeDecl],
-                val mods: Map[String, ModHeader]) {
 
-  var nextAnonId = new (() => Int) {
-    var idSeq = 0
-    override def apply(): Int = {
-      idSeq += 1
-      idSeq
+class Namespace(val pkg: String,
+                val imports: Map[String, Namespace] = Map(),
+                val typeImports: Map[String, String] = Map(),
+                val lowCode: Seq[llVm] = Seq(),
+                val selfDefs: Map[String, Seq[DefCont]] = Map(),
+                val defs: Map[String, DefCont] = Map(),
+                val types: Seq[TypeDecl] = Seq()) {
+
+  def findType(name: String): TypeDecl = {
+    types.find(td => td.name == name) match {
+      case Some(td) => td
+      case None =>
+        val inMod = typeImports.getOrElse(name, throw new RuntimeException(s"no such type with name $name"))
+        imports(inMod).findType(name)
     }
   }
 
-  val inferStack = mutable.Stack[String]()
-  val anonDefs = mutable.ListBuffer[Def]()
-
-  val inferedDefs = mutable.HashMap[DefSpec, DefHeader]()
-  val inferedSelfDefs = mutable.HashMap[DefSpec, DefHeader]()
-
-  val lowMod = IrUtil.Mod()
-
-  lowCode.foreach { l => lowMod.addLow(l.code) }
-
   def hasDef(name: String): Boolean = defs.contains(name)
-  def hasMod(name: String): Boolean = false
 
   def checkAndInferSeq(specMap: mutable.HashMap[GenericType, TypeHint], expected: Seq[TypeHint], has: Seq[TypeHint]): Boolean = {
     if (expected.length != has.length) return false
@@ -98,7 +91,8 @@ class Namespace(val pkg: String,
       case (adv, th) => false
     }
 
-  def _invokeDef(scope: BlockScope,
+  def _invokeDef(ctx: TContext,
+                 scope: BlockScope,
                  cont: DefCont,
                  params: Seq[TypeHint],
                  args: Iterator[InferTask],
@@ -147,7 +141,7 @@ class Namespace(val pkg: String,
         case (defArg, (argVarName, argVarTh)) =>
           val argTh = defArg.typeHint.get.spec(specMap.toMap)
           if (argTh != argVarTh && (!argTh.isInstanceOf[FnTh] && !argVarTh.isInstanceOf[FnTh])) {
-            val vName = "_bridge" + nextAnonId()
+            val vName = "_bridge" + ctx.nextAnonId()
             scope.addLocal(mut = false, vName, argTh)
             argsStats += Ast2.Store(init = true, Ast2.Id(vName), Ast2.Id(argVarName))
             vName
@@ -163,7 +157,7 @@ class Namespace(val pkg: String,
           cont.specs.find(ds => ds.params == flatSpecs).get
       }
 
-    val anonVar = "$c" + nextAnonId()
+    val anonVar = "$c" + ctx.nextAnonId()
     scope.addLocal(mut = false, anonVar, defSpec.th.ret)
 
     (
@@ -178,7 +172,8 @@ class Namespace(val pkg: String,
     )
   }
 
-  def invokeProto(scope: BlockScope,
+  def invokeProto(ctx: TContext,
+                  scope: BlockScope,
                   vName: String,
                   proto: FnTh,
                   args: Iterator[InferTask]): (TypeHint, String, ListBuffer[Ast2.Stat]) = {
@@ -206,7 +201,7 @@ class Namespace(val pkg: String,
     if (args.hasNext) throw new RuntimeException("too much args")
 
 
-    val anonVar = "$c" + nextAnonId()
+    val anonVar = "$c" + ctx.nextAnonId()
     scope.addLocal(mut = false, anonVar, proto.ret)
 
     (
@@ -221,36 +216,41 @@ class Namespace(val pkg: String,
     )
   }
 
-  def invokeDef(scope: BlockScope,
+  def invokeDef(ctx: TContext,
+                scope: BlockScope,
                 name: String,
                 params: Seq[TypeHint],
                 args: Iterator[InferTask],
                 ret: Option[ThAdvice],
                 inferCallback: (DefCont, Seq[TypeHint]) => (DefHeader, Ast2.Def)): (TypeHint, String, Seq[Ast2.Stat]) = {
     val cont = defs.getOrElse(name, throw new RuntimeException(s"no such function with name $name"))
-    _invokeDef(scope, cont, params, args, ret, inferCallback)
+    _invokeDef(ctx, scope, cont, params, args, ret, inferCallback)
   }
 
-  def invokeSelfDef(scope: BlockScope,
+  def invokeSelfDef(ctx: TContext,
+                    scope: BlockScope,
                     name: String,
                     params: Seq[TypeHint],
                     selfType: TypeHint,
                     args: Iterator[InferTask],
                     ret: Option[ThAdvice],
                     inferCallback: (DefCont, Seq[TypeHint]) => (DefHeader, Ast2.Def)): (TypeHint, String, Seq[Ast2.Stat]) = {
-    val bucket = selfDefs.getOrElse(name, throw new RuntimeException(s"no function with name $name"))
-    val cont = bucket.find { _cont =>
-      val th = _cont.fn.lambda.args(0).typeHint.get
-      (th, selfType) match {
-        case (sth1: ScalarTh, sth2: ScalarTh) => sth1.name == sth2.name
-        case (th1, th2) => th1 == th2
-      }
-    }.getOrElse(throw new RuntimeException(s"no function with name $name for type $selfType"))
+    selfDefs.get(name) match {
+      case Some(bucket) =>
+        val cont = bucket.find { _cont =>
+          val th = _cont.fn.lambda.args(0).typeHint.get
+          (th, selfType) match {
+            case (sth1: ScalarTh, sth2: ScalarTh) => sth1.name == sth2.name
+            case (th1, th2) => th1 == th2
+          }
+        }.getOrElse(throw new RuntimeException(s"no function with name $name for type $selfType"))
+    }
 
-    _invokeDef(scope, cont, params, args, ret, inferCallback)
+    _invokeDef(ctx, scope, cont, params, args, ret, inferCallback)
   }
 
-  def invokeConstructor(scope: BlockScope,
+  def invokeConstructor(ctx: TContext,
+                        scope: BlockScope,
                         typeName: String,
                         params: Seq[TypeHint],
                         args: Iterator[InferTask]): (TypeHint, String, Seq[Ast2.Stat]) = {
@@ -293,7 +293,7 @@ class Namespace(val pkg: String,
         case (defArg, (argVarName, argVarTh)) =>
           val argTh = defArg.typeHint.get.spec(specMap.toMap)
           if (argTh != argVarTh && (!argTh.isInstanceOf[FnTh] && !argVarTh.isInstanceOf[FnTh])) {
-            val vName = "_bridge" + nextAnonId()
+            val vName = "_bridge" + ctx.nextAnonId()
             scope.addLocal(mut = false, vName, argTh)
             argsStats += Ast2.Store(init = true, Ast2.Id(vName), Ast2.Id(argVarName))
             vName
@@ -307,9 +307,9 @@ class Namespace(val pkg: String,
     // code generation will be performed on codegen part
     val virtualArgs = consType.fields.map(f => Arg(f.name, Some(f.th)))
     val virtualDef = Def(consType.params, consType.name, Lambda(virtualArgs, AbraCode(Seq.empty)), Some(retTh))
-    val _def = virtualDef.spec(flatSpecs, this)
+    val _def = virtualDef.spec(flatSpecs, ctx, this)
 
-    val anonVar = "$c" + nextAnonId()
+    val anonVar = "$c" + ctx.nextAnonId()
     scope.addLocal(mut = false, anonVar, retTh)
 
     (
@@ -324,7 +324,8 @@ class Namespace(val pkg: String,
     )
   }
 
-  def invokeAnonConstructor(scope: BlockScope,
+  def invokeAnonConstructor(ctx: TContext,
+                            scope: BlockScope,
                             forType: StructTh,
                             args: Iterator[InferTask]): (TypeHint, String, Seq[Ast2.Stat]) = {
     val specMap = mutable.HashMap[GenericType, TypeHint]()
@@ -355,7 +356,7 @@ class Namespace(val pkg: String,
 
     // code generation will be performed on codegen part
 
-    val anonVar = "$c" + nextAnonId()
+    val anonVar = "$c" + ctx.nextAnonId()
     scope.addLocal(mut = false, anonVar, forType)
 
     (
@@ -365,12 +366,13 @@ class Namespace(val pkg: String,
         init = true,
         Ast2.Id(anonVar),
         Ast2.Call(
-          Ast2.Id(forType.toLow(this).name + ".$cons"),
+          Ast2.Id(forType.toLow(ctx, this).name + ".$cons"),
           argsVars.map(av => Ast2.Id(av))))
     )
   }
 
-  def invokeLambda(scope: BlockScope,
+  def invokeLambda(ctx: TContext,
+                   scope: BlockScope,
                    name: String,
                    th: FnTh,
                    args: Iterator[InferTask]) = {
@@ -401,7 +403,7 @@ class Namespace(val pkg: String,
 
     if (args.hasNext) throw new RuntimeException("too much args")
 
-    val anonVar = "$c" + nextAnonId()
+    val anonVar = "$c" + ctx.nextAnonId()
     scope.addLocal(mut = false, anonVar, th.ret)
 
     (
@@ -415,15 +417,19 @@ class Namespace(val pkg: String,
           argsVars.map(av => Ast2.Id(av)))))
   }
 
-  def invokeMod(name: String,
+  def invokeMod(ctx: TContext,
+                scope: BlockScope,
+                modName: String,
+                fnName: String,
                 params: Seq[TypeHint],
                 args: Iterator[InferTask],
-                ret: Option[TypeHint],
-                inferCallback: (Def) => (DefHeader, Ast2.Def)): (TypeHint, String, Seq[Ast2.Stat]) = {
-    null
-  }
+                ret: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat]) = {
+    val ns = imports(modName)
+    if (!ns.hasDef(fnName))
+      throw new RuntimeException(s"no such function $fnName in module $modName")
 
-  def dumpHeader: ModHeader = {
-    null
+    ns.invokeDef(ctx, scope, fnName, params, args, ret, {
+      case (cont, specs) => TypeChecker.evalDef(ctx, ns, scope.mkChild(p => new FnScope(None)), cont, specs)
+    })
   }
 }

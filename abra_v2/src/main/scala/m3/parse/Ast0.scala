@@ -30,7 +30,7 @@ object Ast0 {
   case class UnionDecl(params: Seq[GenericType], name: String, variants: Seq[ScalarTh]) extends TypeDecl
 
   sealed trait TypeHint extends ParseNode
-  case class ScalarTh(params: Seq[TypeHint], name: String, pkg: Option[String]) extends TypeHint
+  case class ScalarTh(params: Seq[TypeHint], name: String, mod: Option[String]) extends TypeHint
   case class FieldTh(name: String, typeHint: TypeHint) extends ParseNode
   case class StructTh(seq: Seq[FieldTh]) extends TypeHint
   case class UnionTh(seq: Seq[TypeHint]) extends TypeHint
@@ -64,6 +64,7 @@ object Ast0 {
   case class Ret(what: Option[Expression]) extends Expression
   case class Arg(name: String, typeHint: Option[TypeHint]) extends ParseNode
   case class Def(params: Seq[GenericType], name: String, lambda: Lambda, retTh: Option[TypeHint]) extends Level1Declaration
-  case class Import(seq: Seq[lId]) extends Level1Declaration
-  case class Module(pkg: String, lowCode: Seq[llVm], types: Seq[TypeDecl], defs: Seq[Def]) extends ParseNode
+  case class ImportEntry(modName: String, path: String, withTypes: Seq[String]) extends ParseNode
+  case class Import(seq: Seq[ImportEntry]) extends ParseNode
+  case class Module(pkg: String, imports: Import, lowCode: Seq[llVm], types: Seq[TypeDecl], defs: Seq[Def]) extends ParseNode
 }

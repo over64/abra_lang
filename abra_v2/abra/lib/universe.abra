@@ -1,0 +1,14 @@
+type None = llvm void .
+type Bool = llvm i8 .
+type Int  = llvm i32 .
+type Long = llvm i64 .
+type String = ref llvm i8* .
+
+def + = self: Int, other: Int -> llvm
+  %1 = add nsw i32 %self, %other
+  ret i32 %1 .Int
+
+def < = self: Int, other: Int -> llvm
+  %1 = icmp slt i32 %self, %other
+  %2 = zext i1 %1 to i8
+  ret i8 %2 .Bool

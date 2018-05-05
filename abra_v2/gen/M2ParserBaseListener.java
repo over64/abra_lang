@@ -1,5 +1,4 @@
 // Generated from /home/over/build/abra_lang/abra_v2/grammar/M2Parser.g4 by ANTLR 4.7
-package grammar;
 
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ErrorNode;
@@ -455,6 +454,18 @@ public class M2ParserBaseListener implements M2ParserListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitDef(M2Parser.DefContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterImportEntry(M2Parser.ImportEntryContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitImportEntry(M2Parser.ImportEntryContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *

@@ -75,10 +75,11 @@ def: 'def' sp name=(VarId | '!' | '*' | '/' | '+' | '-' | '>' | '<' | '<=' | '>=
     sp '=' sp
     (fnArg sp (',' sp fnArg)* sp '->')? sp ((blockBody* sp DOT) | llvm) typeHint? ;
 
-import_: 'import' sp VarId ( sp '/' sp VarId)* ;
+importEntry: sp abs='/'? VarId ('/' VarId)* (sp 'with' sp TypeId sp (',' sp TypeId)*)?;
+import_: 'import' importEntry (NL importEntry)* WS DOT ;
 
 level1: type | def ;
-module: (sp import_)* sp (sp llvm)* sp (level1 sp)* EOF ;
+module: sp import_? sp (sp llvm)* sp (level1 sp)* EOF ;
 
 llvmBody: (LLVM_NL | LLVM_WS | IrLine | LL_Dot)* ;
 llvm: LlBegin llvmBody LL_End;

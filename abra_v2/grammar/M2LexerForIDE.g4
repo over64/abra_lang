@@ -71,11 +71,11 @@ TypeId  : [\p{Lu}]+ ([\p{Lu}\p{Ll}] | '_' | Digit)* ;
 MatchId: '$' VarId ;
 
 mode llvm ;
-LLVM_NL: '\r'? '\n' { start_llvm_ws = true; System.out.println("nl");  };
-LLVM_WS: [ \t]+ { start_llvm_ws = true; System.out.println("ws");  };
-IrLine: ~[ \t\r\n.]+ { start_llvm_ws = false; System.out.println("ir_line"); };
-LL_End: { start_llvm_ws ==  true }? '.' { popMode(); System.out.println("ir_end"); };
-LL_Dot: '.' { System.out.println("ir_dot"); } ;
+LLVM_NL: '\r'? '\n' { start_llvm_ws = true; };
+LLVM_WS: [ \t]+ { start_llvm_ws = true; };
+IrLine: ~[ \t\r\n.]+ { start_llvm_ws = false; };
+LL_End: { start_llvm_ws ==  true }? '.' { popMode(); };
+LL_Dot: '.' { } ;
 //IrLiteral: (LLVM_NL | LLVM_WS | IrLine | LL_Dot)* LL_End ;
 
 fragment StringElement    :  Char

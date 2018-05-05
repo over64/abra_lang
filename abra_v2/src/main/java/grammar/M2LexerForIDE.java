@@ -162,35 +162,35 @@ public class M2LexerForIDE extends Lexer {
 	private void LLVM_NL_action(RuleContext _localctx, int actionIndex) {
 		switch (actionIndex) {
 		case 1:
-			 start_llvm_ws = true; System.out.println("nl");  
+			 start_llvm_ws = true; 
 			break;
 		}
 	}
 	private void LLVM_WS_action(RuleContext _localctx, int actionIndex) {
 		switch (actionIndex) {
 		case 2:
-			 start_llvm_ws = true; System.out.println("ws");  
+			 start_llvm_ws = true; 
 			break;
 		}
 	}
 	private void IrLine_action(RuleContext _localctx, int actionIndex) {
 		switch (actionIndex) {
 		case 3:
-			 start_llvm_ws = false; System.out.println("ir_line"); 
+			 start_llvm_ws = false; 
 			break;
 		}
 	}
 	private void LL_End_action(RuleContext _localctx, int actionIndex) {
 		switch (actionIndex) {
 		case 4:
-			 popMode(); System.out.println("ir_end"); 
+			 popMode(); 
 			break;
 		}
 	}
 	private void LL_Dot_action(RuleContext _localctx, int actionIndex) {
 		switch (actionIndex) {
 		case 5:
-			 System.out.println("ir_dot"); 
+			 
 			break;
 		}
 	}
