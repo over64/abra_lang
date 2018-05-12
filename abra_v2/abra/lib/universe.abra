@@ -3,6 +3,7 @@ type Bool = llvm i8 .
 type Int  = llvm i32 .
 type Long = llvm i64 .
 type String = ref llvm i8* .
+type Ptr = llvm i8* .
 
 def + = self: Int, other: Int do llvm
   %1 = add nsw i32 %self, %other

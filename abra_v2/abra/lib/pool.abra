@@ -1,47 +1,12 @@
-import /universe with None, Bool, Int, String .
+import
+  /universe with None, Bool, Int, String, Ptr
+  /allocator with Allocator .
 
 llvm
   @pool = thread_local global %MemPool zeroinitializer
   define void @poolRelease(i8* %obj, void (i8*)* %releaseCallback) {
     ret void
-  }
-  .
-
-type Ptr = llvm i8* .
-type Allocator = (alloc  : (Long) -> Ptr,
-                  inc    : (Ptr) -> None,
-                  release: (Ptr, (Ptr) -> None) -> None)
-
-
-def loadAlloc = llvm
-  %a = alloca %Allocator
-
-  %a.alloc   = getelementptr %Allocator, %Allocator* %a, i64 0, i32 0
-  %a.inc     = getelementptr %Allocator, %Allocator* %a, i64 0, i32 1
-  %a.release = getelementptr %Allocator, %Allocator* %a, i64 0, i32 2
-
-  %old.alloc   = load i8* (i64)*,  i8* (i64)**   @rcAlloc
-  %old.inc     = load void (i8*)*, void (i8*)**  @rcInc
-  %old.release = load void (i8*, void (i8*)*)*, void (i8*, void (i8*)*)**    @rcRelease
-
-  store i8* (i64)* %old.alloc, i8* (i64)**  %a.alloc
-  store void (i8*)* %old.inc, void (i8*)**  %a.inc
-  store void (i8*, void (i8*)*)* %old.release, void (i8*, void (i8*)*)**  %a.release
-
-  %ret = load %Allocator, %Allocator* %a
-  ret %Allocator %ret .Allocator
-
-def storeAlloc = alloc: Allocator do llvm
-  %a = load %Allocator, %Allocator* %alloc
-  %a.alloc   = extractvalue %Allocator %a, 0
-  %a.inc     = extractvalue %Allocator %a, 1
-  %a.release = extractvalue %Allocator %a, 2
-
-  store i8* (i64)* %a.alloc, i8* (i64)**  @rcAlloc
-  store void (i8*)* %a.inc, void (i8*)**  @rcInc
-  store void (i8*, void (i8*)*)* %a.release, void (i8*, void (i8*)*)**  @rcRelease
-
-  ret void .None
+  } .
 
 type MemPage = llvm i8* .
 
@@ -120,7 +85,7 @@ def alloc = self: MemPage, newOffset: Long do llvm
 
 
 type MemPool = (parent: Allocator, root: MemPage)
-def mkMemPool = MemPool(loadAlloc(), mkMemPage()) .
+def mk = MemPool(allocator.load(), mkMemPage()) .
 
 def mkPoolAlloc = llvm
   %a = alloca %Allocator
@@ -158,10 +123,10 @@ def poolAlloc = size: Long do
     root.alloc(rootNewOffset)
   else
     pool = loadPool()
-    curr = loadAlloc()
-    storeAlloc(pool.parent)
+    curr = allocator.load()
+    allocator.store(pool.parent)
     newPage = mkMemPage()
-    storeAlloc(curr)
+    allocator.store(curr)
 
     pool.root = newPage
     root.chain(newPage)
@@ -179,10 +144,8 @@ def poolFree = self: MemPool do
   next.mpFree() .
 
 def withPool = self: MemPool, action: () -> None do
-  curr = mkPoolAlloc()
-
   self.bind()
-  storeAlloc(curr)
+  allocator.store(mkPoolAlloc())
   action()
-  storeAlloc(self.parent)
+  allocator.store(self.parent)
   self.poolFree() .
