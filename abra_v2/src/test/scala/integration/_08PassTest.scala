@@ -20,14 +20,14 @@ class _08PassTest extends FunSuite with IntegrationUtil {
                  x6: IntOrString,
                  x7: Int | String,
                  x8: IntOrString,
-                 x9: \Int, Int -> Int  ->
+                 x9: \Int, Int -> Int do
           .
 
-        def + = self: Int, other: Int -> llvm
+        def + = self: Int, other: Int do llvm
           %1 = add nsw i32 %self, %other
           ret i32 %1 .Int
 
-        def sum = x: Int, y: Int -> x + y .
+        def sum = x: Int, y: Int do x + y .
 
         def main =
           x:  Int | String = 42
@@ -46,9 +46,9 @@ class _08PassTest extends FunSuite with IntegrationUtil {
         type Vec2        = (x: Int, y: String)
         type IntOrString = Int | String
 
-        def pass = x9: \Int, Int -> Int  -> .
+        def pass = x9: \Int, Int -> Int do .
 
-        def + = self: Int, other: Int -> llvm
+        def + = self: Int, other: Int do llvm
           %1 = add nsw i32 %self, %other
           ret i32 %1 .Int
 
@@ -67,7 +67,7 @@ class _08PassTest extends FunSuite with IntegrationUtil {
         type Int         = llvm i32 .
         type U1 = Int | String
 
-        def pass = x1: U1 -> .
+        def pass = x1: U1 do .
 
         def main =
           pass('hi')
@@ -82,7 +82,7 @@ class _08PassTest extends FunSuite with IntegrationUtil {
         type String      = ref llvm i8* .
         type Int         = llvm i32 .
 
-        def pass = x1: Int | String -> .
+        def pass = x1: Int | String do .
 
         def main =
           pass('hi')
@@ -98,7 +98,7 @@ class _08PassTest extends FunSuite with IntegrationUtil {
         type Int         = llvm i32 .
         type U1 = Int | String
 
-        def pass = x1: U1 -> .
+        def pass = x1: U1 do .
 
         def main =
           x: String = 'hi'
@@ -115,7 +115,7 @@ class _08PassTest extends FunSuite with IntegrationUtil {
         type Int         = llvm i32 .
         type U1 = Int | String | None
 
-        def pass = x1: U1 -> .
+        def pass = x1: U1 do .
 
         def main =
           x: Int | String = 'hi'
@@ -131,7 +131,7 @@ class _08PassTest extends FunSuite with IntegrationUtil {
         type String      = ref llvm i8* .
         type Int         = llvm i32 .
 
-        def pass = x1: Int | String | None -> .
+        def pass = x1: Int | String | None do .
 
         def main =
           x: String = 'hi'
@@ -147,7 +147,7 @@ class _08PassTest extends FunSuite with IntegrationUtil {
         type String      = ref llvm i8* .
         type Int         = llvm i32 .
 
-        def pass = x1: Int | String | None -> .
+        def pass = x1: Int | String | None do .
 
         def main =
           x: Int | String = 'hi'

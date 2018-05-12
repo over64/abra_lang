@@ -15,7 +15,7 @@ class _01HelloWorldTest extends FunSuite with IntegrationUtil {
         type String = ref llvm i8* .
         type Int    = llvm i32 .
 
-        def print = self: String -> llvm
+        def print = self: String do llvm
           %1 = call i32 @puts(i8* %self)
           ret void .None
 

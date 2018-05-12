@@ -7,12 +7,12 @@ llvm
   declare i32 @puts(i8*)
   .
 
-def print = s: String -> llvm
+def print = s: String do llvm
   %format = bitcast [3 x i8]* @.printfStr to i8*
   call i32 (i8*,...) @printf(i8* %format, i8* %s)
   ret void .None
 
-def printInt = i: Int -> llvm
+def printInt = i: Int do llvm
     %format = bitcast [3 x i8]* @.printfInt to i8*
     call i32 (i8*,...) @printf(i8* %format, i32 %i)
     ret void .None

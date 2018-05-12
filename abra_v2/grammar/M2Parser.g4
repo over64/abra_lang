@@ -73,7 +73,7 @@ type: scalarType
 def: 'def' sp name=(VarId | '!' | '*' | '/' | '+' | '-' | '>' | '<' | '<=' | '>=' | '==' | '!=')
     sp ('[' TypeId (',' TypeId)* ']')?
     sp '=' sp
-    (fnArg sp (',' sp fnArg)* sp '->')? sp ((blockBody* sp DOT) | llvm) typeHint? ;
+    (fnArg sp (',' sp fnArg)* sp 'do')? sp ((blockBody* sp DOT) | llvm) typeHint? ;
 
 importEntry: sp abs='/'? VarId ('/' VarId)* (sp 'with' sp TypeId sp (',' sp TypeId)*)?;
 import_: 'import' importEntry (NL importEntry)* WS DOT ;

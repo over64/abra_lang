@@ -10,7 +10,7 @@ class _13SelfFunctionTest extends FunSuite with IntegrationUtil {
       """
         type Int  = llvm i32 .
 
-        def - = self: Int, other: Int -> llvm
+        def - = self: Int, other: Int do llvm
           %1 = sub nsw i32 %self, %other
           ret i32 %1 .Int
 
@@ -23,7 +23,7 @@ class _13SelfFunctionTest extends FunSuite with IntegrationUtil {
       """
         type Int  = llvm i32 .
 
-        def - = self: Int, other: Int -> llvm
+        def - = self: Int, other: Int do llvm
           %1 = sub nsw i32 %self, %other
           ret i32 %1 .Int
 
@@ -37,11 +37,11 @@ class _13SelfFunctionTest extends FunSuite with IntegrationUtil {
         type Int  = llvm i32 .
         type Long  = llvm i64 .
 
-        def - = self: Int, other: Int -> llvm
+        def - = self: Int, other: Int do llvm
           %1 = sub nsw i32 %self, %other
           ret i32 %1 .Int
 
-        def - = self: Long, other: Long -> llvm
+        def - = self: Long, other: Long do llvm
           %1 = sub nsw i64 %self, %other
           ret i64 %1 .Long
 

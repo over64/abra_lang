@@ -3,17 +3,17 @@ package integration
 import org.scalatest.FunSuite
 
 class _19GetSetTest extends FunSuite with IntegrationUtil {
-  test("recursion expression") {
+  test("get & set") {
     assertCodeEquals(
       """
         type None = llvm void .
         type Int  = llvm i32 .
         type String = ref llvm i8* .
 
-        def get = self: Int, idx: Int ->
+        def get = self: Int, idx: Int do
           42 .
 
-        def set = self: Int, idx: Int, value: String -> .
+        def set = self: Int, idx: Int, value: String do .
 
         def main =
           x = 13

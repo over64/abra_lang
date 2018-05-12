@@ -31,7 +31,7 @@ def loadAlloc = llvm
   %ret = load %Allocator, %Allocator* %a
   ret %Allocator %ret .Allocator
 
-def storeAlloc = alloc: Allocator -> llvm
+def storeAlloc = alloc: Allocator do llvm
   %a = load %Allocator, %Allocator* %alloc
   %a.alloc   = extractvalue %Allocator %a, 0
   %a.inc     = extractvalue %Allocator %a, 1
@@ -58,16 +58,16 @@ def mkMemPage = llvm
 
   ret i8* %2 .MemPage
 
-def chain = self: MemPage, child: MemPage -> llvm
+def chain = self: MemPage, child: MemPage do llvm
   %sself = bitcast i8* %self to {i8*, i64}*
   %1 = getelementptr {i8*, i64}, {i8*, i64}* %sself, i64 0, i32 0
   store i8* %child, i8** %1
   ret void .None
 
-def mpFreeInner = p: Ptr -> llvm
+def mpFreeInner = p: Ptr do llvm
   ret void .None
 
-def mpFree = self: MemPage -> llvm
+def mpFree = self: MemPage do llvm
   %sself = bitcast i8* %self to {i8*, i64}*
   %selfAddr = ptrtoint {i8*, i64}* %sself to i64
   %nullCheck = icmp eq i64 %selfAddr, 0
@@ -89,25 +89,25 @@ end:
   call void %3(i8* %self, void (i8*)* @mpFreeInner)
   ret void .None
 
-def nextPage = self: MemPage -> llvm
+def nextPage = self: MemPage do llvm
   %sself = bitcast i8* %self to {i8*, i64}*
   %1 = getelementptr {i8*, i64}, {i8*, i64}* %sself, i64 0, i32 0
   %2 = load i8*, i8** %1
   ret i8* %2 .MemPage
 
-def offset = self: MemPage -> llvm
+def offset = self: MemPage do llvm
   %sself = bitcast i8* %self to {i8*, i64}*
   %offsetPtr  = getelementptr {i8*, i64}, {i8*, i64}* %sself, i64 0, i32 1
   %offset = load i64, i64* %offsetPtr
   ret i64 %offset .Long
 
-def setOffset = self: MemPage, offset: Long -> llvm
+def setOffset = self: MemPage, offset: Long do llvm
   %sself = bitcast i8* %self to {i8*, i64}*
   %offsetPtr  = getelementptr {i8*, i64}, {i8*, i64}* %sself, i64 0, i32 1
   store i64 %offset, i64* %offsetPtr
   ret void .None
 
-def alloc = self: MemPage, newOffset: Long -> llvm
+def alloc = self: MemPage, newOffset: Long do llvm
   %sself = bitcast i8* %self to {i8*, i64}*
   %offsetPtr  = getelementptr {i8*, i64}, {i8*, i64}* %sself, i64 0, i32 1
   %offset = load i64, i64* %offsetPtr
@@ -136,7 +136,7 @@ def mkPoolAlloc = llvm
   %ret = load %Allocator, %Allocator* %a
   ret %Allocator %ret .Allocator
 
-def bind = self: MemPool -> llvm
+def bind = self: MemPool do llvm
   %1 = load %MemPool, %MemPool* %self
   store %MemPool %1, %MemPool* @pool
   ret void .None
@@ -150,7 +150,7 @@ def loadRoot = llvm
   %2 = load i8*, i8** %1
   ret i8* %2 .MemPage
 
-def poolAlloc = size: Long ->
+def poolAlloc = size: Long do
   root = loadRoot()
   rootNewOffset = root.offset() + size
 
@@ -169,16 +169,16 @@ def poolAlloc = size: Long ->
     newOffset = newPage.offset() + size
     newPage.alloc(newOffset) ..Ptr
 
-def poolInc = obj: Ptr -> llvm
+def poolInc = obj: Ptr do llvm
   ret void .None
 
-def poolFree = self: MemPool ->
+def poolFree = self: MemPool do
   root = self.root
   root.setOffset(32.toLong())
   next = root.nextPage()
   next.mpFree() .
 
-def withPool = self: MemPool, action: -> None ->
+def withPool = self: MemPool, action: -> None do
   curr = mkPoolAlloc()
 
   self.bind()

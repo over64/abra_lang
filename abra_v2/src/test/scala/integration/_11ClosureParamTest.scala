@@ -14,9 +14,9 @@ class _11ClosureParamTest extends FunSuite with IntegrationUtil {
         type S      = (x: String, y: Int)
         type U1     = Int | String
 
-        def baz = x1: Int, x2: String, x3: Vec2, x4: S, x5: U1 -> .
+        def baz = x1: Int, x2: String, x3: Vec2, x4: S, x5: U1 do .
 
-        def bar = x1: Int, x2: String, x3: Vec2, x4: S, x5: U1 ->
+        def bar = x1: Int, x2: String, x3: Vec2, x4: S, x5: U1 do
            lambda
              x3.x = 42
              x4.x = 'world'

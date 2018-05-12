@@ -5,7 +5,7 @@ import
 
 type Node = (left: Node | None, right: Node | None)
 
-def asNode = self: Node | None, callback: \Node -> None -> llvm
+def asNode = self: Node | None, callback: \Node -> None do llvm
   %1 = getelementptr { void (%"Node"*, i8*)*, i8* }, { void (%"Node"*, i8*)*, i8* }* %callback, i64 0, i32 0
   %fn = load void (%"Node"*, i8*)*, void (%"Node"*, i8*)** %1
   %2 = bitcast { void (%"Node"*, i8*)*, i8* }* %callback to i8*
@@ -13,13 +13,13 @@ def asNode = self: Node | None, callback: \Node -> None -> llvm
   call void %fn(%Node* %3, i8* %2)
   ret void .None
 
-def mkTree = depth: Int ->
+def mkTree = depth: Int do
   if depth > 0 do
     Node(mkTree(depth - 1), mkTree(depth - 1))
   else
     Node(none, none) ..Node
 
-def checksum = self: Node ->
+def checksum = self: Node do
   sum = 1
 
   when self.left  is l: Node do
@@ -28,7 +28,7 @@ def checksum = self: Node ->
 
   sum .Int
 
-def stat = nTrees: Int, name: String, depth: Int, sum: Int ->
+def stat = nTrees: Int, name: String, depth: Int, sum: Int do
   if nTrees > 1 do io.printInt(nTrees) .
   io.print(name) io.printInt(depth) io.print('\t check: ') io.printInt(sum) io.print('\n') .
 

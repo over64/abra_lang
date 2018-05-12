@@ -13,7 +13,7 @@ class _16IfTest extends FunSuite with IntegrationUtil {
         type String = ref llvm i8* .
         type None   = llvm void .
 
-        def print = s: String -> llvm
+        def print = s: String do llvm
          %1 = call i32 @puts(i8* %s)
          ret void .None
 
@@ -37,7 +37,7 @@ class _16IfTest extends FunSuite with IntegrationUtil {
         type String = ref llvm i8* .
         type None   = llvm void .
 
-        def print = s: String -> llvm
+        def print = s: String do llvm
          %1 = call i32 @puts(i8* %s)
          ret void .None
 
@@ -59,7 +59,7 @@ class _16IfTest extends FunSuite with IntegrationUtil {
         type String = ref llvm i8* .
         type None   = llvm void .
 
-        def print = s: String -> llvm
+        def print = s: String do llvm
          %1 = call i32 @puts(i8* %s)
          ret void .None
 

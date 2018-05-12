@@ -13,15 +13,15 @@ class _15WhileTest extends FunSuite with IntegrationUtil {
         type String = ref llvm i8* .
         type None   = llvm void .
 
-        def print = self: String -> llvm
+        def print = self: String do llvm
          %1 = call i32 @puts(i8* %self)
          ret void .None
 
-        def + = self: Int, other: Int -> llvm
+        def + = self: Int, other: Int do llvm
           %1 = add nsw i32 %self, %other
           ret i32 %1 .Int
 
-        def < = self: Int, other: Int -> llvm
+        def < = self: Int, other: Int do llvm
           %1 = icmp slt i32 %self, %other
           %2 = zext i1 %1 to i8
           ret i8 %2 .Bool

@@ -14,9 +14,9 @@ class _12ClosureNestedTest extends FunSuite with IntegrationUtil {
         type U1     = Int | String
 
         def baz = x1: Int, x2: String, x3: Vec2, x4: S, x5: U1,
-                l1: Int, l2: String, l3: Vec2, l4: S, l5: U1 -> .
+                l1: Int, l2: String, l3: Vec2, l4: S, l5: U1 do .
 
-        def bar = x1: Int, x2: String, x3: Vec2, x4: S, x5: U1 ->
+        def bar = x1: Int, x2: String, x3: Vec2, x4: S, x5: U1 do
            l1 = 1
            l2 = 'ho'
            l3 = Vec2(1, 1)

@@ -8,7 +8,7 @@ class _00LowDeclTest extends FunSuite with IntegrationUtil {
       """
         type Int = llvm i32 .
 
-        def + = self: Int, other: Int -> llvm
+        def + = self: Int, other: Int do llvm
           %1 = add nsw i32 %self, %other
           ret i32 %1 .Int
 

@@ -9,19 +9,19 @@ class _20GenericDefTest extends FunSuite with IntegrationUtil {
     type Int  = llvm i32 .
     type Long  = llvm i64 .
 
-    def + = self: Int, other: Int -> llvm
+    def + = self: Int, other: Int do llvm
       %1 = add nsw i32 %self, %other
       ret i32 %1 .Int
 
-    def + = self: Long, other: Long -> llvm
+    def + = self: Long, other: Long do llvm
       %1 = add nsw i64 %self, %other
       ret i64 %1 .Long
 
-    def long = i: Int -> llvm
+    def long = i: Int do llvm
       %1 = sext i32 %i to i64
       ret i64 %1 .Long
 
-    def add[T] = t1: T, t2: T ->
+    def add[T] = t1: T, t2: T do
       t1 + t2 .T
 
     def main =

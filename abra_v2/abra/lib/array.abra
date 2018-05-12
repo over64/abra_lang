@@ -2,7 +2,7 @@ import /universe with None, Bool, Int, String .
 
 type Array[T] = ref llvm %T* .
 
-def allocArray[T] = length: Int -> llvm
+def allocArray[T] = length: Int do llvm
   %ptr = getelementptr %T, %T* null, i32 %length
   %sizeNoLength = ptrtoint %T* %ptr to i64
   %size = add nsw i64 %sizeNoLength, 4
@@ -16,7 +16,7 @@ def allocArray[T] = length: Int -> llvm
   ret %T* %array .Array[T]
 
 
-def acquire[T] = self: Array[T] -> llvm
+def acquire[T] = self: Array[T] do llvm
   %cast32 = bitcast %"Array[T]" %self to i32*
   %realPtr = getelementptr i32, i32* %cast32, i32 -1
   %cast = bitcast i32* %realPtr to i8*
@@ -24,7 +24,7 @@ def acquire[T] = self: Array[T] -> llvm
   call void %incFn(i8* %cast)
   ret void .None
 
-def release[T] = self: Array[T] -> llvm
+def release[T] = self: Array[T] do llvm
   %cast32 = bitcast %"Array[T]" %self to i32*
   %realPtr = getelementptr i32, i32* %cast32, i32 -1
   %cast = bitcast i32* %realPtr to i8*
@@ -33,14 +33,14 @@ def release[T] = self: Array[T] -> llvm
   call void %freeFn(i8* %cast,  void (i8*)* %cFree)
   ret void .None
 
-def setInit[T] = self: Array[T], idx: Int, value: T -> llvm
+def setInit[T] = self: Array[T], idx: Int, value: T do llvm
   %ptr = getelementptr %T, %T* %self, i32 %idx
   %old = load %T, %T* %ptr
   call void @T.acquire(%T %value)
   store %T %value, %T* %ptr
   ret void .None
 
-def childFree[T] = self: Array[T] -> llvm
+def childFree[T] = self: Array[T] do llvm
   %cast32 = bitcast %"Array[T]" %self to i32*
   %length = load i32, i32* %cast32
   %dataPtr = getelementptr i32, i32* %cast32, i32 1
@@ -63,7 +63,7 @@ free:
 end:
   ret void .None
 
-def set[T] = self: Array[T], idx: Int, value: T -> llvm
+def set[T] = self: Array[T], idx: Int, value: T do llvm
   %ptr = getelementptr %T, %T* %self, i32 %idx
   %old = load %T, %T* %ptr
   call void @T.acquire(%T %value)
@@ -71,12 +71,12 @@ def set[T] = self: Array[T], idx: Int, value: T -> llvm
   store %T %value, %T* %ptr
   ret void .None
 
-def get[T] = self: Array[T], idx: Int -> llvm
+def get[T] = self: Array[T], idx: Int do llvm
   %ptr = getelementptr %T, %T* %self, i32 %idx
   %value = load %T, %T* %ptr
   ret %T %value .T
 
-def mk[T] = length: Int, init: \Int -> T ->
+def mk[T] = length: Int, init: \Int -> T do
   array = allocArray[T](length)
 
   # hacky way to spec acquire / release functions
