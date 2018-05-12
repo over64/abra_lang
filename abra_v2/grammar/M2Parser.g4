@@ -39,7 +39,7 @@ tuple : '(' sp (expression sp (',' sp expression)*)? sp ')'
 
 fieldTh: id sp ':' sp typeHint ;
 scalarTh: (id sp DOT sp)? typeName=TypeId ('[' sp typeHint (sp ',' sp typeHint)* ']')?;
-fnTh: ('\\' sp args+=typeHint (sp ',' sp args+=typeHint)*)? sp '->' sp rett=typeHint ;
+fnTh: '(' (sp args+=typeHint (sp ',' sp args+=typeHint)*)? ')' sp '->' sp rett=typeHint ;
 structTh: '(' sp fieldTh (sp ',' sp fieldTh)+ ')' ;
 nonUnionTh: scalarTh | fnTh | structTh ;
 unionTh: nonUnionTh (sp '|' sp nonUnionTh)+ ;

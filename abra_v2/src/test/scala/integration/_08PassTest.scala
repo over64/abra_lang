@@ -20,7 +20,7 @@ class _08PassTest extends FunSuite with IntegrationUtil {
                  x6: IntOrString,
                  x7: Int | String,
                  x8: IntOrString,
-                 x9: \Int, Int -> Int do
+                 x9: (Int, Int) -> Int do
           .
 
         def + = self: Int, other: Int do llvm
@@ -46,7 +46,7 @@ class _08PassTest extends FunSuite with IntegrationUtil {
         type Vec2        = (x: Int, y: String)
         type IntOrString = Int | String
 
-        def pass = x9: \Int, Int -> Int do .
+        def pass = x9: (Int, Int) -> Int do .
 
         def + = self: Int, other: Int do llvm
           %1 = add nsw i32 %self, %other

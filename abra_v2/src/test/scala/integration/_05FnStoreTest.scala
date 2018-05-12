@@ -11,7 +11,7 @@ class _05FnStoreTest  extends FunSuite with IntegrationUtil {
 
     def bar = 42 .
     def main =
-      ptr: -> Int = bar
+      ptr: () -> Int = bar
       1 .
   """, exit = Some(1))
   }

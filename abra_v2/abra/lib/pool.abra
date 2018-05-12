@@ -8,9 +8,9 @@ llvm
   .
 
 type Ptr = llvm i8* .
-type Allocator = (alloc  : \Long -> Ptr,
-                  inc    : \Ptr -> None,
-                  release: \Ptr, \Ptr -> None -> None)
+type Allocator = (alloc  : (Long) -> Ptr,
+                  inc    : (Ptr) -> None,
+                  release: (Ptr, (Ptr) -> None) -> None)
 
 
 def loadAlloc = llvm
@@ -178,7 +178,7 @@ def poolFree = self: MemPool do
   next = root.nextPage()
   next.mpFree() .
 
-def withPool = self: MemPool, action: -> None do
+def withPool = self: MemPool, action: () -> None do
   curr = mkPoolAlloc()
 
   self.bind()

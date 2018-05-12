@@ -16,7 +16,7 @@ class _02ScalarStoreTest extends FunSuite with IntegrationUtil {
       s = 'hi'
       s = 'hii'
       x = 1
-      ptr: -> Int = bar
+      ptr: () -> Int = bar
       x .
   """, exit = Some(1))
   }

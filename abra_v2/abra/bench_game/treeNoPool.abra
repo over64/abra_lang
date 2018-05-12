@@ -5,7 +5,7 @@ import
 
 type Node = (left: Node | None, right: Node | None)
 
-def asNode = self: Node | None, callback: \Node -> None do llvm
+def asNode = self: Node | None, callback: (Node) -> None do llvm
   %1 = getelementptr { void (%"Node"*, i8*)*, i8* }, { void (%"Node"*, i8*)*, i8* }* %callback, i64 0, i32 0
   %fn = load void (%"Node"*, i8*)*, void (%"Node"*, i8*)** %1
   %2 = bitcast { void (%"Node"*, i8*)*, i8* }* %callback to i8*

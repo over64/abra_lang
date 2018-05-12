@@ -24,18 +24,14 @@ class _02TypeHintParse extends FunSuite {
   }
 
   test("fn") {
-    withStr(" -> None", FnTh(closure = Seq.empty, args = Seq.empty, ScalarTh(Seq.empty, "None", None)))
-    withStr("\\Int -> None", FnTh(
+    withStr("() -> None", FnTh(closure = Seq.empty, args = Seq.empty, ScalarTh(Seq.empty, "None", None)))
+
+    withStr("(Int) -> None", FnTh(
       closure = Seq.empty,
       args = Seq(ScalarTh(Seq.empty, "Int", None)),
       ret = ScalarTh(Seq.empty, "None", None)))
 
-    withStr(" -> None", FnTh(
-      closure = Seq.empty,
-      args = Seq.empty,
-      ret = ScalarTh(Seq.empty, "None", None)))
-
-    withStr("\\Int, Float -> None", FnTh(
+    withStr("(Int, Float) -> None", FnTh(
       closure = Seq.empty,
       args = Seq(
         ScalarTh(Seq.empty, "Int", None),
