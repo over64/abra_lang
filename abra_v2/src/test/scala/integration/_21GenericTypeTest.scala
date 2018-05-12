@@ -1,7 +1,5 @@
 package integration
 
-import java.nio.file.{Files, Paths}
-
 import org.scalatest.FunSuite
 
 class _21GenericTypeTest extends FunSuite with IntegrationUtil {

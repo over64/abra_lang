@@ -1,0 +1,8 @@
+import /universe with None, Int .
+type Range = (from: Int, to: Int, step: Int)
+
+def each = self: Range, fn: \Int -> None ->
+  i = self.from
+  while i < self.to do
+    fn(i)
+    i = i + self.step ..

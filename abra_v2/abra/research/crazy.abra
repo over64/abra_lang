@@ -1,26 +1,6 @@
-type Int = llvm { i32 }
-type Tree = (v, l: Tree, r: Tree)
-type Pair[K, V] = (k: K, next: Pair[V, K])
-type Pair1 = (k, next: Pair2)
-type Pair2 = (v, next: Pair1)
+def main =
+  twice = for i in Range(0, 10) do
+    if i mod 2 == 0 do
+      yield i * 2 .
 
-type Seq = llvm { i8* }
-val m = map.of(
-    (0, 0),
-    (1, 1)
-)
-type MapLike = (
-    type K
-    type V
-    def get: (k: K) -> V
-    def set: (k: K, v: V) -> None
 
-    def set2 = {
-    }
-)
-Map vs MapLike? object mix?
-val x = m(0) # (get: (Int) -> Int, set: (Int, Int) -> None)
-val y = m('') # Int expected
-type Map = (values: Seq)
-
-val v = Pair1(1, Pair2('h', Pair1(2, Pair2('e'))))

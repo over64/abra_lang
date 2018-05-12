@@ -18,9 +18,13 @@ object Util {
   val adviceBool = ScalarAdvice(Seq.empty, "Bool", pkg = None)
 
   sealed trait ThAdvice
+
   case class ScalarAdvice(params: Seq[Option[ThAdvice]], name: String, pkg: Option[String]) extends ThAdvice
+
   case class FnAdvice(args: Seq[Option[ThAdvice]], ret: Option[ThAdvice]) extends ThAdvice
+
   case class StructAdvice(fields: Seq[(String, Option[ThAdvice])]) extends ThAdvice
+
   case class UnionAdvice(variants: Seq[Option[ThAdvice]]) extends ThAdvice
 
   implicit class RichAdvice(self: ThAdvice) {
@@ -113,6 +117,9 @@ object Util {
       self.params.nonEmpty
 
     def isNotGeneric: Boolean = !isGeneric
+
+    def isLow: Boolean =
+      self.lambda.body.isInstanceOf[llVm]
 
     def lowName(ctx: TContext, namespace: Namespace) =
       if (self.isSelf)
@@ -256,7 +263,7 @@ object Util {
     def toLow(ctx: TContext, namespace: Namespace): Ast2.TypeRef = {
       self match {
         case ScalarTh(params, name, pkg) =>
-          namespace.findType(name) match {
+          namespace.findType(name, true) match {
             case sd: ScalarDecl => sd.spec(params, ctx, namespace)
             case struct: StructDecl => struct.spec(params, ctx, namespace)
             case ud: UnionDecl => ud.spec(params, ctx, namespace)

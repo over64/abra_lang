@@ -11,9 +11,11 @@ import scala.collection.mutable.ListBuffer
   * Created by over on 23.10.17.
   */
 object IrUtil {
+
   case class Mod(var lowCode: ListBuffer[String] = ListBuffer(),
-                 val types: mutable.HashMap[String, Type] = mutable.HashMap(),
-                 val defs: mutable.HashMap[String, Def] = mutable.HashMap()) {
+                 types: mutable.HashMap[String, Type] = mutable.HashMap(),
+                 defs: mutable.HashMap[String, Def] = mutable.HashMap(),
+                 protos: mutable.HashMap[String, TypeRef] = mutable.HashMap()) {
 
     defineType(Low(ref = false, "Nil", "void"))
     defineType(Low(ref = false, "Bool", "i8"))
@@ -127,7 +129,6 @@ object IrUtil {
       types(self.name) match {
         case Low(ref, name, llValue) => false
         case Struct(name, fields) =>
-          println(name)
           fields.exists(f => f.ref.hasSelfRef(types, stack :+ self))
         case Union(name, variants) =>
           variants.exists(v => v.hasSelfRef(types, stack :+ self))
@@ -147,7 +148,9 @@ object IrUtil {
       }
 
     def isFn(types: mutable.HashMap[String, Type]): Boolean = types(self.name).isInstanceOf[Fn]
+
     def isUnion(types: mutable.HashMap[String, Type]): Boolean = types(self.name).isInstanceOf[Union]
+
     def isValue(types: mutable.HashMap[String, Type]): Boolean = !self.isRef(types)
 
     def isVoid(types: mutable.HashMap[String, Type]): Boolean =
@@ -177,7 +180,9 @@ object IrUtil {
 
   implicit class RichUnion(self: Union) {
     def fieldTagValue(typeRef: TypeRef): Int = self.variants.indexOf(typeRef)
+
     def fieldIrIndex(typeRef: TypeRef): Int = fieldTagValue(typeRef) + 1
+
     def isNullableUnion(types: mutable.HashMap[String, Type]): Option[TypeRef] = {
       val tNone = TypeRef("None")
       if (self.variants.length == 2 && self.variants.contains(tNone)) {
@@ -189,5 +194,6 @@ object IrUtil {
   }
 
   def irDefName(name: String) = s"""@"$name""""
+
   def irLocalName(name: String) = s"%$name"
 }

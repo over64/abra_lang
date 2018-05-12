@@ -1,0 +1,18 @@
+import /universe with None, Int, String .
+
+llvm
+  @.printfInt = private constant [3 x i8] c"%d\00", align 1
+  @.printfStr = private constant [3 x i8] c"%s\00", align 1
+  declare i32 @printf(i8*,...)
+  declare i32 @puts(i8*)
+  .
+
+def print = s: String -> llvm
+  %format = bitcast [3 x i8]* @.printfStr to i8*
+  call i32 (i8*,...) @printf(i8* %format, i8* %s)
+  ret void .None
+
+def printInt = i: Int -> llvm
+    %format = bitcast [3 x i8]* @.printfInt to i8*
+    call i32 (i8*,...) @printf(i8* %format, i32 %i)
+    ret void .None

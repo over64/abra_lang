@@ -26,7 +26,7 @@ object StoreUtil {
         else argTypeRef.toPtr(ctx.types) + " " + irLocalName(argName)
     }.mkString(", ")
 
-    ctx.out.println(s"""define ${dtype.ret.toValue(ctx.types)} @"$dname" ($argsIr) { """)
+    ctx.out.println(s"""define private ${dtype.ret.toValue(ctx.types)} @"$dname" ($argsIr) { """)
 
     val irType = TypeRef(s.name).toValue(ctx.types)
 
@@ -64,7 +64,7 @@ object StoreUtil {
           val dtype = Fn(dtypeName, Seq.empty, Seq(TypeRef(s.name)), TypeRef("Nil"))
           val irType = TypeRef(s.name).toValue(ctx.types)
 
-          ctx.out.println(s"""define void @"$dname" ($irType %self) { """)
+          ctx.out.println(s"""define private void @"$dname" ($irType %self) { """)
           ctx.out.println(s"\t%1 = bitcast $irType %self to i8*")
           ctx.out.println(s"\t%2 = load void (i8*)*, void (i8*)** @rcInc")
           ctx.out.println(s"\tcall void %2(i8* %1)")
@@ -84,7 +84,7 @@ object StoreUtil {
           val stripped = irType.stripSuffix("*")
 
 
-          ctx.out.println(s"""define void @"$childFree" (i8* %obj) { """)
+          ctx.out.println(s"""define private void @"$childFree" (i8* %obj) { """)
           ctx.out.println(s"\t%$$self = bitcast i8* %obj to $stripped*")
           s.fields.zipWithIndex.foreach {
             case (f, idx) =>
@@ -99,7 +99,7 @@ object StoreUtil {
           ctx.out.println(s"\tret void")
           ctx.out.println("}")
 
-          ctx.out.println(s"""define void @"$dname" ($irType %$$self) { """)
+          ctx.out.println(s"""define private void @"$dname" ($irType %$$self) { """)
           ctx.out.println(s"\t%$$freeFn = load void (i8*, void (i8*)*)*, void (i8*, void (i8*)*)** @rcRelease")
           ctx.out.println(s"\t%obj = bitcast $stripped* %$$self to i8*")
           ctx.out.println(s"""\tcall void %$$freeFn(i8* %obj, void (i8*)* @"$childFree")""")
@@ -119,7 +119,7 @@ object StoreUtil {
           val dtype = Fn(dtypeName, Seq.empty, Seq(TypeRef(u.name)), TypeRef("Nil"))
           val irType = TypeRef(u.name).toValue(ctx.types)
 
-          ctx.out.println(s"""define void @"$dname" ($irType %self) { """)
+          ctx.out.println(s"""define private void @"$dname" ($irType %self) { """)
 
           u.isNullableUnion(ctx.types) match {
             case Some(tref) =>
@@ -175,7 +175,7 @@ object StoreUtil {
           val dtype = Fn(dtypeName, Seq.empty, Seq(TypeRef(u.name)), TypeRef("Nil"))
           val irType = TypeRef(u.name).toValue(ctx.types)
 
-          ctx.out.println(s"""define void @"$dname" ($irType %self) { """)
+          ctx.out.println(s"""define private void @"$dname" ($irType %self) { """)
 
           u.isNullableUnion(ctx.types) match {
             case Some(tref) =>
@@ -237,7 +237,7 @@ object StoreUtil {
             val dtype = Fn(dtypeName, Seq.empty, Seq(TypeRef(l.name)), TypeRef("Nil"))
             val irType = TypeRef(l.name).toValue(ctx.types)
 
-            ctx.out.println(s"""define void @"$dname" ($irType %self) { """)
+            ctx.out.println(s"""define private void @"$dname" ($irType %self) { """)
             ctx.out.println(s"\t%cast = bitcast $irType %self to i8*")
             ctx.out.println(s"\t%incFn = load void (i8*)*, void (i8*)** @rcInc")
             ctx.out.println(s"\tcall void %incFn(i8* %cast)")
@@ -254,7 +254,7 @@ object StoreUtil {
           val childFree = s"${l.name}.childFree"
 
           if (!ctx.defs.contains(childFree)) {
-            ctx.out.println(s"""define void @"$childFree" (i8* %obj) { """)
+            ctx.out.println(s"""define private void @"$childFree" (i8* %obj) { """)
             ctx.out.println(s"\tret void")
             ctx.out.println("}")
           }
@@ -265,7 +265,7 @@ object StoreUtil {
             val irType = TypeRef(l.name).toValue(ctx.types)
             val stripped = irType.stripSuffix("*")
 
-            ctx.out.println(s"""define void @"$dname" ($irType %self) { """)
+            ctx.out.println(s"""define private void @"$dname" ($irType %self) { """)
             ctx.out.println(s"\t%cast = bitcast $irType %self to i8*")
             ctx.out.println(s"\t%freeFn = load void (i8*, void (i8*)*)*, void (i8*, void (i8*)*)** @rcRelease")
             ctx.out.println(s"""\t%cFree = bitcast void ($irType)* @"$childFree" to void (i8*)*""")
@@ -290,7 +290,7 @@ object StoreUtil {
           val dtypeName = "\"" + s"\\${valueType.name} -> Nil" + "\""
           val dtype = Fn(dtypeName, Seq.empty, Seq(TypeRef(valueType.name)), TypeRef("Nil"))
 
-          ctx.out.println(s"""define void @"$dname" (%"$valTypeName" %self) { """)
+          ctx.out.println(s"""define private void @"$dname" (%"$valTypeName" %self) { """)
           ctx.out.println(s"\tret void")
           ctx.out.println("}")
 
@@ -303,7 +303,7 @@ object StoreUtil {
           val dtypeName = "\"" + s"\\${valueType.name} -> Nil" + "\""
           val dtype = Fn(dtypeName, Seq.empty, Seq(TypeRef(valueType.name)), TypeRef("Nil"))
 
-          ctx.out.println(s"""define void @"$dname" (%"$valTypeName" %self) { """)
+          ctx.out.println(s"""define private void @"$dname" (%"$valTypeName" %self) { """)
           ctx.out.println(s"\tret void")
           ctx.out.println("}")
 

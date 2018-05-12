@@ -331,6 +331,7 @@ object IrGen2 {
           if (!toTref.isVoid(ctx.types)) throw new RuntimeException(s"unexpected store $src -> $dest")
       }
   }
+
   def evalStat(ctx: IrContext,
                dctx: DefContext,
                stat: Stat): Unit = stat match {
@@ -525,9 +526,8 @@ object IrGen2 {
       ctx.out.println(s";@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ when end")
   }
 
-  def evalDef(ctx: IrContext, fn: Def) = {
-    val fnType = ctx.types(fn.ref.name).asInstanceOf[Fn]
-    val argsIr = (fn.args zip fnType.args).map {
+  def writeProto(ctx: IrContext, external: Boolean, fnName: String, fnType: Fn, args: Seq[String]): Unit = {
+    val argsIr = (args zip fnType.args).map {
       case (argName, argTypeRef) =>
         ctx.types(argTypeRef.name) match {
           case fnType: Fn =>
@@ -542,7 +542,14 @@ object IrGen2 {
       if (fnType.closure.isEmpty) argsIr
       else argsIr :+ (s"""%"${fnType.name}"* %$$closure""")
 
-    ctx.out.println(s"""define ${fnType.ret.toValue(ctx.types)} @"${fn.name}" (${realArgs.mkString(", ")}) { """)
+    val declType = if(external) "declare" else "define"
+
+    ctx.out.println(s"""$declType ${fnType.ret.toValue(ctx.types)} @"$fnName" (${realArgs.mkString(", ")})""")
+  }
+
+  def evalDef(ctx: IrContext, fn: Def) = {
+    writeProto(ctx, false, fn.name, ctx.types(fn.ref.name).asInstanceOf[Fn], fn.args)
+    ctx.out.println("{")
     fn.code match {
       case LLCode(value) => ctx.out.println(value)
       case AbraCode(vars, stats) =>
@@ -561,58 +568,17 @@ object IrGen2 {
   def gen(out: PrintStream,
           lowCode: Seq[String],
           types: mutable.HashMap[String, Type],
-          defs: mutable.HashMap[String, Def]) = {
-    val protos = mutable.HashMap[String, TypeRef]()
-    defs.map {
-      case (k, v) => protos.put(k, v.ref)
-    }
+          defs: mutable.HashMap[String, Def],
+          protos: mutable.HashMap[String, TypeRef]) = {
 
     val ctx = IrContext(out, types, protos, defs)
-
     ctx.out.println(
       """
-        |declare void @llvm.memcpy.p0i8.p0i8.i64(i8* nocapture, i8* nocapture readonly, i64, i32, i1)
-        |declare i8* @malloc(i64)
-        |declare void @free(i8*)
-        |
-        |define i8*  @defRcAlloc(i64 %size) {
-        |    %realSize = add nsw i64 %size, 8
-        |    %block = call i8* @malloc(i64 %realSize)
-        |    %1 = bitcast i8* %block to i64*
-        |    store i64 1, i64* %1
-        |    %ptr = getelementptr i8, i8* %block, i64 8
-        |    ret i8* %ptr
-        |}
-        |define void @defRcInc(i8* %obj) {
-        |    %1 = bitcast i8* %obj to i64*
-        |    %2 = getelementptr i64, i64* %1, i64 -1
-        |    %rc = load i64, i64* %2
-        |    %newRc = add nsw i64 %rc, 1
-        |    store i64 %newRc, i64* %2
-        |    ret void
-        |}
-        |define void @defRcRelease(i8* %obj, void (i8*)* %releaseFn) {
-        |    %1 = getelementptr i8, i8* %obj, i64 -8
-        |    %2 = bitcast i8* %1 to i64*
-        |    %3 = getelementptr i64, i64* %2, i64 0
-        |    %rc = load i64, i64* %3
-        |    %4 = icmp eq i64 %rc, 1
-        |
-        |    br i1 %4, label %free, label %store
-        |  free:
-        |    call void %releaseFn(i8* %obj)
-        |    call void @free(i8* %1)
-        |    ret void
-        |  store:
-        |    %newRc = add nsw i64 %rc, -1
-        |    store i64 %newRc, i64* %3
-        |    ret void
-        |}
-        |@rcAlloc = thread_local(initialexec) global i8* (i64)* @defRcAlloc
-        |@rcInc = thread_local(initialexec) global void (i8*)* @defRcInc
-        |@rcRelease = thread_local(initialexec) global void (i8*, void (i8*)*)* @defRcRelease
+        declare void @llvm.memcpy.p0i8.p0i8.i64(i8* nocapture, i8* nocapture readonly, i64, i32, i1)
+        @rcAlloc = external thread_local(initialexec) global i8* (i64)*
+        @rcInc = external thread_local(initialexec) global void (i8*)*
+        @rcRelease = external thread_local(initialexec) global void (i8*, void (i8*)*)*
       """.stripMargin)
-
 
     ctx.types.values.filter {
       case l: Low => l.llValue != "void"
@@ -634,18 +600,27 @@ object IrGen2 {
       case _ => false
     }.foreach(t => out.println(s"""%"${t.name}" = type """ + t.toDecl(types)))
 
+    ctx.protos.foreach {
+      case (pname, ref) =>
+        val fnType = ctx.types(ref.name).asInstanceOf[Fn]
+        val args = (0 to fnType.args.length).map(i => "x" + i)
+        writeProto(ctx, true, pname, fnType, args)
+    }
+    ctx.out.println()
+
+    lowCode.foreach { code => ctx.out.println(code) }
+    ctx.out.println()
+
     ctx.types.values.toBuffer[Type].foreach {
       case s: Struct =>
         StoreUtil.genConstructor(ctx, s)
       case _ =>
     }
-    ctx.types.values.toBuffer[Type].foreach(t =>
-      StoreUtil.genAcquireRelease(ctx, t))
+    ctx.types.values.toBuffer[Type].foreach(t => StoreUtil.genAcquireRelease(ctx, t))
 
-    lowCode.foreach { code => ctx.out.println(code) }
-
-    ctx.out.println()
-
+    defs.map {
+      case (k, v) => ctx.protos.put(k, v.ref)
+    }
     defs.values.foreach(fn => evalDef(ctx, fn))
   }
 }

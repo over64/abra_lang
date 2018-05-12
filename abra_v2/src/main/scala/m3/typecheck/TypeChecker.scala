@@ -101,18 +101,14 @@ object TypeChecker {
             val selfTask = new InferTask {
               override def infer(expected: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat]) = (vi.th, id.value, Seq.empty)
             }
-            namespace.invokeSelfDef(ctx, scope, fnName, params, vi.th, (selfTask +: argTasks).iterator, th, {
-              case (cont, specs) => evalDef(ctx, namespace, scope.mkChild(p => new FnScope(None)), cont, specs)
-            })
+            namespace.invokeSelfDef(ctx, scope, fnName, params, vi.th, (selfTask +: argTasks).iterator, th)
           }
         case _expr: Expression =>
           val (selfTh, vName, lowStats) = evalExpr(ctx, namespace, scope, None, _expr)
           val selfTask = new InferTask {
             override def infer(expected: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat]) = (selfTh, vName, lowStats)
           }
-          namespace.invokeSelfDef(ctx, scope, fnName, params, selfTh, (selfTask +: argTasks).iterator, th, {
-            case (cont, specs) => evalDef(ctx, namespace, scope.mkChild(p => new FnScope(None)), cont, specs)
-          })
+          namespace.invokeSelfDef(ctx, scope, fnName, params, selfTh, (selfTask +: argTasks).iterator, th)
       }
     case Call(params, expr, args) =>
       val argTasks = args.map(arg => new InferTask {
@@ -129,9 +125,8 @@ object TypeChecker {
             // 1. find function
             // 2. find var
             if (namespace.hasDef(id.value)) {
-              namespace.invokeDef(ctx, scope, id.value, params, argTasks.iterator, th, {
-                case (cont, specs) => evalDef(ctx, namespace, scope.mkChild(p => new FnScope(None)), cont, specs)
-              })
+              val (kind, spec, vName, lowStats) = namespace.invokeDef(ctx, scope, id.value, params, argTasks.iterator, th)
+              (spec.th.ret, vName, lowStats)
             } else {
               val vi = scope.findVarOpt(id.value)
                 .getOrElse(throw new RuntimeException(s"no such var of function with name ${id.value}"))
@@ -143,9 +138,7 @@ object TypeChecker {
                   val selfTask = new InferTask {
                     override def infer(expected: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat]) = (selfTh, id.value, Seq.empty)
                   }
-                  namespace.invokeSelfDef(ctx, scope, "get", params, selfTh, (selfTask +: argTasks).iterator, th, {
-                    case (cont, specs) => evalDef(ctx, namespace, scope.mkChild(p => new FnScope(None)), cont, specs)
-                  })
+                  namespace.invokeSelfDef(ctx, scope, "get", params, selfTh, (selfTask +: argTasks).iterator, th)
               }
             }
           }
@@ -459,7 +452,8 @@ object TypeChecker {
 
   def evalDef(ctx: TContext, namespace: Namespace, scope: FnScope, cont: DefCont, specs: Seq[TypeHint]): (DefHeader, Ast2.Def) = {
     val fn = cont.fn.spec(specs, ctx, namespace)
-    println(s"eval ${namespace.pkg}.${fn.name}")
+    val deep = ctx.inferStack.length + ctx.deep + 1
+    println("\t" * deep + s"eval ${namespace.pkg}.${fn.lowName(ctx, namespace)}")
 
     if (ctx.inferStack.contains(fn.name))
       throw new RuntimeException(s"expected type hint for recursive function ${fn.name}")
@@ -467,8 +461,15 @@ object TypeChecker {
 
     val alreadyDefined =
       fn.typeHint match {
-        case Some(th) => cont.specs += DefSpec(specs, th, fn.lowName(ctx, namespace)); true
-        case None => false
+        case Some(th) =>
+          val lowName = fn.lowName(ctx, namespace)
+          cont.specs += DefSpec(specs, th, lowName)
+          // so hacky
+          //println(s"pre push def  $lowName")
+          ctx.lowMod.defineDef(Ast2.Def(lowName, null, null, null, null, false))
+          true
+        case None =>
+          false
       }
 
     val argsTh = fn.lambda.args.map { arg =>
@@ -524,6 +525,7 @@ object TypeChecker {
     val lowClosure = closure.map(_._1)
     val lowDef = Ast2.Def(lowName, lowType, lowClosure, lowArgs, code, isAnon = false)
 
+    //println(s"push def  ${lowDef.name}")
     ctx.lowMod.defineDef(lowDef)
     if (!alreadyDefined)
       cont.specs += DefSpec(specs, fnTh, lowName)
@@ -539,6 +541,13 @@ object TypeChecker {
       if (cont.fn.isNotGeneric)
         if (cont.specs.isEmpty)
           evalDef(ctx, namespace, new FnScope(None), cont, Seq.empty)
+    }
+    namespace.selfDefs.foreach { case (_, seq) =>
+      seq.foreach { cont =>
+        if (cont.fn.isNotGeneric)
+          if (cont.specs.isEmpty)
+            evalDef(ctx, namespace, new FnScope(None), cont, Seq.empty)
+      }
     }
   }
 }

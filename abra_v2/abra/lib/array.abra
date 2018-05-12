@@ -1,4 +1,4 @@
-import /universe with None, Int, String .
+import /universe with None, Bool, Int, String .
 
 type Array[T] = ref llvm %T* .
 

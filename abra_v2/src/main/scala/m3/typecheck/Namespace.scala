@@ -14,6 +14,8 @@ case class DefSpec(params: Seq[TypeHint], th: FnTh, lowName: String)
 
 case class DefCont(fn: Def, specs: mutable.ListBuffer[DefSpec])
 
+case class InvokeKind(isCached: Boolean, isLow: Boolean)
+
 trait InferTask {
   def infer(expected: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat])
 }
@@ -26,14 +28,26 @@ class Namespace(val pkg: String,
                 val defs: Map[String, DefCont] = Map(),
                 val types: Seq[TypeDecl] = Seq()) {
 
-  def findType(name: String): TypeDecl = {
+  def findTypeOpt(name: String, transient: Boolean): Option[TypeDecl] = {
     types.find(td => td.name == name) match {
-      case Some(td) => td
+      case some@Some(td) => some
       case None =>
-        val inMod = typeImports.getOrElse(name, throw new RuntimeException(s"no such type with name $name"))
-        imports(inMod).findType(name)
+        if (transient) {
+          imports.values.map { ns => ns.findTypeOpt(name, transient) }.find(td => td != None) match {
+            case None => None
+            case Some(opt) => opt
+          }
+        } else {
+          typeImports.get(name) match {
+            case Some(inMod) => imports(inMod).findTypeOpt(name, transient)
+            case None => None
+          }
+        }
     }
   }
+
+  def findType(name: String, transient: Boolean): TypeDecl =
+    findTypeOpt(name, transient).getOrElse(throw new RuntimeException(s"no such type with name $name"))
 
   def hasDef(name: String): Boolean = defs.contains(name)
 
@@ -96,8 +110,7 @@ class Namespace(val pkg: String,
                  cont: DefCont,
                  params: Seq[TypeHint],
                  args: Iterator[InferTask],
-                 ret: Option[ThAdvice],
-                 inferCallback: (DefCont, Seq[TypeHint]) => (DefHeader, Ast2.Def)): (TypeHint, String, Seq[Ast2.Stat]) = {
+                 ret: Option[ThAdvice]): (InvokeKind, DefSpec, String, Seq[Ast2.Stat]) = {
 
     val toCall = cont.fn
     val specMap: mutable.HashMap[GenericType, TypeHint] =
@@ -149,19 +162,27 @@ class Namespace(val pkg: String,
       }
 
     val flatSpecs = toCall.params.map(cp => specMap(cp))
-    val defSpec =
+    val (cached, defSpec) =
       cont.specs.find(ds => ds.params == flatSpecs) match {
-        case Some(spec) => spec
+        case Some(spec) => (true, spec)
         case None =>
-          val (header, lowDef) = inferCallback(cont, flatSpecs)
-          cont.specs.find(ds => ds.params == flatSpecs).get
+          val (header, lowDef) =
+            TypeChecker.evalDef(ctx, this, scope.mkChild(p => new FnScope(None)), cont, flatSpecs)
+          (false, cont.specs.find(ds => ds.params == flatSpecs).get)
       }
 
     val anonVar = "$c" + ctx.nextAnonId()
     scope.addLocal(mut = false, anonVar, defSpec.th.ret)
 
+    val kind = InvokeKind(cached, toCall.isLow)
+    if (kind.isCached && !ctx.lowMod.defs.contains(defSpec.lowName)) {
+      //println(s"push proto ${defSpec.lowName}")
+      ctx.lowMod.protos.put(defSpec.lowName, defSpec.th.toLow(ctx, this))
+    }
+
     (
-      defSpec.th.ret,
+      kind,
+      defSpec,
       anonVar,
       argsStats :+ Ast2.Store(
         init = true,
@@ -221,11 +242,29 @@ class Namespace(val pkg: String,
                 name: String,
                 params: Seq[TypeHint],
                 args: Iterator[InferTask],
-                ret: Option[ThAdvice],
-                inferCallback: (DefCont, Seq[TypeHint]) => (DefHeader, Ast2.Def)): (TypeHint, String, Seq[Ast2.Stat]) = {
+                ret: Option[ThAdvice]): (InvokeKind, DefSpec, String, Seq[Ast2.Stat]) = {
     val cont = defs.getOrElse(name, throw new RuntimeException(s"no such function with name $name"))
-    _invokeDef(ctx, scope, cont, params, args, ret, inferCallback)
+    _invokeDef(ctx, scope, cont, params, args, ret)
   }
+
+  def invokeSelfDefOpt(ctx: TContext,
+                       scope: BlockScope,
+                       name: String,
+                       params: Seq[TypeHint],
+                       selfType: TypeHint,
+                       args: Iterator[InferTask],
+                       ret: Option[ThAdvice]): Option[(InvokeKind, DefSpec, String, Seq[Ast2.Stat])] =
+    selfDefs.get(name).flatMap { bucket =>
+      bucket.find { _cont =>
+        val th = _cont.fn.lambda.args(0).typeHint.get
+        (th, selfType) match {
+          case (sth1: ScalarTh, sth2: ScalarTh) => sth1.name == sth2.name
+          case (th1, th2) => th1 == th2
+        }
+      }.map { cont =>
+        _invokeDef(ctx, scope, cont, params, args, ret)
+      }
+    }
 
   def invokeSelfDef(ctx: TContext,
                     scope: BlockScope,
@@ -233,20 +272,22 @@ class Namespace(val pkg: String,
                     params: Seq[TypeHint],
                     selfType: TypeHint,
                     args: Iterator[InferTask],
-                    ret: Option[ThAdvice],
-                    inferCallback: (DefCont, Seq[TypeHint]) => (DefHeader, Ast2.Def)): (TypeHint, String, Seq[Ast2.Stat]) = {
-    selfDefs.get(name) match {
-      case Some(bucket) =>
-        val cont = bucket.find { _cont =>
-          val th = _cont.fn.lambda.args(0).typeHint.get
-          (th, selfType) match {
-            case (sth1: ScalarTh, sth2: ScalarTh) => sth1.name == sth2.name
-            case (th1, th2) => th1 == th2
-          }
-        }.getOrElse(throw new RuntimeException(s"no function with name $name for type $selfType"))
+                    ret: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat]) = {
+    invokeSelfDefOpt(ctx, scope, name, params, selfType, args, ret) match {
+      case Some(res) =>
+        val (kind, spec, vName, lowStats) = res
+        (spec.th.ret, vName, lowStats)
+      case None =>
+        imports.map {
+          case (modName, ns) => (ns, ns.invokeSelfDefOpt(ctx, scope, name, params, selfType, args, ret))
+        }.find(res => res._2 != None) match {
+          case Some((ns, Some((kind, spec, vName, lowStats)))) =>
+            if (kind.isCached && !ctx.lowMod.defs.contains(spec.lowName))
+              ctx.lowMod.protos.put(spec.lowName, spec.th.toLow(ctx, ns))
+            (spec.th.ret, vName, lowStats)
+          case _ => throw new RuntimeException(s"no function with name $name for type $selfType")
+        }
     }
-
-    _invokeDef(ctx, scope, cont, params, args, ret, inferCallback)
   }
 
   def invokeConstructor(ctx: TContext,
@@ -255,7 +296,7 @@ class Namespace(val pkg: String,
                         params: Seq[TypeHint],
                         args: Iterator[InferTask]): (TypeHint, String, Seq[Ast2.Stat]) = {
     val consType =
-      types.find(t => t.name == typeName).getOrElse(throw new RuntimeException(s"has no type with name $typeName")) match {
+      findType(typeName, false) match {
         case sd: StructDecl => sd
         case _ => throw new RuntimeException(s"$typeName is not struct type")
       }
@@ -428,8 +469,9 @@ class Namespace(val pkg: String,
     if (!ns.hasDef(fnName))
       throw new RuntimeException(s"no such function $fnName in module $modName")
 
-    ns.invokeDef(ctx, scope, fnName, params, args, ret, {
-      case (cont, specs) => TypeChecker.evalDef(ctx, ns, scope.mkChild(p => new FnScope(None)), cont, specs)
-    })
+    val (kind, spec, vName, lowStats) = ns.invokeDef(ctx, scope, fnName, params, args, ret)
+    if (kind.isCached && !ctx.lowMod.defs.contains(spec.lowName))
+      ctx.lowMod.protos.put(spec.lowName, spec.th.toLow(ctx, ns))
+    (spec.th.ret, vName, lowStats)
   }
 }

@@ -4,7 +4,7 @@ import m3.codegen.IrUtil
 
 import scala.collection.mutable
 
-class TContext {
+class TContext(val deep: Int = 0) {
   var nextAnonId = new (() => Int) {
     var idSeq = 0
 
