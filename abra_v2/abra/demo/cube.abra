@@ -1,0 +1,27 @@
+import
+  /universe with None, Bool, Int, String
+  /io
+  /sys
+  /sdl with Event .
+
+def main =
+  sdl.init(sdl.initVideo(), lambda err: String ->
+    io.print(err)
+    sys.exit(1))
+
+  window = sdl.createWindow(
+    'ABRA Lang Demo 0!',
+    100, 100, 640, 480,
+    sdl.windowShown() or sdl.windowOpenGL() or sdl.windowResizable())
+
+  glContext = window.glCreateContext()
+
+  running = true
+  while running do
+    sdl.pollEvents(lambda event: Event ->
+      if event.eventType == sdl.eventQuit() do
+        running = false .)
+
+    window.glSwap() .
+
+  0 .

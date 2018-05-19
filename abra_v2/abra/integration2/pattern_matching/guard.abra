@@ -1,8 +1,0 @@
-def == = \self: Boolean, other: Boolean = llvm
-  %1 = icmp eq i1 %self, %other
-  ret i1 %1
-.Boolean
-
-def main =
-    match 1
-        of _ if true == true -> 1 ..

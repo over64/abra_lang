@@ -13,6 +13,11 @@ def - = self: Int, other: Int do llvm
   %1 = sub nsw i32 %self, %other
   ret i32 %1 .Int
 
+def == = self: Int, other: Int do llvm
+  %1 = icmp eq i32 %self, %other
+  %2 = zext i1 %1 to i8
+  ret i8 %2 .Bool
+
 def > = self: Int, other: Int do llvm
   %1 = icmp sgt i32 %self, %other
   %2 = zext i1 %1 to i8
@@ -22,6 +27,10 @@ def < = self: Int, other: Int do llvm
   %1 = icmp slt i32 %self, %other
   %2 = zext i1 %1 to i8
   ret i8 %2 .Bool
+
+def or = self: Int, shift: Int do llvm
+  %1 = or i32 %self, %shift
+  ret i32 %1 .Int
 
 def shl = self: Int, shift: Int do llvm
   %1 = shl i32 %self, %shift

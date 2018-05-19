@@ -1,2 +1,0 @@
-def pass = \x: Int -> x
-def main = pass(42)

@@ -1,8 +1,0 @@
-def == = \self: Int, other: Int = llvm
-  %1 = icmp eq i32 %self, %other
-  ret i1 %1
-.Boolean
-
-def main =
-    match 1
-        of 1 -> 2 ..

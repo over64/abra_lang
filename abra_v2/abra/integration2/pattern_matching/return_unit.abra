@@ -1,6 +1,0 @@
-def foo = .Nil
-
-def main =
-    match 1
-        of _ -> foo() .
-    1 .

@@ -45,7 +45,7 @@ trait LowUtil {
   def runProgram(objName: String, deps: Seq[String], exit: Option[Int], stdout: Option[String] = None, stderr: Option[String] = None, isRelease: Boolean) = {
     val depFiles = deps ++ Seq(buildRuntime(), objName)
     val binName = objName.stripSuffix(".o")
-    val args = Seq("clang-3.9") ++ depFiles ++ Seq("-o", binName, if (isRelease) "-O3" else "-O0")
+    val args = Seq("clang-3.9") ++ depFiles ++ Seq("-o", binName, if (isRelease) "-O3" else "-O0", "-lSDL2")
     run(args: _*) { (exit, stdout, stderr) =>
       if (exit != 0) {
         print(stderr)

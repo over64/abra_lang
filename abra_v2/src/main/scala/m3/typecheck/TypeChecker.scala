@@ -20,7 +20,7 @@ object TypeChecker {
           val (header, lowDef) = evalDef(ctx, namespace, scope.mkChild(p => new FnScope(None)), cont, Seq.empty)
           val vName = "$l" + ctx.nextAnonId()
           scope.addLocal(mut = false, vName, header.th)
-          (header.th, vName, Seq(Ast2.Store(init = true, Ast2.Id(vName, Seq.empty), Ast2.Id(header.name))))
+          (header.th, vName, Seq(Ast2.Store(init = true, Ast2.Id(vName, Seq.empty), Ast2.Id(header.lowName))))
       }
     case x: Literal =>
       val vName = "$l" + ctx.nextAnonId()
@@ -31,16 +31,16 @@ object TypeChecker {
         case _ =>
           val (litTh, lit) = x match {
             case lInt(value) =>
-              val id = ConstGen.int(ctx.lowMod, value)
+              val id = ConstGen.int(ctx.lowMod, value, namespace.pkg)
               (thInt, Ast2.Call(id, Seq.empty))
             case lFloat(value: String) =>
-              val id = ConstGen.float(ctx.lowMod, value)
+              val id = ConstGen.float(ctx.lowMod, value, namespace.pkg)
               (thFloat, Ast2.Call(id, Seq.empty))
             case lBoolean(value: String) =>
-              val id = ConstGen.bool(ctx.lowMod, value)
+              val id = ConstGen.bool(ctx.lowMod, value, namespace.pkg)
               (thBool, Ast2.Call(id, Seq.empty))
             case lString(value: String) =>
-              val id = ConstGen.string(ctx.lowMod, value)
+              val id = ConstGen.string(ctx.lowMod, value, namespace.pkg)
               (thString, Ast2.Call(id, Seq.empty))
           }
 
@@ -54,9 +54,7 @@ object TypeChecker {
         case (fth, fieldId) =>
           fth match {
             case sth: ScalarTh =>
-              namespace.types.find(td => td.name == sth.name)
-                .getOrElse(throw new RuntimeException(s"no such type ${sth.name}"))
-              match {
+              namespace.findType(sth.name, transient = false) match {
                 case sd: StructDecl =>
                   sd.fields.find(fd => fd.name == fieldId.value).getOrElse(throw new RuntimeException(s"no such field $fieldId")).th
                 case _ => throw new RuntimeException(s"no such field ${fieldId.value} on type $fth")
@@ -186,7 +184,6 @@ object TypeChecker {
       }
 
       val (header, lowDef) = evalDef(ctx, namespace, scope.mkChild(p => new FnScope(Some(p))), DefCont(_def, ListBuffer.empty), Seq.empty)
-      ctx.lowMod.defineDef(lowDef)
 
       val vName = "$l" + ctx.nextAnonId()
       scope.addLocal(mut = false, vName, header.th)
@@ -195,7 +192,7 @@ object TypeChecker {
         if (header.th.closure.isEmpty)
           Ast2.Store(init = true, Ast2.Id(vName), Ast2.Id(header.lowName))
         else
-          Ast2.Closure(vName, _def.name)
+          Ast2.Closure(vName, header.lowName)
 
       (header.th, vName, Seq(make))
     case andOr: AndOr =>
@@ -453,7 +450,7 @@ object TypeChecker {
   def evalDef(ctx: TContext, namespace: Namespace, scope: FnScope, cont: DefCont, specs: Seq[TypeHint]): (DefHeader, Ast2.Def) = {
     val fn = cont.fn.spec(specs, ctx, namespace)
     val deep = ctx.inferStack.length + ctx.deep + 1
-    println("\t" * deep + s"eval ${namespace.pkg}.${fn.lowName(ctx, namespace)}")
+    println("\t" * deep + s"eval ${fn.lowName(ctx, namespace)}")
 
     if (ctx.inferStack.contains(fn.name))
       throw new RuntimeException(s"expected type hint for recursive function ${fn.name}")

@@ -121,10 +121,15 @@ object Util {
     def isLow: Boolean =
       self.lambda.body.isInstanceOf[llVm]
 
-    def lowName(ctx: TContext, namespace: Namespace) =
-      if (self.isSelf)
-        self.lambda.args(0).typeHint.get.toLow(ctx, namespace).name + "." + self.name
-      else self.name
+    def lowName(ctx: TContext, namespace: Namespace) = {
+      val fnPart =
+        if (self.isSelf)
+          self.lambda.args(0).typeHint.get.toLow(ctx, namespace).name + "." + self.name
+        else self.name
+
+      if (fnPart == "main") fnPart
+      else namespace.pkg + "." + fnPart
+    }
 
     def typeHint: Option[FnTh] = {
       if (self.lambda.args.forall(arg => arg.typeHint != None) && self.retTh != None)

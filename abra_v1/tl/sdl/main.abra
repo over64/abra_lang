@@ -146,26 +146,6 @@ def render = \self: Renderer ->
 
     gl.drawArrays(gl.TRIANGLES, 0 , 36).
 
-def PI = 3.14.
-def mul = x: Int, y: Int -> x * y.
-
-# Abra version
-def sin = \x: Int | Float ->
-    match x
-        of i: Int -> libint.sin(i)
-        of f: Float -> math.float(f)..
-
-# Scala version
-def sin(x: FloatOrInt) =
-    x match {
-        case Int(i) => libint.sin(i)
-        case Float(f) => math.float(f)
-    }
-
-def mul = \p: (x: Int, y: Int) -> p.x * p.y.
-def proxy[T, V] = \a: T, b: T, fn: (T, V) -> T ->
-    fn(a, b).
-
 def main = 
     sdl.init(sdl.INIT_VIDEO,
         \err -> sys.panic(err),

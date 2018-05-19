@@ -13,9 +13,9 @@ object ConstGen {
   val fnFloat = Fn("\\ -> Float", Seq.empty, Seq.empty, Ast2.TypeRef("Float"))
   val types = Seq(fnBool, fnInt, fnString, fnFloat)
 
-  def bool(mod: Mod, value: String): Ast2.Id = {
+  def bool(mod: Mod, value: String, pkg: String = ""): Ast2.Id = {
     val v = if (value == "true") 1 else 0
-    val id = "$bool." + value
+    val id = pkg + "$bool." + value
 
     mod.types.put(fnBool.name, fnBool)
     mod.defs.put(id, Ast2.Def(id, Ast2.TypeRef("\\ -> Bool"), Seq.empty, Seq.empty, Ast2.LLCode(
@@ -24,8 +24,9 @@ object ConstGen {
 
     Id(id)
   }
-  def int(mod: Mod, value: String): Ast2.Id = {
-    val id = "$int." + value
+
+  def int(mod: Mod, value: String, pkg: String = ""): Ast2.Id = {
+    val id = pkg + "$int." + value
     mod.types.put(fnInt.name, fnInt)
     mod.defs.put(id,
       Ast2.Def(id, Ast2.TypeRef("\\ -> Int"), Seq.empty, Seq.empty, Ast2.LLCode(
@@ -34,8 +35,8 @@ object ConstGen {
     Id(id)
   }
 
-  def float(mod: Mod, value: String): Ast2.Id = {
-    val id = "$float." + value
+  def float(mod: Mod, value: String, pkg: String = ""): Ast2.Id = {
+    val id = pkg + "$float." + value
     mod.types.put(fnFloat.name, fnFloat)
 
     val d = (new java.lang.Float(value)).toDouble
@@ -46,9 +47,9 @@ object ConstGen {
     Id(id)
   }
 
-  def string(mod: Mod, value: String): Ast2.Id = {
+  def string(mod: Mod, value: String, pkg: String = ""): Ast2.Id = {
     val hash = new String(Base64.getEncoder.encode(value.getBytes())).replace("=", "$")
-    val id = "$string." + hash
+    val id = pkg + "$string." + hash
     val name = "$string.const." + hash
 
     val encoded = HexUtil.singleByteNullTerminated(value.getBytes())

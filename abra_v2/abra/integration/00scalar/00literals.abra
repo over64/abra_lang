@@ -1,9 +1,0 @@
-def main = {
-  true
-  false
-  'BATYA'
-  'Привет, мир!'
-  3.14
-  0xff
-  42
-}: Int

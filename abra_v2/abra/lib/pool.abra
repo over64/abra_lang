@@ -6,7 +6,36 @@ llvm
   @pool = thread_local global %MemPool zeroinitializer
   define void @poolRelease(i8* %obj, void (i8*)* %releaseCallback) {
     ret void
-  } .
+  }
+
+  define void @mpFreeInner(i8* %p) {
+    ret void
+  }
+
+  define void @mpFreeTC(i8* %self) {
+    %sself = bitcast i8* %self to {i8*, i64}*
+    %selfAddr = ptrtoint {i8*, i64}* %sself to i64
+    %nullCheck = icmp eq i64 %selfAddr, 0
+    br i1 %nullCheck, label %endNull, label %begin
+  endNull:
+    ret void
+  begin:
+    %1 = getelementptr {i8*, i64}, {i8*, i64}* %sself, i64 0, i32 0
+    %2 = load i8*, i8** %1
+
+    %child = ptrtoint i8* %2 to i64
+    %isNull = icmp eq i64 %child, 0
+    br i1 %isNull, label %end, label %freeChild
+  freeChild:
+    call void @mpFreeTC(i8* %2)
+    br label %end
+  end:
+    %3 = load void (i8*, void (i8*)*)*, void (i8*, void (i8*)*)** @rcRelease
+    call void %3(i8* %self, void (i8*)* @mpFreeInner)
+    ret void
+  }
+
+  .
 
 type MemPage = llvm i8* .
 
@@ -33,25 +62,7 @@ def mpFreeInner = p: Ptr do llvm
   ret void .None
 
 def mpFree = self: MemPage do llvm
-  %sself = bitcast i8* %self to {i8*, i64}*
-  %selfAddr = ptrtoint {i8*, i64}* %sself to i64
-  %nullCheck = icmp eq i64 %selfAddr, 0
-  br i1 %nullCheck, label %endNull, label %begin
-endNull:
-  ret void
-begin:
-  %1 = getelementptr {i8*, i64}, {i8*, i64}* %sself, i64 0, i32 0
-  %2 = load i8*, i8** %1
-
-  %child = ptrtoint i8* %2 to i64
-  %isNull = icmp eq i64 %child, 0
-  br i1 %isNull, label %end, label %freeChild
-freeChild:
-  call void @MemPage.mpFree(i8* %2)
-  br label %end
-end:
-  %3 = load void (i8*, void (i8*)*)*, void (i8*, void (i8*)*)** @rcRelease
-  call void %3(i8* %self, void (i8*)* @mpFreeInner)
+  call void @mpFreeTC(i8* %self)
   ret void .None
 
 def nextPage = self: MemPage do llvm
@@ -116,6 +127,7 @@ def loadRoot = llvm
   ret i8* %2 .MemPage
 
 def poolAlloc = size: Long do
+  # maybe root = loadPool().root ?
   root = loadRoot()
   rootNewOffset = root.offset() + size
 
@@ -139,7 +151,7 @@ def poolInc = obj: Ptr do llvm
 
 def poolFree = self: MemPool do
   root = self.root
-  root.setOffset(32.toLong())
+  root.setOffset(32.toLong()) # FIXME: move down
   next = root.nextPage()
   next.mpFree() .
 
@@ -149,3 +161,5 @@ def withPool = self: MemPool, action: () -> None do
   action()
   allocator.store(self.parent)
   self.poolFree() .
+
+# MemPage.offset & MemPage.alloc must be inlined?

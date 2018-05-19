@@ -1,7 +1,0 @@
-type Foo = (x: Int)
-
-def main =
-    val foo = Foo(1)
-    -> foo.x = 2 .()
-
-    foo.x .# 2 expected
