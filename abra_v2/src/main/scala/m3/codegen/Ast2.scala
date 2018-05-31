@@ -27,7 +27,6 @@ object Ast2 {
   case class Id(v: String, props: Seq[String] = Seq.empty) extends Storable
   case class Cons(ref: TypeRef, args: Seq[Id]) extends Stat with Storable
   case class Free(id: Id) extends Stat
-  case class Closure(dest: String, src: String) extends Stat
   case class Call(id: Id, args: Seq[Id] = Seq.empty) extends Stat with Storable
   case class Ret(lit: Option[String]) extends Stat
   case class Store(init: Boolean, dest: Id, src: Storable) extends Stat

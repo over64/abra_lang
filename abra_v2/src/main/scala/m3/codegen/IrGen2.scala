@@ -30,26 +30,29 @@ object IrGen2 {
                   case Local(ref) =>
                     val r1 = dctx.nextReg().toString
                     val r2 = dctx.nextReg().toString
+                    val closureDecl = fnType.closureDecl(ctx.types, false)
                     val irType = fnType.closure(idx).ref.toValue(ctx.types)
 
-                    ctx.out.println(s"""\t%$r1 = getelementptr %\"${fnType.name}\", %"${fnType.name}"* %$$closure, i64 0, i32 ${idx + 1}""")
+                    ctx.out.println(s"""\t%$r1 = getelementptr $closureDecl, $closureDecl* %local.cl, i64 0, i32 $idx""")
                     ctx.out.println(s"\t%$r2 = load $irType*, $irType** %$r1")
                     ("%" + r2, ref, true)
                   case Param(ref) =>
                     if (ref.isRegisterFit(ctx.types)) {
                       val r1 = dctx.nextReg().toString
                       val r2 = dctx.nextReg().toString
+                      val closureDecl = fnType.closureDecl(ctx.types, false)
                       val irType = fnType.closure(idx).ref.toValue(ctx.types)
 
-                      ctx.out.println(s"""\t%$r1 = getelementptr %"${fnType.name}", %"${fnType.name}"* %$$closure, i64 0, i32 ${idx + 1}""")
+                      ctx.out.println(s"""\t%$r1 = getelementptr $closureDecl, $closureDecl* %local.cl, i64 0, i32 $idx""")
                       ctx.out.println(s"\t%$r2 = load $irType, $irType* %$r1")
                       ("%" + r2, ref, false)
                     } else {
                       val r1 = dctx.nextReg().toString
                       val r2 = dctx.nextReg().toString
+                      val closureDecl = fnType.closureDecl(ctx.types, false)
                       val irType = fnType.closure(idx).ref.toValue(ctx.types)
 
-                      ctx.out.println(s"""\t%$r1 = getelementptr %"${fnType.name}", %"${fnType.name}"* %$$closure, i64 0, i32 ${idx + 1}""")
+                      ctx.out.println(s"""\t%$r1 = getelementptr $closureDecl, $closureDecl* %local.cl, i64 0, i32 $idx""")
                       ctx.out.println(s"\t%$r2 = load $irType*, $irType** %$r1")
                       ("%" + r2, ref, true)
                     }
@@ -60,11 +63,6 @@ object IrGen2 {
             }
         }
     }
-
-  def isParam(ctx: IrContext,
-              dctx: DefContext,
-              name: String): Boolean =
-    dctx.fn.args.zipWithIndex.exists { case (argName, idx) => argName == name }
 
   def evalGep(ctx: IrContext,
               dctx: DefContext,
@@ -135,77 +133,48 @@ object IrGen2 {
   }
 
   def evalCall(ctx: IrContext, dctx: DefContext, call: Call): (TypeRef, String) = {
-    val (_tref, _isPtr, _vName) = evalId(ctx, dctx, call.id)
-    val fnType = ctx.types(_tref.name).asInstanceOf[Fn]
-
-    val (tref, vName) =
-      if (fnType.closure.isEmpty)
-        if (isParam(ctx, dctx, call.id.v)) {
-          val irType = fnType.toDisclosure(ctx.types, false)
-          val fnIrType = fnType.toDisclosureFn(ctx.types)
-          val r1 = dctx.nextReg()
-          val r2 = dctx.nextReg()
-          ctx.out.println(s"\t%$r1 = getelementptr $irType, $irType* ${_vName}, i64 0, i32 0")
-          ctx.out.println(s"\t%$r2 = load $fnIrType, $fnIrType* %$r1")
-          (null, "%" + r2)
-        } else requireValue(ctx, dctx, (_tref, _isPtr, _vName))
+    val (tref, vName, isGlobalCall) =
+      if (call.id.props.isEmpty && ctx.protos.contains(call.id.v))
+        (ctx.protos(call.id.v), "@" + "\"" + call.id.v + "\"", true)
       else {
-        val irType = _tref.toValue(ctx.types)
-        val r1 = dctx.nextReg().toString
-        val r2 = dctx.nextReg().toString
-        ctx.out.println(s"\t%$r1 = getelementptr $irType, $irType* ${_vName}, i64 0, i32 0")
-
-        val disclosureType = Fn("", Seq.empty, fnType.args :+ TypeRef(fnType.name), fnType.ret).toDecl(ctx.types)
-        ctx.out.println(s"\t%$r2 = load $disclosureType, $disclosureType* %$r1")
-        (disclosureType, "%" + r2)
+        val (_tref, _vName) = requireValue(ctx, dctx, evalId(ctx, dctx, call.id))
+        (_tref, _vName, false)
       }
+
+    val fnType = ctx.types(tref.name).asInstanceOf[Fn]
 
     val irArgs = (fnType.args zip call.args).map {
       case (argTypeRef, arg) =>
         val (tref, isPtr, name) = evalId(ctx, dctx, arg)
-        ctx.types(tref.name) match {
-          case fnType: Fn =>
-            if (isParam(ctx, dctx, arg.v)) s"${fnType.toDisclosure(ctx.types, true)} %${arg.v}" //FIXME
-            else {
-              val argTypeIr = ctx.types(argTypeRef.name).asInstanceOf[Fn].toDisclosure(ctx.types, true)
-              val irType = tref.toPtr(ctx.types)
-              val r1 = dctx.nextReg()
-              ctx.out.println(s"\t%$r1 = bitcast $irType $name to $argTypeIr")
-              s"$argTypeIr %$r1"
-            }
-          case _ =>
-            if (tref.isRegisterFit(ctx.types)) {
-              val (_, argName) = requireValue(ctx, dctx, (tref, isPtr, name))
-              s"${tref.toValue(ctx.types)} $argName"
-            }
-            else s"${tref.toPtr(ctx.types)} $name"
+
+        if (tref.isRegisterFit(ctx.types)) {
+          val (_, argName) = requireValue(ctx, dctx, (tref, isPtr, name))
+          s"${tref.toValue(ctx.types)} $argName"
         }
+        else s"${tref.toPtr(ctx.types)} $name"
     }
 
-    val fixedArgs = if (fnType.closure.isEmpty) {
-      if (isParam(ctx, dctx, call.id.v)) {
-        val irType = fnType.toDisclosure(ctx.types, true)
-        val r1 = dctx.nextReg()
-        ctx.out.println(s"\t%$r1 = bitcast $irType %${call.id.v} to i8*")
-        irArgs :+ s"i8* %$r1"
-      } else irArgs
-    } else {
-      val (tref, isPtr, name) = evalId(ctx, dctx, call.id)
-      irArgs :+ s"${tref.toPtr(ctx.types)} $name"
-    }
+    val (fnPtr, fixedArgs) =
+      if (isGlobalCall) (vName, irArgs)
+      else {
+        val r1 = dctx.nextReg().toString
+        val r2 = dctx.nextReg().toString
+        ctx.out.println(s"\t%$r1 = extractvalue ${tref.toValue(ctx.types)} $vName, 0")
+        ctx.out.println(s"\t%$r2 = extractvalue ${tref.toValue(ctx.types)} $vName, 1")
+
+        ("%" + r1, irArgs :+ ("i8* %" + r2))
+      }
 
     val retType = fnType.ret.toValue(ctx.types)
 
     if (fnType.ret.isVoid(ctx.types)) {
-      ctx.out.println(s"\tcall $retType $vName(${fixedArgs.mkString(", ")})")
+      ctx.out.println(s"\tcall $retType $fnPtr(${fixedArgs.mkString(", ")})")
       (fnType.ret, "")
     } else {
       val retId = "%" + dctx.nextReg()
-      ctx.out.println(s"\t${retId} = call $retType $vName(${fixedArgs.mkString(", ")})")
+      ctx.out.println(s"\t$retId = call $retType $fnPtr(${fixedArgs.mkString(", ")})")
       (fnType.ret, retId)
     }
-
-
   }
 
   def evalStore(ctx: IrContext,
@@ -252,7 +221,69 @@ object IrGen2 {
       }
 
     // делаем store
-    if (toTref == whatTref) {
+    if (toTref.isFn(ctx.types)
+      && dest.props.isEmpty
+      && dctx.vars.contains(dest.v)
+      && src.isInstanceOf[Id]
+      && src.asInstanceOf[Id].props.isEmpty
+      && ctx.protos.contains(src.asInstanceOf[Id].v)) {
+      // инициализируем локальное замыкание
+      ctx.out.println(s";@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ mk closure begin")
+      val _def = ctx.defs(src.asInstanceOf[Id].v)
+
+      val closureType = ctx.types(_def.ref.name).asInstanceOf[Fn]
+      val valIr = _def.ref.toValue(ctx.types)
+      val fnIr = closureType.toGlobal(ctx.types, false)
+      val closureIr = closureType.closureDecl(ctx.types, false)
+
+      val r1 = dctx.nextReg().toString
+      ctx.out.println(s"\t%$r1 = getelementptr $valIr, $valIr* $to, i64 0, i32 0")
+
+      if (closureType.closure.isEmpty) {
+        val closuredFnIr = closureType.toGlobal(ctx.types, true)
+        val r2 = dctx.nextReg().toString
+        ctx.out.println(s"\t%$r2 = bitcast $fnIr $what to $closuredFnIr")
+        ctx.out.println(s"\tstore $closuredFnIr %$r2, $closuredFnIr* %$r1")
+      } else
+        ctx.out.println(s"\tstore $fnIr $what, $fnIr* %$r1")
+
+      val r2 = dctx.nextReg().toString
+      ctx.out.println(s"\t%$r2 = getelementptr $valIr, $valIr* $to, i64 0, i32 1")
+
+      if (closureType.closure.isEmpty)
+        ctx.out.println(s"\tstore i8* null, i8** %$r2")
+      else {
+        val r3 = dctx.nextReg().toString
+        ctx.out.println(s"\t%$r3 = bitcast $closureIr* $to.cl to i8*")
+        ctx.out.println(s"\tstore i8* %$r3, i8** %$r2")
+      }
+
+      (closureType.closure zip _def.closure).zipWithIndex.foreach { case ((ct, argName), idx) =>
+        ct match {
+          case Local(ref) =>
+            val irType = ref.toValue(ctx.types)
+            val (_, vName) = requirePtr(evalId(ctx, dctx, Id(argName)))
+            val r1 = dctx.nextReg().toString
+            ctx.out.println(s"\t%$r1 = getelementptr $closureIr, $closureIr* $to.cl, i64 0, i32 $idx")
+            ctx.out.println(s"\tstore $irType* $vName, $irType** %$r1")
+          case Param(ref) =>
+            val irType = ref.toValue(ctx.types)
+            val r1 = dctx.nextReg().toString
+
+            ctx.out.println(s"\t%$r1 = getelementptr $closureIr, $closureIr* $to.cl, i64 0, i32 $idx")
+
+            if (ref.isRegisterFit(ctx.types)) {
+              val (_, vName) = requireValue(ctx, dctx, evalId(ctx, dctx, Id(argName)))
+              ctx.out.println(s"\tstore $irType $vName, $irType* %$r1")
+            } else {
+              val (_, vName) = requirePtr(evalId(ctx, dctx, Id(argName)))
+              ctx.out.println(s"\tstore $irType* $vName, $irType** %$r1")
+            }
+        }
+      }
+      ctx.out.println(s";@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ mk closure end")
+
+    } else if (toTref == whatTref) {
       val irType = toTref.toValue(ctx.types)
       ctx.out.println(s"\tstore $irType $what, $irType* $to")
       ctx.out.println(s";@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ store end")
@@ -338,65 +369,6 @@ object IrGen2 {
     case Cons(ref, args) =>
       evalCall(ctx, dctx, Call(Id("\"" + ref.name + ".$cons\""), args))
     case Store(init, dest, src) => evalStore(ctx, dctx, dest, src, init)
-    case Closure(dest, src) =>
-      ctx.out.println(s";@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ mk closure begin")
-      val _def = ctx.defs(src)
-
-      val (destName, _, _) = findSymbol(ctx, dctx, dest)
-      val closureType = ctx.types(_def.ref.name).asInstanceOf[Fn]
-      val closureIr = _def.ref.toValue(ctx.types)
-      val r1 = dctx.nextReg().toString
-      ctx.out.println(s"\t%$r1 = getelementptr $closureIr, $closureIr* $destName, i64 0, i32 0")
-
-      val fnType = Fn(closureType.name, Seq.empty, closureType.args :+ TypeRef(closureType.name), closureType.ret)
-      val fnIr = fnType.toDecl(ctx.types)
-      ctx.out.println(s"\tstore $fnIr @$src, $fnIr* %$r1")
-
-      (closureType.closure zip _def.closure).zipWithIndex.foreach { case ((ct, argName), idx) =>
-        ct match {
-          case Local(ref) =>
-            if (isParam(ctx, dctx, argName) && ref.isFn(ctx.types)) {
-              val irType = ref.toValue(ctx.types)
-              val fnIrType = ctx.types(ref.name).asInstanceOf[Fn].toDisclosure(ctx.types, ptr = true)
-              val r1 = dctx.nextReg()
-              val r2 = dctx.nextReg()
-              ctx.out.println(s"\t%$r1 = getelementptr $closureIr, $closureIr* $destName, i64 0, i32 ${idx + 1}")
-              ctx.out.println(s"\t%$r2 = bitcast $fnIrType %$argName to $irType")
-              ctx.out.println(s"\tstore $irType %$r2, $irType* %$r1")
-            } else {
-              val irType = ref.toValue(ctx.types)
-              val (_, vName) = requirePtr(evalId(ctx, dctx, Id(argName)))
-              val r1 = dctx.nextReg().toString
-              ctx.out.println(s"\t%$r1 = getelementptr $closureIr, $closureIr* $destName, i64 0, i32 ${idx + 1}")
-              ctx.out.println(s"\tstore $irType* $vName, $irType** %$r1")
-            }
-          case Param(ref) =>
-            if (isParam(ctx, dctx, argName) && ref.isFn(ctx.types)) {
-              val irType = ref.toValue(ctx.types)
-              val fnIrType = ctx.types(ref.name).asInstanceOf[Fn].toDisclosure(ctx.types, ptr = true)
-              val r1 = dctx.nextReg()
-              val r2 = dctx.nextReg()
-              ctx.out.println(s"\t%$r1 = getelementptr $closureIr, $closureIr* $destName, i64 0, i32 ${idx + 1}")
-              ctx.out.println(s"\t%$r2 = bitcast $fnIrType %$argName to $irType")
-              ctx.out.println(s"\tstore $irType %$r2, $irType* %$r1")
-            } else {
-              if (ref.isRegisterFit(ctx.types)) {
-                val irType = ref.toValue(ctx.types)
-                val (_, vName) = requireValue(ctx, dctx, evalId(ctx, dctx, Id(argName)))
-                val r1 = dctx.nextReg().toString
-                ctx.out.println(s"\t%$r1 = getelementptr $closureIr, $closureIr* $destName, i64 0, i32 ${idx + 1}")
-                ctx.out.println(s"\tstore $irType $vName, $irType* %$r1")
-              } else {
-                val irType = ref.toValue(ctx.types)
-                val (_, vName) = requirePtr(evalId(ctx, dctx, Id(argName)))
-                val r1 = dctx.nextReg().toString
-                ctx.out.println(s"\t%$r1 = getelementptr $closureIr, $closureIr* $destName, i64 0, i32 ${idx + 1}")
-                ctx.out.println(s"\tstore $irType* $vName, $irType** %$r1")
-              }
-            }
-        }
-      }
-      ctx.out.println(s";@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ mk closure end")
     case Free(id) =>
       val tref = dctx.vars(id.v)
       if (tref.isNeedBeforeAfterStore(ctx.types)) {
@@ -529,20 +501,15 @@ object IrGen2 {
   def writeProto(ctx: IrContext, external: Boolean, fnName: String, fnType: Fn, args: Seq[String]): Unit = {
     val argsIr = (args zip fnType.args).map {
       case (argName, argTypeRef) =>
-        ctx.types(argTypeRef.name) match {
-          case fnType: Fn =>
-            fnType.toDisclosure(ctx.types, true) + " " + irLocalName(argName)
-          case _ =>
-            if (argTypeRef.isRegisterFit(ctx.types)) argTypeRef.toValue(ctx.types) + " " + irLocalName(argName)
-            else argTypeRef.toPtr(ctx.types) + " " + irLocalName(argName)
-        }
+        if (argTypeRef.isRegisterFit(ctx.types)) argTypeRef.toValue(ctx.types) + " " + irLocalName(argName)
+        else argTypeRef.toPtr(ctx.types) + " " + irLocalName(argName)
     }
 
     val realArgs =
       if (fnType.closure.isEmpty) argsIr
-      else argsIr :+ (s"""%"${fnType.name}"* %$$closure""")
+      else argsIr :+ (s"""i8* %fn.closure""")
 
-    val declType = if(external) "declare" else "define"
+    val declType = if (external) "declare" else "define"
 
     ctx.out.println(s"""$declType ${fnType.ret.toValue(ctx.types)} @"$fnName" (${realArgs.mkString(", ")})""")
   }
@@ -553,10 +520,21 @@ object IrGen2 {
     fn.code match {
       case LLCode(value) => ctx.out.println(value)
       case AbraCode(vars, stats) =>
+        if (fn.closure.nonEmpty) {
+          val fnType = ctx.types(fn.ref.name).asInstanceOf[Fn]
+          ctx.out.println(s"\t%local.cl = bitcast i8* %fn.closure to ${fnType.closureDecl(ctx.types, true)}")
+        }
         vars.foreach {
           case (vName, typeRef) =>
-            if (!typeRef.isVoid(ctx.types))
+            if (!typeRef.isVoid(ctx.types)) {
+              ctx.types(typeRef.name) match {
+                case fn: Fn if fn.closure.nonEmpty =>
+                  ctx.out.println(s"\t${irLocalName(vName)}.cl = alloca ${fn.closureDecl(ctx.types, false)}")
+                case _ =>
+              }
               ctx.out.println(s"\t${irLocalName(vName)} = alloca ${typeRef.toValue(ctx.types)}")
+            }
+
         }
 
         val dctx = DefContext(fn, vars)
@@ -592,11 +570,6 @@ object IrGen2 {
 
     ctx.types.values.filter {
       case s: Struct => true
-      case _ => false
-    }.foreach(t => out.println(s"""%"${t.name}" = type """ + t.toDecl(types)))
-
-    ctx.types.values.filter {
-      case c: Fn => c.closure.nonEmpty
       case _ => false
     }.foreach(t => out.println(s"""%"${t.name}" = type """ + t.toDecl(types)))
 

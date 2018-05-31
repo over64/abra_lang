@@ -12,7 +12,8 @@ class _11DisclosureTest extends FunSuite with LowUtil {
   val testBase = "/tmp/"
 
   test("pass closure as param") {
-    //  def bar = fn: \Int, Int -> Int do fn(1, 1) .
+    //  def bar = fn: \Int, Int -> Int do
+    //    fn(1, 1) .
     //  def main =
     //    xx = 42
     //    bar(lambda x, y do xx) .
@@ -47,7 +48,7 @@ class _11DisclosureTest extends FunSuite with LowUtil {
         "r" -> int),
       stats = Seq(
         Store(init = true, Id("xx"), Call(i42)),
-        Closure("cl", "closure"),
+        Store(init = true, Id("cl"), Id("closure")),
         Store(init = true, Id("r"), Call(Id("bar"), Seq(Id("cl")))),
         Ret(Some("r"))
       ))))

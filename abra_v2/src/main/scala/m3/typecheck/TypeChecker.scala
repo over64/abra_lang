@@ -188,13 +188,7 @@ object TypeChecker {
       val vName = "$l" + ctx.nextAnonId()
       scope.addLocal(mut = false, vName, header.th)
 
-      val make =
-        if (header.th.closure.isEmpty)
-          Ast2.Store(init = true, Ast2.Id(vName), Ast2.Id(header.lowName))
-        else
-          Ast2.Closure(vName, header.lowName)
-
-      (header.th, vName, Seq(make))
+      (header.th, vName, Seq(Ast2.Store(init = true, Ast2.Id(vName), Ast2.Id(header.lowName))))
     case andOr: AndOr =>
       val lowId = Ast2.Id("$andOr" + ctx.nextAnonId())
       scope.addLocal(mut = false, lowId.v, thBool)

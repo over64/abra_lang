@@ -72,18 +72,10 @@ object IrUtil {
           else argRef.toPtr(types)
         }
 
-        val realArgsIr = if (closure.isEmpty) argsIr else argsIr :+ ("%\"" + name + "\"*")
+        val realArgsIr = argsIr :+ ("i8*")
         val fnPtr = s"${ret.toValue(types)} (${realArgsIr.mkString(", ")})*"
 
-        if (closure.isEmpty) fnPtr
-        else {
-          val cl = closure.map {
-            case Local(ref) => ref.toPtr(types)
-            case Param(ref) => if (ref.isRegisterFit(types)) ref.toValue(types) else ref.toPtr(types)
-          }.mkString(", ")
-
-          s"""{ $fnPtr, $cl }"""
-        }
+        s"""{ $fnPtr, i8* }"""
     }
 
     def isRef(types: mutable.HashMap[String, Type]): Boolean =
@@ -96,6 +88,26 @@ object IrUtil {
   }
 
   implicit class RichFnType(self: Fn) {
+    def toGlobal(types: mutable.HashMap[String, Type], forceClosure: Boolean): String = {
+      val argsIr = self.args.map { argRef =>
+        if (argRef.isRegisterFit(types)) argRef.toValue(types)
+        else argRef.toPtr(types)
+      }
+
+      val realArgsIr = if (self.closure.nonEmpty || forceClosure) argsIr :+ "i8*" else argsIr
+      s"${self.ret.toValue(types)} (${realArgsIr.mkString(", ")})*"
+    }
+
+    def closureDecl(types: mutable.HashMap[String, Type], ptr: Boolean): String = {
+      val cl = self.closure.map {
+        case Local(ref) => ref.toPtr(types)
+        case Param(ref) => if (ref.isRegisterFit(types)) ref.toValue(types) else ref.toPtr(types)
+      }.mkString(", ")
+
+      s"{ $cl }" + (if (ptr) "*" else "")
+
+    }
+
     def toDisclosure(types: mutable.HashMap[String, Type], ptr: Boolean): String = {
       if (self.closure.nonEmpty) throw new RuntimeException("unexpected closure here")
 
@@ -118,7 +130,7 @@ object IrUtil {
         case Low(ref, name, llValue) => true
         case s: Struct => false
         case u: Union => false
-        case fn: Fn => if (fn.closure.isEmpty) true else false
+        case fn: Fn => true
       }
     }
 
@@ -168,9 +180,7 @@ object IrUtil {
           val refSuffix = if (self.isRef(types)) "*" else ""
           "%\"" + name + "\"" + refSuffix
         case Union(name, variants) => "%\"" + name + "\""
-        case fn: Fn =>
-          if (fn.closure.isEmpty) fn.toDecl(types)
-          else "%\"" + fn.name + "\""
+        case fn: Fn => fn.toDecl(types)
       }
     }
 

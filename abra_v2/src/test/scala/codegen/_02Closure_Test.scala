@@ -33,7 +33,7 @@ class _02Closure_Test extends FunSuite with LowUtil {
 
     mod.defineType(Fn("TBazz",
       closure = Seq.empty,
-      args = Seq(int, vec2, u3, TypeRef("\\ -> None"), TypeRef("\\ -> None"), string, intAndString, u1, TypeRef("\\ -> Int")),
+      args = Seq(int, vec2, u3, TypeRef("\\ -> None"), TypeRef("Closure1"), string, intAndString, u1, TypeRef("\\ -> Int")),
       ret = nil))
 
     mod.defineType(Fn("TClosure",
@@ -50,7 +50,7 @@ class _02Closure_Test extends FunSuite with LowUtil {
         Param(vec2),
         Param(u3),
         Param(TypeRef("\\ -> None")),
-        Param(TypeRef("\\ -> None")),
+        Param(TypeRef("Closure1")),
         Param(string),
         Param(intAndString),
         Param(u1)
@@ -69,7 +69,7 @@ class _02Closure_Test extends FunSuite with LowUtil {
           "c" -> TypeRef("TClosure")
         ),
         stats = Seq(
-          Closure("c", "closure2"),
+          Store(init = true, Id("c"), Id("closure2")),
           Call(Id("c")),
           Ret(None))
       )))
@@ -100,7 +100,7 @@ class _02Closure_Test extends FunSuite with LowUtil {
           "c" -> TypeRef("TClosure")
         ),
         stats = Seq(
-          Closure("c", "closure1"),
+          Store(init = true, Id("c"), Id("closure1")),
           Call(Id("c")),
           Ret(None)
         ))))

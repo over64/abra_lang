@@ -12,7 +12,7 @@ class _05Closure_CaptureLocal_Test extends FunSuite with LowUtil {
   test("capture local: value scalar") {
     //  def main =
     //    x = 13
-    //    -> x = 42 .()
+    //    (lambda x = 42)()
     //    x .
     val mod = Mod()
     val (i42, i13) = (ConstGen.int(mod, "42"), ConstGen.int(mod, "13"))
@@ -32,7 +32,7 @@ class _05Closure_CaptureLocal_Test extends FunSuite with LowUtil {
         "cl" -> TypeRef("Closure1")),
       stats = Seq(
         Store(init = true, Id("x"), Call(i13)),
-        Closure("cl", "closure"),
+        Store(init = true, Id("cl"), Id("closure")),
         Call(Id("cl")),
         Ret(Some("x"))
       ))))
@@ -43,7 +43,7 @@ class _05Closure_CaptureLocal_Test extends FunSuite with LowUtil {
   test("capture local: ref scalar") {
     //  def main =
     //    x = 'hell'
-    //    -> x = 'boy' .()
+    //    (lambda x = 'boy')()
     //    42 .
     val mod = Mod()
     val (sHell, sBoy) = (ConstGen.string(mod, "hell"), ConstGen.string(mod, "boy"))
@@ -65,7 +65,7 @@ class _05Closure_CaptureLocal_Test extends FunSuite with LowUtil {
         "r" -> int),
       stats = Seq(
         Store(init = true, Id("x"), Call(sHell)),
-        Closure("cl", "closure"),
+        Store(init = true, Id("cl"), Id("closure")),
         Call(Id("cl")),
         Free(Id("x")),
         Store(init = true, Id("r"), Call(i42)),
@@ -78,7 +78,7 @@ class _05Closure_CaptureLocal_Test extends FunSuite with LowUtil {
   test("capture local: value struct") {
     //  def main =
     //    x = Vec2(42, 42)
-    //    -> x.x = 13 .()
+    //    (lambda x.x = 13)()
     //    x.x .
     val mod = Mod()
     val (i42, i13) = (ConstGen.int(mod, "42"), ConstGen.int(mod, "13"))
@@ -102,7 +102,7 @@ class _05Closure_CaptureLocal_Test extends FunSuite with LowUtil {
       stats = Seq(
         Store(init = true, Id("$0"), Call(i42)),
         Store(init = true, Id("x"), Cons(vec2, Seq(Id("$0"), Id("$0")))),
-        Closure("cl", "closure"),
+        Store(init = true, Id("cl"), Id("closure")),
         Call(Id("cl")),
         Store(init = true, Id("r"), Id("x", Seq("x"))),
         Ret(Some("r"))
@@ -113,10 +113,10 @@ class _05Closure_CaptureLocal_Test extends FunSuite with LowUtil {
 
   test("capture local: ref struct") {
     //  def main =
-    //    x = (42, 'hell')
-    //    ->
+    //    x = (x = 42, y = 'hell')
+    //    (lambda
     //      x.x = 13
-    //      x.y = 'boy' .()
+    //      x.y = 'boy')()
     //    x.x .
     val mod = Mod()
     val (i42, i13) = (ConstGen.int(mod, "42"), ConstGen.int(mod, "13"))
@@ -144,7 +144,7 @@ class _05Closure_CaptureLocal_Test extends FunSuite with LowUtil {
         Store(init = true, Id("$0"), Call(i42)),
         Store(init = true, Id("$1"), Call(sHell)),
         Store(init = true, Id("x"), Cons(intAndString, Seq(Id("$0"), Id("$1")))),
-        Closure("cl", "closure"),
+        Store(init = true, Id("cl"), Id("closure")),
         Call(Id("cl")),
         Store(init = true, Id("r"), Id("x", Seq("x"))),
         Free(Id("$1")),
@@ -158,7 +158,7 @@ class _05Closure_CaptureLocal_Test extends FunSuite with LowUtil {
   test("capture local: union") {
     //  def main =
     //    x: Int | String = 'hi'
-    //    -> x = 42 .()
+    //    (lambda x = 42)()
     //    # "cast" to int for test only
     //    x .
     val mod = Mod()
@@ -182,7 +182,7 @@ class _05Closure_CaptureLocal_Test extends FunSuite with LowUtil {
         "r" -> int),
       stats = Seq(
         Store(init = true, Id("x"), Call(sHi)),
-        Closure("cl", "closure"),
+        Store(init = true, Id("cl"), Id("closure")),
         Call(Id("cl")),
 
         Store(init = true, Id("r"), Id("x", Seq("1"))),

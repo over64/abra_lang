@@ -23,12 +23,12 @@ def initGameController = 0x00002000 . # SDL_initGAMECONTROLLER implies SDL_initJ
 def initEvents         = 0x00004000 .
 def initNoParachute    = 0x00100000 . # compatibility; this flag is ignored
 def initEverything =
-  initTimer() or
-  initAudio() or
-  initVideo() or
-  initEvents() or
+  initTimer()    or
+  initAudio()    or
+  initVideo()    or
+  initEvents()   or
   initJoystick() or
-  initHaptic() or
+  initHaptic()   or
   initGameController() .
 
 def init = mode: Int, onErr: (String) -> None do

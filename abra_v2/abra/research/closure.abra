@@ -1,0 +1,204 @@
+import /io .
+
+# keep: if, (, when, try
+# add2: def, =, with, lambda, do
+# no: is
+
+def main =
+  local1 = 5
+  local2 = 42
+
+  cl = if cond do
+         lambda x, y -> x + y + local1
+       else
+         lambda x, y ->
+           local2.print()
+           x * y + local1
+
+  z =    a
+      or bb
+      or ccc
+      or dddd
+      or eeeee
+
+  z = 'hello'  +
+      'beauty' +
+      'girl'   +
+      'friend'
+
+  a    or
+  bb   or
+  ccc  or
+  dddd or
+  eeeee
+
+  xxx
+
+  # лямбда всегда глубже на 2 чем строка, в которой она начинается?
+  # with добавляет глубины 2
+  someFn with 1, 2,
+    lambda i ->
+      i.println()
+      i * 2,
+    lambda j ->
+      j.println()
+      j + 1
+
+  z = someFn with 1, 2,
+    lambda i ->
+      i.println()
+      i * 2,
+    lambda j ->
+      j.println()
+      j + 1
+
+  z = bar(1, 2, 3, someFn with lambda x ->
+            x + 1, 4, 5, 6)
+
+  z = bar(1, 2, 3,
+          4, 5, 6)
+
+  bar = try
+          call1()
+          makeSomeNoize()
+          addCheatShit()
+          x = 5
+          x * 4 * readLn()
+        else e do
+         die()
+
+  bar = try
+    call1()
+    makeSomeNoize()
+    addCheatShit()
+    x = 5
+    x * 4 * readLn()
+  else e do
+    die()
+
+  z = veryLongFunctionName with
+    param1, param2, param3,
+    param4, param5, param6
+
+  z = if x > 0 do 1
+    else 5
+
+  veryLongVarName = if x > 0 do 1
+                    else 5
+
+  veryLongVarName =
+    if x > 0 do 1
+    else 5
+
+  when expr
+  is s: String do 'hello, ' + s
+  is i: Int do 'number ' + i.toString()
+  else 'something else'
+
+  k = when expr
+      is s: String do 'hello, ' + s
+      is i: Int do 'number ' + i.toString()
+      else 'something else'
+
+  k = when expr
+      is s: String do 'hello, ' + s
+      is i: Int do 'number ' + i.toString()
+      else 'something else'
+
+  veryLongVarName =
+    when expr
+    is s: String do 'hello, ' + s
+    is i: Int do 'number ' + i.toString()
+    else 'something else'
+
+  # bad
+  someFn with 1, 2, lambda i ->
+    i.println()
+    i * 2, lambda j ->
+      j.println()
+      j + 1, 3, 4, 5,
+    6, 7, 8
+
+  # good
+    someFn with 1, 2,
+        lambda i ->
+            i.println()
+            i * 2,
+        lambda j ->
+            j.println()
+            j + 1,
+        3, 4, 5, 6, 7, 8
+
+  5 times lambda i ->
+      io.println('hello, world!')
+      cl(1, 2)
+
+
+
+def calcLimits = wcountPs: WithdrawCountPS,
+                 currency: Currency,
+                 amount: BigDecimal,
+                 withdrawDates: Seq[Date],
+                 limitCount: Long,
+                 interval: Interval ,
+                 limits: Seq[FeeQueryResult] do
+    logger.error('calc limits for ps % over %', wcountPs, interval)
+
+    feeInterval =
+        when findIn(wcountPs, interval)
+        is fi: FeeInterval do fi
+        else
+            logger.error('ps % not configured over %', wcountPs, interval)
+            return
+
+    feeInterval = findIn(wcountPs, interval)
+    if feeInterval is None do
+        logger.error('ps % not configured over %', wcountPs, interval)
+        return
+
+    if withdrawDates.len() >= limitCount do
+        # Если клиент никогда не выплачивал раньше, то он не может попасть под лимит, даже если лимит
+        # 0 выплат, так как в этом случае мы не можем корректно рассчитать дату окончания действия лимита,
+        # так как у нас нет "опорной" даты первой выплаты.
+        if withdrawDates.isEmpty() do
+            logger.error('limit count configured to ZERO and user has no withdraws. No limit possible')
+            return
+
+        fcurrency = findIn(feeInterval, currency)
+        feeMoney  =
+            if fcurrency is not None do
+                fee = fcurrency.applyRule(amount)
+                Money(fee, currency)
+            else
+                defCurrency = findIn(feeInterval, DEFAULT_CURRENCY)
+                if defCurrency is None raise RuntimeErr('missconfiguration no rule for default currency')
+
+                convAmount = exchange.convert(DEFAULT_CURRENCY, currency, amount)
+                feeInDefaultCurrency = defCurrency.applyRule(convAmount)
+                fee = exchange.convert(currency, DEFAULT_CURRENCY, feeInDefaultCurrency)
+                Money(fee, currency)
+
+        feeMoney =
+            when findIn(feeInterval, currency)
+            is fcurrency: FeeCurrency do
+                fee = fcurrency.applyRule(amount)
+                Money(fee, currency)
+            else
+                when findIn(feeInterval, DEFAULT_CURRENCY)
+                is fcurrency: FeeCurrency do
+                    convAmount = exchange.convert(DEFAULT_CURRENCY, currency, amount)
+                    feeInDefaultCurrency = fcurrency.applyRule(convAmount)
+                    fee = exchange.convert(currency, DEFAULT_CURRENCY, feeInDefaultCurrency)
+                    Money(fee, currency)
+                else raise RuntimeErr('missconfiguration no rule for default currency')
+
+        bypassN = withdrawDates.len() - limitCount + 1
+        limits.add(LimitReached(feeMoney, restrictionsEndDate(interval, withdrawDates, bypassN),
+            interval.millis, limitCount))
+    else
+        threshold = settings.getLong('withdrawCountCommission.nearbyThreshold')
+        logger.error('nearby threshold: %', threshold)
+        nearby = limitCount - withdrawDates.len()
+
+        if nearby <= threshold do
+            limits.add(LimitNearby(nearby, interval.millis, limitCount))
