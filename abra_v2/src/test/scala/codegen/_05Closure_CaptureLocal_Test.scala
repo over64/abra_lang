@@ -15,6 +15,8 @@ class _05Closure_CaptureLocal_Test extends FunSuite with LowUtil {
     //    (lambda x = 42)()
     //    x .
     val mod = Mod()
+    mod.defineType(tNil)
+    mod.defineType(tInt)
     val (i42, i13) = (ConstGen.int(mod, "42"), ConstGen.int(mod, "13"))
 
     mod.defineType(Fn("Closure1", closure = Seq(Local(int)), args = Seq.empty, nil))
@@ -46,6 +48,9 @@ class _05Closure_CaptureLocal_Test extends FunSuite with LowUtil {
     //    (lambda x = 'boy')()
     //    42 .
     val mod = Mod()
+    mod.defineType(tNil)
+    mod.defineType(tInt)
+    mod.defineType(tString)
     val (sHell, sBoy) = (ConstGen.string(mod, "hell"), ConstGen.string(mod, "boy"))
     val i42 = ConstGen.int(mod, "42")
 
@@ -81,6 +86,8 @@ class _05Closure_CaptureLocal_Test extends FunSuite with LowUtil {
     //    (lambda x.x = 13)()
     //    x.x .
     val mod = Mod()
+    mod.defineType(tNil)
+    mod.defineType(tInt)
     val (i42, i13) = (ConstGen.int(mod, "42"), ConstGen.int(mod, "13"))
 
     mod.defineType(Fn("Closure1", closure = Seq(Local(vec2)), args = Seq.empty, nil))
@@ -119,6 +126,9 @@ class _05Closure_CaptureLocal_Test extends FunSuite with LowUtil {
     //      x.y = 'boy')()
     //    x.x .
     val mod = Mod()
+    mod.defineType(tNil)
+    mod.defineType(tInt)
+    mod.defineType(tString)
     val (i42, i13) = (ConstGen.int(mod, "42"), ConstGen.int(mod, "13"))
     val (sHell, sBoy) = (ConstGen.string(mod, "hell"), ConstGen.string(mod, "boy"))
 
@@ -162,6 +172,9 @@ class _05Closure_CaptureLocal_Test extends FunSuite with LowUtil {
     //    # "cast" to int for test only
     //    x .
     val mod = Mod()
+    mod.defineType(tNil)
+    mod.defineType(tInt)
+    mod.defineType(tString)
     val i42 = ConstGen.int(mod, "42")
     val sHi = ConstGen.string(mod, "hi")
 

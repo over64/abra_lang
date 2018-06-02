@@ -7,14 +7,14 @@ import org.scalatest.FunSuite
 import scala.collection.mutable
 
 class ArgsInferTest extends FunSuite {
-  val tInt = ScalarDecl(ref = false, Seq(), "Int", "i32")
-  val tString = ScalarDecl(ref = true, Seq(), "String", "i8*")
-  val tBool = ScalarDecl(ref = true, Seq(), "Bool", "i8")
+  val tInt = ScalarDecl("universe", ref = false, Seq(), "Int", "i32")
+  val tString = ScalarDecl("universe", ref = true, Seq(), "String", "i8*")
+  val tBool = ScalarDecl("universe", ref = true, Seq(), "Bool", "i8")
 
   val gT = GenericType("T")
   val gU = GenericType("U")
 
-  val tU1 = UnionDecl(Seq(gT, gU), "U1", Seq(thInt, thT, thU))
+  val tU1 = UnionDecl("universe", Seq(gT, gU), "U1", Seq(thInt, thT, thU))
 
   val thInt = ScalarTh(Seq.empty, "Int", mod = None)
   val thT = ScalarTh(Seq.empty, "T", mod = None)

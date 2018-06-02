@@ -13,6 +13,12 @@ class _03Store_CallToLocal_Test extends FunSuite with LowUtil {
 
   test("store call -> local: literals") {
     val mod = Mod()
+    mod.defineType(tNil)
+    mod.defineType(tBool)
+    mod.defineType(tInt)
+    mod.defineType(tFloat)
+    mod.defineType(tString)
+
     val bFalse = ConstGen.bool(mod, "true")
     val i42 = ConstGen.int(mod, "0")
     val fPi = ConstGen.float(mod, "3.14")
@@ -41,6 +47,8 @@ class _03Store_CallToLocal_Test extends FunSuite with LowUtil {
     val mod = Mod()
     val i42 = ConstGen.int(mod, "0")
 
+    mod.defineType(tNil)
+    mod.defineType(tInt)
     mod.defineType(tVec2)
 
     mod.defineDef(Def("main", TypeRef("\\ -> Int"), Seq.empty, Seq.empty, AbraCode(
@@ -61,6 +69,9 @@ class _03Store_CallToLocal_Test extends FunSuite with LowUtil {
     val i0 = ConstGen.int(mod, "0")
     val sHi = ConstGen.string(mod, "hi")
 
+    mod.defineType(tNil)
+    mod.defineType(tInt)
+    mod.defineType(tString)
     mod.defineType(tIntAndString)
 
     mod.defineDef(Def("main", TypeRef("\\ -> Int"), Seq.empty, Seq.empty, AbraCode(
@@ -87,6 +98,9 @@ class _03Store_CallToLocal_Test extends FunSuite with LowUtil {
     val mod = Mod()
     val i0 = ConstGen.int(mod, "0")
 
+    mod.defineType(tNil)
+    mod.defineType(tInt)
+    mod.defineType(tString)
     mod.defineType(tU1)
     mod.defineType(Fn("\\ -> U1", Seq.empty, Seq.empty, u1))
 

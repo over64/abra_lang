@@ -15,6 +15,8 @@ class _04Store_LocalToLocal_Test extends FunSuite with LowUtil {
     val mod = Mod()
     val i0 = ConstGen.int(mod, "0")
 
+    mod.defineType(tNil)
+    mod.defineType(tInt)
     mod.defineType(tVec2)
 
     mod.defineDef(Def("main", TypeRef("\\ -> Int"), Seq.empty, Seq.empty, AbraCode(
@@ -37,6 +39,9 @@ class _04Store_LocalToLocal_Test extends FunSuite with LowUtil {
     val i0 = ConstGen.int(mod, "0")
     val sHi = ConstGen.string(mod, "hi")
 
+    mod.defineType(tNil)
+    mod.defineType(tInt)
+    mod.defineType(tString)
     mod.defineType(tIntAndString)
 
     mod.defineDef(Def("main", TypeRef("\\ -> Int"), Seq.empty, Seq.empty, AbraCode(
@@ -71,6 +76,9 @@ class _04Store_LocalToLocal_Test extends FunSuite with LowUtil {
     val i0 = ConstGen.int(mod, "0")
     val sHi = ConstGen.string(mod, "hi")
 
+    mod.defineType(tNil)
+    mod.defineType(tInt)
+    mod.defineType(tString)
     mod.defineType(tU1)
     mod.defineType(tU2)
 
@@ -104,6 +112,10 @@ class _04Store_LocalToLocal_Test extends FunSuite with LowUtil {
     val i0 = ConstGen.int(mod, "0")
     val sHi = ConstGen.string(mod, "hi")
 
+    mod.defineType(tNil)
+    mod.defineType(tBool)
+    mod.defineType(tInt)
+    mod.defineType(tString)
     mod.defineType(tU1)
     mod.defineType(tU4)
 

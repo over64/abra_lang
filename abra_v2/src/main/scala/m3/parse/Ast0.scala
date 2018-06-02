@@ -24,10 +24,10 @@ object Ast0 {
   }
 
   case class GenericType(name: String) extends ParseNode
-  case class ScalarDecl(ref: Boolean, params: Seq[GenericType], name: String, llType: String) extends TypeDecl
+  case class ScalarDecl(pkg: String, ref: Boolean, params: Seq[GenericType], name: String, llType: String) extends TypeDecl
   case class FieldDecl(isSelf: Boolean, name: String, th: TypeHint) extends ParseNode
-  case class StructDecl(params: Seq[GenericType], name: String, fields: Seq[FieldDecl]) extends TypeDecl
-  case class UnionDecl(params: Seq[GenericType], name: String, variants: Seq[ScalarTh]) extends TypeDecl
+  case class StructDecl(pkg: String, params: Seq[GenericType], name: String, fields: Seq[FieldDecl]) extends TypeDecl
+  case class UnionDecl(pkg: String, params: Seq[GenericType], name: String, variants: Seq[ScalarTh]) extends TypeDecl
 
   sealed trait TypeHint extends ParseNode
   case class ScalarTh(params: Seq[TypeHint], name: String, mod: Option[String]) extends TypeHint

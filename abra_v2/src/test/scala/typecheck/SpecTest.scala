@@ -18,16 +18,16 @@ class SpecTest extends FunSuite {
     // type C[T] = (w: T)
     // type B[K] = (y: K, z: Int)
     // type A[K, V] = (x: B[C[K]], xx: V)
-    val declInt = ScalarDecl(ref = false, Seq.empty, "Int", "i32")
-    val declString = ScalarDecl(ref = false, Seq.empty, "String", "i8*")
-    val declC = StructDecl(Seq(GenericType("T")), "C", Seq(
+    val declInt = ScalarDecl("universe", ref = false, Seq.empty, "Int", "i32")
+    val declString = ScalarDecl("universe", ref = false, Seq.empty, "String", "i8*")
+    val declC = StructDecl("universe", Seq(GenericType("T")), "C", Seq(
       FieldDecl(isSelf = false, "w", ScalarTh(params = Seq.empty, "T", None))
     ))
-    val declB = StructDecl(Seq(GenericType("K")), "B", Seq(
+    val declB = StructDecl("universe", Seq(GenericType("K")), "B", Seq(
       FieldDecl(isSelf = false, "y", ScalarTh(params = Seq.empty, "K", None)),
       FieldDecl(isSelf = false, "z", ScalarTh(params = Seq.empty, "Int", None))
     ))
-    val declA = StructDecl(Seq(GenericType("K"), GenericType("V")), "A", Seq(
+    val declA = StructDecl("universe", Seq(GenericType("K"), GenericType("V")), "A", Seq(
       FieldDecl(isSelf = false, "x",
         ScalarTh(Seq(
           ScalarTh(Seq(
@@ -60,7 +60,7 @@ class SpecTest extends FunSuite {
     //   val s = seq.of(1, 2, 3)
     //   s.map(\x -> x.toString) # map[Int, String](s, \x -> x.toString)
 
-    val tInt = ScalarDecl(ref = false, Seq(), "Int", "i32")
+    val tInt = ScalarDecl("universe", ref = false, Seq(), "Int", "i32")
     val thInt = ScalarTh(Seq(), "Int", None)
     val thString = ScalarTh(Seq(), "String", None)
     val thT = ScalarTh(Seq(), "T", None)
@@ -116,8 +116,8 @@ class SpecTest extends FunSuite {
   }
   test("spec low type") {
     // type Seq10[T] = llvm [T x 10] .
-    val tInt = ScalarDecl(ref = false, Seq.empty, "Int", "i32")
-    val tSeq10 = ScalarDecl(ref = false, Seq(GenericType("T")), "Seq10", "[%T x 10]")
+    val tInt = ScalarDecl("universe", ref = false, Seq.empty, "Int", "i32")
+    val tSeq10 = ScalarDecl("universe", ref = false, Seq(GenericType("T")), "Seq10", "[%T x 10]")
     val thSeq10Int = ScalarTh(Seq(ScalarTh(Seq.empty, "Int", None)), "Seq10", None)
 
     val ctx = new TContext()
@@ -134,8 +134,8 @@ class SpecTest extends FunSuite {
     //   %2 = load %T, %T* %1
     //   ret %T %2
     // .T
-    val tInt = ScalarDecl(ref = false, Seq.empty, "Int", "i32")
-    val tMem = ScalarDecl(ref = false, Seq(GenericType("T")), "Mem", "%T*")
+    val tInt = ScalarDecl("universe", ref = false, Seq.empty, "Int", "i32")
+    val tMem = ScalarDecl("universe", ref = false, Seq(GenericType("T")), "Mem", "%T*")
     val thInt = ScalarTh(Seq.empty, "Int", None)
     val thMemT = ScalarTh(Seq(ScalarTh(Seq.empty, "T", None)), "Mem", None)
 
@@ -168,9 +168,9 @@ class SpecTest extends FunSuite {
     val thInt = ScalarTh(Seq.empty, "Int", mod = None)
     val thString = ScalarTh(Seq.empty, "thString", mod = None)
 
-    val tNil = ScalarDecl(ref = false, Seq(), "Nil", "void")
-    val tInt = ScalarDecl(ref = false, Seq(), "Int", "i32")
-    val tString = ScalarDecl(ref = true, Seq(), "String", "i8*")
+    val tNil = ScalarDecl("universe", ref = false, Seq(), "Nil", "void")
+    val tInt = ScalarDecl("universe", ref = false, Seq(), "Int", "i32")
+    val tString = ScalarDecl("universe", ref = true, Seq(), "String", "i8*")
 
     // def bar[T] = \x: T, y: Int, z: T ->
     //   z .T

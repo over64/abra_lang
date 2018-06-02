@@ -28,9 +28,9 @@ class Namespace(val pkg: String,
                 val defs: Map[String, DefCont] = Map(),
                 val types: Seq[TypeDecl] = Seq()) {
 
-  def findTypeOpt(name: String, transient: Boolean): Option[TypeDecl] = {
+  def findTypeOpt(name: String, transient: Boolean): Option[(Namespace, TypeDecl)] = {
     types.find(td => td.name == name) match {
-      case some@Some(td) => some
+      case Some(td) => Some((this, td))
       case None =>
         if (transient) {
           imports.values.map { ns => ns.findTypeOpt(name, transient) }.find(td => td != None) match {
@@ -46,7 +46,7 @@ class Namespace(val pkg: String,
     }
   }
 
-  def findType(name: String, transient: Boolean): TypeDecl =
+  def findType(name: String, transient: Boolean): (Namespace, TypeDecl) =
     findTypeOpt(name, transient).getOrElse(throw new RuntimeException(s"no such type with name $name"))
 
   def hasDef(name: String): Boolean = defs.contains(name)
@@ -297,7 +297,7 @@ class Namespace(val pkg: String,
                         args: Iterator[InferTask]): (TypeHint, String, Seq[Ast2.Stat]) = {
     val consType =
       findType(typeName, false) match {
-        case sd: StructDecl => sd
+        case (_, sd: StructDecl) => sd
         case _ => throw new RuntimeException(s"$typeName is not struct type")
       }
     val specMap: mutable.HashMap[GenericType, TypeHint] =

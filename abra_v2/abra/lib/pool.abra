@@ -98,20 +98,6 @@ def alloc = self: MemPage, newOffset: Long do llvm
 type MemPool = (parent: Allocator, root: MemPage)
 def mk = MemPool(allocator.load(), mkMemPage()) .
 
-def mkPoolAlloc = llvm
-  %a = alloca %Allocator
-
-  %a.alloc   = getelementptr %Allocator, %Allocator* %a, i64 0, i32 0
-  %a.inc     = getelementptr %Allocator, %Allocator* %a, i64 0, i32 1
-  %a.release = getelementptr %Allocator, %Allocator* %a, i64 0, i32 2
-
-  store i8* (i64)* @poolAlloc, i8* (i64)**  %a.alloc
-  store void (i8*)* @poolInc, void (i8*)**  %a.inc
-  store void (i8*, void (i8*)*)* @poolRelease, void (i8*, void (i8*)*)**  %a.release
-
-  %ret = load %Allocator, %Allocator* %a
-  ret %Allocator %ret .Allocator
-
 def bind = self: MemPool do llvm
   %1 = load %MemPool, %MemPool* %self
   store %MemPool %1, %MemPool* @pool
@@ -149,6 +135,9 @@ def poolAlloc = size: Long do
 def poolInc = obj: Ptr do llvm
   ret void .None
 
+def poolRelease = obj: Ptr, releaseCallback: (Ptr) -> None do llvm
+  ret void .None
+
 def poolFree = self: MemPool do
   root = self.root
   root.setOffset(32.toLong()) # FIXME: move down
@@ -157,7 +146,7 @@ def poolFree = self: MemPool do
 
 def withPool = self: MemPool, action: () -> None do
   self.bind()
-  allocator.store(mkPoolAlloc())
+  allocator.store(Allocator(poolAlloc, poolInc, poolRelease))
   action()
   allocator.store(self.parent)
   self.poolFree() .

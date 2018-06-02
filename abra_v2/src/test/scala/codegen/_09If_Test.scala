@@ -1,6 +1,6 @@
 package codegen
 
-import codegen._00Types_Test.{bool, int}
+import codegen._00Types_Test.{bool, int, tBool, tFloat, tInt, tNil, tString}
 import m3.codegen.Ast2._
 import m3.codegen.ConstGen
 import m3.codegen.IrUtil.Mod
@@ -13,6 +13,10 @@ class _09If_Test extends FunSuite with LowUtil {
   //   if true do 1 else 2
   test("if-do-else") {
     val mod = Mod()
+    mod.defineType(tNil)
+    mod.defineType(tBool)
+    mod.defineType(tInt)
+
     val bTrue = ConstGen.bool(mod, "true")
     val i1 = ConstGen.int(mod, "1")
     val i2 = ConstGen.int(mod, "2")

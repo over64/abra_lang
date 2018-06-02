@@ -103,6 +103,7 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
 
   override def visitScalarType(ctx: ScalarTypeContext): ScalarDecl =
     emit(ctx, ScalarDecl(
+      _package,
       if (ctx.REF() != null) true else false,
       ctx.params.map(p => GenericType(p.getText)),
       ctx.tname.getText,
@@ -113,6 +114,7 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
 
   override def visitStructType(ctx: StructTypeContext): StructDecl = {
     emit(ctx, StructDecl(
+      _package,
       ctx.params.map { p => emit(p, GenericType(p.getText)) },
       ctx.name.getText,
       ctx.typeField().map { f => visitTypeField(f) }
@@ -121,6 +123,7 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
 
   override def visitUnionType(ctx: UnionTypeContext): UnionDecl = {
     emit(ctx, UnionDecl(
+      _package,
       ctx.params.map { p => emit(p, GenericType(p.getText)) },
       ctx.name.getText,
       ctx.scalarTh().map { sth => visitScalarTh(sth) }

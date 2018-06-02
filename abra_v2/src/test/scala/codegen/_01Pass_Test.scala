@@ -14,6 +14,10 @@ class _01Pass_Test extends FunSuite with LowUtil {
     val mod = Mod()
     val i0 = ConstGen.int(mod, "0")
 
+    mod.defineType(tNil)
+    mod.defineType(tBool)
+    mod.defineType(tInt)
+    mod.defineType(tString)
     mod.defineType(tVec2)
     mod.defineType(tU3)
     mod.defineType(tU1)

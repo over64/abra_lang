@@ -22,6 +22,11 @@ class _02Closure_Test extends FunSuite with LowUtil {
     //
 
     val mod = Mod()
+    mod.defineType(tNil)
+    mod.defineType(tBool)
+    mod.defineType(tInt)
+    mod.defineType(tFloat)
+    mod.defineType(tString)
     val i0 = ConstGen.int(mod, "0")
 
     mod.defineType(tVec2)

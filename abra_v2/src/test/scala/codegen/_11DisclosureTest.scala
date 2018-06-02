@@ -19,6 +19,9 @@ class _11DisclosureTest extends FunSuite with LowUtil {
     //    bar(lambda x, y do xx) .
 
     val mod = Mod()
+    mod.defineType(tNil)
+    mod.defineType(tInt)
+    mod.defineType(tString)
     val i1 = ConstGen.int(mod, "1")
     val i42 = ConstGen.int(mod, "42")
 

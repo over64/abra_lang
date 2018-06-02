@@ -17,12 +17,6 @@ object IrUtil {
                  defs: mutable.HashMap[String, Def] = mutable.HashMap(),
                  protos: mutable.HashMap[String, TypeRef] = mutable.HashMap()) {
 
-    defineType(Low(ref = false, "Nil", "void"))
-    defineType(Low(ref = false, "Bool", "i8"))
-    defineType(Low(ref = false, "Int", "i32"))
-    defineType(Low(ref = false, "Float", "float"))
-    defineType(Low(ref = true, "String", "i8*"))
-
     def addLow(lowCode: String) = {
       // FIXME: vary hacky
       this.lowCode += lowCode
@@ -57,8 +51,8 @@ object IrUtil {
 
   implicit class RichType(self: Type) {
     def toDecl(types: mutable.HashMap[String, Type]): String = self match {
-      case Low(ref, name, llValue) => llValue
-      case Struct(name, fields) =>
+      case Low(pkg, ref, name, llValue) => llValue
+      case Struct(pkg, name, fields) =>
         s"{ ${fields.map(f => f.ref.toValue(types)).mkString(", ")} }"
       case u: Union =>
         u.isNullableUnion(types) match {
@@ -127,7 +121,7 @@ object IrUtil {
       if (self.isRef(types)) return true
 
       types(self.name) match {
-        case Low(ref, name, llValue) => true
+        case Low(pkg, ref, name, llValue) => true
         case s: Struct => false
         case u: Union => false
         case fn: Fn => true
@@ -139,10 +133,10 @@ object IrUtil {
       if (stack.contains(self)) return false
 
       types(self.name) match {
-        case Low(ref, name, llValue) => false
-        case Struct(name, fields) =>
+        case Low(pkg, ref, name, llValue) => false
+        case Struct(pkg, name, fields) =>
           fields.exists(f => f.ref.hasSelfRef(types, stack :+ self))
-        case Union(name, variants) =>
+        case Union(pkg, name, variants) =>
           variants.exists(v => v.hasSelfRef(types, stack :+ self))
         case Fn(name, closure, args, ret) => false
       }
@@ -151,11 +145,11 @@ object IrUtil {
 
     def isRef(types: mutable.HashMap[String, Type]): Boolean =
       types(self.name) match {
-        case Low(ref, name, llValue) => ref
-        case Struct(name, fields) =>
+        case Low(pkg, ref, name, llValue) => ref
+        case Struct(pkg, name, fields) =>
           fields.exists(f => f.ref.hasSelfRef(types, Seq(self))) ||
             fields.exists(f => f.ref.isRef(types))
-        case Union(name, variants) => false
+        case Union(pkg, name, variants) => false
         case Fn(name, closure, args, ret) => false
       }
 
@@ -167,7 +161,7 @@ object IrUtil {
 
     def isVoid(types: mutable.HashMap[String, Type]): Boolean =
       types(self.name) match {
-        case Low(ref, name, llValue) => llValue == "void"
+        case Low(pkg, ref, name, llValue) => llValue == "void"
         case _ => false
       }
 
@@ -175,17 +169,25 @@ object IrUtil {
 
     def toValue(types: mutable.HashMap[String, Type]): String = {
       types(self.name) match {
-        case low@Low(ref, name, llValue) => if (llValue == "void") llValue else "%\"" + name + "\""
-        case Struct(name, fields) =>
+        case low@Low(pkg, ref, name, llValue) => if (llValue == "void") llValue else "%\"" + name + "\""
+        case Struct(pkg, name, fields) =>
           val refSuffix = if (self.isRef(types)) "*" else ""
           "%\"" + name + "\"" + refSuffix
-        case Union(name, variants) => "%\"" + name + "\""
+        case Union(pkg, name, variants) => "%\"" + name + "\""
         case fn: Fn => fn.toDecl(types)
       }
     }
 
     def isNeedBeforeAfterStore(types: mutable.HashMap[String, Type]) =
       self.isUnion(types) || self.isRef(types)
+
+    def fullName(types: mutable.HashMap[String, Type]): String =
+      types(self.name) match {
+        case l: Low => l.pkg + "." + self.name
+        case s: Struct => s.pkg + "." + self.name
+        case u: Union => u.pkg + "." + self.name
+        case _ => self.name
+      }
   }
 
   implicit class RichUnion(self: Union) {

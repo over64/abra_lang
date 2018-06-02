@@ -16,6 +16,10 @@ class _08While_Test extends FunSuite with LowUtil {
   //   x .
   test("while loop") {
     val mod = Mod()
+    mod.defineType(tNil)
+    mod.defineType(tBool)
+    mod.defineType(tInt)
+
     val i42 = ConstGen.int(mod, "42")
     val i1 = ConstGen.int(mod, "1")
 

@@ -80,11 +80,18 @@ object Util {
               var code = l.code
               specMap.foreach { case (sth, th) =>
                 val lowScalarRef = th.toLow(ctx, namespace) // FIXME: no cast?
-              val replName = ctx.lowMod.types(lowScalarRef.name) match {
-                case Ast2.Low(ref, name, llValue) => name
+              val replTypeName = ctx.lowMod.types(lowScalarRef.name) match {
+                case Ast2.Low(namespace.pkg, ref, name, llValue) => name
                 case _ => lowScalarRef.name
               }
-                code = code.replace(sth.name, replName)
+                val replSelfDefName = ctx.lowMod.types(lowScalarRef.name) match {
+                  case l: Ast2.Low => l.pkg + "." + replTypeName
+                  case s: Ast2.Struct => s.pkg + "." + replTypeName
+                  case u: Ast2.Union => u.pkg + "." + replTypeName
+                  case _ => replTypeName
+                }
+                code = code.replaceAll("@" + sth.name + ".([a-z0-9A-Z]+)", "@\"" + replSelfDefName + ".$1\"")
+                code = code.replace(sth.name, replTypeName)
               }
               llVm(code)
             case AbraCode(seq) => AbraCode(seq.map(e => e.spec(specMap, ctx, namespace)))
@@ -167,14 +174,14 @@ object Util {
         case (sth, th) =>
           val lowScalarRef = th.toLow(ctx, namespace)
           val replName = ctx.lowMod.types(lowScalarRef.name) match {
-            case Ast2.Low(ref, name, llValue) => llValue
+            case Ast2.Low(namespace.pkg, ref, name, llValue) => llValue
             case _ => "%" + lowScalarRef.name
           }
 
           llType = llType.replace("%" + sth.name, replName)
       }
 
-      ctx.lowMod.defineType(Ast2.Low(self.ref, lowName, llType))
+      ctx.lowMod.defineType(Ast2.Low(namespace.pkg, self.ref, lowName, llType))
       Ast2.TypeRef(lowName)
     }
   }
@@ -188,9 +195,9 @@ object Util {
         case Some(lowType) => Ast2.TypeRef(lowName)
         case None =>
           // avoid stack overflow
-          ctx.lowMod.defineType(Ast2.Struct(lowName, Seq.empty))
+          ctx.lowMod.defineType(Ast2.Struct(namespace.pkg, lowName, Seq.empty))
 
-          ctx.lowMod.defineType(Ast2.Struct(lowName, self.fields.map { field =>
+          ctx.lowMod.defineType(Ast2.Struct(namespace.pkg, lowName, self.fields.map { field =>
             Ast2.Field(field.name, field.th.spec(specMap).toLow(ctx, namespace))
           }))
 
@@ -204,7 +211,7 @@ object Util {
       val specMap = makeSpecMap(self.params, params)
       val lowName = ScalarTh(params, self.name, mod = None).toGenericName(namespace)
       ctx.lowMod.defineType(
-        Ast2.Union(lowName, self.variants.map { th =>
+        Ast2.Union(namespace.pkg, lowName, self.variants.map { th =>
           th.spec(specMap).toLow(ctx, namespace)
         }))
       Ast2.TypeRef(lowName)
@@ -269,21 +276,21 @@ object Util {
       self match {
         case ScalarTh(params, name, pkg) =>
           namespace.findType(name, true) match {
-            case sd: ScalarDecl => sd.spec(params, ctx, namespace)
-            case struct: StructDecl => struct.spec(params, ctx, namespace)
-            case ud: UnionDecl => ud.spec(params, ctx, namespace)
+            case (ns, sd: ScalarDecl) => sd.spec(params, ctx, ns)
+            case (ns, struct: StructDecl) => struct.spec(params, ctx, ns)
+            case (ns, ud: UnionDecl) => ud.spec(params, ctx, ns)
           }
         case StructTh(fields) =>
           val lowFields = fields.map(f => Ast2.Field(f.name, f.typeHint.toLow(ctx, namespace)))
           val lowName = s"(${lowFields.map(_.ref.name).mkString(", ")})"
           if (ctx.lowMod.types.get(lowName) == None)
-            ctx.lowMod.defineType(Ast2.Struct(lowName, lowFields))
+            ctx.lowMod.defineType(Ast2.Struct(namespace.pkg, lowName, lowFields))
           Ast2.TypeRef(lowName)
         case UnionTh(variants) =>
           val lowVariants = variants.map(v => v.toLow(ctx, namespace))
           val lowName = s"${lowVariants.map(_.name).mkString(" | ")}"
           if (ctx.lowMod.types.get(lowName) == None)
-            ctx.lowMod.defineType(Ast2.Union(lowName, lowVariants))
+            ctx.lowMod.defineType(Ast2.Union(namespace.pkg, lowName, lowVariants))
           Ast2.TypeRef(lowName)
         case FnTh(closure, args, ret) =>
           val lowClosure = closure.map {

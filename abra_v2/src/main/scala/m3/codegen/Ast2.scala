@@ -8,9 +8,9 @@ object Ast2 {
     val name: String
   }
   case class Field(name: String, ref: TypeRef)
-  case class Low(ref: Boolean, name: String, llValue: String) extends Type
-  case class Struct(name: String, fields: Seq[Field]) extends Type
-  case class Union(name: String, variants: Seq[TypeRef]) extends Type
+  case class Low(pkg: String, ref: Boolean, name: String, llValue: String) extends Type
+  case class Struct(pkg: String, name: String, fields: Seq[Field]) extends Type
+  case class Union(pkg: String, name: String, variants: Seq[TypeRef]) extends Type
 
   sealed trait ClosureType {
     val ref: TypeRef

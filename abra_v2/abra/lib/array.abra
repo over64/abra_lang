@@ -24,24 +24,8 @@ def acquire[T] = self: Array[T] do llvm
   call void %incFn(i8* %cast)
   ret void .None
 
-def release[T] = self: Array[T] do llvm
-  %cast32 = bitcast %"Array[T]" %self to i32*
-  %realPtr = getelementptr i32, i32* %cast32, i32 -1
-  %cast = bitcast i32* %realPtr to i8*
-  %freeFn = load void (i8*, void (i8*)*)*, void (i8*, void (i8*)*)** @rcRelease
-  %cFree = bitcast void (%"Array[T]")* @"Array[T].childFree" to void (i8*)*
-  call void %freeFn(i8* %cast,  void (i8*)* %cFree)
-  ret void .None
-
-def setInit[T] = self: Array[T], idx: Int, value: T do llvm
-  %ptr = getelementptr %T, %T* %self, i32 %idx
-  %old = load %T, %T* %ptr
-  call void @T.acquire(%T %value)
-  store %T %value, %T* %ptr
-  ret void .None
-
-def childFree[T] = self: Array[T] do llvm
-  %cast32 = bitcast %"Array[T]" %self to i32*
+def childFree[T] = array: Array[T] do llvm
+  %cast32 = bitcast %"Array[T]" %array to i32*
   %length = load i32, i32* %cast32
   %dataPtr = getelementptr i32, i32* %cast32, i32 1
   %data = bitcast i32* %dataPtr to %"Array[T]"
@@ -63,11 +47,33 @@ free:
 end:
   ret void .None
 
+def lowRelease[T] = self : Array[T],
+                    cFree: (Array[T]) -> None do llvm
+  %cast32 = bitcast %"Array[T]" %self to i32*
+  %realPtr = getelementptr i32, i32* %cast32, i32 -1
+  %cast = bitcast i32* %realPtr to i8*
+  %freeFn = load void (i8*, void (i8*)*)*, void (i8*, void (i8*)*)** @rcRelease
+  %cFree.fn = extractvalue { void (%"Array[T]", i8*)*, i8* } %cFree, 0
+  %cFree.cast = bitcast void (%"Array[T]", i8*)* %cFree.fn to void (i8*)*
+  call void %freeFn(i8* %cast,  void (i8*)* %cFree.cast)
+  ret void .None
+
+def release[T] = self: Array[T] do
+  spec = lambda array: Array[T] -> childFree(array) .
+  self.lowRelease(spec) .None
+
 def set[T] = self: Array[T], idx: Int, value: T do llvm
   %ptr = getelementptr %T, %T* %self, i32 %idx
   %old = load %T, %T* %ptr
   call void @T.acquire(%T %value)
   call void @T.release(%T %old)
+  store %T %value, %T* %ptr
+  ret void .None
+
+def setInit[T] = self: Array[T], idx: Int, value: T do llvm
+  %ptr = getelementptr %T, %T* %self, i32 %idx
+  %old = load %T, %T* %ptr
+  call void @T.acquire(%T %value)
   store %T %value, %T* %ptr
   ret void .None
 
@@ -82,8 +88,7 @@ def mk[T] = length: Int, init: (Int) -> T do
   # hacky way to spec acquire / release functions
   if false do
     array.acquire()
-    array.release()
-    array.childFree() .
+    array.release() .
 
   i = 0
   while i < length do

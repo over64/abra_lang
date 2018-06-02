@@ -42,6 +42,8 @@ class _06Or_Test extends FunSuite with LowUtil {
 
   test("Or: left only") {
     val mod = mkMod()
+    mod.defineType(tNil)
+    mod.defineType(tBool)
     mod.defineDef(Def("main", TypeRef("\\ -> Bool"), Seq.empty, Seq.empty, AbraCode(
       vars = Map("x" -> bool),
       stats = Seq(
@@ -58,6 +60,8 @@ class _06Or_Test extends FunSuite with LowUtil {
 
   test("Or: left and right") {
     val mod = mkMod()
+    mod.defineType(tNil)
+    mod.defineType(tBool)
     mod.defineDef(Def("main", TypeRef("\\ -> Bool"), Seq.empty, Seq.empty, AbraCode(
       vars = Map("x" -> bool),
       stats = Seq(

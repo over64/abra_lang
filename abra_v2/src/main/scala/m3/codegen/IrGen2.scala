@@ -82,8 +82,8 @@ object IrGen2 {
     val (resultTref, elements) = props.foldLeft((tref, Seq[Int](0))) {
       case ((tref, seq), prop) =>
         ctx.types(tref.name) match {
-          case Struct(name, fields) => fieldsTo(fields, tref, seq, prop)
-          case Union(name, variants) => variantsTo(variants, tref, seq, prop)
+          case Struct(pkg, name, fields) => fieldsTo(fields, tref, seq, prop)
+          case Union(pkg, name, variants) => variantsTo(variants, tref, seq, prop)
           case _ => throw new RuntimeException("oops")
         }
     }
@@ -197,7 +197,7 @@ object IrGen2 {
 
     // делаем инкремент что store
     if (needAcquier && whatTref.isNeedBeforeAfterStore(ctx.types)) {
-      val fRelease = "\"" + whatTref.name + ".acquire" + "\""
+      val fRelease = "\"" + whatTref.fullName(ctx.types) + ".acquire" + "\""
       val irType = whatTref.toValue(ctx.types)
       ctx.out.println(s"\tcall void @$fRelease($irType $what)")
     }
@@ -213,7 +213,7 @@ object IrGen2 {
     // делаем декремент куда store
     if (!init)
       if (toTref.isNeedBeforeAfterStore(ctx.types)) {
-        val fRelease = "\"" + toTref.name + ".release" + "\""
+        val fRelease = "\"" + toTref.fullName(ctx.types) + ".release" + "\""
         val irType = toTref.toValue(ctx.types)
         val r2 = dctx.nextReg()
         ctx.out.println(s"\t%$r2 = load $irType, $irType* $to")
@@ -372,7 +372,7 @@ object IrGen2 {
     case Free(id) =>
       val tref = dctx.vars(id.v)
       if (tref.isNeedBeforeAfterStore(ctx.types)) {
-        val fRelease = "\"" + tref.name + ".release" + "\""
+        val fRelease = "\"" + tref.fullName(ctx.types) + ".release" + "\""
         val irType = tref.toValue(ctx.types)
         val r1 = dctx.nextReg()
         ctx.out.println(s"\t%$r1 = load $irType, $irType* %${id.v}")
@@ -480,7 +480,7 @@ object IrGen2 {
               val destIrType = tref.toPtr(ctx.types);
               val r = dctx.nextReg()
               ctx.out.println(s"\t%$r = load $uIrType, $uIrType*  %${id.v}")
-              val fRelease = "\"" + tref.name + ".acquire" + "\""
+              val fRelease = "\"" + tref.fullName(ctx.types) + ".acquire" + "\""
               ctx.out.println(s"\tcall void @$fRelease($uIrType %$r)")
               ctx.out.println(s"\tstore $uIrType %$r, $destIrType %${is.v}")
             case None =>
@@ -558,10 +558,17 @@ object IrGen2 {
         @rcRelease = external thread_local(initialexec) global void (i8*, void (i8*)*)*
       """.stripMargin)
 
+    // hack llvm: forward references to non-struct type
     ctx.types.values.filter {
-      case l: Low => l.llValue != "void"
+      case l: Low => l.llValue != "void" && !l.llValue.contains("%")
       case _ => false
     }.foreach(t => out.println(s"""%"${t.name}" = type """ + t.toDecl(types)))
+
+    ctx.types.values.filter {
+      case l: Low => l.llValue != "void" && l.llValue.contains("%")
+      case _ => false
+    }.foreach(t => out.println(s"""%"${t.name}" = type """ + t.toDecl(types)))
+    // end hack
 
     ctx.types.values.filter {
       case u: Union => true

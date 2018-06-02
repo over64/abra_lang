@@ -14,35 +14,35 @@ object _00Types_Test extends FunSuite {
   val string = TypeRef("String")
 
   val vec2 = TypeRef("Vec2")
-  val tVec2 = Struct("Vec2", Seq(Field("x", int), Field("y", int)))
+  val tVec2 = Struct("test", "Vec2", Seq(Field("x", int), Field("y", int)))
   val node = TypeRef("Node")
-  val tNode = Struct("Node", Seq(Field("v", int), Field("next", TypeRef("Node | Nil"))))
+  val tNode = Struct("test", "Node", Seq(Field("v", int), Field("next", TypeRef("Node | Nil"))))
 
-  val tIntAndInt = Struct("(Int, Int)", Seq(Field("x", int), Field("y", int)))
-  val tIntAndString = Struct("(Int, String)", Seq(Field("x", int), Field("y", string)))
+  val tIntAndInt = Struct("test", "(Int, Int)", Seq(Field("x", int), Field("y", int)))
+  val tIntAndString = Struct("test", "(Int, String)", Seq(Field("x", int), Field("y", string)))
 
   val u1 = TypeRef("U1")
   val u2 = TypeRef("U2")
   val u3 = TypeRef("U3")
   val u4 = TypeRef("U4")
 
-  val tU1 = Union("U1", Seq(string, int))
-  val tU2 = Union("U2", Seq(nil, u1, string))
-  val tU3 = Union("U3", Seq(bool, int))
-  val tU4 = Union("U4", Seq(bool, int, string))
+  val tU1 = Union("test", "U1", Seq(string, int))
+  val tU2 = Union("test", "U2", Seq(nil, u1, string))
+  val tU3 = Union("test", "U3", Seq(bool, int))
+  val tU4 = Union("test", "U4", Seq(bool, int, string))
 
-  val tNodeOrNil = Union("Node | Nil", Seq(node, nil))
-  val tIntOrNil = Union("Int | Nil", Seq(node, nil))
+  val tNodeOrNil = Union("test", "Node | Nil", Seq(node, nil))
+  val tIntOrNil = Union("test", "Int | Nil", Seq(node, nil))
 
   val intAndInt = TypeRef("(Int, Int)")
   val intAndString = TypeRef("(Int, String)")
   val intOrNil = TypeRef("Int | Nil")
 
-  val tNil = Low(ref = false, "Nil", "void")
-  val tBool = Low(ref = false, "Bool", "i8")
-  val tInt = Low(ref = false, "Int", "i32")
-  val tFloat = Low(ref = false, "Float", "float")
-  val tString = Low(ref = true, "String", "i8*")
+  val tNil = Low("test", ref = false, "Nil", "void")
+  val tBool = Low("test", ref = false, "Bool", "i8")
+  val tInt = Low("test", ref = false, "Int", "i32")
+  val tFloat = Low("test", ref = false, "Float", "float")
+  val tString = Low("test", ref = true, "String", "i8*")
 
   val tDefMain = Fn("\\ -> Int", Seq.empty, Seq.empty, int)
 

@@ -55,7 +55,7 @@ object TypeChecker {
           fth match {
             case sth: ScalarTh =>
               namespace.findType(sth.name, transient = false) match {
-                case sd: StructDecl =>
+                case (_, sd: StructDecl) =>
                   sd.fields.find(fd => fd.name == fieldId.value).getOrElse(throw new RuntimeException(s"no such field $fieldId")).th
                 case _ => throw new RuntimeException(s"no such field ${fieldId.value} on type $fth")
               }

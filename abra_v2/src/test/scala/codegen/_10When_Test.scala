@@ -25,6 +25,10 @@ class _10When_Test extends FunSuite with LowUtil {
       "@.str2 = private constant [6 x i8] c\"world\\00\", align 1"
     ))
 
+    mod.defineType(tNil)
+    mod.defineType(tBool)
+    mod.defineType(tInt)
+    mod.defineType(tString)
     mod.defineType(Fn("\\String -> None", closure = Seq.empty, args = Seq(string), nil))
     mod.defineDef(Def("print", TypeRef("\\String -> None"), closure = Seq.empty, args = Seq("s"), LLCode(
       """
