@@ -2,14 +2,21 @@ import /universe with None, Bool, Int .
 
 llvm
   declare i32 @SDL_Init(i32)
+  declare void @SDL_Quit()
   ; SDL_Window * SDLCALL SDL_CreateWindow(const char *title, int x, int y, int w, int h, Uint32 flags)
   declare i8* @SDL_CreateWindow(i8*, i32, i32, i32, i32, i32)
+
+  ;void SDL_DestroyWindow(SDL_Window* window)
+  declare void @SDL_DestroyWindow(i8*)
 
   ; int SDLCALL SDL_PollEvent(SDL_Event * event)
   declare i32 @SDL_PollEvent(i8*)
 
   ; extern DECLSPEC SDL_GLContext SDLCALL SDL_GL_CreateContext(SDL_Window * window)
   declare i8* @SDL_GL_CreateContext(i8*)
+
+  ; SDL_GL_DeleteContext(SDL_GLContext context)
+  declare void @SDL_GL_DeleteContext(i8*)
 
   ; extern DECLSPEC void SDLCALL SDL_GL_SwapWindow(SDL_Window * window)
   declare void @SDL_GL_SwapWindow(i8*) .
@@ -39,6 +46,10 @@ def initInternal = mode: Int do llvm
     %1 = call i32 @SDL_Init(i32 %mode)
     ret i32 %1 .Int
 
+def quit = llvm
+    call void @SDL_Quit()
+    ret void .None
+
 type Window = llvm i8* .
 type GLContext = llvm i8* .
 
@@ -61,6 +72,10 @@ def windowMouseCapture       = 0x00004000 . # window has mouse captured (unrelat
 def createWindow = title: String, x: Int, y: Int, w: Int, h: Int, flags: Int do llvm
     %1 = call i8* @SDL_CreateWindow(i8* %title, i32 %x, i32 %y, i32 %w, i32 %h, i32 %flags)
     ret i8* %1 .Window
+
+def destroy = self: Window do llvm
+    call void @SDL_DestroyWindow(i8* %self)
+    ret void .None
 
 def noEvent      = 0x000 .
 def eventQuit    = 0x100 .
@@ -90,6 +105,10 @@ def pollEvent = llvm
 def glCreateContext = self: Window do llvm
     %1 = call i8* @SDL_GL_CreateContext(i8* %self)
     ret i8* %1 .GLContext
+
+def delete = self: GLContext do llvm
+   call void @SDL_GL_DeleteContext(i8* %self)
+   ret void .None
 
 def glSwap = self: Window do llvm
     call void @SDL_GL_SwapWindow(i8* %self)

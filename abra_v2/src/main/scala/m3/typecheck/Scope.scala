@@ -1,7 +1,9 @@
 package m3.typecheck
 
 
+import m3.codegen.Ast2
 import m3.parse.Ast0._
+import Util._
 
 import scala.collection.mutable
 
@@ -12,7 +14,7 @@ sealed trait Location
 case object Local extends Location
 case object Param extends Location
 
-case class VarInfo(mut: Boolean, th: TypeHint, location: Location)
+case class VarInfo(th: TypeHint, lowTh: Ast2.TypeRef, location: Location)
 trait Scope {
   val vars = mutable.HashMap[String, VarInfo]()
   val parent: Option[Scope]
@@ -48,8 +50,8 @@ class FnScope(val parent: Option[Scope]) extends Scope {
   val closures = mutable.HashMap[String, VarInfo]()
 
 
-  def addParam(name: String, th: TypeHint) = {
-    vars += ((name, VarInfo(mut = false, th, Param)))
+  def addParam(ctx: TContext, namespace: Namespace, name: String, th: TypeHint) = {
+    vars += ((name, VarInfo(th, th.toLow(ctx, namespace), Param)))
   }
 
   override def findVarOpt(vName: String): Option[VarInfo] =
@@ -79,8 +81,8 @@ class FnScope(val parent: Option[Scope]) extends Scope {
 }
 
 class BlockScope(val parent: Option[Scope]) extends Scope {
-  def addLocal(mut: Boolean, name: String, th: TypeHint): VarInfo = {
-    val vi = VarInfo(mut, th, Local)
+  def addLocal(ctx: TContext, namespace: Namespace, name: String, th: TypeHint): VarInfo = {
+    val vi = VarInfo(th, th.toLow(ctx, namespace), Local)
     vars.put(name, vi)
     vi
   }

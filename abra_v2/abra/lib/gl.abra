@@ -1,0 +1,288 @@
+import
+    /universe with None, Bool, Int
+    /array with Array
+    /kazmath with Mat4 .
+
+
+llvm
+    ;GLAPI void GLAPIENTRY glEnable( GLenum cap );
+    declare void @glEnable(i32)
+
+    ; GLAPI void GLAPIENTRY glClearColor( GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha )
+    declare void @glClearColor(float, float, float)
+
+    ; GLAPI void GLAPIENTRY glClear( GLbitfield mask )
+    declare void @glClear(i32)
+
+    ; GLAPI void APIENTRY glGenBuffers (GLsizei n, GLuint *buffers)
+    declare void @glGenBuffers(i32, i32*)
+
+    ; GLAPI void APIENTRY glGenVertexArrays (GLsizei n, GLuint *arrays)
+    declare void @glGenVertexArrays(i32, i32*)
+
+    ; GLAPI void APIENTRY glBindBuffer (GLenum target, GLuint buffer)
+    declare void @glBindBuffer(i32, i32)
+
+    ; GLAPI void APIENTRY glBindVertexArray (GLuint array)
+    declare void @glBindVertexArray(i32)
+
+    ; GLAPI void APIENTRY glBufferData (GLenum target, GLsizeiptr size, const void *data, GLenum usage)
+    declare void @glBufferData(i32, i32, i8*, i32)
+
+    ; GLAPI void APIENTRY glVertexAttribPointer (GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void *pointer)
+    declare void @glVertexAttribPointer(i32, i32, i32, i8, i32, i8*)
+
+    ; GLAPI void APIENTRY glEnableVertexAttribArray (GLuint index)
+    declare void @glEnableVertexAttribArray(i32)
+
+    ; GLAPI void GLAPIENTRY glDrawArrays( GLenum mode, GLint first, GLsizei count )
+    declare void @glDrawArrays(i32, i32, i32)
+
+    ; #Shaders
+
+    ; GLAPI GLuint APIENTRY glCreateShader (GLenum type)
+    declare i32 @glCreateShader(i32)
+
+    ; GLAPI void APIENTRY glShaderSource (GLuint shader, GLsizei count, const GLchar *const*string, const GLint *length);
+    declare void @glShaderSource(i32, i32, i8**, i32*)
+
+    ; GLAPI void APIENTRY glCompileShader (GLuint shader);
+    declare void @glCompileShader(i32)
+
+    ; GLAPI void APIENTRY glGetShaderiv (GLuint shader, GLenum pname, GLint *params);
+    declare void @glGetShaderiv(i32, i32, i32*)
+
+    ; GLAPI void APIENTRY glGetShaderInfoLog (GLuint shader, GLsizei bufSize, GLsizei *length, GLchar *infoLog);
+    declare void @glGetShaderInfoLog(i32, i32, i32*, i8*)
+
+    ; GLAPI GLuint APIENTRY glCreateProgram (void);
+    declare i32 @glCreateProgram()
+
+    ; GLAPI void APIENTRY glAttachShader (GLuint program, GLuint shader);
+    declare void @glAttachShader(i32, i32)
+
+    ; GLAPI void APIENTRY glLinkProgram (GLuint program);
+    declare void @glLinkProgram(i32)
+
+    ; GLAPI void APIENTRY glGetProgramiv (GLuint program, GLenum pname, GLint *params);
+    declare void @glGetProgramiv(i32, i32, i32*)
+
+    ; GLAPI void APIENTRY glGetProgramInfoLog (GLuint program, GLsizei bufSize, GLsizei *length, GLchar *infoLog);
+    declare void @glGetProgramInfoLog(i32, i32, i32*, i8*)
+
+    ; GLAPI void APIENTRY glUseProgram (GLuint program);
+    declare void @glUseProgram(i32)
+
+    ; # Uniforms & Attribs
+
+    ; GLint glGetAttribLocation(GLuint program, const GLchar *name)
+    declare i32 @glGetAttribLocation(i32, i8*)
+
+    ; GLAPI GLint APIENTRY glGetUniformLocation (GLuint program, const GLchar *name);
+    declare i32 @glGetUniformLocation(i32, i8*)
+
+    ; GLAPI void APIENTRY glUniformMatrix4fv (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
+    declare void @glUniformMatrix4fv(i32, i32, i8, %Mat4*)
+
+    ; GLAPI void APIENTRY glUniform1i (GLint location, GLint v0);
+    declare void @glUniform1i(i32, i32)
+
+    ; # Textures
+
+    ; GLAPI void GLAPIENTRY glGenTextures( GLsizei n, GLuint *textures );
+    declare void @glGenTextures(i32, i32*)
+
+    ; GLAPI void APIENTRY glActiveTexture (GLenum texture);
+    declare void @glActiveTexture(i32)
+
+    ;GLAPI void GLAPIENTRY glBindTexture( GLenum target, GLuint texture );
+    declare void @glBindTexture(i32, i32)
+
+    ; TODO
+    ; GLAPI void GLAPIENTRY glTexImage2D( GLenum target, GLint level,
+    ;                                     GLint internalFormat,
+    ;                                     GLsizei width, GLsizei height,
+    ;                                     GLint border, GLenum format, GLenum type,
+    ;                                     const GLvoid *pixels );
+    ; declare void @glTexImage2D(i32, i32, i32, i32, i32, i32, i32, i32, i8*) .
+
+def glFalse = 0 .
+def glTrue = 1 .
+def colorBufferBit = 0x00004000 .
+def depthBufferBit = 0x00000100 .
+def arrayBuffer = 0x8892 .
+def staticDraw = 0x88E4 .
+def triangles = 0x0004 .
+def float = 0x1406 .
+def vertexShader = 0x8B31 .
+def fragmentShader = 0x8B30 .
+def compileStatus = 0x8B81 .
+def linkStatus = 0x8B82 .
+def texture2D = 0x0DE1 .
+def texture0 = 0x84C0 .
+def depthTest = 0x0B71 .
+
+def enable = caps: Int do llvm
+    call void @glEnable(i32 %caps)
+    ret void .None
+
+def clearColor = red: Float, green: Float, blue: Float do llvm
+    call void @glClearColor(float %red, float %green, float %blue)
+    ret void .None
+
+def clear = mask: Int do llvm
+    call void @glClear(i32 %mask)
+    ret void .None
+
+# FIXME: use offset
+def vertexAttribPointer = location: Int, size: Int, dataType: Int, normalized: Bool, stride: Int, offset: Int do llvm
+    %ptrOffset = inttoptr i32 %offset to i8*
+    call void @glVertexAttribPointer(i32 %location, i32 %size, i32 %dataType, i8 %normalized, i32 %stride, i8* %ptrOffset)
+    ret void .None
+
+def enableVertexAttribArray = location: Int do llvm
+    call void @glEnableVertexAttribArray(i32 %location)
+    ret void .None
+
+def drawArrays = mode: Int, first: Int, count: Int do llvm
+    call void @glDrawArrays(i32 %mode, i32 %first, i32 %count)
+    ret void .None
+
+type Buffer = llvm i32 .
+
+def genBuffer = llvm
+    %1 = alloca i32, align 4
+    call void @glGenBuffers(i32 1, i32* %1)
+    %2 = load i32, i32* %1
+    ret i32 %2 .Buffer
+
+def bind = self: Buffer, target: Int do llvm
+    call void @glBindBuffer(i32 %target, i32 %self)
+    ret void .None
+
+def data = self: Buffer, target: Int, array: Array[Float], usage: Int do llvm
+    %data = bitcast %"Array[Float]" %array to i8*
+    %data32 = bitcast %"Array[Float]" %array to i32*
+    %lenPtr = getelementptr i32, i32* %data32, i64 -1
+    %len = load i32, i32* %lenPtr
+    %size = mul i32 %len, 4
+    call void @glBufferData(i32 %target, i32 %size, i8* %data, i32 %usage)
+    ret void .None
+
+type VertexArray = llvm i32 .
+
+def genVertexArray = llvm
+    %1 = alloca i32, align 4
+    call void @glGenVertexArrays(i32 1, i32* %1)
+    %2 = load i32, i32* %1
+    ret i32 %2 .VertexArray
+
+def bind = self: VertexArray do llvm
+    call void @glBindVertexArray(i32 %self)
+    ret void .None
+
+type Shader = llvm i32 .
+
+def createShader = shaderType: Int do llvm
+    %1 = call i32 @glCreateShader(i32 %shaderType)
+    ret i32 %1 .Shader
+
+def setSource = self: Shader, source: String do llvm
+    %1 = alloca i8*
+    store i8* %source, i8** %1
+    call void @glShaderSource(i32 %self, i32 1, i8** %1, i32* null)
+    ret void .None
+
+def compile = self: Shader do llvm
+    call void @glCompileShader(i32 %self)
+    ret void .None
+
+def getInfo = self: Shader, paramName: Int do llvm
+    %1 = alloca i32
+    call void @glGetShaderiv(i32 %self, i32 %paramName, i32* %1)
+    %2 = load i32, i32* %1
+    ret i32 %2 .Int
+
+def getInfoLog = self: Shader do llvm
+; #define GL_INFO_LOG_LENGTH                0x8B84 = 35716
+    %1 = alloca i32
+    call void @glGetShaderiv(i32 %self, i32 35716, i32* %1)
+    %length32 = load i32, i32* %1
+    %length64 = zext i32 %length32 to i64
+
+    %unused = alloca i32
+    %allocFn = load i8* (i64)*, i8* (i64)** @rcAlloc
+    %str = call i8* %allocFn(i64 %length64)
+    call void @glGetShaderInfoLog(i32 %self, i32 %length32, i32* %unused, i8* %str)
+    ret i8* %str .String
+
+type ShaderProgram = llvm i32 .
+
+def createProgram = llvm
+    %1 = call i32 @glCreateProgram()
+    ret i32 %1 .ShaderProgram
+
+def attachShader = self: ShaderProgram, shader: Shader do llvm
+    call void @glAttachShader(i32 %self, i32 %shader)
+    ret void .None
+
+def link = self: ShaderProgram do llvm
+    call void @glLinkProgram(i32 %self)
+    ret void .None
+
+def getInfo = self: ShaderProgram, paramName: Int do llvm
+    %1 = alloca i32
+    call void @glGetProgramiv(i32 %self, i32 %paramName, i32* %1)
+    %2 = load i32, i32* %1
+    ret i32 %2 .Int
+
+def getInfoLog = self: ShaderProgram do llvm
+; #define GL_INFO_LOG_LENGTH                0x8B84 = 35716
+    %1 = alloca i32
+    call void @glGetProgramiv(i32 %self, i32 35716, i32* %1)
+    %length32 = load i32, i32* %1
+    %length64 = zext i32 %length32 to i64
+
+    %unused = alloca i32
+    %allocFn = load i8* (i64)*, i8* (i64)** @rcAlloc
+    %str = call i8* %allocFn(i64 %length64)
+    call void @glGetProgramInfoLog(i32 %self, i32 %length32, i32* %unused, i8* %str)
+    ret i8* %str .String
+
+def use = self: ShaderProgram do llvm
+    call void @glUseProgram(i32 %self)
+    ret void .None
+
+def attribLocation = self: ShaderProgram, name: String do llvm
+    ; declare i32 @glGetAttribLocation(i32, i8*)
+    %1 = call i32 @glGetAttribLocation(i32 %self, i8* %name)
+    ret i32 %1 .Int
+
+def uniformLocation = self: ShaderProgram, name: String do llvm
+    %1 = call i32 @glGetUniformLocation(i32 %self, i8* %name)
+    ret i32 %1 .Int
+
+# FIXME: transpose
+def uniformMatrix4 = self: ShaderProgram, location: Int, mat: Mat4 do llvm
+    call void @glUniformMatrix4fv(i32 %location, i32 1, i8 0, %Mat4* %mat)
+    ret void .None
+
+def uniform1i = self: ShaderProgram, location: Int, i: Int do llvm
+    call void @glUniform1i(i32 %location, i32 %i)
+    ret void .None
+
+type Texture = llvm i32 .
+
+def genTexture = llvm
+    %texPtr = alloca i32
+    call void @glGenTextures(i32 1, i32* %texPtr)
+    %tex = load i32, i32* %texPtr
+    ret i32 %tex .Texture
+
+def activeTexture = texUnit: Int do llvm
+    call void @glActiveTexture(i32 %texUnit)
+    ret void .None
+
+def bind = self: Texture, texType: Int do llvm
+    call void @glBindTexture(i32 %texType, i32 %self)
+    ret void .None

@@ -195,19 +195,19 @@ object IrGen2 {
           (ref, what, false)
       }
 
-    // делаем инкремент что store
-    if (needAcquier && whatTref.isNeedBeforeAfterStore(ctx.types)) {
-      val fRelease = "\"" + whatTref.fullName(ctx.types) + ".acquire" + "\""
-      val irType = whatTref.toValue(ctx.types)
-      ctx.out.println(s"\tcall void @$fRelease($irType $what)")
-    }
-
     // вычисляем куда store
     val (toTref, to) = requirePtr(evalId(ctx, dctx, dest))
 
     if (toTref.isVoid(ctx.types) && whatTref.isVoid(ctx.types)) {
       ctx.out.println(s";@@ void store eliminated")
       return
+    }
+
+    // делаем инкремент что store
+    if (needAcquier && whatTref.isNeedBeforeAfterStore(ctx.types)) {
+      val fRelease = "\"" + whatTref.fullName(ctx.types) + ".acquire" + "\""
+      val irType = whatTref.toValue(ctx.types)
+      ctx.out.println(s"\tcall void @$fRelease($irType $what)")
     }
 
     // делаем декремент куда store

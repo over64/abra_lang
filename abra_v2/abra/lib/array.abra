@@ -1,8 +1,8 @@
-import /universe with None, Bool, Int, String .
+import /universe with None, Bool, Int, String, Float .
 
 type Array[T] = ref llvm %T* .
 
-def allocArray[T] = length: Int do llvm
+def lowAlloc[T] = length: Int do llvm
   %ptr = getelementptr %T, %T* null, i32 %length
   %sizeNoLength = ptrtoint %T* %ptr to i64
   %size = add nsw i64 %sizeNoLength, 4
@@ -82,13 +82,37 @@ def get[T] = self: Array[T], idx: Int do llvm
   %value = load %T, %T* %ptr
   ret %T %value .T
 
-def mk[T] = length: Int, init: (Int) -> T do
-  array = allocArray[T](length)
+def len[T] = self: Array[T] do llvm
+  %1 = bitcast %T* %self to i32*
+  %lenPtr = getelementptr i32, i32* %1, i32 -1
+  %len = load i32, i32* %lenPtr
+  ret i32 %len .Int
 
-  # hacky way to spec acquire / release functions
-  if false do
-    array.acquire()
-    array.release() .
+def copy[T] = from: Array[T], to: Array[T],
+              fromIdx: Int, toIdx: Int, n: Int do llvm
+  %fromOffset = getelementptr %T, %T* %from, i32 %fromIdx
+  %fromPtr = bitcast %T* %fromOffset to i8*
+  %toOffset = getelementptr %T, %T* %to, i32 %toIdx
+  %toPtr = bitcast %T* %toOffset to i8*
+
+  %sizeofPtr = getelementptr %T, %T* null, i32 1
+  %sizeof = ptrtoint %T* %sizeofPtr to i64
+  %n64 = zext i32 %n to i64
+  %size = mul nsw i64 %n64, %sizeof
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* %toPtr, i8* %fromPtr, i64 %size, i32 0, i1 false)
+  ret void .None
+
+def alloc[T] = len: Int do
+    array = lowAlloc[T](len)
+    # hacky way to spec acquire / release functions
+    if false do
+        array.acquire()
+        array.release() .
+
+    array .
+
+def mk[T] = length: Int, init: (Int) -> T do
+  array = alloc[T](length)
 
   i = 0
   while i < length do

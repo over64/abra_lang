@@ -1,0 +1,22 @@
+import
+    /universe with None, Bool, Int, Float
+    /array .
+
+type Vec[T] = (array: Array[T], len: Int)
+
+def get[T] = self: Vec[T], index: Int do
+    self.array(index) .
+
+def set[T] = self: Vec[T], index: Int, value: T do
+    self.array(index) = value .
+
+def push[T] = self: Vec[T], value: T do
+    if self.len >= self.array.len() do
+        newArray = array.alloc[T](self.array.len() * 2)
+        array.copy(self.array, newArray, 0, 0, self.array.len())
+        self.array = newArray .
+
+    self.array(self.len) = value
+    self.len = self.len + 1 .
+
+def mk[T] = size: Int do Vec(array.alloc[T](size), 0) .

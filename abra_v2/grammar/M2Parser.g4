@@ -22,8 +22,8 @@ expression: literal #exprLiteral
           | expression (NL WS?)? DOT op=(VarId  | '*' | '/' | '+' | '-' | '>' | '<' | '<=' | '>=' | '==' | '!=')
               (sp '[' sp typeHint (sp ',' sp typeHint)* ']')? sp tuple #exprSelfCall
           | expression WS* ('[' sp typeHint (sp ',' sp typeHint)* ']')?  WS* tuple #exprCall
+          | expression (NL WS?)? DOT op+=VarId #exprProp
           | lambda #exprLambda
-          | expression ((NL WS?)? DOT op+=VarId)+ #exprProp
           | op='!' sp expression #exprUnaryCall
           | expression WS* op=('*' | '/') sp expression #exprInfixCall
           | expression WS* op=('+' | '-' | VarId) sp expression #exprInfixCall
@@ -70,7 +70,7 @@ type: scalarType
     | unionType
     ;
 
-def: 'def' sp name=(VarId | '!' | '*' | '/' | '+' | '-' | '>' | '<' | '<=' | '>=' | '==' | '!=')
+def: 'def' sp name=(VarId | '!' | '*' | '/' | '+' | '-' | '>' | '<' | '<=' | '>=' | '==' | '!=' | '||' | '&&')
     sp ('[' TypeId (',' TypeId)* ']')?
     sp '=' sp
     (fnArg sp (',' sp fnArg)* sp 'do')? sp ((blockBody* sp DOT) | llvm) typeHint? ;

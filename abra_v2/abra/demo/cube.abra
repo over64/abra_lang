@@ -1,13 +1,20 @@
 import
-  /universe with None, Bool, Int, String
+  /universe with None, Bool, Int, String, Float
   /io
   /sys
-  /sdl with Event .
+  /sdl with Event
+  /kazmath
+  /gl
+  /range with Range
+  /vec
+  /array with Array
+  /soil .
 
 def main =
-  sdl.init(sdl.initVideo(), lambda err: String ->
-    io.print(err)
-    sys.exit(1))
+#   hello = io.stdin().readLine()
+#   io.print(hello)
+
+  sdl.init(sdl.initVideo(), lambda err: String -> sys.panic(1, err))
 
   window = sdl.createWindow(
     'ABRA Lang Demo 0!',
@@ -15,6 +22,11 @@ def main =
     sdl.windowShown() or sdl.windowOpenGL() or sdl.windowResizable())
 
   glContext = window.glCreateContext()
+
+  buff = vec.mk[Float](1)
+  Range(0, 1000, 1) each lambda i: Int ->
+    buff.push(1.0)
+    buff.push(2.0) .
 
   running = true
   while running do
@@ -24,4 +36,7 @@ def main =
 
     window.glSwap() .
 
+  glContext.delete()
+  window.destroy()
+  sdl.quit()
   0 .

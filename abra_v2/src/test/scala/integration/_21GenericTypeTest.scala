@@ -23,4 +23,21 @@ class _21GenericTypeTest extends FunSuite with IntegrationUtil {
           array1(1) .
   """, exit = Some(13))
   }
+
+  test("vec") {
+    assertCodeEquals(
+      """
+        import
+          /universe with None, Int, String
+          /vec .
+
+        def main =
+          v = vec.mk[Int](1)
+          v.push(1)
+          v.push(1)
+
+
+          13 .
+  """, exit = Some(13), isRelease = true)
+  }
 }

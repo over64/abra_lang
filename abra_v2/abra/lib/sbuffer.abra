@@ -1,0 +1,50 @@
+import /universe with None, Bool, Ptr, Byte, Int, String .
+
+llvm
+    define void @nopRelease(i8* %obj) {
+        ret void
+    } .
+
+def allocData = len: Int do llvm
+    %alloc = load i8* (i64)*,  i8* (i64)**   @rcAlloc
+    %len64 = zext i32 %len to i64
+    %data = call i8* %alloc(i64 %len64)
+    ret i8* %data .Ptr
+
+def freeData = data: Ptr do llvm
+    %release = load void (i8*, void (i8*)*)*, void (i8*, void (i8*)*)** @rcRelease
+    call void %release(i8* %data, void (i8*)* @nopRelease)
+    ret void .None
+
+def asString = data: Ptr do llvm
+    ret i8* %data .String
+
+def copyData = dest: Ptr, src: Ptr, n: Int do llvm
+    %n64 = zext i32 %n to i64
+    call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dest, i8* %src, i64 %n64, i32 0, i1 false)
+    ret void .None
+
+def setByte = data: Ptr, idx: Int, byte: Byte do llvm
+    %1 = getelementptr i8, i8* %data, i32 %idx
+    store i8 %byte, i8* %1
+    ret void .None
+
+type SBuffer = (data: Ptr, dataLen: Int, len: Int)
+
+def mk = len: Int do SBuffer(allocData(len), len, 0) .
+
+def pushByte = self: SBuffer, byte: Byte do
+    if self.len >= self.dataLen do
+        newLen = self.dataLen * 2
+        newData = allocData(newLen)
+
+        copyData(newData, self.data, self.dataLen)
+        freeData(self.data)
+
+        self.data    = newData
+        self.dataLen = newLen .
+
+    setByte(self.data, self.len, byte)
+    self.len = self.len + 1 .
+
+def asString = self: SBuffer do asString(self.data) .

@@ -46,6 +46,7 @@ class Namespace(val pkg: String,
     }
   }
 
+
   def findType(name: String, transient: Boolean): (Namespace, TypeDecl) =
     findTypeOpt(name, transient).getOrElse(throw new RuntimeException(s"no such type with name $name"))
 
@@ -65,8 +66,8 @@ class Namespace(val pkg: String,
             case _ => false
           }
         else if (adv.name != th.name) {
-          types.find(t => t.name == adv.name).getOrElse(throw new RuntimeException(s"no such type ${adv}")) match {
-            case ud: UnionDecl =>
+          findType(adv.name, transient = true) match {
+            case (ns, ud: UnionDecl) =>
               if (ud.params.length != adv.params.length) throw new RuntimeException(s"expected ${ud.params.length} for $ud has ${adv.params.length}")
 
               ud.variants.exists { udVariant =>
@@ -134,7 +135,7 @@ class Namespace(val pkg: String,
       val (th, vName, stats) = arg.infer(argAdvice)
 
       if (!checkAndInfer(specMap, argTh, th))
-        throw new RuntimeException(s"expected ${defArg.typeHint} has $th")
+        throw new RuntimeException(s"expected $argTh has $th")
 
       argsVars += ((vName, th))
       argsStats ++= stats
@@ -155,7 +156,7 @@ class Namespace(val pkg: String,
           val argTh = defArg.typeHint.get.spec(specMap.toMap)
           if (argTh != argVarTh && (!argTh.isInstanceOf[FnTh] && !argVarTh.isInstanceOf[FnTh])) {
             val vName = "_bridge" + ctx.nextAnonId()
-            scope.addLocal(mut = false, vName, argTh)
+            scope.addLocal(ctx, this, vName, argTh)
             argsStats += Ast2.Store(init = true, Ast2.Id(vName), Ast2.Id(argVarName))
             vName
           } else argVarName
@@ -172,7 +173,7 @@ class Namespace(val pkg: String,
       }
 
     val anonVar = "$c" + ctx.nextAnonId()
-    scope.addLocal(mut = false, anonVar, defSpec.th.ret)
+    scope.addLocal(ctx, this, anonVar, defSpec.th.ret)
 
     val kind = InvokeKind(cached, toCall.isLow)
     if (kind.isCached && !ctx.lowMod.defs.contains(defSpec.lowName)) {
@@ -223,7 +224,7 @@ class Namespace(val pkg: String,
 
 
     val anonVar = "$c" + ctx.nextAnonId()
-    scope.addLocal(mut = false, anonVar, proto.ret)
+    scope.addLocal(ctx, this, anonVar, proto.ret)
 
     (
       proto.ret,
@@ -335,7 +336,7 @@ class Namespace(val pkg: String,
           val argTh = defArg.typeHint.get.spec(specMap.toMap)
           if (argTh != argVarTh && (!argTh.isInstanceOf[FnTh] && !argVarTh.isInstanceOf[FnTh])) {
             val vName = "_bridge" + ctx.nextAnonId()
-            scope.addLocal(mut = false, vName, argTh)
+            scope.addLocal(ctx, this, vName, argTh)
             argsStats += Ast2.Store(init = true, Ast2.Id(vName), Ast2.Id(argVarName))
             vName
           } else argVarName
@@ -351,7 +352,7 @@ class Namespace(val pkg: String,
     val _def = virtualDef.spec(flatSpecs, ctx, this)
 
     val anonVar = "$c" + ctx.nextAnonId()
-    scope.addLocal(mut = false, anonVar, retTh)
+    scope.addLocal(ctx, this, anonVar, retTh)
 
     (
       retTh,
@@ -398,7 +399,7 @@ class Namespace(val pkg: String,
     // code generation will be performed on codegen part
 
     val anonVar = "$c" + ctx.nextAnonId()
-    scope.addLocal(mut = false, anonVar, forType)
+    scope.addLocal(ctx, this, anonVar, forType)
 
     (
       forType,
@@ -445,7 +446,7 @@ class Namespace(val pkg: String,
     if (args.hasNext) throw new RuntimeException("too much args")
 
     val anonVar = "$c" + ctx.nextAnonId()
-    scope.addLocal(mut = false, anonVar, th.ret)
+    scope.addLocal(ctx, this, anonVar, th.ret)
 
     (
       th.ret,

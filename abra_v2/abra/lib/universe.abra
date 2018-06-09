@@ -1,9 +1,33 @@
 type None = llvm void .
 type Bool = llvm i8 .
+type Byte = llvm i8 .
 type Int  = llvm i32 .
 type Long = llvm i64 .
 type String = ref llvm i8* .
 type Ptr = llvm i8* .
+type Float = llvm float .
+
+def ! = self: Bool do llvm
+  %1 = xor i8 %self, 1
+  ret i8 %1 .Bool
+
+def ==  = self: Bool, other: Bool do llvm
+  %1 = icmp eq i8 %self, %other
+  %2 = zext i1 %1 to i8
+  ret i8 %2 .Bool
+
+def !=  = self: Bool, other: Bool do llvm
+  %1 = icmp ne i8 %self, %other
+  %2 = zext i1 %1 to i8
+  ret i8 %2 .Bool
+
+def || = self: Bool, other: Bool do llvm
+  %1 = or i8 %other, %self
+  ret i8 %1 .Bool
+
+def && = self: Bool, other: Bool do llvm
+  %1 = and i8 %other, %self
+  ret i8 %1 .Bool
 
 def + = self: Int, other: Int do llvm
   %1 = add nsw i32 %self, %other
@@ -13,6 +37,10 @@ def - = self: Int, other: Int do llvm
   %1 = sub nsw i32 %self, %other
   ret i32 %1 .Int
 
+def * = self: Int, other: Int do llvm
+  %1 = mul nsw i32 %self, %other
+  ret i32 %1 .Int
+
 def == = self: Int, other: Int do llvm
   %1 = icmp eq i32 %self, %other
   %2 = zext i1 %1 to i8
@@ -20,6 +48,11 @@ def == = self: Int, other: Int do llvm
 
 def > = self: Int, other: Int do llvm
   %1 = icmp sgt i32 %self, %other
+  %2 = zext i1 %1 to i8
+  ret i8 %2 .Bool
+
+def >= = self: Int, other: Int do llvm
+  %1 = icmp sge i32 %self, %other
   %2 = zext i1 %1 to i8
   ret i8 %2 .Bool
 
@@ -39,6 +72,10 @@ def shl = self: Int, shift: Int do llvm
 def toLong = self: Int do llvm
   %1 = zext i32 %self to i64
   ret i64 %1 .Long
+
+def toByte = self: Int do llvm
+  %1 = trunc i32 %self to i8
+  ret i8 %1 .Byte
 
 def + = self: Long, other: Long do llvm
   %1 = add nsw i64 %self, %other

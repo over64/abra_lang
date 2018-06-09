@@ -9,6 +9,11 @@ def exit = code: Int do llvm
   call void @exit(i32 %code)
   ret void .None
 
+def panic = code: Int, msg: String do llvm
+     %1 = call i32 @puts(i8* %msg)
+     call void @exit(i32 %code)
+     ret void .None
+
 def sleep = seconds: Int do llvm
   %1 = call i32 @sleep(i32 %seconds)
   ret void .None

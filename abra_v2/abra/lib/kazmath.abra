@@ -1,0 +1,67 @@
+import /universe with None, Float .
+llvm
+    ; kmMat4* kmMat4PerspectiveProjection(kmMat4* pOut, kmScalar fovY, kmScalar aspect, kmScalar zNear, kmScalar zFar)
+    declare float* @kmMat4PerspectiveProjection(%Mat4*, float, float, float, float)
+
+    ; kmMat4* kmMat4LookAt(kmMat4* pOut, const kmVec3* pEye, const kmVec3* pCenter, const kmVec3* pUp)
+    declare void @kmMat4LookAt(%Mat4*, %Vec3*, %Vec3*, %Vec3*)
+
+    ; kmMat4* kmMat4Identity(kmMat4* pOut)
+    declare void @kmMat4Identity(%Mat4*)
+
+    ; kmMat4* kmMat4RotationZ(kmMat4* pOut, const kmScalar radians)
+    declare void @kmMat4RotationZ(%Mat4*, float)
+
+    ; kmMat4* kmMat4RotationY(kmMat4* pOut, const kmScalar radians)
+    declare void @kmMat4RotationY(%Mat4*, float) .
+
+type Vec3 = (x: Float, y: Float, z: Float)
+
+type Vec4 = (x: Float, y: Float, z: Float, w: Float)
+
+type Mat3 = (
+    x1: Float, y1: Float, z1: Float,
+    x2: Float, y2: Float, z2: Float,
+    x3: Float, y3: Float, z3: Float
+)
+
+type Mat4 = (
+    x1: Float, y1: Float, z1: Float, w1: Float,
+    x2: Float, y2: Float, z2: Float, w2: Float,
+    x3: Float, y3: Float, z3: Float, w3: Float,
+    x4: Float, y4: Float, z4: Float, w4: Float
+)
+
+def identity4 = llvm
+    %1 = alloca %Mat4
+    call void @kmMat4Identity(%Mat4* %1)
+    %2 = load %Mat4, %Mat4* %1
+    ret %Mat4 %2 .Mat4
+
+def rotateZ = self: Mat4, radians: Float do llvm
+    %ret = alloca %Mat4
+    %1 = load %Mat4, %Mat4* %self
+    store %Mat4 %1, %Mat4* %ret
+    call void @kmMat4RotationZ(%Mat4* %ret, float %radians)
+    %2 = load %Mat4, %Mat4* %ret
+    ret %Mat4 %2 .Mat4
+
+def rotateY = self: Mat4, radians: Float do llvm
+    %ret = alloca %Mat4
+    %1 = load %Mat4, %Mat4* %self
+    store %Mat4 %1, %Mat4* %ret
+    call void @kmMat4RotationY(%Mat4* %ret, float %radians)
+    %2 = load %Mat4, %Mat4* %ret
+    ret %Mat4 %2 .Mat4
+
+def perspective = fov: Float, aspectRatio: Float, zNear: Float, zFar: Float do llvm
+    %ret = alloca %Mat4
+    call float* @kmMat4PerspectiveProjection(%Mat4* %ret, float %fov, float %aspectRatio, float %zNear, float %zFar)
+    %2 = load %Mat4, %Mat4* %ret
+    ret %Mat4 %2 .Mat4
+
+def lookAt = eye: Vec3, center: Vec3, up: Vec3 do llvm
+    %ret = alloca %Mat4
+    call void @kmMat4LookAt(%Mat4* %ret, %Vec3* %eye, %Vec3* %center, %Vec3* %up)
+    %1 = load %Mat4, %Mat4* %ret
+    ret %Mat4 %1 .Mat4

@@ -1,10 +1,14 @@
-import /universe with None, Int, String .
+import
+    /universe with None, Int, String
+    /sbuffer .
 
 llvm
   @.printfInt = private constant [3 x i8] c"%d\00", align 1
   @.printfStr = private constant [3 x i8] c"%s\00", align 1
+  @stdin = external global i8*
   declare i32 @printf(i8*,...)
   declare i32 @puts(i8*)
+  declare i32 @fgetc(i8*)
   .
 
 def print = s: String do llvm
@@ -16,3 +20,27 @@ def printInt = i: Int do llvm
     %format = bitcast [3 x i8]* @.printfInt to i8*
     call i32 (i8*,...) @printf(i8* %format, i32 %i)
     ret void .None
+
+type File = llvm i8* .
+
+def stdin = llvm
+    %1 = load i8*, i8** @stdin
+    ret i8* %1 .File
+
+def getc = self: File do llvm
+    %1 = call i32 @fgetc(i8* %self)
+    ret i32 %1 .Int
+
+def readLine = self: File do self.readDelim(10) .
+def readDelim = self: File, delim: Int do
+    end = false
+    sb = sbuffer.mk(64)
+
+    while !end do
+        ch = self.getc()
+        if ch == -1 || ch == delim do end = true
+        else sb.pushByte(ch.toByte()) ..
+
+    sb.pushByte(delim.toByte())
+    sb.pushByte(0.toByte())
+    sb.asString() .

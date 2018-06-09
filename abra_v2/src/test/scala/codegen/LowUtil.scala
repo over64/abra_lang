@@ -45,7 +45,7 @@ trait LowUtil {
   def runProgram(objName: String, deps: Seq[String], exit: Option[Int], stdout: Option[String] = None, stderr: Option[String] = None, isRelease: Boolean) = {
     val depFiles = deps ++ Seq(buildRuntime(), objName)
     val binName = objName.stripSuffix(".o")
-    val args = Seq("clang-3.9") ++ depFiles ++ Seq("-o", binName, if (isRelease) "-O3" else "-O0", "-lSDL2")
+    val args = Seq("clang-3.9") ++ depFiles ++ Seq("-o", binName, if (isRelease) "-O3" else "-O0", "-lSDL2", "-lkazmath", "-lGL", "-lSOIL")
     run(args: _*) { (exit, stdout, stderr) =>
       if (exit != 0) {
         print(stderr)
@@ -91,7 +91,7 @@ trait LowUtil {
           ll
         } else outPath
 
-      run("llc-3.9", "-filetype=obj", llPath) { (exit, stdout, stderr) =>
+      run("llc-3.9", "-filetype=obj", llPath, "-o", llPath.stripSuffix(".ll") + ".o") { (exit, stdout, stderr) =>
         if (exit != 0) {
           Files.copy(Paths.get(outPath), System.out)
           print(stderr)
@@ -99,9 +99,10 @@ trait LowUtil {
         }
       }
 
-      llPath.stripSuffix(".o")
+      llPath.stripSuffix(".ll") + ".o"
     }
 
+    // for low codegen tests
     def assertRunEquals(exit: Option[Int], stdout: Option[String] = None, stderr: Option[String] = None) = {
       val file = new FileOutputStream(s"$testBase/test.out.ll")
       IrGen2.gen(new PrintStream(file), module.lowCode, module.types, module.defs, module.protos)

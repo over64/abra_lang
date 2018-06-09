@@ -327,7 +327,7 @@ object Util {
   def downToLow(ctx: TContext, namespace: Namespace, seq: Seq[(String, VarInfo)]): Map[String, Ast2.TypeRef] = seq.map {
     case (vName, vi) =>
       vi.location match {
-        case Local => (vName, vi.th.toLow(ctx, namespace))
+        case Local => (vName, vi.lowTh)
         case Param => throw new Exception(("Internal compiler error"))
       }
   }.toMap

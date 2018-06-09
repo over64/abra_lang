@@ -1,7 +1,7 @@
 package typecheck
 
-import m3.parse.Ast0.ScalarTh
-import m3.typecheck.{BlockScope, FnScope}
+import m3.parse.Ast0.{ScalarDecl, ScalarTh}
+import m3.typecheck.{BlockScope, FnScope, Namespace, TContext}
 import org.scalatest.FunSuite
 
 /**
@@ -9,16 +9,18 @@ import org.scalatest.FunSuite
   */
 class ScopeTest extends FunSuite {
   val tInt = ScalarTh(Seq.empty, "Int", None)
+  val ctx = new TContext()
+  val namespace = new Namespace(pkg = "test", types = Seq(ScalarDecl(pkg = "test", ref = false, Seq.empty, "Int", "i32")))
   test("up/ down") {
     var bottom: FnScope = null
     val root = new FnScope(None) {
-      addParam("x", tInt)
+      addParam(ctx, namespace, "x", tInt)
       mkChild({ parent =>
         new BlockScope(Some(parent)) {
-          addLocal(mut = false, "y", tInt)
+          addLocal(ctx, namespace, "y", tInt)
           mkChild({ parent =>
             bottom = new FnScope(Some(parent)) {
-              addParam("z", tInt)
+              addParam(ctx, namespace, "z", tInt)
             }
             bottom
           })
