@@ -1,57 +1,65 @@
 import
     /universe with None, Bool, Int, String
-    /buffer with Buffer
+    /vec
+    /array with Array
     /range with Range
+    /sreader
     /io .
 
 def load = fname: String do
-    objFile = io.open(fname, 'r')
+    objFile = io.fopen(fname, 'r')
     hasLine = true
 
-    vertexBuffer  = buffer.mk[Float](lambda i -> 0.0)
-    textureBuffer = buffer.mk[Float](lambda i -> 0.0)
-    normalBuffer  = buffer.mk[Float](lambda i -> 0.0)
-    meshBuffer    = buffer.mk[Float](lambda i -> 0.0)
+    vertexBuffer  = vec.mk[Float](32)
+    textureBuffer = vec.mk[Float](32)
+    normalBuffer  = vec.mk[Float](32)
+    meshBuffer    = vec.mk[Float](32)
 
     while hasLine do
         when objFile.readLine() is line: String do
+            # io.print(line)
             reader = line.toReader()
 
             if line.startsWith('v ') do
-                reader.drop('v '.length())
+                reader.drop('v '.len())
                 vertexBuffer.push(reader.readFloat())   # x
                 vertexBuffer.push(reader.readFloat())   # y
-                vertexBuffer.push(reader.readFloat()) . # z
+                vertexBuffer.push(reader.readFloat())   # z
+                .
 
             if line.startsWith('vt ') do
-                reader.drop('vt '.length())
-                textureBuffer.push(reader.readFloat()) . # u
-                textureBuffer.push(reader.readFloat()) . # v
+                reader.drop('vt '.len())
+                textureBuffer.push(reader.readFloat())   # u
+                textureBuffer.push(reader.readFloat())   # v
+                .
 
             if line.startsWith('vn ') do
-                reader.drop('vn '.length())
+                reader.drop('vn '.len())
                 normalBuffer.push(reader.readFloat())   # nx
                 normalBuffer.push(reader.readFloat())   # ny
-                normalBuffer.push(reader.readFloat()) . # nz
+                normalBuffer.push(reader.readFloat())   # nz
+                .
 
             if line.startsWith('f ') do
-                reader.drop('f '.length())
-                (0 to 3) each with lambda i: Int ->
+                reader.drop('f '.len())
+                Range(0, 3, 1) each lambda i: Int ->
                     vertexId = reader.readInt() - 1
                     meshBuffer.push(vertexBuffer(vertexId * 3))     # x
                     meshBuffer.push(vertexBuffer(vertexId * 3 + 1)) # y
                     meshBuffer.push(vertexBuffer(vertexId * 3 + 2)) # z
-                    reader.drop('/'.length())
+                    reader.drop('/'.len())
 
                     uvId = reader.readInt() - 1
                     meshBuffer.push(textureBuffer(uvId * 2))        # u
                     meshBuffer.push(textureBuffer(uvId * 2 + 1))    # v
-                    reader.drop('/'.length())
+                    reader.drop('/'.len())
 
                     normalId = reader.readInt() - 1
                     meshBuffer.push(normalBuffer(normalId * 3))        # nx
                     meshBuffer.push(normalBuffer(normalId * 3 + 1))    # ny
-                    meshBuffer.push(normalBuffer(normalId * 3 + 2)) .. # nz
+                    meshBuffer.push(normalBuffer(normalId * 3 + 2))    # nz
+                    ..
         else hasLine = false ..
 
-    meshBuffer .Buffer[Float]
+    io.fclose(objFile)
+    meshBuffer.array .Array[Float]

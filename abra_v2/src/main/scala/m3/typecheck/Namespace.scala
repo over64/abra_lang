@@ -82,7 +82,7 @@ class Namespace(val pkg: String,
           }
         } else checkAndInferSeq(specMap, adv.params, th.params)
       case (adv: ScalarTh, uth: UnionTh) =>
-        types.find(t => t.name == adv.name).getOrElse(throw new RuntimeException(s"no such type ${adv}")) match {
+        findType(adv.name, transient = true) match {
           case ud: UnionDecl =>
             if (ud.params.length != adv.params.length) throw new RuntimeException(s"expected ${ud.params.length} for $ud has ${adv.params.length}")
 

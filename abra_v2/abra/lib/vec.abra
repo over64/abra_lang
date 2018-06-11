@@ -5,10 +5,11 @@ import
 type Vec[T] = (array: Array[T], len: Int)
 
 def get[T] = self: Vec[T], index: Int do
-    self.array(index) .
+    #FIXME: should be self.array(index)?
+    self.array.get(index) .
 
 def set[T] = self: Vec[T], index: Int, value: T do
-    self.array(index) = value .
+    self.array.set(index, value) .
 
 def push[T] = self: Vec[T], value: T do
     if self.len >= self.array.len() do

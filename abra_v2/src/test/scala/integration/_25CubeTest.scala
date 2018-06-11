@@ -7,6 +7,6 @@ import org.scalatest.FunSuite
 class _25CubeTest extends FunSuite with IntegrationUtil {
   test("cube over sdl & openGL") {
     val code = new String(Files.readAllBytes(Paths.get("abra_v2/abra/demo/cube.abra")))
-    assertCodeEquals(code, exit = Some(0), isRelease = true)
+    assertCodeEquals(code, exit = Some(0), isRelease = false)
   }
 }

@@ -195,10 +195,15 @@ object IrGen2 {
           (ref, what, false)
       }
 
+//    if (whatTref.isVoid(ctx.types)) {
+//      ctx.out.println(s";@@ void store eliminated")
+//      return
+//    }
+
     // вычисляем куда store
     val (toTref, to) = requirePtr(evalId(ctx, dctx, dest))
 
-    if (toTref.isVoid(ctx.types) && whatTref.isVoid(ctx.types)) {
+    if (toTref.isVoid(ctx.types)) {
       ctx.out.println(s";@@ void store eliminated")
       return
     }

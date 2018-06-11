@@ -1,11 +1,9 @@
+llvm
+    declare i32 @strncmp(i8*, i8*, i64)
+    declare i64 @strlen(i8*) .
+
 type None = llvm void .
 type Bool = llvm i8 .
-type Byte = llvm i8 .
-type Int  = llvm i32 .
-type Long = llvm i64 .
-type String = ref llvm i8* .
-type Ptr = llvm i8* .
-type Float = llvm float .
 
 def ! = self: Bool do llvm
   %1 = xor i8 %self, 1
@@ -21,13 +19,9 @@ def !=  = self: Bool, other: Bool do llvm
   %2 = zext i1 %1 to i8
   ret i8 %2 .Bool
 
-def || = self: Bool, other: Bool do llvm
-  %1 = or i8 %other, %self
-  ret i8 %1 .Bool
-
-def && = self: Bool, other: Bool do llvm
-  %1 = and i8 %other, %self
-  ret i8 %1 .Bool
+type Ptr = llvm i8* .
+type Byte = llvm i8 .
+type Int  = llvm i32 .
 
 def + = self: Int, other: Int do llvm
   %1 = add nsw i32 %self, %other
@@ -43,6 +37,11 @@ def * = self: Int, other: Int do llvm
 
 def == = self: Int, other: Int do llvm
   %1 = icmp eq i32 %self, %other
+  %2 = zext i1 %1 to i8
+  ret i8 %2 .Bool
+
+def != = self: Int, other: Int do llvm
+  %1 = icmp ne i32 %self, %other
   %2 = zext i1 %1 to i8
   ret i8 %2 .Bool
 
@@ -77,6 +76,8 @@ def toByte = self: Int do llvm
   %1 = trunc i32 %self to i8
   ret i8 %1 .Byte
 
+type Long = llvm i64 .
+
 def + = self: Long, other: Long do llvm
   %1 = add nsw i64 %self, %other
   ret i64 %1 .Long
@@ -90,3 +91,42 @@ def <= = self: Long, other: Long do llvm
   %1 = icmp sle i64 %self, %other
   %2 = zext i1 %1 to i8
   ret i8 %2 .Bool
+
+
+type String = ref llvm i8* .
+
+def len = self: String do llvm
+    %len = call i64 @strlen(i8* %self)
+    %tlen = trunc i64 %len to i32
+    ret i32 %tlen .Int
+
+def startsWith = self: String, prefix: String do llvm
+    %prefixLen = call i64 @strlen(i8* %prefix)
+    %compared = call i32 @strncmp(i8* %self, i8* %prefix, i64 %prefixLen)
+    %isEqual = icmp eq i32 %compared, 0
+    %eq = zext i1 %isEqual to i8
+    ret i8 %eq .Bool
+
+type Float = llvm float .
+
+def == = self: Float, other: Float do llvm
+  %1 = fcmp oeq float %self, %other
+  %2 = zext i1 %1 to i8
+  ret i8 %2 .Bool
+
+def + = self: Float, other: Float do llvm
+  %1 = fadd float %self, %other
+  ret float %1 .Float
+
+def * = self: Float, other: Float do llvm
+  %1 = fmul float %self, %other
+  ret float %1 .Float
+def / = self: Float, other: Float do llvm
+  %1 = fdiv float %self, %other
+  ret float %1 .Float
+
+def toRadians = self: Float do self * 3.14159265359 / 180.0 .
+
+def toInt = self: Float do llvm
+  %1 = fptosi float %self to i32
+  ret i32 %1 .Int

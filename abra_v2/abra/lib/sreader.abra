@@ -1,0 +1,50 @@
+import /universe with None, Bool, Int, String, Float .
+
+llvm
+    ; int sscanf(const char *str, const char *format,...);
+    declare i32 @sscanf(i8*, i8*,...)
+    @.sscanfFloat = private constant [5 x i8] c"%f%n\00", align 1
+    @.sscanfInt = private constant [5 x i8] c"%d%n\00", align 1 .
+
+type SReader = (str: String, pos: Int)
+
+def toReader = self: String do SReader(self, 0) .
+
+def drop = self: SReader, n: Int do llvm
+    %posPtr = getelementptr %SReader, %SReader* %self, i32 0, i32 1
+    %oldPos = load i32, i32* %posPtr
+    %newPos = add nsw i32 %oldPos, %n
+    store i32 %newPos, i32* %posPtr
+    ret void .None
+
+def readFloat = self: SReader do llvm
+	%format = bitcast [5 x i8]* @.sscanfFloat to i8*
+	%posPtr = getelementptr %SReader, %SReader* %self, i32 0, i32 1
+    %oldPos = load i32, i32* %posPtr
+    %strPtr = getelementptr %SReader, %SReader* %self, i32 0, i32 0
+    %str = load i8*, i8** %strPtr
+    %strWithOffset = getelementptr i8, i8* %str, i32 %oldPos
+    %readFloatPtr = alloca float
+    %readBytesPtr = alloca i32
+    call i32 (i8*, i8*,...) @sscanf(i8* %strWithOffset, i8* %format, float* %readFloatPtr, i32* %readBytesPtr)
+    %readBytes = load i32, i32* %readBytesPtr
+    %newPos = add nsw i32 %oldPos, %readBytes
+    store i32 %newPos, i32* %posPtr
+    %readFloat = load float, float* %readFloatPtr
+    ret float %readFloat .Float
+
+def readInt = self: SReader do llvm
+	%format = bitcast [5 x i8]* @.sscanfInt to i8*
+	%posPtr = getelementptr %SReader, %SReader* %self, i32 0, i32 1
+    %oldPos = load i32, i32* %posPtr
+    %strPtr = getelementptr %SReader, %SReader* %self, i32 0, i32 0
+    %str = load i8*, i8** %strPtr
+    %strWithOffset = getelementptr i8, i8* %str, i32 %oldPos
+    %readIntPtr = alloca i32
+    %readBytesPtr = alloca i32
+    call i32 (i8*, i8*,...) @sscanf(i8* %strWithOffset, i8* %format, i32* %readIntPtr, i32* %readBytesPtr)
+    %readBytes = load i32, i32* %readBytesPtr
+    %newPos = add nsw i32 %oldPos, %readBytes
+    store i32 %newPos, i32* %posPtr
+    %readInt = load i32, i32* %readIntPtr
+    ret i32 %readInt .Int

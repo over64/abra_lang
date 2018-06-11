@@ -30,11 +30,11 @@ expression: literal #exprLiteral
           | expression WS* op=('>' | '<' | '<=' | '>=') sp expression #exprInfixCall
           | expression WS* op=('==' | '!=') sp expression #exprInfixCall
           | expression WS* op=('||' | '&&') sp expression #exprInfixCall
-          | 'if' sp cond=expression sp 'do' sp doStat+=blockBody* (sp 'else' sp elseStat+=blockBody*)? (NL | WS)+ DOT #exprIfElse
+          | 'if' sp cond=expression sp 'do' sp doStat+=blockBody* (sp 'else' sp elseStat+=blockBody*)? (NL | WS)? DOT #exprIfElse
           | 'when' sp expr=expression sp is+ sp ('else' sp elseStat+=blockBody*)? (WS | NL) DOT #exprWnen
           ;
 
-tuple : '(' sp (expression sp (',' sp expression)*)? sp ')'
+tuple : '(' sp (expression sp (',' sp expression sp)*)? sp ')'
       | 'with' sp (expression sp (',' sp expression)*)? sp DOT;
 
 fieldTh: id sp ':' sp typeHint ;
