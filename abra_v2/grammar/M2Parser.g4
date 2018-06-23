@@ -60,10 +60,10 @@ fnArg: id sp (':' sp typeHint (sp '=' sp expression)?)? ;
 lambda: 'lambda' (sp fnArg sp (',' sp fnArg)* sp '->')? sp blockBody* sp DOT?;
 blockBody: (store | while_stat | expression | ret) sp ';'? sp ;
 
-scalarType: 'type' sp tname=TypeId (sp '[' params+=TypeId (',' params+=TypeId)* ']')? sp '=' sp REF? sp llvm ;
+scalarType: 'type' sp tname=TypeId (sp '[' sp params+=TypeId (sp ',' sp params+=TypeId)* sp ']')? sp '=' sp REF? sp llvm ;
 typeField: 'self'? sp VarId sp ':' sp typeHint (sp '=' sp expression)? ;
-structType: 'type' sp name=TypeId (sp '[' params+=TypeId (',' params+=TypeId)* ']')? sp '=' sp  '(' NL* typeField (',' NL* typeField)* NL*')' ;
-unionType: 'type' sp name=TypeId sp ('[' params+=TypeId (',' params+=TypeId)* ']')? sp '=' sp scalarTh (sp '|' sp scalarTh)+ ;
+structType: 'type' sp name=TypeId (sp '[' sp params+=TypeId (sp ',' sp params+=TypeId)* sp ']')? sp '=' sp  '(' NL* typeField (',' NL* typeField)* NL*')' ;
+unionType: 'type' sp name=TypeId sp ('[' sp params+=TypeId (sp ',' sp params+=TypeId)* sp ']')? sp '=' sp scalarTh (sp '|' sp scalarTh)+ ;
 
 type: scalarType
     | structType
@@ -71,7 +71,7 @@ type: scalarType
     ;
 
 def: 'def' sp name=(VarId | '!' | '*' | '/' | '+' | '-' | '>' | '<' | '<=' | '>=' | '==' | '!=' | '||' | '&&')
-    sp ('[' TypeId (',' TypeId)* ']')?
+    sp ('[' sp TypeId (sp ',' sp TypeId)* sp ']')?
     sp '=' sp
     (fnArg sp (',' sp fnArg)* sp 'do')? sp ((blockBody* sp DOT) | llvm) typeHint? ;
 

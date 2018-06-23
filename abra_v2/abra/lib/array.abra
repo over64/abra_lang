@@ -120,3 +120,14 @@ def mk[T] = length: Int, init: (Int) -> T do
     i = i + 1 .
 
   array .
+
+  type ArrayIter[T] = (array: Array[T], idx: Int)
+
+  def iterator[T] = self: Array[T] do
+    ArrayIter(self, 0) .
+
+  def next[T] = self: ArrayIter[T] do
+    if self.idx < self.array.len() do
+      self.idx = self.idx + 1
+      self.array.get(self.idx - 1)
+    else none ..
