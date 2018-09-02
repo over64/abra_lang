@@ -55,7 +55,7 @@ object TypeChecker {
           fth match {
             case sth: ScalarTh =>
               ctx.findType(sth.name, sth.mod) match {
-                case sd: StructDecl =>
+                case (_, sd: StructDecl) =>
                   sd.fields.find(fd => fd.name == fieldId.value).getOrElse(throw new RuntimeException(s"no such field $fieldId"))
                     .th.spec(makeSpecMap(sd.params, sth.params))
                 case _ => throw new RuntimeException(s"no such field ${fieldId.value} on type $fth")
@@ -194,10 +194,12 @@ object TypeChecker {
       scope.addLocal(ctx, lowId.v, thBool)
 
       val (leftTh, leftName, leftStats) = evalExpr(ctx, scope, Some(adviceBool), andOr.left)
-      if (leftTh != thBool) throw new RuntimeException(s"expected $thBool has $leftTh")
+      if (!Invoker.checkAndInfer(ctx, new mutable.HashMap(), thBool, leftTh))
+        throw new RuntimeException(s"expected $thBool has $leftTh")
 
       val (rightTh, rightName, rightStats) = evalExpr(ctx, scope, Some(adviceBool), andOr.right)
-      if (rightTh != thBool) throw new RuntimeException(s"expected $thBool has $rightTh")
+      if (!Invoker.checkAndInfer(ctx, new mutable.HashMap(), thBool, rightTh))
+        throw new RuntimeException(s"expected $thBool has $rightTh")
 
       val leftFullStats = leftStats :+ Ast2.Store(init = true, lowId, Ast2.Id(leftName))
       val rightFullStats = rightStats :+ Ast2.Store(init = true, lowId, Ast2.Id(rightName))
@@ -229,13 +231,15 @@ object TypeChecker {
       }
 
       val (condTh, condName, condStats) = evalExpr(ctx, scope, Some(adviceBool), cond)
-      if (condTh != thBool) throw new RuntimeException(s"expected $thBool has $condTh")
+      if (!Invoker.checkAndInfer(ctx, new mutable.HashMap(), thBool, condTh))
+        throw new RuntimeException(s"expected $thBool has $condTh")
 
       val (doTh, doName, doStats, doFree) = evalBlock(_do)
       val (elseTh, elseName, elseStats, elseFree) = evalBlock(_else)
 
       val actualTh =
-        if (doTh != elseTh) UnionTh(Seq(doTh, elseTh))
+        if (!Invoker.checkAndInfer(ctx, new mutable.HashMap(), doTh, elseTh))
+          UnionTh(Seq(doTh, elseTh))
         else doTh
 
       val resultVar = "_i" + ctx.nextAnonId()
@@ -305,17 +309,6 @@ object TypeChecker {
         (lastTh, vName, stats ++ lastStat, freeStats)
       }
 
-      def isUnionVariant(matched: TypeHint, variant: TypeHint): Boolean = matched match {
-        case sth: ScalarTh =>
-          ctx.findTypeOpt(sth.name, sth.mod) match {
-            case Some(ud: UnionDecl) =>
-              ud.variants.contains(variant)
-            case _ => false
-          }
-        case uth: UnionTh => uth.seq.contains(variant)
-        case _ => false
-      }
-
       def inferSuperType(variants: Seq[TypeHint]): UnionTh =
         UnionTh(variants.distinct)
 
@@ -323,7 +316,7 @@ object TypeChecker {
       val retValName = "_w" + ctx.nextAnonId()
       val lowIsSeq =
         isSeq.map { is =>
-          if (!isUnionVariant(exprTh, is.typeRef))
+          if (!Invoker.checkAndInfer(ctx, new mutable.HashMap(), exprTh, is.typeRef))
             throw new RuntimeException(s"expected ${is.typeRef} as union member of $exprTh but no")
 
           val (bth, bvName, stats, freeStats) = evalIs(is)
@@ -410,7 +403,7 @@ object TypeChecker {
                     fth match {
                       case sth: ScalarTh =>
                         ctx.findType(sth.name, sth.mod) match {
-                          case sd: StructDecl =>
+                          case (_, sd: StructDecl) =>
                             sd.fields.find(fd => fd.name == fieldId.value).get
                               .th.spec(makeSpecMap(sd.params, sth.params))
                           case _ => throw new RuntimeException(s"no such field $fieldId on type $fth")
@@ -424,7 +417,7 @@ object TypeChecker {
               val (whatTh, whatName, whatStats) =
                 evalExpr(ctx, scope, toTh.toAdviceOpt(mutable.HashMap.empty), what)
 
-              if(!Invoker.checkAndInfer(ctx, new mutable.HashMap(), toTh, whatTh))
+              if (!Invoker.checkAndInfer(ctx, new mutable.HashMap(), toTh, whatTh))
                 throw new RuntimeException(s"expected $toTh has $whatTh")
 
               (thNil, toVarName, whatStats :+ Ast2.Store(init = false,

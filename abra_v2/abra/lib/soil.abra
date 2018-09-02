@@ -1,5 +1,5 @@
 import
-    /universe with None, Bool, Int
+    /universe with None, Bool, Int, String
     /gl with Texture .
 
 llvm

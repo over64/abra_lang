@@ -1,4 +1,4 @@
-import /universe with None, Int .
+import /universe with None, Int, String .
 
 llvm
   declare i32 @puts(i8* nocapture readonly)

@@ -27,7 +27,7 @@ object Invoker {
           }
         else if (adv.name != th.name) {
           ctx.findType(adv.name, adv.mod) match {
-            case ud: UnionDecl =>
+            case (_, ud: UnionDecl) =>
               if (ud.params.length != adv.params.length) throw new RuntimeException(s"expected ${ud.params.length} for $ud has ${adv.params.length}")
 
               ud.variants.exists { udVariant =>
@@ -43,7 +43,7 @@ object Invoker {
         } else checkAndInferSeq(ctx, specMap, adv.params, th.params)
       case (adv: ScalarTh, uth: UnionTh) =>
         ctx.findType(adv.name, adv.mod) match {
-          case ud: UnionDecl =>
+          case (_, ud: UnionDecl) =>
             if (ud.params.length != adv.params.length) throw new RuntimeException(s"expected ${ud.params.length} for $ud has ${adv.params.length}")
 
             uth.seq.forall { variant =>
@@ -127,7 +127,7 @@ object Invoker {
                         args: Iterator[InferTask]): (TypeHint, String, Seq[Ast2.Stat]) = {
     val consType =
       ctx.findType(typeName, Seq()) match {
-        case sd: StructDecl => sd
+        case (_, sd: StructDecl) => sd
         case _ => throw new RuntimeException(s"$typeName is not struct type")
       }
 
@@ -217,8 +217,8 @@ object Invoker {
                     params: Seq[TypeHint],
                     args: Iterator[InferTask],
                     ret: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat]) = {
-    val deep = ctx.deep + ctx.inferStack.length
-    val caleeMod = "$calee" + deep
+    val caleeMod = "$calee" + ctx.deep
+    println("callee: " + caleeMod)
 
     val specMap: mutable.HashMap[GenericType, TypeHint] =
       if (params.nonEmpty) {
@@ -246,7 +246,7 @@ object Invoker {
       ctx.idSeq,
       ctx.inferStack,
       ctx.lowMod,
-      deep + 1,
+      ctx.deep + 1,
       ctx.pkg,
       mod.imports ++ Map((caleeMod, ctx.toHeader)),
       mod.typeImports,
@@ -314,19 +314,24 @@ object Invoker {
         case (modName, header, d) => d.name == name && isApplicable(d.params, d.lambda.args.head.typeHint.get, selfType)
       } match {
         case None =>
-          mod.imports.reverse.flatMap(_._2.headers.values).find { dheader =>
-            dheader.name == name &&
-              dheader.isSelf &&
-              isApplicable(Seq.empty, dheader.th.args.head, selfType)
+          // mod.imports.reverse.flatMap(_._2.headers.values).find { dheader =>
+          mod.imports.reverse.flatMap {
+            case (modName, mod) => mod.headers.values.map(d => (modName, d))
+          }.find {
+            case (modName, dheader) =>
+              dheader.name == name &&
+                dheader.isSelf &&
+                isApplicable(Seq.empty, dheader.th.args.head, selfType)
           } match {
             case None =>
               throw new RuntimeException(s"no self function with name $name for type $selfType")
-            case Some(header) =>
-              ctx.lowMod.protos.put(header.lowName, header.th.toLow(ctx))
+            case Some((modName, header)) =>
+              ctx.lowMod.protos.put(header.lowName, header.th.moveToMod(modName).toLow(ctx))
+
               val specMap = mutable.HashMap[GenericType, TypeHint]()
               val (argsStats, argsVars) = invokeArgs(ctx, scope, specMap,
-                header.th.args.toIterator, args)
-              makeCall(ctx, scope, header.lowName, header.th.ret, argsStats, argsVars)
+                header.th.args.map(_.moveToMod(modName)).toIterator, args)
+              makeCall(ctx, scope, header.lowName, header.th.ret.moveToMod(modName), argsStats, argsVars)
           }
         case Some((modName, header, toCall)) =>
           invokeFromMod(ctx, modName, header, scope, toCall, params, args, ret)
@@ -354,10 +359,10 @@ object Invoker {
 
     mod.headers.get(mod.pkg + "." + fnName) match {
       case Some(header) =>
-        ctx.lowMod.protos.put(header.lowName, header.th.toLow(ctx))
+        ctx.lowMod.protos.put(header.lowName, header.th.moveToMod(modName).toLow(ctx))
         val specMap = mutable.HashMap[GenericType, TypeHint]()
         val (argsStats, argsVars) = invokeArgs(ctx, scope, specMap,
-          header.th.args.toIterator, args)
+          header.th.args.map(_.moveToMod(modName)).toIterator, args)
         makeCall(ctx, scope, header.lowName, header.th.ret.moveToMod(modName), argsStats, argsVars)
       case None =>
         val toCall = mod.inlineDefs.getOrElse(fnName, throw new RuntimeException(s"no such function $fnName in module $modName"))

@@ -1,5 +1,5 @@
 import
-    /universe with None, Bool, Int
+    /universe with None, Bool, Int, Float, String
     /array with Array
     /kazmath with Mat4 .
 

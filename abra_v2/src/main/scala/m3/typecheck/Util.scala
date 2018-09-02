@@ -276,7 +276,7 @@ object Util {
     def swapMod(removeFrom: String, moveTo: String): TypeHint =
       self match {
         case sth@ScalarTh(params, name, mod) =>
-          if(mod.headOption == Some(removeFrom))
+          if (mod.headOption == Some(removeFrom))
             ScalarTh(params.map(p => p.swapMod(removeFrom, moveTo)), name, mod.drop(1))
           else
             ScalarTh(params.map(p => p.swapMod(removeFrom, moveTo)), name, moveTo +: mod)
@@ -307,9 +307,12 @@ object Util {
     def toLow(ctx: TContext): Ast2.TypeRef = {
       self match {
         case ScalarTh(params, name, pkg) =>
-          ctx.findType(name, pkg) match {
+          val (mod, decl) = ctx.findType(name, pkg)
+          val nextCtx = mod.toContext(ctx.idSeq, ctx.inferStack, ctx.lowMod, ctx.deep)
+
+          decl match {
             case sd: ScalarDecl => sd.toLow(params, ctx)
-            case struct: StructDecl => struct.toLow(params, ctx)
+            case struct: StructDecl => struct.toLow(params, nextCtx)
             case ud: UnionDecl => ud.toLow(params, ctx)
           }
         case StructTh(fields) =>

@@ -44,12 +44,14 @@ case class TContext(var idSeq: Int,
   def findImport(modName: String) =
     imports.find { case (mName, _) => mName == modName }.map(_._2)
 
-  def findTypeOpt(name: String, mod: Seq[String]): Option[TypeDecl] =
+  def findTypeOpt(name: String, mod: Seq[String]): Option[(ModHeader, TypeDecl)] =
     mod match {
       case Seq() =>
         typeImports.get(name) match {
-          case None => types.get(name)
-          case Some(modName) => findImport(modName).get.types.get(name)
+          case None => types.get(name).map(t => (this.toHeader, t))
+          case Some(modName) =>
+            val imp = findImport(modName).get
+            imp.types.get(name).map(t => (imp, t))
         }
       case modName :: tail =>
         findImport(modName) match {
@@ -59,7 +61,7 @@ case class TContext(var idSeq: Int,
         }
     }
 
-  def findType(name: String, mod: Seq[String]): TypeDecl = {
+  def findType(name: String, mod: Seq[String]): (ModHeader, TypeDecl) = {
     def tthrow = () => {
       throw new RuntimeException(s"no such type ${mod.mkString("", ".", ".") + name}")
     }

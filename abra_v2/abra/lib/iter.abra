@@ -1,5 +1,5 @@
 import
-    /universe with None
+    /universe with None, Bool
     /array with Array .
 
 def isIterable[Iterable, T] = iterable: Iterable do
@@ -19,5 +19,7 @@ def iterator[Iterable, T, U] = self: Map[Iterable, T, U] do
 type MapIter[Iterator, T, U] = (iter: Iterator, mapper: (T) -> U)
 
 def next[Iterator, T, U] = self: MapIter[Iterator, T, U] do
-    when self.iter.next() is element: T do self.mapper(element) .
+    when self.iter.next() is element: T do
+        mapper = self.mapper
+        mapper(element) .
     .U | None
