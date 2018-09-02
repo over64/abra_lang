@@ -23,26 +23,26 @@ class _05TypesParse extends FunSuite {
   }
 
   test("struct") {
-    withStr("type S = (x: Int)", StructDecl("test", Seq(), "S", Seq(FieldDecl(false, "x", ScalarTh(Seq(), "Int", None)))))
+    withStr("type S = (x: Int)", StructDecl("test", Seq(), "S", Seq(FieldDecl(false, "x", ScalarTh(Seq(), "Int", Seq.empty)))))
     withStr("type Seq[T] = (length: Int, ptr: Ptr)", StructDecl("test", Seq(GenericType("T")), "Seq", Seq(
-      FieldDecl(false, "length", ScalarTh(Seq(), "Int", None)),
-      FieldDecl(false, "ptr", ScalarTh(Seq(), "Ptr", None))
+      FieldDecl(false, "length", ScalarTh(Seq(), "Int", Seq.empty)),
+      FieldDecl(false, "ptr", ScalarTh(Seq(), "Ptr", Seq.empty))
     )))
   }
 
   test("union") {
     withStr("type StringOpt = String | None", UnionDecl("test", Seq(), "StringOpt", Seq(
-      ScalarTh(Seq(), "String", None),
-      ScalarTh(Seq(), "None", None))))
+      ScalarTh(Seq(), "String", Seq.empty),
+      ScalarTh(Seq(), "None", Seq.empty))))
 
     withStr("type U2 = String | None | Bool", UnionDecl("test", Seq(), "U2", Seq(
-      ScalarTh(Seq(), "String", None),
-      ScalarTh(Seq(), "None", None),
-      ScalarTh(Seq(), "Bool", None))))
+      ScalarTh(Seq(), "String", Seq.empty),
+      ScalarTh(Seq(), "None", Seq.empty),
+      ScalarTh(Seq(), "Bool", Seq.empty))))
 
     withStr("type Option[T] = T | None", UnionDecl("test", Seq(GenericType("T")), "Option", Seq(
-      ScalarTh(Seq(), "T", None),
-      ScalarTh(Seq(), "None", None)
+      ScalarTh(Seq(), "T", Seq.empty),
+      ScalarTh(Seq(), "None", Seq.empty)
     )))
   }
 }

@@ -1,5 +1,5 @@
 import
-    /universe with None, Int, String
+    /universe with None, Bool, Int, String
     /sbuffer .
 
 llvm

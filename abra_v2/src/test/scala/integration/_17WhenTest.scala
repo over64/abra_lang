@@ -26,7 +26,7 @@ class _17WhenTest extends FunSuite with IntegrationUtil {
 
           z = when y
             is i: Int do i
-            is s: String do 13 .
+            is s: String do print('haha'); 13 .
           z .
       """, exit = Some(13))
   }

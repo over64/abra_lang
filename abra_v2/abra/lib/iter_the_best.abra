@@ -1,0 +1,65 @@
+import
+    /universe with None
+    /array with Array .
+
+def isIterable = it: iterable do
+    iter = it.iterator()  # V must have iterator
+    iter.next()           # iterator must provide t | None via next function
+
+data Map of iterable t u = (it: iterable, mapper: (t) -> u)
+
+def map = self: iterable, mapper: (t) -> u do
+    if false do iterValue: t | None = isIterable(self)
+    Map(self, mapper)
+
+def iterator = self: Map of iterable t u do
+    MapIter(self.iterable.iterator(), self.mapper)
+
+data MapIter of iterator t u = (iter: iterator, mapper: (t) -> u)
+
+def next = self: MapIter of iterator t u do
+    if el = self.iter.next() is t do self.mapper(el) else none :u | None
+
+
+import
+    /universe with None
+    /array with Array .
+
+def isIterable = it: iterable do
+    iter = it.iterator()  # V must have iterator
+    iter.next()           # iterator must provide t | None via next function
+
+data Map[iterable t u] = (it: iterable, mapper: (t) -> u)
+
+def map = self: iterable, mapper: (t) -> u do
+    if false do iterValue: t | None = isIterable(self)
+    Map(self, mapper)
+
+def iterator = self: Map[iterable t u] do
+    MapIter(self.iterable.iterator(), self.mapper)
+
+data MapIter[iterator t u] = (iter: iterator, mapper: (t) -> u)
+
+def next = self: MapIter[iterator t u] do
+    if el = self.iter.next() is t do self.mapper(el) else none :u | None
+
+
+def isIterable[Iterable, T] = iterable: Iterable do
+    if false do
+        iter = iterable.iterator()  # V must have iterator
+        iter.next() ..T | None      # iterator must provide T via next function
+
+type Map[Iterable, T, U] = (iterable: Iterable, mapper: (T) -> U)
+
+def map[Iterable, T, U] = self: Iterable, mapper: (T) -> U do
+    isIterable[Iterable, T](self)
+    Map(self, mapper) .
+
+def iterator[Iterable, T, U] = self: Map[Iterable, T, U] do
+    MapIter(self.iterable.iterator(), self.mapper) .
+
+type MapIter[Iterator, T, U] = (iter: Iterator, mapper: (T) -> U)
+
+def next[Iterator, T, U] = self: MapIter[Iterator, T, U] do
+    when self.iter.next() is element: T do self.mapper(element) .
+    .U | None

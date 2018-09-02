@@ -20,9 +20,9 @@ class _06FunctionParse extends FunSuite {
       params = Seq(),
       name = "+",
       lambda = Lambda(Seq(
-        Arg("x", Some(ScalarTh(Seq(), "Int", None))),
-        Arg("y", Some(ScalarTh(Seq(), "Int", None)))),
+        Arg("x", Some(ScalarTh(Seq(), "Int", Seq.empty))),
+        Arg("y", Some(ScalarTh(Seq(), "Int", Seq.empty)))),
         body = llVm(";asm")),
-      retTh = Some(ScalarTh(Seq(), "Int", None))))
+      retTh = Some(ScalarTh(Seq(), "Int", Seq.empty))))
   }
 }

@@ -1,4 +1,4 @@
-import /universe with None, Int .
+import /universe with None, Bool, Int .
 type Range = (from: Int, to: Int, step: Int)
 
 def each = self: Range, fn: (Int) -> None do

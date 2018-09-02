@@ -9,17 +9,17 @@ import scala.collection.mutable
   * Created by over on 23.10.17.
   */
 object Util {
-  val thInt = ScalarTh(params = Seq.empty, "Int", None)
-  val thFloat = ScalarTh(params = Seq.empty, "Float", None)
-  val thBool = ScalarTh(params = Seq.empty, "Bool", None)
-  val thString = ScalarTh(params = Seq.empty, "String", None)
-  val thNil = ScalarTh(params = Seq.empty, "None", None)
+  val thInt = ScalarTh(params = Seq.empty, "Int", Seq.empty)
+  val thFloat = ScalarTh(params = Seq.empty, "Float", Seq.empty)
+  val thBool = ScalarTh(params = Seq.empty, "Bool", Seq.empty)
+  val thString = ScalarTh(params = Seq.empty, "String", Seq.empty)
+  val thNil = ScalarTh(params = Seq.empty, "None", Seq.empty)
 
-  val adviceBool = ScalarAdvice(Seq.empty, "Bool", pkg = None)
+  val adviceBool = ScalarAdvice(Seq.empty, "Bool", Seq.empty)
 
   sealed trait ThAdvice
 
-  case class ScalarAdvice(params: Seq[Option[ThAdvice]], name: String, pkg: Option[String]) extends ThAdvice
+  case class ScalarAdvice(params: Seq[Option[ThAdvice]], name: String, pkg: Seq[String]) extends ThAdvice
 
   case class FnAdvice(args: Seq[Option[ThAdvice]], ret: Option[ThAdvice]) extends ThAdvice
 
@@ -57,21 +57,21 @@ object Util {
   }
 
   implicit class RichExpression(self: Expression) {
-    def spec(specMap: Map[GenericType, TypeHint], ctx: TContext, namespace: Namespace): Expression = self match {
+    def spec(specMap: Map[GenericType, TypeHint], ctx: TContext): Expression = self match {
       case l: Literal => l
       case p: Prop => p
-      case Tuple(seq) => Tuple(seq.map(e => e.spec(specMap, ctx, namespace)))
+      case Tuple(seq) => Tuple(seq.map(e => e.spec(specMap, ctx)))
       case SelfCall(params, fnName, self, args) =>
         SelfCall(
           params.map(p => p.spec(specMap)),
           fnName,
-          self.spec(specMap, ctx, namespace),
-          args.map(arg => arg.spec(specMap, ctx, namespace)))
+          self.spec(specMap, ctx),
+          args.map(arg => arg.spec(specMap, ctx)))
       case Call(params, expr, args) =>
         Call(
           params.map(p => p.spec(specMap)),
-          expr.spec(specMap, ctx, namespace),
-          args.map(arg => arg.spec(specMap, ctx, namespace)))
+          expr.spec(specMap, ctx),
+          args.map(arg => arg.spec(specMap, ctx)))
       case Lambda(args, body) =>
         Lambda(
           args.map(arg => Arg(arg.name, arg.typeHint.map(th => th.spec(specMap)))),
@@ -79,9 +79,9 @@ object Util {
             case l: llVm =>
               var code = l.code
               specMap.foreach { case (sth, th) =>
-                val lowScalarRef = th.toLow(ctx, namespace) // FIXME: no cast?
+                val lowScalarRef = th.toLow(ctx) // FIXME: no cast?
               val replTypeName = ctx.lowMod.types(lowScalarRef.name) match {
-                case Ast2.Low(namespace.pkg, ref, name, llValue) => name
+                case Ast2.Low(ctx.pkg, ref, name, llValue) => name
                 case _ => lowScalarRef.name
               }
                 val replSelfDefName = ctx.lowMod.types(lowScalarRef.name) match {
@@ -94,25 +94,26 @@ object Util {
                 code = code.replace(sth.name, replTypeName)
               }
               llVm(code)
-            case AbraCode(seq) => AbraCode(seq.map(e => e.spec(specMap, ctx, namespace)))
+            case AbraCode(seq) => AbraCode(seq.map(e => e.spec(specMap, ctx)))
           })
-      case And(left, right) => And(left.spec(specMap, ctx, namespace), right.spec(specMap, ctx, namespace))
-      case Or(left, right) => Or(left.spec(specMap, ctx, namespace), right.spec(specMap, ctx, namespace))
+      case And(left, right) => And(left.spec(specMap, ctx), right.spec(specMap, ctx))
+      case Or(left, right) => Or(left.spec(specMap, ctx), right.spec(specMap, ctx))
       case If(ifCond, _do, _else) =>
         If(
-          ifCond.spec(specMap, ctx, namespace),
-          _do.map(e => e.spec(specMap, ctx, namespace)),
-          _else.map(e => e.spec(specMap, ctx, namespace)))
+          ifCond.spec(specMap, ctx),
+          _do.map(e => e.spec(specMap, ctx)),
+          _else.map(e => e.spec(specMap, ctx)))
       case While(cond, _then) =>
-        While(cond.spec(specMap, ctx, namespace), _then.map(e => e.spec(specMap, ctx, namespace)))
-      case When(expr, isSeq, elseSeq) =>
-        When(expr.spec(specMap, ctx, namespace),
+        While(cond.spec(specMap, ctx), _then.map(e => e.spec(specMap, ctx)))
+      case When(expr, isSeq, whenElse) =>
+        When(expr.spec(specMap, ctx),
           isSeq.map(is =>
-            Is(is.vName, is.typeRef.spec(specMap), is._do.map(expr => expr.spec(specMap, ctx, namespace)))),
-          elseSeq.map(expr => expr.spec(specMap, ctx, namespace)))
+            Is(is.vName, is.typeRef.spec(specMap), is._do.map(expr => expr.spec(specMap, ctx)))),
+          whenElse.map(we =>
+            WhenElse(we.seq.map(expr => expr.spec(specMap, ctx)))))
       case Store(th, to, what) =>
-        Store(th.map(th => th.spec(specMap)), to, what.spec(specMap, ctx, namespace))
-      case Ret(what) => Ret(what.map(e => e.spec(specMap, ctx, namespace)))
+        Store(th.map(th => th.spec(specMap)), to, what.spec(specMap, ctx))
+      case Ret(what) => Ret(what.map(e => e.spec(specMap, ctx)))
     }
   }
 
@@ -128,14 +129,14 @@ object Util {
     def isLow: Boolean =
       self.lambda.body.isInstanceOf[llVm]
 
-    def lowName(ctx: TContext, namespace: Namespace) = {
+    def lowName(ctx: TContext) = {
       val fnPart =
         if (self.isSelf)
-          self.lambda.args(0).typeHint.get.toLow(ctx, namespace).name + "." + self.name
+          self.lambda.args.head.typeHint.get.toLow(ctx).name + "." + self.name
         else self.name
 
       if (fnPart == "main") fnPart
-      else namespace.pkg + "." + fnPart
+      else ctx.pkg + "." + fnPart
     }
 
     def typeHint: Option[FnTh] = {
@@ -144,7 +145,7 @@ object Util {
       else None
     }
 
-    def spec(params: Seq[TypeHint], ctx: TContext, namespace: Namespace): Def = {
+    def spec(params: Seq[TypeHint], ctx: TContext): Def = {
       val specMap = makeSpecMap(self.params, params)
       val skip = if (self.isSelf)
         self.lambda.args(0).typeHint.get match {
@@ -154,51 +155,51 @@ object Util {
       else 0
 
       val neededParams = params.drop(skip)
-      val newName = self.name + (if (neededParams.nonEmpty) s"[${neededParams.drop(skip).map(p => p.toGenericName(namespace)).mkString(", ")}]" else "")
+      val newName = self.name + (if (neededParams.nonEmpty) s"[${neededParams.drop(skip).map(p => p.toGenericName).mkString(", ")}]" else "")
 
       Def(
         params = Seq.empty,
         name = newName,
-        lambda = self.lambda.spec(specMap, ctx, namespace).asInstanceOf[Lambda],
+        lambda = self.lambda.spec(specMap, ctx).asInstanceOf[Lambda],
         retTh = self.retTh.map(th => th.spec(specMap)))
     }
   }
 
   implicit class RichLowDecl(self: ScalarDecl) {
-    def spec(params: Seq[TypeHint], ctx: TContext, namespace: Namespace) = {
+    def toLow(params: Seq[TypeHint], ctx: TContext) = {
       val specMap = makeSpecMap(self.params, params)
-      val lowName = ScalarTh(params, self.name, mod = None).toGenericName(namespace)
+      val lowName = ScalarTh(params, self.name, mod = Seq.empty).toGenericName
       var llType = self.llType
 
       specMap.foreach {
         case (sth, th) =>
-          val lowScalarRef = th.toLow(ctx, namespace)
+          val lowScalarRef = th.toLow(ctx)
           val replName = ctx.lowMod.types(lowScalarRef.name) match {
-            case Ast2.Low(namespace.pkg, ref, name, llValue) => llValue
+            case Ast2.Low(ctx.pkg, ref, name, llValue) => llValue
             case _ => "%" + lowScalarRef.name
           }
 
           llType = llType.replace("%" + sth.name, replName)
       }
 
-      ctx.lowMod.defineType(Ast2.Low(namespace.pkg, self.ref, lowName, llType))
+      ctx.lowMod.defineType(Ast2.Low(ctx.pkg, self.ref, lowName, llType))
       Ast2.TypeRef(lowName)
     }
   }
 
   implicit class RichStructDecl(self: StructDecl) {
-    def spec(params: Seq[TypeHint], ctx: TContext, namespace: Namespace) = {
+    def toLow(params: Seq[TypeHint], ctx: TContext) = {
       val specMap = makeSpecMap(self.params, params)
-      val lowName = ScalarTh(params, self.name, mod = None).toGenericName(namespace)
+      val lowName = ScalarTh(params, self.name, mod = Seq.empty).toGenericName
 
       ctx.lowMod.types.get(lowName) match {
         case Some(lowType) => Ast2.TypeRef(lowName)
         case None =>
           // avoid stack overflow
-          ctx.lowMod.defineType(Ast2.Struct(namespace.pkg, lowName, Seq.empty))
+          ctx.lowMod.defineType(Ast2.Struct(ctx.pkg, lowName, Seq.empty))
 
-          ctx.lowMod.defineType(Ast2.Struct(namespace.pkg, lowName, self.fields.map { field =>
-            Ast2.Field(field.name, field.th.spec(specMap).toLow(ctx, namespace))
+          ctx.lowMod.defineType(Ast2.Struct(ctx.pkg, lowName, self.fields.map { field =>
+            Ast2.Field(field.name, field.th.spec(specMap).toLow(ctx))
           }))
 
           Ast2.TypeRef(lowName)
@@ -207,12 +208,12 @@ object Util {
   }
 
   implicit class RichUnionDecl(self: UnionDecl) {
-    def spec(params: Seq[TypeHint], ctx: TContext, namespace: Namespace) = {
+    def toLow(params: Seq[TypeHint], ctx: TContext) = {
       val specMap = makeSpecMap(self.params, params)
-      val lowName = ScalarTh(params, self.name, mod = None).toGenericName(namespace)
+      val lowName = ScalarTh(params, self.name, mod = Seq.empty).toGenericName
       ctx.lowMod.defineType(
-        Ast2.Union(namespace.pkg, lowName, self.variants.map { th =>
-          th.spec(specMap).toLow(ctx, namespace)
+        Ast2.Union(ctx.pkg, lowName, self.variants.map { th =>
+          th.spec(specMap).toLow(ctx)
         }))
       Ast2.TypeRef(lowName)
     }
@@ -258,47 +259,78 @@ object Util {
           FnTh(closure, args.map(arg => arg.spec(specMap)), ret.spec(specMap))
       }
 
-    def toGenericName(namespace: Namespace): String = {
+    def moveToMod(modName: String): TypeHint =
       self match {
-        case ScalarTh(params, name, pkg) =>
-          if (params.isEmpty) name
-          else s"$name[${params.map(p => p.toGenericName(namespace)).mkString(", ")}]"
-        case StructTh(fields) =>
-          s"(${fields.map(_.typeHint.toGenericName(namespace)).mkString(", ")})"
-        case UnionTh(variants) =>
-          variants.map(_.toGenericName(namespace)).mkString(" | ")
+        case ScalarTh(params, name, mod) =>
+          ScalarTh(params.map(p => p.moveToMod(modName)), name, modName +: mod)
+        case StructTh(seq) =>
+          StructTh(seq.map { case FieldTh(fname, th) => FieldTh(fname, th.moveToMod(modName)) })
+        case UnionTh(seq) =>
+          UnionTh(seq.map(th => th.moveToMod(modName)))
         case FnTh(closure, args, ret) =>
-          s"\\${args.map(_.toGenericName(namespace)).mkString(", ")} -> ${ret.toGenericName(namespace)}"
+          FnTh(closure,
+            args.map(th => th.moveToMod(modName)),
+            ret.moveToMod(modName))
+      }
+
+    def swapMod(removeFrom: String, moveTo: String): TypeHint =
+      self match {
+        case sth@ScalarTh(params, name, mod) =>
+          if(mod.headOption == Some(removeFrom))
+            ScalarTh(params.map(p => p.swapMod(removeFrom, moveTo)), name, mod.drop(1))
+          else
+            ScalarTh(params.map(p => p.swapMod(removeFrom, moveTo)), name, moveTo +: mod)
+        case StructTh(seq) =>
+          StructTh(seq.map { case FieldTh(fname, th) => FieldTh(fname, th.swapMod(removeFrom, moveTo)) })
+        case UnionTh(seq) =>
+          UnionTh(seq.map(th => th.swapMod(removeFrom, moveTo)))
+        case FnTh(closure, args, ret) =>
+          FnTh(closure,
+            args.map(th => th.swapMod(removeFrom, moveTo)),
+            ret.swapMod(removeFrom, moveTo))
+      }
+
+    def toGenericName: String = {
+      self match {
+        case ScalarTh(params, name, mod) =>
+          if (params.isEmpty) name
+          else s"$name[${params.map(p => p.toGenericName).mkString(", ")}]"
+        case StructTh(fields) =>
+          s"(${fields.map(_.typeHint.toGenericName).mkString(", ")})"
+        case UnionTh(variants) =>
+          variants.map(_.toGenericName).mkString(" | ")
+        case FnTh(closure, args, ret) =>
+          s"\\${args.map(_.toGenericName).mkString(", ")} -> ${ret.toGenericName}"
       }
     }
 
-    def toLow(ctx: TContext, namespace: Namespace): Ast2.TypeRef = {
+    def toLow(ctx: TContext): Ast2.TypeRef = {
       self match {
         case ScalarTh(params, name, pkg) =>
-          namespace.findType(name, true) match {
-            case (ns, sd: ScalarDecl) => sd.spec(params, ctx, ns)
-            case (ns, struct: StructDecl) => struct.spec(params, ctx, ns)
-            case (ns, ud: UnionDecl) => ud.spec(params, ctx, ns)
+          ctx.findType(name, pkg) match {
+            case sd: ScalarDecl => sd.toLow(params, ctx)
+            case struct: StructDecl => struct.toLow(params, ctx)
+            case ud: UnionDecl => ud.toLow(params, ctx)
           }
         case StructTh(fields) =>
-          val lowFields = fields.map(f => Ast2.Field(f.name, f.typeHint.toLow(ctx, namespace)))
+          val lowFields = fields.map(f => Ast2.Field(f.name, f.typeHint.toLow(ctx)))
           val lowName = s"(${lowFields.map(_.ref.name).mkString(", ")})"
           if (ctx.lowMod.types.get(lowName) == None)
-            ctx.lowMod.defineType(Ast2.Struct(namespace.pkg, lowName, lowFields))
+            ctx.lowMod.defineType(Ast2.Struct(ctx.pkg, lowName, lowFields))
           Ast2.TypeRef(lowName)
         case UnionTh(variants) =>
-          val lowVariants = variants.map(v => v.toLow(ctx, namespace))
+          val lowVariants = variants.map(v => v.toLow(ctx))
           val lowName = s"${lowVariants.map(_.name).mkString(" | ")}"
           if (ctx.lowMod.types.get(lowName) == None)
-            ctx.lowMod.defineType(Ast2.Union(namespace.pkg, lowName, lowVariants))
+            ctx.lowMod.defineType(Ast2.Union(ctx.pkg, lowName, lowVariants))
           Ast2.TypeRef(lowName)
         case FnTh(closure, args, ret) =>
           val lowClosure = closure.map {
-            case CLocal(th) => Ast2.Local(th.toLow(ctx, namespace))
-            case CParam(th) => Ast2.Param(th.toLow(ctx, namespace))
+            case CLocal(th) => Ast2.Local(th.toLow(ctx))
+            case CParam(th) => Ast2.Param(th.toLow(ctx))
           }
-          val lowArgs = args.map(arg => arg.toLow(ctx, namespace))
-          val lowRet = ret.toLow(ctx, namespace)
+          val lowArgs = args.map(arg => arg.toLow(ctx))
+          val lowRet = ret.toLow(ctx)
 
           val closurePart =
             lowClosure.map {
@@ -324,7 +356,7 @@ object Util {
       }
   }
 
-  def downToLow(ctx: TContext, namespace: Namespace, seq: Seq[(String, VarInfo)]): Map[String, Ast2.TypeRef] = seq.map {
+  def downToLow(ctx: TContext, seq: Seq[(String, VarInfo)]): Map[String, Ast2.TypeRef] = seq.map {
     case (vName, vi) =>
       vi.location match {
         case Local => (vName, vi.lowTh)

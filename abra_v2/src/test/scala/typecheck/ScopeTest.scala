@@ -1,26 +1,25 @@
 package typecheck
 
 import m3.parse.Ast0.{ScalarDecl, ScalarTh}
-import m3.typecheck.{BlockScope, FnScope, Namespace, TContext}
+import m3.typecheck.{BlockScope, FnScope, TContext}
 import org.scalatest.FunSuite
 
 /**
   * Created by over on 23.10.17.
   */
 class ScopeTest extends FunSuite {
-  val tInt = ScalarTh(Seq.empty, "Int", None)
-  val ctx = new TContext()
-  val namespace = new Namespace(pkg = "test", types = Seq(ScalarDecl(pkg = "test", ref = false, Seq.empty, "Int", "i32")))
+  val tInt = ScalarTh(Seq.empty, "Int", Seq.empty)
+  val ctx = TContext.forTest(types = Seq(ScalarDecl(pkg = "test", ref = false, Seq.empty, "Int", "i32")), defs = Map())
   test("up/ down") {
     var bottom: FnScope = null
     val root = new FnScope(None) {
-      addParam(ctx, namespace, "x", tInt)
+      addParam(ctx, "x", tInt)
       mkChild({ parent =>
         new BlockScope(Some(parent)) {
-          addLocal(ctx, namespace, "y", tInt)
+          addLocal(ctx, "y", tInt)
           mkChild({ parent =>
             bottom = new FnScope(Some(parent)) {
-              addParam(ctx, namespace, "z", tInt)
+              addParam(ctx, "z", tInt)
             }
             bottom
           })

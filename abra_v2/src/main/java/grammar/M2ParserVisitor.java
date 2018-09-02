@@ -174,6 +174,12 @@ public interface M2ParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitIs(M2Parser.IsContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link M2Parser#whenElse}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitWhenElse(M2Parser.WhenElseContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link M2Parser#store}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

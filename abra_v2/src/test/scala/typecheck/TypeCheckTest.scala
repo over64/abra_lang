@@ -12,9 +12,9 @@ class TypeCheckTest extends FunSuite {
   val tString = ScalarDecl("universe", ref = true, Seq(), "String", "i8*")
   val tBool = ScalarDecl("universe", ref = true, Seq(), "Bool", "i8")
 
-  val thInt = ScalarTh(Seq.empty, "Int", mod = None)
-  val thT = ScalarTh(Seq.empty, "T", mod = None)
-  val thU = ScalarTh(Seq.empty, "U", mod = None)
+  val thInt = ScalarTh(Seq.empty, "Int", mod = Seq.empty)
+  val thT = ScalarTh(Seq.empty, "T", mod = Seq.empty)
+  val thU = ScalarTh(Seq.empty, "U", mod = Seq.empty)
 
   val gT = GenericType("T")
   val gU = GenericType("U")
@@ -33,14 +33,13 @@ class TypeCheckTest extends FunSuite {
             _else = Seq(lString("hello")))))),
       retTh = None)
 
-    val bar = DefCont(defBar, mutable.ListBuffer.empty)
-    val ctx = new TContext()
-    val namespace = new Namespace(pkg = "",
-      defs = Map("bar" -> bar),
-      types = Seq(tInt, tBool, tString))
-    val (header, lowDef) = TypeChecker.evalDef(ctx, namespace, new FnScope(None), bar, Seq.empty)
+    val ctx = TContext.forTest(
+      types = Seq(tInt, tBool, tString),
+      defs = Map("bar" -> defBar))
+
+    val header = TypeChecker.evalDef(ctx, new FnScope(None), defBar, Seq.empty)
     println(header)
-    println(lowDef)
+    println(ctx.lowMod.defs)
   }
 
   def prettyPrint(any: Any): Unit = {

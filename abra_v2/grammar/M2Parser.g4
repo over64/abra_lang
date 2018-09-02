@@ -31,7 +31,7 @@ expression: literal #exprLiteral
           | expression WS* op=('==' | '!=') sp expression #exprInfixCall
           | expression WS* op=('||' | '&&') sp expression #exprInfixCall
           | 'if' sp cond=expression sp 'do' sp doStat+=blockBody* (sp 'else' sp elseStat+=blockBody*)? (NL | WS)? DOT #exprIfElse
-          | 'when' sp expr=expression sp is+ sp ('else' sp elseStat+=blockBody*)? (WS | NL) DOT #exprWnen
+          | 'when' sp expr=expression sp is+ sp whenElse? (WS | NL) DOT #exprWnen
           ;
 
 tuple : '(' sp (expression sp (',' sp expression sp)*)? sp ')'
@@ -51,6 +51,7 @@ typeHint: scalarTh
         ;
 
 is: 'is' sp VarId sp ':' sp typeHint sp 'do' sp blockBody* ;
+whenElse: 'else' sp elseStat+=blockBody* ;
 
 store: id ((NL WS?)? DOT VarId)* sp (tuple | ( ':' sp typeHint))? sp '=' sp expression ;
 ret: 'return' sp expression?;

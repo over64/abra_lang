@@ -4,8 +4,8 @@ import
 
 def isIterable[Iterable, T] = iterable: Iterable do
     if false do
-        iter = iterable.iterator()          # V must have iterator
-        when iter.next() is t: T do ...None # iterator must provide T via next function
+        iter = iterable.iterator()  # V must have iterator
+        iter.next() ..T | None      # iterator must provide T via next function
 
 type Map[Iterable, T, U] = (iterable: Iterable, mapper: (T) -> U)
 
@@ -19,5 +19,5 @@ def iterator[Iterable, T, U] = self: Map[Iterable, T, U] do
 type MapIter[Iterator, T, U] = (iter: Iterator, mapper: (T) -> U)
 
 def next[Iterator, T, U] = self: MapIter[Iterator, T, U] do
-    self.mapper(self.iter.next()) .U
-
+    when self.iter.next() is element: T do self.mapper(element) .
+    .U | None

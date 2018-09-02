@@ -76,7 +76,7 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
     emit(ctx, ScalarTh(
       params = ctx.typeHint().map(th => visitTypeHint(th)),
       name = ctx.typeName.getText,
-      mod = Option(ctx.id()).map(_.getText)))
+      mod = Option(ctx.id()).map(_.getText).toSeq))
 
   override def visitFieldTh(ctx: FieldThContext): FieldTh =
     emit(ctx, FieldTh(
@@ -229,11 +229,14 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
       ctx.blockBody().map(bb => visitBlockBody(bb))
     ))
 
+  override def visitWhenElse(ctx: WhenElseContext) =
+    emit(ctx, WhenElse(ctx.blockBody().map(bb => visitBlockBody(bb))))
+
   override def visitExprWnen(ctx: ExprWnenContext) =
     emit(ctx, When(
       visitExpr(ctx.expr),
       ctx.is().map(i => visitIs(i)),
-      ctx.elseStat.map(e => visitBlockBody(e))
+      if (ctx.whenElse() == null) None else Some(visitWhenElse(ctx.whenElse()))
     ))
 
   override def visitExprProp(ctx: ExprPropContext): Expression =

@@ -50,8 +50,8 @@ class FnScope(val parent: Option[Scope]) extends Scope {
   val closures = mutable.HashMap[String, VarInfo]()
 
 
-  def addParam(ctx: TContext, namespace: Namespace, name: String, th: TypeHint) = {
-    vars += ((name, VarInfo(th, th.toLow(ctx, namespace), Param)))
+  def addParam(ctx: TContext, name: String, th: TypeHint) = {
+    vars += ((name, VarInfo(th, th.toLow(ctx), Param)))
   }
 
   override def findVarOpt(vName: String): Option[VarInfo] =
@@ -81,8 +81,8 @@ class FnScope(val parent: Option[Scope]) extends Scope {
 }
 
 class BlockScope(val parent: Option[Scope]) extends Scope {
-  def addLocal(ctx: TContext, namespace: Namespace, name: String, th: TypeHint): VarInfo = {
-    val vi = VarInfo(th, th.toLow(ctx, namespace), Local)
+  def addLocal(ctx: TContext, name: String, th: TypeHint): VarInfo = {
+    val vi = VarInfo(th, th.toLow(ctx), Local)
     vars.put(name, vi)
     vi
   }

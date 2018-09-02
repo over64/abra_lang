@@ -1,6 +1,6 @@
 import
     /universe with None, Bool, Int, Float
-    /array .
+    /array with Array .
 
 type Vec[T] = (array: Array[T], len: Int)
 

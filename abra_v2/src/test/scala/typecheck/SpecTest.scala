@@ -21,28 +21,29 @@ class SpecTest extends FunSuite {
     val declInt = ScalarDecl("universe", ref = false, Seq.empty, "Int", "i32")
     val declString = ScalarDecl("universe", ref = false, Seq.empty, "String", "i8*")
     val declC = StructDecl("universe", Seq(GenericType("T")), "C", Seq(
-      FieldDecl(isSelf = false, "w", ScalarTh(params = Seq.empty, "T", None))
+      FieldDecl(isSelf = false, "w", ScalarTh(params = Seq.empty, "T", Seq.empty))
     ))
     val declB = StructDecl("universe", Seq(GenericType("K")), "B", Seq(
-      FieldDecl(isSelf = false, "y", ScalarTh(params = Seq.empty, "K", None)),
-      FieldDecl(isSelf = false, "z", ScalarTh(params = Seq.empty, "Int", None))
+      FieldDecl(isSelf = false, "y", ScalarTh(params = Seq.empty, "K", Seq.empty)),
+      FieldDecl(isSelf = false, "z", ScalarTh(params = Seq.empty, "Int", Seq.empty))
     ))
     val declA = StructDecl("universe", Seq(GenericType("K"), GenericType("V")), "A", Seq(
       FieldDecl(isSelf = false, "x",
         ScalarTh(Seq(
           ScalarTh(Seq(
             ScalarTh(Seq(),
-              "K", None)
-          ), "C", None)
-        ), "B", None)),
-      FieldDecl(isSelf = false, "xx", ScalarTh(params = Seq.empty, "V", None))
+              "K", Seq.empty)
+          ), "C", Seq.empty)
+        ), "B", Seq.empty)),
+      FieldDecl(isSelf = false, "xx", ScalarTh(params = Seq.empty, "V", Seq.empty))
     ))
 
-    val ctx = new TContext()
-    val namespace = new Namespace("", types = Seq(declInt, declString, declC, declB, declA))
+    val ctx = TContext.forTest(
+      types = Seq(declInt, declString, declC, declB, declA),
+      defs = Map())
 
-    println(ScalarTh(Seq(ScalarTh(Seq.empty, "Int", None), ScalarTh(Seq.empty, "String", None)), "A", None)
-      .toLow(ctx, namespace))
+    println(ScalarTh(Seq(ScalarTh(Seq.empty, "Int", Seq.empty), ScalarTh(Seq.empty, "String", Seq.empty)), "A", Seq.empty)
+      .toLow(ctx))
     ctx.lowMod.types.values.foreach(println(_))
   }
 
@@ -61,13 +62,13 @@ class SpecTest extends FunSuite {
     //   s.map(\x -> x.toString) # map[Int, String](s, \x -> x.toString)
 
     val tInt = ScalarDecl("universe", ref = false, Seq(), "Int", "i32")
-    val thInt = ScalarTh(Seq(), "Int", None)
-    val thString = ScalarTh(Seq(), "String", None)
-    val thT = ScalarTh(Seq(), "T", None)
-    val thU = ScalarTh(Seq(), "U", None)
-    val thSeqT = ScalarTh(Seq(ScalarTh(Seq(), "T", None)), "Seq", None)
-    val thSeqU = ScalarTh(Seq(ScalarTh(Seq(), "U", None)), "Seq", None)
-    val thMapper = FnTh(Seq.empty, Seq(ScalarTh(Seq(), "T", None)), ScalarTh(Seq.empty, "U", None))
+    val thInt = ScalarTh(Seq(), "Int", Seq.empty)
+    val thString = ScalarTh(Seq(), "String", Seq.empty)
+    val thT = ScalarTh(Seq(), "T", Seq.empty)
+    val thU = ScalarTh(Seq(), "U", Seq.empty)
+    val thSeqT = ScalarTh(Seq(ScalarTh(Seq(), "T", Seq.empty)), "Seq", Seq.empty)
+    val thSeqU = ScalarTh(Seq(ScalarTh(Seq(), "U", Seq.empty)), "Seq", Seq.empty)
+    val thMapper = FnTh(Seq.empty, Seq(ScalarTh(Seq(), "T", Seq.empty)), ScalarTh(Seq.empty, "U", Seq.empty))
 
     val defMap = Def(
       params = Seq(GenericType("T"), GenericType("U")),
@@ -109,21 +110,19 @@ class SpecTest extends FunSuite {
     //      mutated
     //    }
 
-    val ctx = new TContext()
-    val namespace = new Namespace(pkg = "", types = Seq(tInt))
-    val ast = defMap.spec(Seq(thInt, thString), ctx, namespace)
+    val ctx = TContext.forTest(types = Seq(tInt), defs = Map())
+    val ast = defMap.spec(Seq(thInt, thString), ctx)
     print(ast)
   }
   test("spec low type") {
     // type Seq10[T] = llvm [T x 10] .
     val tInt = ScalarDecl("universe", ref = false, Seq.empty, "Int", "i32")
     val tSeq10 = ScalarDecl("universe", ref = false, Seq(GenericType("T")), "Seq10", "[%T x 10]")
-    val thSeq10Int = ScalarTh(Seq(ScalarTh(Seq.empty, "Int", None)), "Seq10", None)
+    val thSeq10Int = ScalarTh(Seq(ScalarTh(Seq.empty, "Int", Seq.empty)), "Seq10", Seq.empty)
 
-    val ctx = new TContext()
-    val namespace = new Namespace(pkg = "", types = Seq(tInt, tSeq10))
+    val ctx = TContext.forTest(types = Seq(tInt, tSeq10), defs = Map())
 
-    println(thSeq10Int.toLow(ctx, namespace))
+    println(thSeq10Int.toLow(ctx))
     println(ctx.lowMod.types)
   }
 
@@ -136,8 +135,8 @@ class SpecTest extends FunSuite {
     // .T
     val tInt = ScalarDecl("universe", ref = false, Seq.empty, "Int", "i32")
     val tMem = ScalarDecl("universe", ref = false, Seq(GenericType("T")), "Mem", "%T*")
-    val thInt = ScalarTh(Seq.empty, "Int", None)
-    val thMemT = ScalarTh(Seq(ScalarTh(Seq.empty, "T", None)), "Mem", None)
+    val thInt = ScalarTh(Seq.empty, "Int", Seq.empty)
+    val thMemT = ScalarTh(Seq(ScalarTh(Seq.empty, "T", Seq.empty)), "Mem", Seq.empty)
 
     val defGet = Def(
       params = Seq(GenericType("T")),
@@ -153,20 +152,18 @@ class SpecTest extends FunSuite {
             |  %2 = load %T, %T* %1
             |  ret %T %2 """.stripMargin)
       ),
-      retTh = Some(ScalarTh(Seq.empty, "T", None))
+      retTh = Some(ScalarTh(Seq.empty, "T", Seq.empty))
     )
-    val ctx = new TContext()
-    val namespace = new Namespace(pkg = "", types = Seq(tInt, tMem))
-    println(defGet.spec(Seq(thInt), ctx, namespace))
+    val ctx = TContext.forTest(types = Seq(tInt, tMem), defs = Map())
+    println(defGet.spec(Seq(thInt), ctx))
     println(ctx.lowMod.types)
   }
 
   test("call generic") {
     val gT = GenericType("T")
 
-    val thT = ScalarTh(Seq.empty, "T", mod = None)
-    val thInt = ScalarTh(Seq.empty, "Int", mod = None)
-    val thString = ScalarTh(Seq.empty, "thString", mod = None)
+    val thT = ScalarTh(Seq.empty, "T", mod = Seq.empty)
+    val thInt = ScalarTh(Seq.empty, "Int", mod = Seq.empty)
 
     val tNil = ScalarDecl("universe", ref = false, Seq(), "Nil", "void")
     val tInt = ScalarDecl("universe", ref = false, Seq(), "Int", "i32")
@@ -205,17 +202,15 @@ class SpecTest extends FunSuite {
         ))),
       retTh = None)
 
-    val main = DefCont(defMain, ListBuffer.empty)
-    val namespace = new Namespace(pkg = "",
+    val ctx = TContext.forTest(
       defs = Map(
-        "bar" -> DefCont(defBar, mutable.ListBuffer.empty),
-        "main" -> DefCont(defMain, mutable.ListBuffer.empty)),
+        "bar" -> defBar,
+        "main" -> defMain),
       types = Seq(tNil, tInt, tString))
-    val ctx = new TContext()
-    val (header, lowDef) = TypeChecker.evalDef(ctx, namespace, new FnScope(None), main, Seq.empty)
+
+    val header = TypeChecker.evalDef(ctx, new FnScope(None), defMain, Seq.empty)
 
     println(header)
-    println(lowDef)
     println(ctx.lowMod.defs)
   }
 }

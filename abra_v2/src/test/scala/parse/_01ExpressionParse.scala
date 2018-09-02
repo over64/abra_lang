@@ -69,7 +69,7 @@ class _01ExpressionParse extends FunSuite {
   test("lambda") {
     withStr("lambda 1 .", Lambda(Seq(), AbraCode(Seq(lInt("1")))))
     withStr("lambda self: Int -> self",
-      Lambda(Seq(Arg("self", Some(ScalarTh(Seq.empty, "Int", None)))), AbraCode(Seq(lId("self")))))
+      Lambda(Seq(Arg("self", Some(ScalarTh(Seq.empty, "Int", Seq.empty)))), AbraCode(Seq(lId("self")))))
   }
 
   test("unary call") {
