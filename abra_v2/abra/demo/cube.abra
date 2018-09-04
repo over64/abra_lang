@@ -9,7 +9,7 @@ import
   /vec
   /array with Array
   /soil
-  /objLoader .
+  objLoader .
 
 type Renderer = (
     vb: gl.Buffer,

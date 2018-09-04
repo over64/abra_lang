@@ -309,8 +309,17 @@ object TypeChecker {
         (lastTh, vName, stats ++ lastStat, freeStats)
       }
 
-      def inferSuperType(variants: Seq[TypeHint]): UnionTh =
-        UnionTh(variants.distinct)
+      def inferSuperType(variants: Seq[TypeHint]): UnionTh = {
+        val result = new mutable.ListBuffer[TypeHint]()
+        val tmp = new mutable.HashMap[GenericType, TypeHint]()
+
+        variants.foreach { v =>
+          if (result.forall(th => !Invoker.checkAndInfer(ctx, tmp, th, v)))
+            result += v
+        }
+
+        UnionTh(result)
+      }
 
       val (exprTh, exprName, exprStats) = evalExpr(ctx, scope, Some(adviceBool), expr)
       val retValName = "_w" + ctx.nextAnonId()
@@ -335,32 +344,14 @@ object TypeChecker {
           (inferSuperType(lowIsSeq.map(_._1)), Seq())
       }
 
-      // check compatibility
-      val retValTh =
-        th match {
-          case None => overallType
-          case Some(advice) =>
-            val expectedTh = advice.toTh
-            expectedTh match {
-              case sth: ScalarTh =>
-                ctx.findTypeOpt(sth.name, sth.mod) match {
-                  case None => throw new RuntimeException(s"no such type $sth")
-                  case Some(ud: UnionDecl) =>
-                    overallType.seq.foreach { variant =>
-                      if (!ud.variants.contains(variant))
-                        throw new RuntimeException(s"expected $sth has $overallType")
-                    }
-                  case _ => throw new RuntimeException(s"expected $sth has $overallType")
-                }
-                sth
-              case uth: UnionTh =>
-                overallType.seq.foreach { variant =>
-                  if (!uth.seq.contains(variant))
-                    throw new RuntimeException(s"expected $uth has $overallType")
-                }
-                uth
-            }
-        }
+      val retValTh = th match {
+        case None => overallType
+        case Some(advice) =>
+          val expectedTh = advice.toTh
+          if (!Invoker.checkAndInfer(ctx, new mutable.HashMap(), expectedTh, overallType))
+            throw new RuntimeException(s"expected $expectedTh has $overallType")
+          expectedTh
+      }
 
       scope.addLocal(ctx, retValName, retValTh)
       (retValTh, retValName, exprStats ++ Seq(Ast2.When(Ast2.Id(exprName), lowIsSeq.map(_._2), elseStats)))

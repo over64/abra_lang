@@ -21,15 +21,21 @@ trait IntegrationUtil extends LowUtil {
   val testBase = "/tmp/"
 
   def compile(cache: mutable.HashMap[String, (ModHeader, String, Seq[String])],
-              level: Int, pkg: String, code: String, isRelease: Boolean): (ModHeader, String, Seq[String]) = {
+              level: Int, projDir: String, pkg: String, code: String, isRelease: Boolean): (ModHeader, String, Seq[String]) = {
     println("\t" * level + s"parse $pkg")
     val (ast, _) = parser.parse[Module](new ANTLRInputStream(code))
     val imports =
       ast.imports.seq.map { ie =>
         cache.get(ie.path) match {
-          case None => (ie.modName, compile(
-            cache, level + 1, ie.path, new String(
-              Files.readAllBytes(Paths.get(System.getProperty("user.dir") + "/abra_v2/abra/lib" + ie.path + ".abra"))), isRelease))
+          case None =>
+            val code = new String(Files.readAllBytes(Paths.get(
+              if (ie.path.startsWith("/"))
+                System.getProperty("user.dir") + "/abra_v2/abra/lib" + ie.path + ".abra"
+              else
+                projDir + ie.path + ".abra"
+            )))
+
+            (ie.modName, compile(cache, level + 1, projDir, ie.path, code, isRelease))
           case Some(compiled) =>
             println("\t" * (level + 1) + s"import cached ${ie.path}")
             (ie.modName, compiled)
@@ -67,8 +73,10 @@ trait IntegrationUtil extends LowUtil {
     res
   }
 
-  def assertCodeEquals(code: String, exit: Option[Int] = None, stdout: Option[String] = None, stderr: Option[String] = None, isRelease: Boolean = false) = {
-    val (_, obj, deps) = compile(new mutable.HashMap(), 0, "test", code, isRelease)
+  def assertCodeEquals(code: String, exit: Option[Int] = None, stdout: Option[String] = None, stderr: Option[String] = None,
+                       isRelease: Boolean = false,
+                       projDir: String = System.getProperty("user.dir")) = {
+    val (_, obj, deps) = compile(new mutable.HashMap(), 0, projDir, "test", code, isRelease)
     runProgram(obj, deps, exit, stdout, stderr, isRelease)
   }
 }
