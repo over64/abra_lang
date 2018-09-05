@@ -94,15 +94,47 @@ object TypeChecker {
       })
       self match {
         case id: lId =>
-          if (ctx.imports.exists { case (modName, _) => modName == id.value }) {
-            Invoker.invokeMod(ctx, scope, id.value, fnName, params, argTasks.iterator, th)
-          } else {
-            val vi = scope.findVar(id.value)
-            val selfTask = new InferTask {
-              override def infer(expected: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat]) = (vi.th, id.value, Seq.empty)
-            }
-            Invoker.invokeSelfDef(ctx, scope, fnName, params, vi.th, (selfTask +: argTasks).iterator, th)
+          if (ctx.imports.exists { case (modName, _) => modName == id.value })
+            return Invoker.invokeMod(ctx, scope, id.value, fnName, params, argTasks.iterator, th)
+
+          def callField(fth: FnTh) = {
+            val lambdaVarName = "$l" + ctx.nextAnonId().toString
+            val lambdaVar = scope.addLocal(ctx, lambdaVarName, fth)
+            val (exprTh, vName, stats) = Invoker.invokeLambda(ctx, scope, lambdaVarName, fth, argTasks.toIterator)
+            (exprTh, vName, Ast2.Store(init = true, Ast2.Id(lambdaVarName), Ast2.Id(id.value, Seq(fnName))) +: stats)
           }
+
+          val vi = scope.findVar(id.value)
+          vi.th match {
+            case sth: ScalarTh =>
+              ctx.findType(sth.name, sth.mod) match {
+                case (_, sd: StructDecl) =>
+                  sd.fields.find(fd => fd.name == fnName) match {
+                    case Some(field) =>
+                      field.th.spec(makeSpecMap(sd.params, sth.params)) match {
+                        case fth: FnTh => return callField(fth)
+                        case _ =>
+                      }
+                    case _ =>
+                  }
+                case _ =>
+              }
+            case structTh: StructTh =>
+              structTh.seq.find(fd => fd.name == fnName) match {
+                case Some(field) =>
+                  field.typeHint match {
+                    case fth: FnTh => return callField(fth)
+                    case _ =>
+                  }
+                case _ =>
+              }
+            case _ =>
+          }
+
+          val selfTask = new InferTask {
+            override def infer(expected: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat]) = (vi.th, id.value, Seq.empty)
+          }
+          Invoker.invokeSelfDef(ctx, scope, fnName, params, vi.th, (selfTask +: argTasks).iterator, th)
         case _expr: Expression =>
           val (selfTh, vName, lowStats) = evalExpr(ctx, scope, None, _expr)
           val selfTask = new InferTask {
@@ -195,11 +227,11 @@ object TypeChecker {
       scope.addLocal(ctx, lowId.v, thBool)
 
       val (leftTh, leftName, leftStats) = evalExpr(ctx, scope, Some(adviceBool), andOr.left)
-      if (!Invoker.checkAndInfer(ctx, new mutable.HashMap(), thBool, leftTh))
+      if (!thBool.isEqual(ctx, new mutable.HashMap(), leftTh))
         throw new RuntimeException(s"expected $thBool has $leftTh")
 
       val (rightTh, rightName, rightStats) = evalExpr(ctx, scope, Some(adviceBool), andOr.right)
-      if (!Invoker.checkAndInfer(ctx, new mutable.HashMap(), thBool, rightTh))
+      if (!thBool.isEqual(ctx, new mutable.HashMap(), rightTh))
         throw new RuntimeException(s"expected $thBool has $rightTh")
 
       val leftFullStats = leftStats :+ Ast2.Store(init = true, lowId, Ast2.Id(leftName))
@@ -232,7 +264,7 @@ object TypeChecker {
       }
 
       val (condTh, condName, condStats) = evalExpr(ctx, scope, Some(adviceBool), cond)
-      if (!Invoker.checkAndInfer(ctx, new mutable.HashMap(), thBool, condTh))
+      if (!thBool.isEqual(ctx, new mutable.HashMap(), condTh))
         throw new RuntimeException(s"expected $thBool has $condTh")
 
       val (doTh, doName, doStats, doFree) = evalBlock(_do)

@@ -53,4 +53,30 @@ class _13SelfFunctionTest extends FunSuite with IntegrationUtil {
           1 - 1 .
       """, exit = Some(0))
   }
+
+  test("struct field call") {
+    assertCodeEquals(
+      """
+        type Int  = llvm i32 .
+        type Struct = (x: Int, callee: (Int) -> Int)
+
+        def returner = x: Int do x .
+
+        def main =
+          st = Struct(1, returner)
+          st.callee(2) .
+      """, exit = Some(2))
+  }
+
+  test("anon struct field call") {
+    assertCodeEquals(
+      """
+        type Int  = llvm i32 .
+        def returner = x: Int do x .
+
+        def main =
+          st: (x: Int, callee: (Int) -> Int) = (1, returner)
+          st.callee(2) .
+      """, exit = Some(2))
+  }
 }

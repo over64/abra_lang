@@ -95,7 +95,6 @@ object Invoker {
       val argThSpec = defArg.spec(specMap.toMap)
       val bridgedArg =
         if (!argThSpec.isEqual(ctx, new mutable.HashMap(), th)) {
-          //if (argThSpec != th && (!argThSpec.isInstanceOf[FnTh] && !th.isInstanceOf[FnTh])) {
           val newName = "_bridge" + ctx.nextAnonId()
           scope.addLocal(ctx, newName, argThSpec)
           argsStats += Ast2.Store(init = true, Ast2.Id(newName), Ast2.Id(vName))
@@ -201,6 +200,7 @@ object Invoker {
              ret: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat]) = {
 
     val specMap = makeInferSpecMap(toCall.params, params)
+
     val (argsStats, argsVars) = invokeArgs(ctx, scope, specMap,
       toCall.lambda.args.map(a => a.typeHint.get).toIterator, args)
 
@@ -274,8 +274,7 @@ object Invoker {
     println("callee: " + caleeMod)
 
     val specMap = makeInferSpecMap(toCall.params, params)
-    checkArgs(ctx, specMap,
-      toCall.lambda.args.map(a => a.typeHint.get).toIterator, args)
+    checkArgs(ctx, specMap, toCall.lambda.args.map(a => a.typeHint.get).toIterator, args)
 
     val fixedMap = specMap.map {
       case (k, sth: ScalarTh) =>
