@@ -2,6 +2,7 @@ package m3.typecheck
 
 import m3.codegen.Ast2
 import m3.parse.Ast0._
+import m3.typecheck.Invoker.checkAndInfer
 
 import scala.collection.mutable
 
@@ -219,7 +220,33 @@ object Util {
     }
   }
 
+  def isEqualSeq(ctx: TContext, specMap: mutable.HashMap[GenericType, TypeHint], expected: Seq[TypeHint], has: Seq[TypeHint]): Boolean = {
+    if (expected.length != has.length) return false
+    (expected zip has).forall { case (e, h) => e.isEqual(ctx, specMap, h) }
+  }
+
   implicit class RichTypeHint(self: TypeHint) {
+    def isEqual(ctx: TContext, specMap: mutable.HashMap[GenericType, TypeHint], other: TypeHint): Boolean =
+      (self, other) match {
+        case (adv: ScalarTh, th: ScalarTh) =>
+          if (adv.name.contains("*"))
+            specMap.get(GenericType(adv.name.replace("*", ""))) match {
+              case Some(ScalarTh(_, name, pkg)) if name.contains("*") =>
+                specMap.put(GenericType(adv.name.replace("*", "")), th) // ok replacement
+                true
+              case _ => false
+            }
+          else if (adv.name != th.name) false
+          else isEqualSeq(ctx, specMap, adv.params, th.params)
+        case (adv: UnionTh, th: UnionTh) =>
+          isEqualSeq(ctx, specMap, adv.seq, th.seq)
+        case (adv: StructTh, th: StructTh) =>
+          isEqualSeq(ctx, specMap, adv.seq.map(_.typeHint), th.seq.map(_.typeHint))
+        case (adv: FnTh, th: FnTh) =>
+          isEqualSeq(ctx, specMap, adv.args, th.args) && checkAndInfer(ctx, specMap, adv.ret, th.ret)
+        case (adv, th) => false
+      }
+
     def toAdviceOpt(specMap: mutable.HashMap[GenericType, TypeHint]): Option[ThAdvice] =
       self match {
         case ScalarTh(params, name, pkg) =>
@@ -273,6 +300,20 @@ object Util {
             ret.moveToMod(modName))
       }
 
+    def moveToModSeq(modNames: Seq[String]): TypeHint =
+      self match {
+        case ScalarTh(params, name, mod) =>
+          ScalarTh(params.map(p => p.moveToModSeq(modNames)), name, modNames ++ mod)
+        case StructTh(seq) =>
+          StructTh(seq.map { case FieldTh(fname, th) => FieldTh(fname, th.moveToModSeq(modNames)) })
+        case UnionTh(seq) =>
+          UnionTh(seq.map(th => th.moveToModSeq(modNames)))
+        case FnTh(closure, args, ret) =>
+          FnTh(closure,
+            args.map(th => th.moveToModSeq(modNames)),
+            ret.moveToModSeq(modNames))
+      }
+
     def swapMod(removeFrom: String, moveTo: String): TypeHint =
       self match {
         case sth@ScalarTh(params, name, mod) =>
@@ -308,12 +349,25 @@ object Util {
       self match {
         case ScalarTh(params, name, pkg) =>
           val (mod, decl) = ctx.findType(name, pkg)
-          val nextCtx = mod.toContext(ctx.idSeq, ctx.inferStack, ctx.lowMod, ctx.deep)
 
+          if (ctx.inferStack.headOption != Some("acquire_release_eval_no_stack_overflow_stub"))
+            Seq("acquire", "release").foreach { ackOrRelease =>
+              mod.inlineSelfDefs.get(ackOrRelease).flatMap(defs =>
+                defs.find(d => Invoker.isSelfApplicable(ctx, d.params, Seq.empty, d.lambda.args.head.typeHint.get, self))) match {
+                case Some(d) =>
+                  ctx.inferStack.push("acquire_release_eval_no_stack_overflow_stub")
+                  Invoker.evalFromMod(ctx, mod, d, Seq.empty, Seq(self).toIterator, None)
+                  ctx.inferStack.pop()
+                case None =>
+              }
+            }
+
+          //FIXME: why no nextCtx for scalarDecl?
+          val nextCtx = mod.toContext(ctx.pkg, ctx.idSeq, ctx.inferStack, ctx.lowMod, ctx.deep)
           decl match {
             case sd: ScalarDecl => sd.toLow(params, ctx)
             case struct: StructDecl => struct.toLow(params, nextCtx)
-            case ud: UnionDecl => ud.toLow(params, ctx)
+            case ud: UnionDecl => ud.toLow(params, nextCtx)
           }
         case StructTh(fields) =>
           val lowFields = fields.map(f => Ast2.Field(f.name, f.typeHint.toLow(ctx)))

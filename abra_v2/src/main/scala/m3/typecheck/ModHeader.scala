@@ -18,7 +18,8 @@ case class ModHeader(pkg: String,
                      inlineDefs: Map[String, Def],
                      inlineSelfDefs: Map[String, Seq[Def]],
                      headers: mutable.HashMap[String, DefHeader]) {
-  def toContext(idSeq: Int, inferStack: mutable.Stack[String], lowMod: Mod, deep: Int) =
+
+  def toContext(pkg: String, idSeq: Int, inferStack: mutable.Stack[String], lowMod: Mod, deep: Int) =
     TContext(idSeq, inferStack, lowMod, deep, pkg, imports, typeImports, lowCode, types, inlineDefs, inlineSelfDefs, headers)
 
   def getHeader(modName: String) =

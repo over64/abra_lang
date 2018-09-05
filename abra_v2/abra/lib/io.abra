@@ -53,8 +53,9 @@ def readDelim = self: File, delim: Int do
         if ch == -1 || ch == delim do end = true
         else sb.pushByte(ch.toByte()) ..
 
+    # FIXME: object must be at dead state?
     if sb.len != 0 do
         sb.pushByte(delim.toByte())
         sb.pushByte(0.toByte())
         sb.asString()
-    else none ..String | None
+    else sbuffer.freeData(sb.data) ..String | None

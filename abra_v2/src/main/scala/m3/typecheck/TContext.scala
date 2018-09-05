@@ -57,7 +57,7 @@ case class TContext(var idSeq: Int,
         findImport(modName) match {
           case None =>
             throw new RuntimeException(s"no such module $modName")
-          case Some(header) => header.toContext(idSeq, inferStack, lowMod, deep).findTypeOpt(name, tail)
+          case Some(header) => header.toContext(pkg, idSeq, inferStack, lowMod, deep).findTypeOpt(name, tail)
         }
     }
 

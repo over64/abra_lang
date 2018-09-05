@@ -56,8 +56,9 @@ object TypeChecker {
             case sth: ScalarTh =>
               ctx.findType(sth.name, sth.mod) match {
                 case (_, sd: StructDecl) =>
-                  sd.fields.find(fd => fd.name == fieldId.value).getOrElse(throw new RuntimeException(s"no such field $fieldId"))
-                    .th.spec(makeSpecMap(sd.params, sth.params))
+                  sd.fields.find(fd => fd.name == fieldId.value).getOrElse(throw new RuntimeException(s"no such field $fieldId")).th
+                    .moveToModSeq(sth.mod)
+                    .spec(makeSpecMap(sd.params, sth.params))
                 case _ => throw new RuntimeException(s"no such field ${fieldId.value} on type $fth")
               }
             case sth: StructTh =>

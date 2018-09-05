@@ -8,7 +8,7 @@ class _14OrAndTest extends FunSuite with IntegrationUtil {
       llvm declare i32 @puts(i8*) .
 
       type None = llvm void .
-      ref type String = llvm i8* .
+      type String = ref llvm i8* .
       type Bool = llvm i8 .
 
       def print = s: String do llvm

@@ -2,7 +2,7 @@ import /universe with None, Bool, Int, String, Float .
 
 type Array[T] = ref llvm %T* .
 
-def lowAlloc[T] = length: Int do llvm
+def alloc[T] = length: Int do llvm
   %ptr = getelementptr %T, %T* null, i32 %length
   %sizeNoLength = ptrtoint %T* %ptr to i64
   %size = add nsw i64 %sizeNoLength, 4
@@ -101,15 +101,6 @@ def copy[T] = from: Array[T], to: Array[T],
   %size = mul nsw i64 %n64, %sizeof
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %toPtr, i8* %fromPtr, i64 %size, i32 0, i1 false)
   ret void .None
-
-def alloc[T] = len: Int do
-    array = lowAlloc[T](len)
-    # hacky way to spec acquire / release functions
-    if false do
-        array.acquire()
-        array.release() .
-
-    array .
 
 def mk[T] = length: Int, init: (Int) -> T do
   array = alloc[T](length)
