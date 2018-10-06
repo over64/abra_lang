@@ -21,28 +21,12 @@ class _20GenericDefTest extends FunSuite with IntegrationUtil {
       %1 = sext i32 %i to i64
       ret i64 %1 .Long
 
-    def add[T] = t1: T, t2: T do
-      t1 + t2 .T
+    def add = t1: t, t2: t do
+      t1 + t2 .t
 
     def main =
       add(long(1), long(2))
       add(1, 1) .
-  """, exit = Some(2))
-  }
-
-  test("spec def with ret parameter only") {
-    assertCodeEquals(
-      """
-    type Int  = llvm i32 .
-
-    def bar[T] = llvm
-      %1 = alloca %T
-      %2 = load %T, %T* %1
-      ret %T %2 .T
-
-    def main =
-      x = bar[Int]()
-      2 .
   """, exit = Some(2))
   }
 
@@ -51,10 +35,10 @@ class _20GenericDefTest extends FunSuite with IntegrationUtil {
       """
     type Int  = llvm i32 .
 
-    def bar[T] = llvm
-      %1 = alloca %T
-      %2 = load %T, %T* %1
-      ret %T %2 .T
+    def bar = llvm
+      %1 = alloca %t
+      %2 = load %t, %t* %1
+      ret %t %2 .t
 
     def main =
       x: Int = bar()

@@ -11,13 +11,13 @@ import scala.collection.mutable
   * Created by over on 27.09.17.
   */
 object TypeChecker {
-  def evalExpr(ctx: TContext, scope: BlockScope, th: Option[ThAdvice], expr: Expression): (TypeHint, String, Seq[Ast2.Stat]) = expr match {
+  def evalExpr(ctx: TContext, scope: BlockScope, th: TypeHint, expr: Expression): (TypeHint, String, Seq[Ast2.Stat]) = expr match {
     case lId(value) =>
       scope.findVarOpt(value) match {
         case Some(vi) => (vi.th, value, Seq.empty)
         case None =>
           val cont = ctx.defs.getOrElse(value, throw new RuntimeException(s"no local var, argument or global function with name $value"))
-          val header = evalDef(ctx, scope.mkChild(p => new FnScope(None)), cont, Seq.empty)
+          val header = evalDef(ctx, scope.mkChild(p => new FnScope(None)), cont, mutable.HashMap.empty)
           val vName = "$l" + ctx.nextAnonId()
           scope.addLocal(ctx, vName, header.th)
           (header.th, vName, Seq(Ast2.Store(init = true, Ast2.Id(vName, Seq.empty), Ast2.Id(header.lowName))))
@@ -73,29 +73,28 @@ object TypeChecker {
         Ast2.Id(vName),
         Ast2.Id(evName, props.map(_.value))))
     case Tuple(seq) =>
-      val actualTh = th.getOrElse(throw new RuntimeException("typehint required")).toTh
       val argTasks = seq.map { arg =>
         new InferTask {
-          override def infer(expected: Option[ThAdvice]) = {
+          override def infer(expected: TypeHint) = {
             evalExpr(ctx, scope, expected, arg)
           }
         }
       }
-      actualTh match {
+      th match {
         case sth: StructTh =>
           Invoker.invokeAnonConstructor(ctx, scope, sth, argTasks.iterator)
-        case _ => throw new RuntimeException(s"unexpected value of $actualTh here")
+        case _ => throw new RuntimeException(s"unexpected value of $th here")
       }
-    case SelfCall(params, fnName, self, args) =>
+    case SelfCall(fnName, self, args) =>
       val argTasks = args.map(arg => new InferTask {
-        override def infer(expected: Option[ThAdvice]) = {
+        override def infer(expected: TypeHint) = {
           evalExpr(ctx, scope, expected, arg)
         }
       })
       self match {
         case id: lId =>
           if (ctx.imports.exists { case (modName, _) => modName == id.value })
-            return Invoker.invokeMod(ctx, scope, id.value, fnName, params, argTasks.iterator, th)
+            return Invoker.invokeMod(ctx, scope, id.value, fnName, argTasks.iterator, th)
 
           def callField(fth: FnTh) = {
             val lambdaVarName = "$l" + ctx.nextAnonId().toString
@@ -132,19 +131,19 @@ object TypeChecker {
           }
 
           val selfTask = new InferTask {
-            override def infer(expected: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat]) = (vi.th, id.value, Seq.empty)
+            override def infer(expected: TypeHint): (TypeHint, String, Seq[Ast2.Stat]) = (vi.th, id.value, Seq.empty)
           }
-          Invoker.invokeSelfDef(ctx, scope, fnName, params, vi.th, (selfTask +: argTasks).iterator, th)
+          Invoker.invokeSelfDef(ctx, scope, fnName, vi.th, (selfTask +: argTasks).iterator, th)
         case _expr: Expression =>
-          val (selfTh, vName, lowStats) = evalExpr(ctx, scope, None, _expr)
+          val (selfTh, vName, lowStats) = evalExpr(ctx, scope, AnyTh, _expr)
           val selfTask = new InferTask {
-            override def infer(expected: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat]) = (selfTh, vName, lowStats)
+            override def infer(expected: TypeHint): (TypeHint, String, Seq[Ast2.Stat]) = (selfTh, vName, lowStats)
           }
-          Invoker.invokeSelfDef(ctx, scope, fnName, params, selfTh, (selfTask +: argTasks).iterator, th)
+          Invoker.invokeSelfDef(ctx, scope, fnName, selfTh, (selfTask +: argTasks).iterator, th)
       }
-    case Call(params, expr, args) =>
+    case Call(expr, args) =>
       val argTasks = args.map(arg => new InferTask {
-        override def infer(expected: Option[ThAdvice]) = {
+        override def infer(expected: TypeHint) = {
           evalExpr(ctx, scope, expected, arg)
         }
       })
@@ -152,12 +151,12 @@ object TypeChecker {
         case id: lId =>
           // is it constructor?
           if (id.value.head.isUpper) {
-            Invoker.invokeConstructor(ctx, scope, id.value, params, argTasks.iterator)
+            Invoker.invokeConstructor(ctx, scope, id.value, argTasks.iterator, th)
           } else {
             // 1. find function
             // 2. find var
             if (ctx.defs.contains(id.value))
-              Invoker.invokeDef(ctx, scope, id.value, params, argTasks.iterator, th)
+              Invoker.invokeDef(ctx, scope, id.value, argTasks.iterator, th)
             else {
               val vi = scope.findVarOpt(id.value)
                 .getOrElse(throw new RuntimeException(s"no such var of function with name ${id.value}"))
@@ -167,9 +166,9 @@ object TypeChecker {
                   Invoker.invokeLambda(ctx, scope, id.value, fth, argTasks.iterator)
                 case selfTh =>
                   val selfTask = new InferTask {
-                    override def infer(expected: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat]) = (selfTh, id.value, Seq.empty)
+                    override def infer(expected: TypeHint): (TypeHint, String, Seq[Ast2.Stat]) = (selfTh, id.value, Seq.empty)
                   }
-                  Invoker.invokeSelfDef(ctx, scope, "get", params, selfTh, (selfTask +: argTasks).iterator, th)
+                  Invoker.invokeSelfDef(ctx, scope, "get", selfTh, (selfTask +: argTasks).iterator, th)
               }
             }
           }
@@ -179,7 +178,7 @@ object TypeChecker {
           // 2. if th == FnTh -> call
           // 3. if arg.empty -> err not callable
           // 4. if !arg.empty -> find self get
-          val (th, vName, stats) = evalExpr(ctx, scope, None, _expr)
+          val (th, vName, stats) = evalExpr(ctx, scope, AnyTh, _expr)
           th match {
             case fth: FnTh =>
               val (retTh, retVName, callStats) = Invoker.invokeLambda(ctx, scope, vName, fth, argTasks.iterator)
@@ -188,35 +187,26 @@ object TypeChecker {
           }
       }
     case lambda: Lambda =>
-      val _def = Def(Seq.empty, "$def" + ctx.nextAnonId(), lambda, None)
-
-      //      def mapAndCheck()
-      //
-      //      val argsTh = th match {
-      //        case Some(fna: FnAdvice) =>
-      //          if (fna.args.length != lambda.args.length)
-      //            throw new RuntimeException(s"expected ${fna.args.length} has ${lambda.args.length}")
-      //          (fna.args zip lambda.args).map {
-      //            case (Some(argAdvice), Arg(name, Some(argTh))) =>
-      //              argAdvice.toThOpt match {
-      //                case Some(advTh) =>
-      //                  if (advTh != argTh) throw new RuntimeException(s"expected $advTh has $argTh")
-      //                  argTh
-      //                case None => argTh
-      //              }
-      //            case (Some(argAdvice), Arg(name, None)) => argAdvice.toTh
-      //            case (None, Arg(name, Some(argTh))) => argTh
-      //            case (None, Arg(name, None)) => throw new RuntimeException("expected type hint")
-      //          }
-      //        case _ => FnAdvice(lambda.args.map(arg => None), None)
-      //      }
-
-      val advice = th match {
-        case Some(fn: FnAdvice) => fn
-        case _ => FnAdvice(lambda.args.map(arg => None), None)
+      val lambdaTh = FnTh(Seq.empty, lambda.args.map(_.typeHint), AnyTh)
+      if (!Invoker.checkAndInfer(ctx, mutable.HashMap.empty, th, lambdaTh)) {
+        throw new RuntimeException(s"expected $th has $lambdaTh")
       }
 
-      val header = evalDef(ctx, scope.mkChild(p => new FnScope(Some(p))), _def, Seq.empty)
+      // FIXME: implement case for UnionTh
+      val (argsTh, retTh) = th match {
+        case fth: FnTh if fth.args.length == lambda.args.length =>
+          (fth.args.zip(lambda.args).map {
+            case (AnyTh, arg) => arg.typeHint
+            case (ght: GenericTh, arg) => arg.typeHint
+            case (th, _) => th
+          }, fth.ret)
+        case _ => (lambda.args.map(_.typeHint), AnyTh)
+      }
+      val _def = Def(
+        "$def" + ctx.nextAnonId(),
+        Lambda((lambda.args zip argsTh).map { case (arg, th) => Arg(arg.name, th) }, lambda.body),
+        retTh)
+      val header = evalDef(ctx, scope.mkChild(p => new FnScope(Some(p))), _def, mutable.HashMap.empty)
 
       val vName = "$l" + ctx.nextAnonId()
       scope.addLocal(ctx, vName, header.th)
@@ -226,11 +216,11 @@ object TypeChecker {
       val lowId = Ast2.Id("$andOr" + ctx.nextAnonId())
       scope.addLocal(ctx, lowId.v, thBool)
 
-      val (leftTh, leftName, leftStats) = evalExpr(ctx, scope, Some(adviceBool), andOr.left)
+      val (leftTh, leftName, leftStats) = evalExpr(ctx, scope, thBool, andOr.left)
       if (!thBool.isEqual(ctx, new mutable.HashMap(), leftTh))
         throw new RuntimeException(s"expected $thBool has $leftTh")
 
-      val (rightTh, rightName, rightStats) = evalExpr(ctx, scope, Some(adviceBool), andOr.right)
+      val (rightTh, rightName, rightStats) = evalExpr(ctx, scope, thBool, andOr.right)
       if (!thBool.isEqual(ctx, new mutable.HashMap(), rightTh))
         throw new RuntimeException(s"expected $thBool has $rightTh")
 
@@ -253,7 +243,7 @@ object TypeChecker {
         }
 
         val stats =
-          expressions.map { expr => evalExpr(ctx, blockScope, None, expr)._3 }.flatten
+          expressions.map { expr => evalExpr(ctx, blockScope, AnyTh, expr)._3 }.flatten
         val (lastTh, vName, lastStat) = evalExpr(ctx, blockScope, th, last)
 
         val freeStats = blockScope.vars.map {
@@ -263,7 +253,7 @@ object TypeChecker {
         (lastTh, vName, stats ++ lastStat, freeStats)
       }
 
-      val (condTh, condName, condStats) = evalExpr(ctx, scope, Some(adviceBool), cond)
+      val (condTh, condName, condStats) = evalExpr(ctx, scope, thBool, cond)
       if (!thBool.isEqual(ctx, new mutable.HashMap(), condTh))
         throw new RuntimeException(s"expected $thBool has $condTh")
 
@@ -291,11 +281,11 @@ object TypeChecker {
           doStats ++ doStore ++ doFree,
           elseStats ++ elseStore ++ elseFree))
     case While(cond, _do) =>
-      val (condTh, condName, condStats) = evalExpr(ctx, scope, Some(adviceBool), cond)
+      val (condTh, condName, condStats) = evalExpr(ctx, scope, thBool, cond)
       val blockScope = scope.mkChild(p => new BlockScope(Some(p)))
       val stats =
         _do.foldLeft(Seq[Ast2.Stat]()) {
-          case (stats, expr) => stats ++ evalExpr(ctx, blockScope, None, expr)._3
+          case (stats, expr) => stats ++ evalExpr(ctx, blockScope, AnyTh, expr)._3
         }
 
       val freeStats = blockScope.vars.map {
@@ -314,7 +304,7 @@ object TypeChecker {
         }
 
         val stats =
-          expressions.flatMap { expr => evalExpr(ctx, blockScope, None, expr)._3 }
+          expressions.flatMap { expr => evalExpr(ctx, blockScope, AnyTh, expr)._3 }
         val (lastTh, vName, lastStat) = evalExpr(ctx, blockScope, th, last)
 
         val freeStats = blockScope.vars
@@ -333,7 +323,7 @@ object TypeChecker {
         }
 
         val stats =
-          expressions.flatMap { expr => evalExpr(ctx, blockScope, None, expr)._3 }
+          expressions.flatMap { expr => evalExpr(ctx, blockScope, AnyTh, expr)._3 }
         val (lastTh, vName, lastStat) = evalExpr(ctx, blockScope, th, last)
 
         val freeStats = blockScope.vars
@@ -344,7 +334,7 @@ object TypeChecker {
 
       def inferSuperType(variants: Seq[TypeHint]): UnionTh = {
         val result = new mutable.ListBuffer[TypeHint]()
-        val tmp = new mutable.HashMap[GenericType, TypeHint]()
+        val tmp = new mutable.HashMap[GenericTh, TypeHint]()
 
         variants.foreach { v =>
           if (result.forall(th => !Invoker.checkAndInfer(ctx, tmp, th, v)))
@@ -354,7 +344,7 @@ object TypeChecker {
         UnionTh(result)
       }
 
-      val (exprTh, exprName, exprStats) = evalExpr(ctx, scope, Some(adviceBool), expr)
+      val (exprTh, exprName, exprStats) = evalExpr(ctx, scope, thBool, expr)
       val retValName = "_w" + ctx.nextAnonId()
       val lowIsSeq =
         isSeq.map { is =>
@@ -378,9 +368,8 @@ object TypeChecker {
       }
 
       val retValTh = th match {
-        case None => overallType
-        case Some(advice) =>
-          val expectedTh = advice.toTh
+        case AnyTh => overallType
+        case expectedTh =>
           if (!Invoker.checkAndInfer(ctx, new mutable.HashMap(), expectedTh, overallType))
             throw new RuntimeException(s"expected $expectedTh has $overallType")
           expectedTh
@@ -396,26 +385,13 @@ object TypeChecker {
       val toVarName = to.head.value
 
       typeHint match {
-        case Some(th) =>
-          if (to.length != 1) throw new RuntimeException("type hint unexpected here")
-
-          if (scope.findVarOpt(to.head.value) != None)
-            throw new RuntimeException(s"var with name $toVarName already declared")
-
-          val (whatTh, whatName, whatStats) =
-            evalExpr(ctx, scope, th.toAdviceOpt(mutable.HashMap()), what)
-
-          scope.addLocal(ctx, toVarName, th)
-
-          //FIXME: check types compatibility
-          (thNil, toVarName, whatStats :+ Ast2.Store(init = true, Ast2.Id(toVarName), Ast2.Id(whatName)))
-        case None =>
+        case AnyTh =>
           scope.findVarOpt(toVarName) match {
             case None =>
               if (to.length != 1) throw new RuntimeException(s"variable with name $toVarName not found")
 
               val (whatTh, whatName, whatStats) =
-                evalExpr(ctx, scope, None, what)
+                evalExpr(ctx, scope, AnyTh, what)
 
               scope.addLocal(ctx, toVarName, whatTh)
 
@@ -439,7 +415,7 @@ object TypeChecker {
                 }
 
               val (whatTh, whatName, whatStats) =
-                evalExpr(ctx, scope, toTh.toAdviceOpt(mutable.HashMap.empty), what)
+                evalExpr(ctx, scope, toTh, what)
 
               if (!Invoker.checkAndInfer(ctx, new mutable.HashMap(), toTh, whatTh))
                 throw new RuntimeException(s"expected $toTh has $whatTh")
@@ -448,6 +424,19 @@ object TypeChecker {
                 Ast2.Id(toVarName, to.drop(1).map(v => v.value)),
                 Ast2.Id(whatName)))
           }
+        case th =>
+          if (to.length != 1) throw new RuntimeException("type hint unexpected here")
+
+          if (scope.findVarOpt(to.head.value) != None)
+            throw new RuntimeException(s"var with name $toVarName already declared")
+
+          val (whatTh, whatName, whatStats) =
+            evalExpr(ctx, scope, th, what)
+
+          scope.addLocal(ctx, toVarName, th)
+
+          //FIXME: check types compatibility
+          (thNil, toVarName, whatStats :+ Ast2.Store(init = true, Ast2.Id(toVarName), Ast2.Id(whatName)))
       }
     case Ret(optExpr) =>
       optExpr match {
@@ -455,19 +444,19 @@ object TypeChecker {
           val (actualTh, vName, lowStats) = evalExpr(ctx, scope, th, expr)
 
           if (actualTh == thNil)
-            (thNil, "", lowStats :+ Ast2.Ret(None))
+            (actualTh, "", lowStats :+ Ast2.Ret(None))
           else {
             scope.setRet(actualTh)
-            (thNil, "", lowStats :+ Ast2.Ret(Some(vName)))
+            (actualTh, "", lowStats :+ Ast2.Ret(Some(vName)))
           }
         case None =>
           (thNil, "", Seq(Ast2.Ret(None)))
       }
   }
 
-  def evalDef(ctx: TContext, scope: FnScope, _def: Def, specs: Seq[TypeHint]): DefHeader = {
+  def evalDef(ctx: TContext, scope: FnScope, _def: Def, specMap: mutable.HashMap[GenericTh, TypeHint]): DefHeader = {
     val deep = ctx.inferStack.length + ctx.deep + 1
-    val fn = if (specs.isEmpty) _def else _def.spec(specs, ctx)
+    val fn = if (specMap.isEmpty) _def else _def.spec(specMap, ctx)
     val lowName = fn.lowName(ctx)
 
     ctx.headers.get(lowName) match {
@@ -486,7 +475,7 @@ object TypeChecker {
       }
 
     val argsTh = fn.lambda.args.map { arg =>
-      arg.typeHint.getOrElse(throw new RuntimeException(s"Expected type hint for arg ${arg.name}"))
+      arg.typeHint.assertNotAny(s"Expected type hint for arg ${arg.name}")
     }
 
     (fn.lambda.args zip argsTh).foreach {
@@ -496,8 +485,8 @@ object TypeChecker {
     val (closure, retTh, code) =
       fn.lambda.body match {
         case llVm(code) =>
-          val th = fn.retTh.getOrElse(throw new RuntimeException("Expected type hint for return value of LLVM function"))
-          (Seq[(String, ClosureType)](), th, Ast2.LLCode(code))
+          fn.retTh.assertNotAny("Expected type hint for return value of LLVM function")
+          (Seq[(String, ClosureType)](), fn.retTh, Ast2.LLCode(code))
         case AbraCode(seq) =>
           val bodyScope = scope.mkChild({ parent => new BlockScope(Some(parent)) })
           val (expressions, last) =
@@ -509,9 +498,8 @@ object TypeChecker {
             case other => Ret(Some(other))
           }
 
-          val stats = expressions.map(expr => evalExpr(ctx, bodyScope, None, expr)._3).flatten
-          val (_, vName, lastStats) = evalExpr(ctx, bodyScope,
-            fn.retTh.flatMap(th => th.toAdviceOpt(mutable.HashMap.empty)), realLast)
+          val stats = expressions.flatMap(expr => evalExpr(ctx, bodyScope, AnyTh, expr)._3)
+          val (_, vName, lastStats) = evalExpr(ctx, bodyScope, fn.retTh, realLast)
 
           val lowRetStat = lastStats.last.asInstanceOf[Ast2.Ret]
 
@@ -549,12 +537,12 @@ object TypeChecker {
     ctx.lowCode.foreach { l => ctx.lowMod.addLow(l.code) }
     ctx.defs.foreach { case (_, fn) =>
       if (fn.isNotGeneric)
-        evalDef(ctx, new FnScope(None), fn, Seq.empty)
+        evalDef(ctx, new FnScope(None), fn, mutable.HashMap.empty)
     }
     ctx.selfDefs.foreach { case (_, seq) =>
       seq.foreach { fn =>
         if (fn.isNotGeneric)
-          evalDef(ctx, new FnScope(None), fn, Seq.empty)
+          evalDef(ctx, new FnScope(None), fn, mutable.HashMap.empty)
       }
     }
   }

@@ -9,44 +9,42 @@ import scala.collection.mutable
 object Invoker {
 
   trait InferTask {
-    def infer(expected: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat])
+    def infer(expected: TypeHint): (TypeHint, String, Seq[Ast2.Stat])
   }
 
-  def makeInferSpecMap(gen: Seq[GenericType], params: Seq[TypeHint]): mutable.HashMap[GenericType, TypeHint] = {
-    if (params.nonEmpty) {
-      if (gen.length != params.length)
-        throw new RuntimeException(s"expected ${gen.length} params but has ${params.length}")
-      mutable.HashMap(gen zip params: _*)
-    } else
-      mutable.HashMap(gen.map(p => (p, ScalarTh(Seq.empty, p.name + "*", Seq.empty))): _*)
+  def checkUnionMember(ctx: TContext, specMap: mutable.HashMap[GenericTh, TypeHint],
+                       ud: UnionDecl, params: Seq[TypeHint], th: TypeHint): Boolean = {
+
+    if (ud.params.length != params.length) throw new RuntimeException(s"expected ${ud.params.length} for $ud has ${params.length}")
+
+    val specMapInternal = makeSpecMap(ud.params, params)
+    ud.variants.exists { udVariant =>
+      udVariant.spec(specMapInternal).isEqual(ctx, specMap, th)
+    }
   }
 
-  def checkAndInfer(ctx: TContext, specMap: mutable.HashMap[GenericType, TypeHint], expected: TypeHint, has: TypeHint): Boolean =
+  def checkAndInfer(ctx: TContext, specMap: mutable.HashMap[GenericTh, TypeHint], expected: TypeHint, has: TypeHint): Boolean =
     (expected, has) match {
-      case (adv: ScalarTh, th: ScalarTh) =>
-        if (adv.name.contains("*"))
-          specMap.get(GenericType(adv.name.replace("*", ""))) match {
-            case Some(ScalarTh(_, name, pkg)) if name.contains("*") =>
-              specMap.put(GenericType(adv.name.replace("*", "")), th) // ok replacement
-              true
-            case _ => false
-          }
-        else if (adv.name != th.name) {
+      case (th, AnyTh) => true
+      case (th, gth: GenericTh) => true
+      case (adv: ScalarTh, sth: ScalarTh) =>
+        if (adv.name != sth.name) {
           ctx.findType(adv.name, adv.mod) match {
-            case (_, ud: UnionDecl) =>
-              if (ud.params.length != adv.params.length) throw new RuntimeException(s"expected ${ud.params.length} for $ud has ${adv.params.length}")
-
-              ud.variants.exists { udVariant =>
-                val (variantSpec, isSpec) = ud.params.zipWithIndex
-                  .find { case (g, idx) => g.name == udVariant.name }
-                  .map { case (g, idx) => (adv.params(idx), true) }
-                  .getOrElse((udVariant, false))
-
-                checkAndInfer(ctx, specMap, variantSpec, th)
-              }
+            case (_, ud: UnionDecl) => checkUnionMember(ctx, specMap, ud, adv.params, sth)
             case _ => false
           }
-        } else isEqualSeq(ctx, specMap, adv.params, th.params)
+        } else isEqualSeq(ctx, specMap, adv.params, sth.params)
+
+      case (adv: ScalarTh, sth: StructTh) =>
+        ctx.findType(adv.name, adv.mod) match {
+          case (_, ud: UnionDecl) => checkUnionMember(ctx, specMap, ud, adv.params, sth)
+          case _ => false
+        }
+      case (adv: ScalarTh, fth: FnTh) =>
+        ctx.findType(adv.name, adv.mod) match {
+          case (_, ud: UnionDecl) => checkUnionMember(ctx, specMap, ud, adv.params, fth)
+          case _ => false
+        }
       case (adv: ScalarTh, uth: UnionTh) =>
         ctx.findType(adv.name, adv.mod) match {
           case (_, ud: UnionDecl) =>
@@ -59,7 +57,6 @@ object Invoker {
             }
           case _ => false
         }
-
       case (adv: UnionTh, th: ScalarTh) =>
         adv.seq.exists { advVariant => advVariant.isEqual(ctx, specMap, th) }
       case (adv: UnionTh, th: UnionTh) =>
@@ -68,12 +65,18 @@ object Invoker {
         isEqualSeq(ctx, specMap, adv.seq.map(_.typeHint), th.seq.map(_.typeHint))
       case (adv: FnTh, th: FnTh) =>
         isEqualSeq(ctx, specMap, adv.args, th.args) && checkAndInfer(ctx, specMap, adv.ret, th.ret)
+      case (adv: GenericTh, th) =>
+        specMap.get(adv) match {
+          case None => specMap.put(adv, th); true
+          case _ => false
+        }
+      case (AnyTh, th) => true
       case (adv, th) => false
     }
 
   def invokeArgs(ctx: TContext,
                  scope: BlockScope,
-                 specMap: mutable.HashMap[GenericType, TypeHint],
+                 specMap: mutable.HashMap[GenericTh, TypeHint],
                  defArgs: Iterator[TypeHint],
                  args: Iterator[InferTask]): (Seq[Ast2.Stat], Seq[(String, TypeHint)]) = {
     val argsStats = mutable.ListBuffer[Ast2.Stat]()
@@ -82,17 +85,15 @@ object Invoker {
     while (defArgs.hasNext) {
       val defArg = defArgs.next()
       val arg = if (!args.hasNext) throw new RuntimeException("too least args") else args.next()
+      val argTh = defArg.spec(specMap)
+      val (th, vName, stats) = arg.infer(argTh)
 
-      val argAdvice = defArg.toAdviceOpt(specMap)
-      val (th, vName, stats) = arg.infer(argAdvice)
-
-      val argTh = defArg.spec(specMap.toMap)
       if (!checkAndInfer(ctx, specMap, argTh, th))
         throw new RuntimeException(s"expected $argTh has $th")
 
       argsStats ++= stats
 
-      val argThSpec = defArg.spec(specMap.toMap)
+      val argThSpec = defArg.spec(specMap)
       val bridgedArg =
         if (!argThSpec.isEqual(ctx, new mutable.HashMap(), th)) {
           val newName = "_bridge" + ctx.nextAnonId()
@@ -109,13 +110,13 @@ object Invoker {
   }
 
   def checkArgs(ctx: TContext,
-                specMap: mutable.HashMap[GenericType, TypeHint],
+                specMap: mutable.HashMap[GenericTh, TypeHint],
                 defArgs: Iterator[TypeHint],
                 args: Iterator[TypeHint]): Unit = {
     while (defArgs.hasNext) {
       val defArg = defArgs.next()
       val th = if (!args.hasNext) throw new RuntimeException("too least args") else args.next()
-      val argTh = defArg.spec(specMap.toMap)
+      val argTh = defArg.spec(specMap)
 
       if (!checkAndInfer(ctx, specMap, argTh, th))
         throw new RuntimeException(s"expected $argTh has $th")
@@ -144,15 +145,20 @@ object Invoker {
   def invokeConstructor(ctx: TContext,
                         scope: BlockScope,
                         typeName: String,
-                        params: Seq[TypeHint],
-                        args: Iterator[InferTask]): (TypeHint, String, Seq[Ast2.Stat]) = {
+                        args: Iterator[InferTask],
+                        ret: TypeHint): (TypeHint, String, Seq[Ast2.Stat]) = {
+    // Vec[Int] vs Vec[t]
     val consType =
       ctx.findType(typeName, Seq()) match {
         case (_, sd: StructDecl) => sd
         case _ => throw new RuntimeException(s"$typeName is not struct type")
       }
+    val consTh = ScalarTh(consType.params, consType.name, Seq.empty)
 
-    val specMap = makeInferSpecMap(consType.params, params)
+    val specMap = mutable.HashMap.empty[GenericTh, TypeHint]
+    if (!checkAndInfer(ctx, specMap, consTh, ret))
+      throw new RuntimeException(s"expected $consTh has $ret")
+
     val (argsStats, argsVars) = invokeArgs(ctx, scope, specMap,
       consType.fields.map(f => f.th).toIterator, args)
 
@@ -160,9 +166,9 @@ object Invoker {
     val retTh = ScalarTh(flatSpecs, consType.name, Seq())
 
     // code generation will be performed on codegen part
-    val virtualArgs = consType.fields.map(f => Arg(f.name, Some(f.th)))
-    val virtualDef = Def(consType.params, consType.name, Lambda(virtualArgs, AbraCode(Seq.empty)), Some(retTh))
-    val _def = virtualDef.spec(flatSpecs, ctx)
+    val virtualArgs = consType.fields.map(f => Arg(f.name, f.th))
+    val virtualDef = Def(consType.name, Lambda(virtualArgs, AbraCode(Seq.empty)), retTh)
+    val _def = virtualDef.spec(specMap, ctx)
 
     makeCall(ctx, scope, _def.name + ".$cons", retTh, argsStats, argsVars)
   }
@@ -171,7 +177,7 @@ object Invoker {
                             scope: BlockScope,
                             forType: StructTh,
                             args: Iterator[InferTask]): (TypeHint, String, Seq[Ast2.Stat]) = {
-    val specMap = mutable.HashMap[GenericType, TypeHint]()
+    val specMap = mutable.HashMap[GenericTh, TypeHint]()
     val (argsStats, argsVars) = invokeArgs(ctx, scope, specMap,
       forType.seq.map(f => f.typeHint).toIterator, args)
 
@@ -185,7 +191,7 @@ object Invoker {
                    th: FnTh,
                    args: Iterator[InferTask]) = {
 
-    val specMap = mutable.HashMap[GenericType, TypeHint]()
+    val specMap = mutable.HashMap[GenericTh, TypeHint]()
     val (argsStats, argsVars) = invokeArgs(ctx, scope, specMap,
       th.args.toIterator, args)
 
@@ -195,24 +201,22 @@ object Invoker {
   def invoke(ctx: TContext,
              scope: BlockScope,
              toCall: Def,
-             params: Seq[TypeHint],
              args: Iterator[InferTask],
-             ret: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat]) = {
+             ret: TypeHint): (TypeHint, String, Seq[Ast2.Stat]) = {
 
-    val specMap = makeInferSpecMap(toCall.params, params)
-
+    val specMap = new mutable.HashMap[GenericTh, TypeHint]()
+    if (!checkAndInfer(ctx, specMap, ret, toCall.retTh))
+      throw new RuntimeException(s"expected $ret has ${toCall.retTh}")
     val (argsStats, argsVars) = invokeArgs(ctx, scope, specMap,
-      toCall.lambda.args.map(a => a.typeHint.get).toIterator, args)
+      toCall.lambda.args.map(a => a.typeHint).toIterator, args)
 
     specMap.values.foreach {
-      case ScalarTh(_, name, _) =>
-        if (name.contains("*"))
-          throw new RuntimeException(s"explicit type parameter for call ${toCall.name} expected. Like ${toCall.name}[${name.replace("*", "")}]")
+      case gth: GenericTh =>
+        throw new RuntimeException(s"Internal compiler error. Generic type $gth not specialized")
       case _ =>
     }
 
-    val flatSpecs = toCall.params.map(cp => specMap(cp))
-    val header = TypeChecker.evalDef(ctx, scope.mkChild(p => new FnScope(None)), toCall, flatSpecs)
+    val header = TypeChecker.evalDef(ctx, scope.mkChild(p => new FnScope(None)), toCall, specMap)
     makeCall(ctx, scope, header.lowName, header.th.ret, argsStats, argsVars)
   }
 
@@ -221,21 +225,21 @@ object Invoker {
                     mod: ModHeader,
                     scope: BlockScope,
                     toCall: Def,
-                    params: Seq[TypeHint],
                     args: Iterator[InferTask],
-                    ret: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat]) = {
+                    ret: TypeHint): (TypeHint, String, Seq[Ast2.Stat]) = {
     val caleeMod = "$calee" + ctx.deep
     println("callee: " + caleeMod)
 
-    val specMap = makeInferSpecMap(toCall.params, params)
+    val specMap = new mutable.HashMap[GenericTh, TypeHint]()
+    if (!checkAndInfer(ctx, specMap, toCall.retTh, ret))
+      throw new RuntimeException(s"expected ${toCall.retTh} has $ret")
+
     val (argsStats, argsVars) = invokeArgs(ctx, scope, specMap,
-      toCall.lambda.args.map(a => a.typeHint.get.moveToMod(modName)).toIterator, args)
+      toCall.lambda.args.map(a => a.typeHint.moveToMod(modName)).toIterator, args)
 
     val fixedMap = specMap.map {
-      case (k, sth: ScalarTh) =>
-        if (sth.name.contains("*"))
-          throw new RuntimeException(s"explicit type parameter for call ${toCall.name} expected. Like ${toCall.name}[${sth.name.replace("*", "")}]")
-        (k, sth.moveToMod(caleeMod))
+      case (k, gth: GenericTh) =>
+        throw new RuntimeException(s"Internal compiler error. Generic type $gth not specialized")
       case (k, th) =>
         (k, th.moveToMod(caleeMod))
     }
@@ -256,8 +260,7 @@ object Invoker {
       mod.inlineSelfDefs,
       clonedHeaders)
 
-    val flatSpecs = toCall.params.map(cp => fixedMap(cp))
-    val header = TypeChecker.evalDef(evalOn, scope.mkChild(p => new FnScope(None)), toCall, flatSpecs)
+    val header = TypeChecker.evalDef(evalOn, scope.mkChild(p => new FnScope(None)), toCall, fixedMap)
     ctx.idSeq = evalOn.idSeq
 
     clonedHeaders.foreach { case (k, v) => mod.headers.put(k, v) }
@@ -267,20 +270,19 @@ object Invoker {
   def evalFromMod(ctx: TContext,
                   mod: ModHeader,
                   toCall: Def,
-                  params: Seq[TypeHint],
                   args: Iterator[TypeHint],
-                  ret: Option[ThAdvice]): Unit = {
+                  ret: TypeHint): Unit = {
     val caleeMod = "$calee" + ctx.deep
     println("callee: " + caleeMod)
 
-    val specMap = makeInferSpecMap(toCall.params, params)
-    checkArgs(ctx, specMap, toCall.lambda.args.map(a => a.typeHint.get).toIterator, args)
+    val specMap = new mutable.HashMap[GenericTh, TypeHint]()
+    if (!checkAndInfer(ctx, specMap, toCall.retTh, ret))
+      throw new RuntimeException(s"expected ${toCall.retTh} has $ret")
+    checkArgs(ctx, specMap, toCall.lambda.args.map(a => a.typeHint).toIterator, args)
 
     val fixedMap = specMap.map {
-      case (k, sth: ScalarTh) =>
-        if (sth.name.contains("*"))
-          throw new RuntimeException(s"explicit type parameter for call ${toCall.name} expected. Like ${toCall.name}[${sth.name.replace("*", "")}]")
-        (k, sth.moveToMod(caleeMod))
+      case (k, gth: GenericTh) =>
+        throw new RuntimeException(s"Internal compiler error. Generic type $gth not specialized")
       case (k, th) =>
         (k, th.moveToMod(caleeMod))
     }
@@ -301,8 +303,7 @@ object Invoker {
       mod.inlineSelfDefs,
       clonedHeaders)
 
-    val flatSpecs = toCall.params.map(cp => fixedMap(cp))
-    TypeChecker.evalDef(evalOn, new FnScope(None), toCall, flatSpecs)
+    TypeChecker.evalDef(evalOn, new FnScope(None), toCall, fixedMap)
 
     ctx.idSeq = evalOn.idSeq
     clonedHeaders.foreach { case (k, v) => mod.headers.put(k, v) }
@@ -312,25 +313,23 @@ object Invoker {
   def invokeDef(ctx: TContext,
                 scope: BlockScope,
                 name: String,
-                params: Seq[TypeHint],
                 args: Iterator[InferTask],
-                ret: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat]) = {
+                ret: TypeHint): (TypeHint, String, Seq[Ast2.Stat]) = {
     val fn = ctx.defs.getOrElse(name, throw new RuntimeException(s"no such function with name $name"))
-    invoke(ctx, scope, fn, params, args, ret)
+    invoke(ctx, scope, fn, args, ret)
   }
 
-  def isSelfApplicable(ctx: TContext, gen: Seq[GenericType], params: Seq[TypeHint], selfTh: TypeHint, selfArgTh: TypeHint): Boolean = {
-    val specMap = makeInferSpecMap(gen, params)
-    checkAndInfer(ctx, specMap, selfTh.spec(specMap.toMap), selfArgTh)
+  def isSelfApplicable(ctx: TContext, selfTh: TypeHint, selfArgTh: TypeHint): Boolean = {
+    val specMap = new mutable.HashMap[GenericTh, TypeHint]()
+    checkAndInfer(ctx, specMap, selfTh.spec(specMap), selfArgTh)
   }
 
   def invokeSelfDef(ctx: TContext,
                     scope: BlockScope,
                     name: String,
-                    params: Seq[TypeHint],
                     selfType: TypeHint,
                     args: Iterator[InferTask],
-                    ret: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat]) = {
+                    ret: TypeHint): (TypeHint, String, Seq[Ast2.Stat]) = {
 
     def invokeApplicableInMod(mod: ModHeader, name: String, selfType: TypeHint) = {
       val candidates = mod.imports.reverse.flatMap {
@@ -340,7 +339,7 @@ object Invoker {
           }
       }
       candidates.find {
-        case (modName, header, d) => d.name == name && isSelfApplicable(ctx, d.params, params, d.lambda.args.head.typeHint.get, selfType)
+        case (modName, header, d) => d.name == name && isSelfApplicable(ctx, d.lambda.args.head.typeHint, selfType)
       } match {
         case None =>
           // mod.imports.reverse.flatMap(_._2.headers.values).find { dheader =>
@@ -350,29 +349,28 @@ object Invoker {
             case (modName, dheader) =>
               dheader.name == name &&
                 dheader.isSelf &&
-                isSelfApplicable(ctx, Seq.empty, params.map(p => p.moveToMod(modName)),
-                  dheader.th.args.head.moveToMod(modName), selfType)
+                isSelfApplicable(ctx, dheader.th.args.head.moveToMod(modName), selfType)
           } match {
             case None =>
               throw new RuntimeException(s"no self function with name $name for type $selfType")
             case Some((modName, header)) =>
               ctx.lowMod.protos.put(header.lowName, header.th.moveToMod(modName).toLow(ctx))
 
-              val specMap = mutable.HashMap[GenericType, TypeHint]()
+              val specMap = mutable.HashMap[GenericTh, TypeHint]()
               val (argsStats, argsVars) = invokeArgs(ctx, scope, specMap,
                 header.th.args.map(_.moveToMod(modName)).toIterator, args)
               makeCall(ctx, scope, header.lowName, header.th.ret.moveToMod(modName), argsStats, argsVars)
           }
         case Some((modName, header, toCall)) =>
-          invokeFromMod(ctx, modName, header, scope, toCall, params, args, ret)
+          invokeFromMod(ctx, modName, header, scope, toCall, args, ret)
       }
     }
 
     ctx.selfDefs.get(name).flatMap { defs =>
-      defs.find(d => isSelfApplicable(ctx, d.params, params, d.lambda.args.head.typeHint.get, selfType))
+      defs.find(d => isSelfApplicable(ctx, d.lambda.args.head.typeHint, selfType))
     } match {
       case Some(fn) =>
-        invoke(ctx, scope, fn, params, args, ret)
+        invoke(ctx, scope, fn, args, ret)
       case None =>
         invokeApplicableInMod(ctx.toHeader, name, selfType)
     }
@@ -382,21 +380,20 @@ object Invoker {
                 scope: BlockScope,
                 modName: String,
                 fnName: String,
-                params: Seq[TypeHint],
                 args: Iterator[InferTask],
-                ret: Option[ThAdvice]): (TypeHint, String, Seq[Ast2.Stat]) = {
+                ret: TypeHint): (TypeHint, String, Seq[Ast2.Stat]) = {
     val mod = ctx.findImport(modName).getOrElse(throw new RuntimeException(s"no such module with name $modName"))
 
     mod.headers.get(mod.pkg + "." + fnName) match {
       case Some(header) =>
         ctx.lowMod.protos.put(header.lowName, header.th.moveToMod(modName).toLow(ctx))
-        val specMap = mutable.HashMap[GenericType, TypeHint]()
+        val specMap = mutable.HashMap[GenericTh, TypeHint]()
         val (argsStats, argsVars) = invokeArgs(ctx, scope, specMap,
           header.th.args.map(_.moveToMod(modName)).toIterator, args)
         makeCall(ctx, scope, header.lowName, header.th.ret.moveToMod(modName), argsStats, argsVars)
       case None =>
         val toCall = mod.inlineDefs.getOrElse(fnName, throw new RuntimeException(s"no such function $fnName in module $modName"))
-        invokeFromMod(ctx, modName, mod, scope, toCall, params, args, ret)
+        invokeFromMod(ctx, modName, mod, scope, toCall, args, ret)
     }
   }
 }

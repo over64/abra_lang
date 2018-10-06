@@ -17,12 +17,11 @@ class _06FunctionParse extends FunSuite {
 
   test("llvm function") {
     withStr("def + = x: Int, y: Int do llvm ;asm .Int", Def(
-      params = Seq(),
       name = "+",
       lambda = Lambda(Seq(
-        Arg("x", Some(ScalarTh(Seq(), "Int", Seq.empty))),
-        Arg("y", Some(ScalarTh(Seq(), "Int", Seq.empty)))),
+        Arg("x", ScalarTh(Seq(), "Int", Seq.empty)),
+        Arg("y", ScalarTh(Seq(), "Int", Seq.empty))),
         body = llVm(";asm")),
-      retTh = Some(ScalarTh(Seq(), "Int", Seq.empty))))
+      retTh = ScalarTh(Seq(), "Int", Seq.empty)))
   }
 }

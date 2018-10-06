@@ -1,6 +1,6 @@
 import
     /universe with None, Bool, Int, String, Float
-    /vec
+    /vec with Vec
     /array with Array
     /range with Range
     /sreader
@@ -10,10 +10,10 @@ def load = fname: String do
     objFile = io.fopen(fname, 'r')
     hasLine = true
 
-    vertexBuffer  = vec.mk[Float](32)
-    textureBuffer = vec.mk[Float](32)
-    normalBuffer  = vec.mk[Float](32)
-    meshBuffer    = vec.mk[Float](32)
+    vertexBuffer:  Vec[Float] = vec.mk(32)
+    textureBuffer: Vec[Float] = vec.mk(32)
+    normalBuffer:  Vec[Float] = vec.mk(32)
+    meshBuffer:    Vec[Float] = vec.mk(32)
 
     while hasLine do
         when objFile.readLine() is line: String do

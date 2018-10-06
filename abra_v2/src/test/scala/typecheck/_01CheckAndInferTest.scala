@@ -2,7 +2,7 @@ package typecheck
 
 import grammar.M2Parser
 import m3.codegen.IrUtil
-import m3.parse.Ast0.{GenericType, TypeDecl, TypeHint}
+import m3.parse.Ast0.{GenericTh, TypeDecl, TypeHint}
 import m3.typecheck.{Invoker, TContext}
 import org.antlr.v4.runtime.tree.ParseTree
 import org.scalatest.FunSuite
@@ -10,7 +10,7 @@ import parse.ParseUtil
 
 import scala.collection.mutable
 
-class CheckAndInferTest extends FunSuite {
+class _01CheckAndInferTest extends FunSuite {
   val typeHintParser = new ParseUtil {
     override def whatToParse: M2Parser => ParseTree = { parser => parser.typeHint() }
   }
@@ -32,18 +32,19 @@ class CheckAndInferTest extends FunSuite {
       "type Bool = llvm i8 .",
       "type Int = llvm i32 .",
       "type String = ref llvm i8* .",
-      "type U1 = Int | String | Bool .",
-      "type Value[T] = (v: T) ."
+      "type U1 = Int | String | Bool",
+      "type Value[t] = (v: t)",
+      "type U2[t, u] = t | u | (x: t, y: u) | (Bool) -> String | (t) -> u"
     )).map(td => (td.name, td)).toMap, Map(), Map(), new mutable.HashMap())
 
   test("check and infer: scalar & scalar") {
-    val empty = new mutable.HashMap[GenericType, TypeHint]()
+    val empty = new mutable.HashMap[GenericTh, TypeHint]()
     assert(Invoker.checkAndInfer(ctx, empty, expected = "Int".th, has = "Int".th) === true)
     assert(Invoker.checkAndInfer(ctx, empty, expected = "Int".th, has = "None".th) === false)
   }
 
   test("check and infer: scalar & union") {
-    val empty = new mutable.HashMap[GenericType, TypeHint]()
+    val empty = new mutable.HashMap[GenericTh, TypeHint]()
     assert(Invoker.checkAndInfer(ctx, empty, expected = "U1".th, has = "Int".th) === true)
     assert(Invoker.checkAndInfer(ctx, empty, expected = "U1".th, has = "None".th) === false)
     assert(Invoker.checkAndInfer(ctx, empty, expected = "U1".th, has = "Int | Bool".th) === true)
@@ -51,7 +52,7 @@ class CheckAndInferTest extends FunSuite {
   }
 
   test("check and infer: union & scalar") {
-    val empty = new mutable.HashMap[GenericType, TypeHint]()
+    val empty = new mutable.HashMap[GenericTh, TypeHint]()
     assert(Invoker.checkAndInfer(ctx, empty, expected = "Int | String".th, has = "Int".th) === true)
     assert(Invoker.checkAndInfer(ctx, empty, expected = "Int | String".th, has = "None".th) === false)
     assert(Invoker.checkAndInfer(ctx, empty, expected = "Int | String | Bool".th, has = "U1".th) === false)
@@ -59,23 +60,33 @@ class CheckAndInferTest extends FunSuite {
   }
 
   test("check and infer: union & union") {
-    val empty = new mutable.HashMap[GenericType, TypeHint]()
+    val empty = new mutable.HashMap[GenericTh, TypeHint]()
     assert(Invoker.checkAndInfer(ctx, empty, expected = "Int | String | None".th, has = "Int | None".th) === true)
     assert(Invoker.checkAndInfer(ctx, empty, expected = "Int | String".th, has = "Int | String | None".th) === false)
     assert(Invoker.checkAndInfer(ctx, empty, expected = "Int | String".th, has = "Int | None".th) === false)
   }
 
   test("check and infer: struct & struct") {
-    val empty = new mutable.HashMap[GenericType, TypeHint]()
+    val empty = new mutable.HashMap[GenericTh, TypeHint]()
     assert(Invoker.checkAndInfer(ctx, empty, expected = "(x: Int, y: String)".th, has = "(a: Int, b: String)".th) === true)
     assert(Invoker.checkAndInfer(ctx, empty, expected = "(x: Int, y: String)".th, has = "(a: Int, b: String, c: None)".th) === false)
     assert(Invoker.checkAndInfer(ctx, empty, expected = "(x: Int, y: String)".th, has = "(a: Int, b: None)".th) === false)
   }
 
-  test("check and infer: generic") {
-    val empty = new mutable.HashMap[GenericType, TypeHint]()
+  test("check and infer: generic struct") {
+    val empty = new mutable.HashMap[GenericTh, TypeHint]()
     assert(Invoker.checkAndInfer(ctx, empty, expected = "Value[Int]".th, has = "Value[Int]".th) === true)
     assert(Invoker.checkAndInfer(ctx, empty, expected = "Value[Int | String]".th, has = "Value[Int]".th) === false)
     assert(Invoker.checkAndInfer(ctx, empty, expected = "Value[Int | String]".th, has = "Value[String]".th) === false)
+  }
+
+  test("check and infer: generic union") {
+    val empty = new mutable.HashMap[GenericTh, TypeHint]()
+    assert(Invoker.checkAndInfer(ctx, empty, expected = "U2[Int, String]".th, has = "Int".th) === true)
+    assert(Invoker.checkAndInfer(ctx, empty, expected = "U2[Int, String]".th, has = "String".th) === true)
+    assert(Invoker.checkAndInfer(ctx, empty, expected = "U2[Int, String]".th, has = "(x: Int, y: String)".th) === true)
+    assert(Invoker.checkAndInfer(ctx, empty, expected = "U2[Int, String]".th, has = "(Bool) -> String".th) === true)
+    assert(Invoker.checkAndInfer(ctx, empty, expected = "U2[Int, String]".th, has = "(Int) -> String".th) === true)
+    assert(Invoker.checkAndInfer(ctx, empty, expected = "U2[Int, String]".th, has = "Bool".th) === false)
   }
 }

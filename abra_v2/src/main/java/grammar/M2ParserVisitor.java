@@ -162,6 +162,12 @@ public interface M2ParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitUnionTh(M2Parser.UnionThContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link M2Parser#genericTh}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitGenericTh(M2Parser.GenericThContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link M2Parser#typeHint}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

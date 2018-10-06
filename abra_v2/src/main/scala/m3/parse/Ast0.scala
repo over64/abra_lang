@@ -23,17 +23,18 @@ object Ast0 {
     val name: String
   }
 
-  case class GenericType(name: String) extends ParseNode
-  case class ScalarDecl(pkg: String, ref: Boolean, params: Seq[GenericType], name: String, llType: String) extends TypeDecl
+  case class ScalarDecl(pkg: String, ref: Boolean, params: Seq[GenericTh], name: String, llType: String) extends TypeDecl
   case class FieldDecl(isSelf: Boolean, name: String, th: TypeHint) extends ParseNode
-  case class StructDecl(pkg: String, params: Seq[GenericType], name: String, fields: Seq[FieldDecl]) extends TypeDecl
-  case class UnionDecl(pkg: String, params: Seq[GenericType], name: String, variants: Seq[ScalarTh]) extends TypeDecl
+  case class StructDecl(pkg: String, params: Seq[GenericTh], name: String, fields: Seq[FieldDecl]) extends TypeDecl
+  case class UnionDecl(pkg: String, params: Seq[GenericTh], name: String, variants: Seq[TypeHint]) extends TypeDecl
 
   sealed trait TypeHint extends ParseNode
   case class ScalarTh(params: Seq[TypeHint], name: String, mod: Seq[String]) extends TypeHint
   case class FieldTh(name: String, typeHint: TypeHint) extends ParseNode
   case class StructTh(seq: Seq[FieldTh]) extends TypeHint
   case class UnionTh(seq: Seq[TypeHint]) extends TypeHint
+  case class GenericTh(typeName: String) extends TypeHint
+  case object AnyTh extends TypeHint
 
   sealed trait ClosureType {
     val th: TypeHint
@@ -44,8 +45,8 @@ object Ast0 {
 
   case class Prop(from: Expression, props: Seq[lId]) extends Expression
   case class Tuple(seq: Seq[Expression]) extends Expression
-  case class SelfCall(params: Seq[TypeHint], fnName: String, self: Expression, args: Seq[Expression]) extends Expression
-  case class Call(params: Seq[TypeHint], expr: Expression, args: Seq[Expression]) extends Expression
+  case class SelfCall(fnName: String, self: Expression, args: Seq[Expression]) extends Expression
+  case class Call(expr: Expression, args: Seq[Expression]) extends Expression
 
   case class AbraCode(seq: Seq[Expression]) extends FnBody
   case class Lambda(args: Seq[Arg], body: FnBody) extends Expression
@@ -61,10 +62,10 @@ object Ast0 {
   case class WhenElse(seq: Seq[Expression]) extends ParseNode
   case class When(expr: Expression, is: Seq[Is], _else: Option[WhenElse]) extends Expression
   case class While(cond: Expression, _do: Seq[Expression]) extends Expression
-  case class Store(th: Option[TypeHint], to: Seq[lId], what: Expression) extends Expression
+  case class Store(th: TypeHint, to: Seq[lId], what: Expression) extends Expression
   case class Ret(what: Option[Expression]) extends Expression
-  case class Arg(name: String, typeHint: Option[TypeHint]) extends ParseNode
-  case class Def(params: Seq[GenericType], name: String, lambda: Lambda, retTh: Option[TypeHint]) extends Level1Declaration
+  case class Arg(name: String, typeHint: TypeHint) extends ParseNode
+  case class Def(name: String, lambda: Lambda, retTh: TypeHint) extends Level1Declaration
   case class ImportEntry(modName: String, path: String, withTypes: Seq[String]) extends ParseNode
   case class Import(seq: Seq[ImportEntry]) extends ParseNode
   case class Module(pkg: String, imports: Import, lowCode: Seq[llVm], types: Seq[TypeDecl], defs: Seq[Def]) extends ParseNode

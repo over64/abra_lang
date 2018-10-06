@@ -99,13 +99,16 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
   override def visitUnionTh(ctx: UnionThContext): UnionTh =
     emit(ctx, UnionTh(ctx.nonUnionTh().map(th => visitNonUnionTh(th))))
 
+  override def visitGenericTh(ctx: GenericThContext): GenericTh =
+    emit(ctx, GenericTh(ctx.VarId().getText))
+
   override def visitTypeHint(ctx: TypeHintContext): TypeHint = visitChildren(ctx).asInstanceOf[TypeHint]
 
   override def visitScalarType(ctx: ScalarTypeContext): ScalarDecl =
     emit(ctx, ScalarDecl(
       _package,
       if (ctx.REF() != null) true else false,
-      ctx.params.map(p => GenericType(p.getText)),
+      ctx.params.map(p => visitGenericTh(p)),
       ctx.tname.getText,
       visitLlvm(ctx.llvm()).code))
 
@@ -115,7 +118,7 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
   override def visitStructType(ctx: StructTypeContext): StructDecl = {
     emit(ctx, StructDecl(
       _package,
-      ctx.params.map { p => emit(p, GenericType(p.getText)) },
+      ctx.params.map { p => emit(p, visitGenericTh(p)) },
       ctx.name.getText,
       ctx.typeField().map { f => visitTypeField(f) }
     ))
@@ -124,9 +127,9 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
   override def visitUnionType(ctx: UnionTypeContext): UnionDecl = {
     emit(ctx, UnionDecl(
       _package,
-      ctx.params.map { p => emit(p, GenericType(p.getText)) },
+      ctx.params.map { p => emit(p, visitGenericTh(p)) },
       ctx.name.getText,
-      ctx.scalarTh().map { sth => visitScalarTh(sth) }
+      ctx.nonUnionTh().map { th => visitNonUnionTh(th) }
     ))
   }
 
@@ -139,7 +142,7 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
   override def visitFnArg(ctx: FnArgContext): Arg =
     emit(ctx, Arg(
       visitId(ctx.id()).value,
-      Option(ctx.typeHint()).map(th => visitTypeHint(th))))
+      Option(ctx.typeHint()).map(th => visitTypeHint(th)).getOrElse(AnyTh)))
 
   override def visitLambda(ctx: LambdaContext): Lambda = {
     val body = AbraCode(ctx.blockBody().map { b => visitBlockBody(b) })
@@ -161,10 +164,10 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
       val indices = visitTuple(ctx.tuple()).seq
       val to: Expression = Prop(first, ctx.VarId().map(vi => lId(vi.getText)))
 
-      emit(ctx, SelfCall(Seq.empty, "set", to, indices :+ expr))
+      emit(ctx, SelfCall("set", to, indices :+ expr))
     } else
       emit(ctx, Store(
-        Option(ctx.typeHint()).map(th => visitTypeHint(th)),
+        Option(ctx.typeHint()).map(th => visitTypeHint(th)).getOrElse(AnyTh),
         first +: ctx.VarId().map(vid => lId(vid.getText)), expr))
   }
 
@@ -185,21 +188,19 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
   override def visitExprId(ctx: ExprIdContext): lId = visitId(ctx.id())
 
   override def visitExprSelfCall(ctx: ExprSelfCallContext): ParseNode = {
-    val params = ctx.typeHint().map(th => visitTypeHint(th))
-    emit(ctx, SelfCall(params, ctx.op.getText, visitExpr(ctx.expression()), visitTuple(ctx.tuple()).seq))
+    emit(ctx, SelfCall(ctx.op.getText, visitExpr(ctx.expression()), visitTuple(ctx.tuple()).seq))
   }
 
   override def visitExprCall(ctx: ExprCallContext): Expression = {
     val args = visitTuple(ctx.tuple()).seq
-    val params = ctx.typeHint().map(th => visitTypeHint(th))
-    emit(ctx, Call(params, visitExpr(ctx.expression()), args))
+    emit(ctx, Call(visitExpr(ctx.expression()), args))
   }
 
   override def visitExprInfixCall(ctx: ExprInfixCallContext): Expression = {
     ctx.op.getText match {
       case "&&" => emit(ctx, And(visitExpr(ctx.expression(0)), visitExpr(ctx.expression(1))))
       case "||" => emit(ctx, Or(visitExpr(ctx.expression(0)), visitExpr(ctx.expression(1))))
-      case _ => emit(ctx, SelfCall(Seq.empty, ctx.op.getText, visitExpr(ctx.expression(0)), Seq(visitExpr(ctx.expression(1)))))
+      case _ => emit(ctx, SelfCall(ctx.op.getText, visitExpr(ctx.expression(0)), Seq(visitExpr(ctx.expression(1)))))
     }
   }
 
@@ -208,7 +209,7 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
   override def visitExprTuple(ctx: ExprTupleContext): Tuple = visitTuple(ctx.tuple())
 
   override def visitExprUnaryCall(ctx: ExprUnaryCallContext): Expression =
-    emit(ctx, SelfCall(Seq.empty, ctx.op.getText,
+    emit(ctx, SelfCall(ctx.op.getText,
       visitExpr(ctx.expression()), Seq()
     ))
 
@@ -243,15 +244,14 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
     emit(ctx, Prop(visitExpr(ctx.expression()), ctx.op.map(op => emit(op, lId(op.getText)))))
 
   override def visitDef(ctx: DefContext): Def = {
-    val tparams = ctx.TypeId().map(id => GenericType(id.getText))
     val args = ctx.fnArg().map(fa => visitFnArg(fa))
 
     val body =
       if (ctx.llvm() != null) Lambda(args, visitLlvm(ctx.llvm()))
       else Lambda(args, AbraCode(ctx.blockBody().map(bb => visitBlockBody(bb))))
 
-    val retTh = Option(ctx.typeHint()).map { th => visitTypeHint(th) }
-    emit(ctx, Def(tparams, ctx.name.getText, body, retTh))
+    val retTh = Option(ctx.typeHint()).map { th => visitTypeHint(th) }.getOrElse(AnyTh)
+    emit(ctx, Def(ctx.name.getText, body, retTh))
   }
 
 

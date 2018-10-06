@@ -42,18 +42,18 @@ class _01ExpressionParse extends FunSuite {
   }
 
   test("self call") {
-    withStr("a.b()", SelfCall(Seq.empty, "b", lId("a"), Seq()))
-    withStr("a.b(1)", SelfCall(Seq.empty, "b", lId("a"), Seq(lInt("1"))))
-    withStr("a.*()", SelfCall(Seq.empty, "*", lId("a"), Seq()))
-    withStr("a./()", SelfCall(Seq.empty, "/", lId("a"), Seq()))
-    withStr("a.+()", SelfCall(Seq.empty, "+", lId("a"), Seq()))
-    withStr("a.-()", SelfCall(Seq.empty, "-", lId("a"), Seq()))
-    withStr("a.<()", SelfCall(Seq.empty, "<", lId("a"), Seq()))
-    withStr("a.>()", SelfCall(Seq.empty, ">", lId("a"), Seq()))
-    withStr("a.<=()", SelfCall(Seq.empty, "<=", lId("a"), Seq()))
-    withStr("a.>=()", SelfCall(Seq.empty, ">=", lId("a"), Seq()))
-    withStr("a.==()", SelfCall(Seq.empty, "==", lId("a"), Seq()))
-    withStr("a.!=()", SelfCall(Seq.empty, "!=", lId("a"), Seq()))
+    withStr("a.b()", SelfCall( "b", lId("a"), Seq()))
+    withStr("a.b(1)", SelfCall( "b", lId("a"), Seq(lInt("1"))))
+    withStr("a.*()", SelfCall( "*", lId("a"), Seq()))
+    withStr("a./()", SelfCall( "/", lId("a"), Seq()))
+    withStr("a.+()", SelfCall( "+", lId("a"), Seq()))
+    withStr("a.-()", SelfCall( "-", lId("a"), Seq()))
+    withStr("a.<()", SelfCall( "<", lId("a"), Seq()))
+    withStr("a.>()", SelfCall( ">", lId("a"), Seq()))
+    withStr("a.<=()", SelfCall( "<=", lId("a"), Seq()))
+    withStr("a.>=()", SelfCall( ">=", lId("a"), Seq()))
+    withStr("a.==()", SelfCall( "==", lId("a"), Seq()))
+    withStr("a.!=()", SelfCall( "!=", lId("a"), Seq()))
   }
 
   test("prop") {
@@ -62,37 +62,37 @@ class _01ExpressionParse extends FunSuite {
   }
 
   test("call") {
-    withStr("a(1,2)", Call(Seq.empty, lId("a"), Seq(lInt("1"), lInt("2"))))
-    withStr("1(1,2)", Call(Seq.empty, lInt("1"), Seq(lInt("1"), lInt("2"))))
+    withStr("a(1,2)", Call( lId("a"), Seq(lInt("1"), lInt("2"))))
+    withStr("1(1,2)", Call( lInt("1"), Seq(lInt("1"), lInt("2"))))
   }
 
   test("lambda") {
     withStr("lambda 1 .", Lambda(Seq(), AbraCode(Seq(lInt("1")))))
     withStr("lambda self: Int -> self",
-      Lambda(Seq(Arg("self", Some(ScalarTh(Seq.empty, "Int", Seq.empty)))), AbraCode(Seq(lId("self")))))
+      Lambda(Seq(Arg("self", ScalarTh(Seq.empty, "Int", Seq.empty))), AbraCode(Seq(lId("self")))))
   }
 
   test("unary call") {
-    withStr("!a", SelfCall(Seq.empty, "!", lId("a"), Seq()))
-    withStr("!true", SelfCall(Seq.empty, "!", lBoolean("true"), Seq()))
+    withStr("!a", SelfCall( "!", lId("a"), Seq()))
+    withStr("!true", SelfCall( "!", lBoolean("true"), Seq()))
   }
 
   test("infix call") {
-    withStr("a * b", SelfCall(Seq.empty, "*", lId("a"), Seq(lId("b"))))
-    withStr("a / b", SelfCall(Seq.empty, "/", lId("a"), Seq(lId("b"))))
+    withStr("a * b", SelfCall( "*", lId("a"), Seq(lId("b"))))
+    withStr("a / b", SelfCall( "/", lId("a"), Seq(lId("b"))))
 
-    withStr("a + b", SelfCall(Seq.empty, "+", lId("a"), Seq(lId("b"))))
-    withStr("a - b", SelfCall(Seq.empty, "-", lId("a"), Seq(lId("b"))))
-    withStr("1 to 10", SelfCall(Seq.empty, "to", lInt("1"), Seq(lInt("10"))))
+    withStr("a + b", SelfCall( "+", lId("a"), Seq(lId("b"))))
+    withStr("a - b", SelfCall( "-", lId("a"), Seq(lId("b"))))
+    withStr("1 to 10", SelfCall( "to", lInt("1"), Seq(lInt("10"))))
 
 
-    withStr("a < b", SelfCall(Seq.empty, "<", lId("a"), Seq(lId("b"))))
-    withStr("a > b", SelfCall(Seq.empty, ">", lId("a"), Seq(lId("b"))))
-    withStr("a <= b", SelfCall(Seq.empty, "<=", lId("a"), Seq(lId("b"))))
-    withStr("a >= b", SelfCall(Seq.empty, ">=", lId("a"), Seq(lId("b"))))
+    withStr("a < b", SelfCall( "<", lId("a"), Seq(lId("b"))))
+    withStr("a > b", SelfCall( ">", lId("a"), Seq(lId("b"))))
+    withStr("a <= b", SelfCall( "<=", lId("a"), Seq(lId("b"))))
+    withStr("a >= b", SelfCall( ">=", lId("a"), Seq(lId("b"))))
 
-    withStr("a == b", SelfCall(Seq.empty, "==", lId("a"), Seq(lId("b"))))
-    withStr("a != b", SelfCall(Seq.empty, "!=", lId("a"), Seq(lId("b"))))
+    withStr("a == b", SelfCall( "==", lId("a"), Seq(lId("b"))))
+    withStr("a != b", SelfCall( "!=", lId("a"), Seq(lId("b"))))
 
     withStr("a && b", And(lId("a"), lId("b")))
     withStr("true || false", Or(lBoolean("true"), lBoolean("false")))
@@ -100,13 +100,13 @@ class _01ExpressionParse extends FunSuite {
 
   test("cond") {
     withStr("if true do 1 .", If(lBoolean("true"), Seq(lInt("1")), Seq()))
-    withStr("if 1 == 1 do 1 .", If(SelfCall(Seq.empty, "==", lInt("1"), Seq(lInt("1"))), Seq(lInt("1")), Seq()))
+    withStr("if 1 == 1 do 1 .", If(SelfCall( "==", lInt("1"), Seq(lInt("1"))), Seq(lInt("1")), Seq()))
     withStr("if true do 1 else 2 .", If(lBoolean("true"), Seq(lInt("1")), Seq(lInt("2"))))
 
-    withStr("if true do lambda x -> x .", If(lBoolean("true"), Seq(Lambda(Seq(Arg("x", None)), AbraCode(Seq(lId("x"))))), Seq()))
+    withStr("if true do lambda x -> x .", If(lBoolean("true"), Seq(Lambda(Seq(Arg("x", AnyTh)), AbraCode(Seq(lId("x"))))), Seq()))
     withStr("if true do 1 else lambda x -> x .", If(lBoolean("true"),
       Seq(lInt("1")),
-      Seq(Lambda(Seq(Arg("x", None)), AbraCode(Seq(lId("x")))))))
+      Seq(Lambda(Seq(Arg("x", AnyTh)), AbraCode(Seq(lId("x")))))))
   }
 
 

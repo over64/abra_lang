@@ -1,23 +1,24 @@
 import
-    /universe with None, Bool, Int, Float
+    /universe with None, Bool, Int
     /array with Array .
 
-type Vec[T] = (array: Array[T], len: Int)
+type Vec[t] = (array: Array[t], len: Int)
 
-def get[T] = self: Vec[T], index: Int do
+def get = self: Vec[t], index: Int do
     #FIXME: should be self.array(index)?
     self.array.get(index) .
 
-def set[T] = self: Vec[T], index: Int, value: T do
+def set = self: Vec[t], index: Int, value: t do
     self.array.set(index, value) .
 
-def push[T] = self: Vec[T], value: T do
+def push = self: Vec[t], value: t do
     if self.len >= self.array.len() do
-        newArray = array.alloc[T](self.array.len() * 2)
+        newArray: Array[t] = array.alloc(self.array.len() * 2)
         array.copy(self.array, newArray, 0, 0, self.array.len())
         self.array = newArray .
 
     self.array(self.len) = value
     self.len = self.len + 1 .
 
-def mk[T] = size: Int do Vec(array.alloc[T](size), 0) .
+def mk = size: Int do
+    Vec(array.alloc(size), 0) .Vec[t]

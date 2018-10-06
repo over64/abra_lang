@@ -7,7 +7,7 @@ import org.scalatest.FunSuite
 /**
   * Created by over on 23.10.17.
   */
-class ScopeTest extends FunSuite {
+class _02ScopeTest extends FunSuite {
   val tInt = ScalarTh(Seq.empty, "Int", Seq.empty)
   val ctx = TContext.forTest(types = Seq(ScalarDecl(pkg = "test", ref = false, Seq.empty, "Int", "i32")), defs = Map())
   test("up/ down") {

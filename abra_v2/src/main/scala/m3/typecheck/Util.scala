@@ -16,70 +16,34 @@ object Util {
   val thString = ScalarTh(params = Seq.empty, "String", Seq.empty)
   val thNil = ScalarTh(params = Seq.empty, "None", Seq.empty)
 
-  val adviceBool = ScalarAdvice(Seq.empty, "Bool", Seq.empty)
-
-  sealed trait ThAdvice
-
-  case class ScalarAdvice(params: Seq[Option[ThAdvice]], name: String, pkg: Seq[String]) extends ThAdvice
-
-  case class FnAdvice(args: Seq[Option[ThAdvice]], ret: Option[ThAdvice]) extends ThAdvice
-
-  case class StructAdvice(fields: Seq[(String, Option[ThAdvice])]) extends ThAdvice
-
-  case class UnionAdvice(variants: Seq[Option[ThAdvice]]) extends ThAdvice
-
-  implicit class RichAdvice(self: ThAdvice) {
-    def toTh: TypeHint = self match {
-      case ScalarAdvice(params, name, pkg) =>
-        ScalarTh(params.map(p => p.get.toTh), name, pkg)
-      case StructAdvice(fields) =>
-        StructTh(fields.map {
-          case (name, advice) => FieldTh(name, advice.get.toTh)
-        })
-      case UnionAdvice(variants) =>
-        UnionTh(variants.map(v => v.get.toTh))
-      case FnAdvice(args, ret) =>
-        FnTh(Seq.empty, args.map(arg => arg.get.toTh), ret.get.toTh)
-    }
-
-    def toThOpt =
-      try {
-        Some(toTh)
-      } catch {
-        case ex: java.util.NoSuchElementException => None
-      }
-  }
-
-  def makeSpecMap(gen: Seq[GenericType], params: Seq[TypeHint]) = {
+  def makeSpecMap(gen: Seq[GenericTh], params: Seq[TypeHint]) = {
     if (gen.length != params.length)
       throw new RuntimeException("params length mismatch")
 
-    (gen zip params).toMap
+    mutable.HashMap((gen zip params): _*)
   }
 
   implicit class RichExpression(self: Expression) {
-    def spec(specMap: Map[GenericType, TypeHint], ctx: TContext): Expression = self match {
+    def spec(specMap: mutable.HashMap[GenericTh, TypeHint], ctx: TContext): Expression = self match {
       case l: Literal => l
       case p: Prop => p
       case Tuple(seq) => Tuple(seq.map(e => e.spec(specMap, ctx)))
-      case SelfCall(params, fnName, self, args) =>
+      case SelfCall(fnName, self, args) =>
         SelfCall(
-          params.map(p => p.spec(specMap)),
           fnName,
           self.spec(specMap, ctx),
           args.map(arg => arg.spec(specMap, ctx)))
-      case Call(params, expr, args) =>
+      case Call(expr, args) =>
         Call(
-          params.map(p => p.spec(specMap)),
           expr.spec(specMap, ctx),
           args.map(arg => arg.spec(specMap, ctx)))
       case Lambda(args, body) =>
         Lambda(
-          args.map(arg => Arg(arg.name, arg.typeHint.map(th => th.spec(specMap)))),
+          args.map(arg => Arg(arg.name, arg.typeHint.spec(specMap))),
           body match {
             case l: llVm =>
               var code = l.code
-              specMap.foreach { case (sth, th) =>
+              specMap.foreach { case (gth, th) =>
                 val lowScalarRef = th.toLow(ctx) // FIXME: no cast?
               val replTypeName = ctx.lowMod.types(lowScalarRef.name) match {
                 case Ast2.Low(ctx.pkg, ref, name, llValue) => name
@@ -91,8 +55,9 @@ object Util {
                   case u: Ast2.Union => u.pkg + "." + replTypeName
                   case _ => replTypeName
                 }
-                code = code.replaceAll("@" + sth.name + ".([a-z0-9A-Z]+)", "@\"" + replSelfDefName + ".$1\"")
-                code = code.replace(sth.name, replTypeName)
+
+                code = code.replaceAll("@" + gth.typeName + ".([a-z0-9A-Z]+)", "@\"" + replSelfDefName + ".$1\"")
+                code = code.replaceAll("([^0-9a-zA-Z@])" + gth.typeName + "([^0-9a-zA-Z])", "$1" + replTypeName + "$2")
               }
               llVm(code)
             case AbraCode(seq) => AbraCode(seq.map(e => e.spec(specMap, ctx)))
@@ -113,14 +78,34 @@ object Util {
           whenElse.map(we =>
             WhenElse(we.seq.map(expr => expr.spec(specMap, ctx)))))
       case Store(th, to, what) =>
-        Store(th.map(th => th.spec(specMap)), to, what.spec(specMap, ctx))
+        Store(th.spec(specMap), to, what.spec(specMap, ctx))
       case Ret(what) => Ret(what.map(e => e.spec(specMap, ctx)))
     }
   }
 
   implicit class RichDef(self: Def) {
     def isSelf: Boolean =
-      self.lambda.args.headOption.map(arg => arg.name == "self").getOrElse(false)
+      self.lambda.args.headOption.exists(arg => arg.name == "self")
+
+    def params: Seq[GenericTh] = {
+      def fillGenericSeq(seq: mutable.ListBuffer[GenericTh], th: TypeHint): Unit = {
+        th match {
+          case sth: ScalarTh => sth.params.foreach(th => fillGenericSeq(seq, th))
+          case sth: StructTh => sth.seq.foreach(field => fillGenericSeq(seq, field.typeHint))
+          case uth: UnionTh => uth.seq.foreach(th => fillGenericSeq(seq, th))
+          case fth: FnTh =>
+            fth.args.foreach(th => fillGenericSeq(seq, th))
+            fillGenericSeq(seq, fth.ret)
+          case gth: GenericTh => seq += gth
+          case AnyTh =>
+        }
+      }
+
+      val genericSeq = mutable.ListBuffer[GenericTh]()
+      self.lambda.args.foreach(arg => fillGenericSeq(genericSeq, arg.typeHint))
+      fillGenericSeq(genericSeq, self.retTh)
+      genericSeq
+    }
 
     def isGeneric: Boolean =
       self.params.nonEmpty
@@ -133,7 +118,7 @@ object Util {
     def lowName(ctx: TContext) = {
       val fnPart =
         if (self.isSelf)
-          self.lambda.args.head.typeHint.get.toLow(ctx).name + "." + self.name
+          self.lambda.args.head.typeHint.toLow(ctx).name + "." + self.name
         else self.name
 
       if (fnPart == "main") fnPart
@@ -141,28 +126,26 @@ object Util {
     }
 
     def typeHint: Option[FnTh] = {
-      if (self.lambda.args.forall(arg => arg.typeHint != None) && self.retTh != None)
-        Some(FnTh(Seq.empty, self.lambda.args.map(arg => arg.typeHint.get), self.retTh.get))
+      if (self.lambda.args.forall(arg => arg.typeHint != AnyTh) && self.retTh != AnyTh)
+        Some(FnTh(Seq.empty, self.lambda.args.map(arg => arg.typeHint), self.retTh))
       else None
     }
 
-    def spec(params: Seq[TypeHint], ctx: TContext): Def = {
-      val specMap = makeSpecMap(self.params, params)
+    def spec(specMap: mutable.HashMap[GenericTh, TypeHint], ctx: TContext): Def = {
       val skip = if (self.isSelf)
-        self.lambda.args(0).typeHint.get match {
+        self.lambda.args(0).typeHint match {
           case sth: ScalarTh => sth.params.length
           case _ => 0
         }
       else 0
 
-      val neededParams = params.drop(skip)
+      val neededParams = params.map(p => specMap(p)).drop(skip)
       val newName = self.name + (if (neededParams.nonEmpty) s"[${neededParams.drop(skip).map(p => p.toGenericName).mkString(", ")}]" else "")
 
       Def(
-        params = Seq.empty,
         name = newName,
         lambda = self.lambda.spec(specMap, ctx).asInstanceOf[Lambda],
-        retTh = self.retTh.map(th => th.spec(specMap)))
+        retTh = self.retTh.spec(specMap))
     }
   }
 
@@ -173,14 +156,14 @@ object Util {
       var llType = self.llType
 
       specMap.foreach {
-        case (sth, th) =>
+        case (gth, th) =>
           val lowScalarRef = th.toLow(ctx)
           val replName = ctx.lowMod.types(lowScalarRef.name) match {
             case Ast2.Low(ctx.pkg, ref, name, llValue) => llValue
             case _ => "%" + lowScalarRef.name
           }
 
-          llType = llType.replace("%" + sth.name, replName)
+          llType = llType.replace("%" + gth.typeName, replName)
       }
 
       ctx.lowMod.defineType(Ast2.Low(ctx.pkg, self.ref, lowName, llType))
@@ -220,23 +203,17 @@ object Util {
     }
   }
 
-  def isEqualSeq(ctx: TContext, specMap: mutable.HashMap[GenericType, TypeHint], expected: Seq[TypeHint], has: Seq[TypeHint]): Boolean = {
+  def isEqualSeq(ctx: TContext, specMap: mutable.HashMap[GenericTh, TypeHint], expected: Seq[TypeHint], has: Seq[TypeHint]): Boolean = {
     if (expected.length != has.length) return false
     (expected zip has).forall { case (e, h) => e.isEqual(ctx, specMap, h) }
   }
 
   implicit class RichTypeHint(self: TypeHint) {
-    def isEqual(ctx: TContext, specMap: mutable.HashMap[GenericType, TypeHint], other: TypeHint): Boolean =
+    def isEqual(ctx: TContext, specMap: mutable.HashMap[GenericTh, TypeHint], other: TypeHint): Boolean =
       (self, other) match {
+        case (th, AnyTh) => true
         case (adv: ScalarTh, th: ScalarTh) =>
-          if (adv.name.contains("*"))
-            specMap.get(GenericType(adv.name.replace("*", ""))) match {
-              case Some(ScalarTh(_, name, pkg)) if name.contains("*") =>
-                specMap.put(GenericType(adv.name.replace("*", "")), th) // ok replacement
-                true
-              case _ => false
-            }
-          else if (adv.name != th.name) false
+          if (adv.name != th.name) false
           else isEqualSeq(ctx, specMap, adv.params, th.params)
         case (adv: UnionTh, th: UnionTh) =>
           isEqualSeq(ctx, specMap, adv.seq, th.seq)
@@ -244,33 +221,32 @@ object Util {
           isEqualSeq(ctx, specMap, adv.seq.map(_.typeHint), th.seq.map(_.typeHint))
         case (adv: FnTh, th: FnTh) =>
           isEqualSeq(ctx, specMap, adv.args, th.args) && checkAndInfer(ctx, specMap, adv.ret, th.ret)
+        case (adv: GenericTh, th) =>
+          specMap.get(adv) match {
+            case None => specMap.put(adv, th); true
+            case _ => false
+          }
+        case (adv: GenericTh, th: GenericTh) => adv.typeName == th.typeName
+        case (adv, th: GenericTh) =>
+          specMap.get(th) match {
+            case None => specMap.put(th, adv); true
+            case _ => false
+          }
+        case (AnyTh, th) => true
         case (adv, th) => false
       }
 
-    def toAdviceOpt(specMap: mutable.HashMap[GenericType, TypeHint]): Option[ThAdvice] =
+    def assertNotAny(errorCallback: => String) =
       self match {
-        case ScalarTh(params, name, pkg) =>
-          specMap.get(GenericType(name)) match {
-            case Some(th: ScalarTh) if th.name.contains("*") => None
-            case Some(th) => th.toAdviceOpt(specMap) //???
-            case None => Some(ScalarAdvice(params.map(p => p.toAdviceOpt(specMap)), name, pkg))
-          }
-        case StructTh(fields) =>
-          Some(StructAdvice(fields.map { field =>
-            (field.name, field.typeHint.toAdviceOpt(specMap))
-          }))
-        case UnionTh(variants) =>
-          Some(UnionAdvice(variants.map { th =>
-            th.toAdviceOpt(specMap)
-          }))
-        case FnTh(closure, args, ret) =>
-          Some(FnAdvice(args.map(arg => arg.toAdviceOpt(specMap)), ret.toAdviceOpt(specMap)))
+        case AnyTh =>
+          throw new RuntimeException(errorCallback)
+        case th => th
       }
 
-    def spec(specMap: Map[GenericType, TypeHint]): TypeHint =
+    def spec(specMap: mutable.HashMap[GenericTh, TypeHint]): TypeHint =
       self match {
         case ScalarTh(params, name, pkg) =>
-          specMap.get(GenericType(name)) match {
+          specMap.get(GenericTh(name)) match {
             case Some(th) => th
             case None => ScalarTh(params.map(p => p.spec(specMap)), name, pkg)
           }
@@ -284,6 +260,8 @@ object Util {
           })
         case FnTh(closure, args, ret) =>
           FnTh(closure, args.map(arg => arg.spec(specMap)), ret.spec(specMap))
+        case gth: GenericTh => specMap.getOrElse(gth, gth)
+        case AnyTh => AnyTh
       }
 
     def moveToMod(modName: String): TypeHint =
@@ -298,6 +276,8 @@ object Util {
           FnTh(closure,
             args.map(th => th.moveToMod(modName)),
             ret.moveToMod(modName))
+        case th => th
+        //throw new RuntimeException(s"Unexpected $th move to mod")
       }
 
     def moveToModSeq(modNames: Seq[String]): TypeHint =
@@ -312,6 +292,7 @@ object Util {
           FnTh(closure,
             args.map(th => th.moveToModSeq(modNames)),
             ret.moveToModSeq(modNames))
+        case th => th
       }
 
     def swapMod(removeFrom: String, moveTo: String): TypeHint =
@@ -329,6 +310,7 @@ object Util {
           FnTh(closure,
             args.map(th => th.swapMod(removeFrom, moveTo)),
             ret.swapMod(removeFrom, moveTo))
+        case th => th
       }
 
     def toGenericName: String = {
@@ -353,10 +335,10 @@ object Util {
           if (ctx.inferStack.headOption != Some("acquire_release_eval_no_stack_overflow_stub"))
             Seq("acquire", "release").foreach { ackOrRelease =>
               mod.inlineSelfDefs.get(ackOrRelease).flatMap(defs =>
-                defs.find(d => Invoker.isSelfApplicable(ctx, d.params, Seq.empty, d.lambda.args.head.typeHint.get, self))) match {
+                defs.find(d => Invoker.isSelfApplicable(ctx, d.lambda.args.head.typeHint, self))) match {
                 case Some(d) =>
                   ctx.inferStack.push("acquire_release_eval_no_stack_overflow_stub")
-                  Invoker.evalFromMod(ctx, mod, d, Seq.empty, Seq(self).toIterator, None)
+                  Invoker.evalFromMod(ctx, mod, d, Seq(self).toIterator, AnyTh)
                   ctx.inferStack.pop()
                 case None =>
               }
@@ -401,6 +383,8 @@ object Util {
           if (ctx.lowMod.types.get(lowName) == None)
             ctx.lowMod.defineType(Ast2.Fn(lowName, lowClosure, lowArgs, lowRet))
           Ast2.TypeRef(lowName)
+        case _ =>
+          throw new RuntimeException(s"Internal compiler error: $self cannot be lowered.")
       }
     }
   }

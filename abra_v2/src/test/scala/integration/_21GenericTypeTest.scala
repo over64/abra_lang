@@ -11,12 +11,8 @@ class _21GenericTypeTest extends FunSuite with IntegrationUtil {
           /array .
 
         def main =
-          # must be like this when type infer will become smarter
-          # array1 = array.mk(5, lambda i -> 0)
-          # array2 = array.mk(5, lambda i -> 'hello')
-
-          array1 = array.mk[Int](5, lambda i: Int -> 0)
-          array2 = array.mk[String](1000, lambda i: Int -> 'hello')
+          array1 = array.mk(10, lambda i -> 0)
+          array2 = array.mk(1000, lambda i -> 'hello')
 
           array1(1) = 13
           array2(1) = 'world'
@@ -29,15 +25,27 @@ class _21GenericTypeTest extends FunSuite with IntegrationUtil {
       """
         import
           /universe with None, Int, String
-          /vec .
+          /vec with Vec .
 
         def main =
-          v = vec.mk[Int](1)
+          v: Vec[Int] = vec.mk(1)
           v.push(1)
-          v.push(1)
+          v.push(2)
+          v(1) .
+  """, exit = Some(2))
+  }
 
+  test("simple alloca test") {
+    assertCodeEquals(
+      """
+        import
+          /universe with None, Int, String .
 
-          13 .
-  """, exit = Some(13), isRelease = true)
+        def bar = x: Int do none .
+        def main =
+          x = 1
+          bar(x)
+          0 .
+  """, exit = Some(0))
   }
 }

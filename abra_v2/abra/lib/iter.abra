@@ -2,24 +2,28 @@ import
     /universe with None, Bool
     /array with Array .
 
-def isIterable[Iterable, T] = iterable: Iterable do
-    if false do
-        iter = iterable.iterator()  # V must have iterator
-        iter.next() ..T | None      # iterator must provide T via next function
+def isIterable = it: iterable do
+    iter = it.iterator()  # iterable must provide iterator
+    iter.next() .t | None # iterator must provide t | None via next function
 
-type Map[Iterable, T, U] = (iterable: Iterable, mapper: (T) -> U)
+type Map[iterable, t, u] = (it: iterable, mapper: (t) -> u)
 
-def map[Iterable, T, U] = self: Iterable, mapper: (T) -> U do
-    isIterable[Iterable, T](self)
+# lazy type inference?
+def map = self: iterable, mapper: (t) -> u do
+    if false do value: t | None = isIterable(self) .
     Map(self, mapper) .
 
-def iterator[Iterable, T, U] = self: Map[Iterable, T, U] do
-    MapIter(self.iterable.iterator(), self.mapper) .
+def iterator = self: Map[iterable, t, u] do
+    MapIter(self.it.iterator(), self.mapper) .
 
-type MapIter[Iterator, T, U] = (iter: Iterator, mapper: (T) -> U)
+type MapIter[iterator, t, u] = (iter: iterator, mapper: (t) -> u)
 
-def next[Iterator, T, U] = self: MapIter[Iterator, T, U] do
-    when self.iter.next() is element: T do
-        mapper = self.mapper
-        mapper(element) .
-    .U | None
+def next = self: MapIter[iterator, t, u] do
+    when self.iter.next() is value: t do
+        self.mapper(value) .
+    .u | None
+
+array.mk(5, λ i -> i) # 0..4
+.map(λ x -> x * 2)
+.forEach with λ x ->
+    io.println(x)

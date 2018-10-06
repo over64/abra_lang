@@ -24,7 +24,7 @@ class _05TypesParse extends FunSuite {
 
   test("struct") {
     withStr("type S = (x: Int)", StructDecl("test", Seq(), "S", Seq(FieldDecl(false, "x", ScalarTh(Seq(), "Int", Seq.empty)))))
-    withStr("type Seq[T] = (length: Int, ptr: Ptr)", StructDecl("test", Seq(GenericType("T")), "Seq", Seq(
+    withStr("type Seq[t] = (length: Int, ptr: Ptr)", StructDecl("test", Seq(GenericTh("t")), "Seq", Seq(
       FieldDecl(false, "length", ScalarTh(Seq(), "Int", Seq.empty)),
       FieldDecl(false, "ptr", ScalarTh(Seq(), "Ptr", Seq.empty))
     )))
@@ -40,8 +40,8 @@ class _05TypesParse extends FunSuite {
       ScalarTh(Seq(), "None", Seq.empty),
       ScalarTh(Seq(), "Bool", Seq.empty))))
 
-    withStr("type Option[T] = T | None", UnionDecl("test", Seq(GenericType("T")), "Option", Seq(
-      ScalarTh(Seq(), "T", Seq.empty),
+    withStr("type Option[t] = t | None", UnionDecl("test", Seq(GenericTh("t")), "Option", Seq(
+      GenericTh("t"),
       ScalarTh(Seq(), "None", Seq.empty)
     )))
   }
