@@ -1,6 +1,5 @@
 import
-    /universe with None, Bool
-    /array with Array .
+    /universe with None, Bool .
 
 def isIterable = it: iterable do
     iter = it.iterator()  # iterable must provide iterator
@@ -22,8 +21,3 @@ def next = self: MapIter[iterator, t, u] do
     when self.iter.next() is value: t do
         self.mapper(value) .
     .u | None
-
-array.mk(5, λ i -> i) # 0..4
-.map(λ x -> x * 2)
-.forEach with λ x ->
-    io.println(x)
