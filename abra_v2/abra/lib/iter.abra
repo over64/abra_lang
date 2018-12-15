@@ -9,7 +9,8 @@ type Map[iterable, t, u] = (it: iterable, mapper: (t) -> u)
 
 # lazy type inference?
 def map = self: iterable, mapper: (t) -> u do
-    if false do value: t | None = isIterable(self) .
+    if false do
+        value: t | None = isIterable(self) .
     Map(self, mapper) .
 
 def iterator = self: Map[iterable, t, u] do

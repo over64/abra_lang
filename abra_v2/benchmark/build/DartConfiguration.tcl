@@ -37,6 +37,9 @@ ConfigureCommand: "/usr/bin/cmake" "/home/over/build/abra_lang/abra_v2/benchmark
 MakeCommand: /usr/bin/cmake --build . --config "${CTEST_CONFIGURATION_TYPE}" -- -i
 DefaultCTestConfigurationType: Release
 
+# version control
+UpdateVersionOnly: 
+
 # CVS options
 # Default is "-d -P -A"
 CVSCommand: CVSCOMMAND-NOTFOUND
@@ -49,6 +52,7 @@ SVNUpdateOptions:
 
 # Git options
 GITCommand: /usr/bin/git
+GITInitSubmodules: 
 GITUpdateOptions: 
 GITUpdateCustom: 
 
@@ -66,11 +70,14 @@ UpdateType:
 
 # Compiler info
 Compiler: /usr/bin/c++
+CompilerVersion: 6.3.0
 
 # Dynamic analysis (MemCheck)
 PurifyCommand: 
 ValgrindCommand: 
 ValgrindCommandOptions: 
+MemoryCheckType: 
+MemoryCheckSanitizerOptions: 
 MemoryCheckCommand: /usr/bin/valgrind
 MemoryCheckCommandOptions: 
 MemoryCheckSuppressionFile: 
@@ -89,6 +96,10 @@ SlurmRunCommand: SLURM_SRUN_COMMAND-NOTFOUND
 # process will be summarily terminated.
 # Currently set to 25 minutes
 TimeOut: 1500
+
+# During parallel testing CTest will not start a new test if doing
+# so would cause the system load to exceed this value.
+TestLoad: 
 
 UseLaunchers: 
 CurlOptions: 

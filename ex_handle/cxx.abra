@@ -1,0 +1,9 @@
+import rand
+
+type ErrBadRand = ()
+
+def bar = if rand() do 42 else ErrBadRand()
+
+def baz = bar() unless e do 0
+
+def main = bar()

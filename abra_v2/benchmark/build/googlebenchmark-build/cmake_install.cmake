@@ -35,7 +35,6 @@ endif()
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
   include("/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/src/cmake_install.cmake")
-  include("/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build/test/cmake_install.cmake")
 
 endif()
 

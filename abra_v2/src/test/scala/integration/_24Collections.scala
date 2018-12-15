@@ -13,7 +13,7 @@ class _24Collections  extends FunSuite with IntegrationUtil {
 
         def main =
           array1: Array[Int] = array.mk(5, lambda i -> i)
-          it = array1.map(lambda x: Int -> x * 2).iterator()
+          it = array1.map(lambda x -> x * 2).iterator()
 
           it.next()
           it.next()

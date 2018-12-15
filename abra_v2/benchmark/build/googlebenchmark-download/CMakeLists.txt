@@ -4,7 +4,7 @@ project(googlebenchmark-download NONE)
 
 include(ExternalProject)
 ExternalProject_Add(googlebenchmark-download
-                    GIT_REPOSITORY;https://github.com/google/benchmark.git;GIT_TAG;master
+                    GIT_REPOSITORY;https://github.com/google/benchmark.git;GIT_TAG;master;UPDATE_DISCONNECTED 1
                     SOURCE_DIR          "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-src"
                     BINARY_DIR          "/home/over/build/abra_lang/abra_v2/benchmark/build/googlebenchmark-build"
                     CONFIGURE_COMMAND   ""

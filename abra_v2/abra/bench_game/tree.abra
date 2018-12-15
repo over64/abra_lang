@@ -16,23 +16,20 @@ def asNode = self: Node | None, callback: (Node) -> None do llvm
 # hacky way for manual inline for recursive function
 # llvm cannot do this instead of gcc (Сила в GNU, брат)
 def mkTree = depth: Int do
-  if depth > 1 do
-    l = Node(mkTree(depth - 2), mkTree(depth - 2))
-    r = Node(mkTree(depth - 2), mkTree(depth - 2))
-    Node(l, r)
-  else if depth > 0 do
+  if depth > 0 do
     Node(mkTree(depth - 1), mkTree(depth - 1))
   else
-    Node(none, none) . ..Node
+    Node(none, none) ..Node
 
 def checksum = self: Node do
   sum = 1
 
   when self.left is l: Node do
-     # Some hack for performance. Will be much better when macro ready
-     # C version just uses nullable value, but Abra does not allows this without FORCE
-     self.right asNode lambda r: Node ->
-       sum = sum + l.checksum() + r.checksum() .
+    # Some hack for performance. Will be much better when macro ready
+    # C version just uses nullable value, but Abra does not allows this without FORCE
+    self.right asNode lambda r: Node ->
+      sum.right = Node(none, none)
+      sum = sum + l.checksum() + r.checksum() .
 
   sum .Int
 

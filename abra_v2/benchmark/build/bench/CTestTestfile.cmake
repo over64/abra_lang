@@ -4,4 +4,4 @@
 # 
 # This file includes the relevant testing commands required for 
 # testing this directory and lists subdirectories to be tested as well.
-add_test(Bench_one_example "one_example")
+add_test(Bench_one_example_bench "one_example_bench")

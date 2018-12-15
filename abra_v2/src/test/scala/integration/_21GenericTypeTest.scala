@@ -48,4 +48,43 @@ class _21GenericTypeTest extends FunSuite with IntegrationUtil {
           0 .
   """, exit = Some(0))
   }
+
+  test("simple polimorphism") {
+    assertCodeEquals(
+      """
+        import
+          /universe with None, Int, String, Float .
+
+        llvm
+          @.printfInt = private constant [3 x i8] c"%d\00", align 1
+          declare i32 @printf(i8*,...) .
+
+
+        def iadd = x: Int, other: Int do llvm
+          %1 = add nsw i32 %x, %other
+          ret i32 %1 .Int
+
+        def + = self: Int, other: num do
+          iadd(self, other.toInt()) .
+
+        def add = x: num1, y: num2 do
+            x + y .
+
+        def printInt = i: Int do llvm
+          %format = bitcast [3 x i8]* @.printfInt to i8*
+          call i32 (i8*,...) @printf(i8* %format, i32 %i)
+          ret void .None
+
+        def main =
+          print('ввведите x целое')
+          x = readInt()
+          print(x) .
+
+         #include <stdio.h>
+         void main() {
+            int x;
+            scanf("%d", &x);
+         }
+  """, exit = Some(0))
+  }
 }
