@@ -1,0 +1,60 @@
+import abra.buffers with FloatBuffer
+import abra.io
+import abra.int
+
+def readVertex = \buff: FloatBuffer, reader: StringReader ->
+    reader.drop('v '.length)
+    buff.push(reader.readFloat)   # x
+    buff.push(reader.readFloat)   # y
+    buff.push(reader.readFloat) . # z
+
+def readTexture = \buff: FloatBuffer, reader: StringReader ->
+    reader.drop('vt '.length)
+    buff.push(reader.readFloat)   # u
+    buff.push(reader.readFloat) . # v
+
+def readNormal = \buff: FloatBuffer, reader: StringReader ->
+    reader.drop('vn '.length)
+    buff.push(reader.readFloat)   # nx
+    buff.push(reader.readFloat)   # ny
+    buff.push(reader.readFloat) . # nz
+    
+def readFace = \buff: FloatBuffer, reader: StringReader ->
+    reader.drop('f '.length)
+    do 3.times with \i ->
+        val vertexId = reader.readInt - 1
+        buff.push(vertexBuff(vertexId * 3))     # x
+        buff.push(vertexBuff(vertexId * 3 + 1)) # y
+        buff.push(vertexBuff(vertexId * 3 + 2)) # z
+        reader.drop('/'.length)
+  
+        val uvId = reader.readInt - 1
+        buff.push(texBuff(uvId * 2))        # u
+        buff.push(texBuff(uvId * 2 + 1))    # v
+        reader.drop('/'.length)
+  
+        val normalId = reader.readInt - 1
+        buff.push(normalBuff(normalId * 3))        # nx
+        buff.push(normalBuff(normalId * 3 + 1))    # ny
+        buff.push(normalBuff(normalId * 3 + 2)) .. # nz
+
+
+def load = \fname: String ->
+    val objFile    = io.open(fname, 'r')
+    val vertexBuff = buffers.mkFloat(4)
+    val texBuff    = buffers.mkFloat(4)
+    val normalBuff = buffers.mkFloat(4)
+    val meshBuff   = buffers.mkFloat(4)
+
+    do objFile.lines.forEach with \line ->
+        val reader = line.toReader
+        if line.startsWith('v ')  do readVertex(vertexBuff, reader) .
+        if line.startsWith('vt ') do readTexture(texBuff, reader) .
+        if line.startsWith('vn ') do readNormal(normalBuff, reader) .
+        if line.startsWith('f ')  do readFace(meshBuff, reader) ..
+
+    vertexBuff.free
+    texBuff.free
+    normalBuff.free
+
+    meshBuff .

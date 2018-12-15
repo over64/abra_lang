@@ -49,7 +49,7 @@ val uspGetManagerEmployees =
     async?({
         val res = ctx.procedures.uspGetManagerEmployees.invoke?(2)
         val mapped = res.resultSet.map(\i -> i.columnValues.toSeq)
-        mapped.forEach(\i -> println('Name: ${ i('FirstName') }, Level: ${ i('RecursionLevel') }')
+        mapped.forEach({ i -> println('Name: ${ i('FirstName') }, Level: ${ i('RecursionLevel') }' })
     })
 
 

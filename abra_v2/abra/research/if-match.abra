@@ -1,0 +1,21 @@
+
+if x
+  is Int and x > 5 do action1(x)
+  is Float and x > 5.0 do action2(x)
+  is s: String do action3(s)
+else if y > 10
+  is true do action4(y)
+else if z
+  is Vec3(v1, *, 0) do fmt('vec3 on Z axis where x = %v', v1)
+else if k
+  is b: Bar(f: Baz(xx, 10, t)) and t == expr() do fmt('%v %v %v', b, f, xx) ....
+
+# simple
+
+if x && y is true do fmt('x && y is true')
+else fmt('x && y is false') .
+
+if do else
+match case
+
+if is and do else

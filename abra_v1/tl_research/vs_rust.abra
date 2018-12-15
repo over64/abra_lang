@@ -34,49 +34,26 @@ fn main() {
 #1
 type Person = (name: String, age: uByte)
 
-def celebrateBirthday = { self: Person ->
-    self.age += 1
-    '${self.name} is now ${self.age} years old!'.println.?IOErr
-}: Unit | IOErr
-
-def main = {
-    val jill = Person(name = 'Jill', age = 19)
-    jill.celebrateBirthday.?IOErr
-    jill.name.println.?IOErr
-}: Unit | IOErr
-
-# 2
-type Person = (name: String, age: uByte)
-
 def celebrateBirthday = self: Person ->
     self.age = self.age + 1
-    '${self.name} is now ${self.age} years old!'.println?()
-: Unit
-
-def main = ->
-    val jill = Person(name = 'Jill', age = 19)
-    jill.celebrateBirthday?()
-    jill.name.println?()
-: Unit
-
-def fact = x: Int ->
-    if x == 1 then 1
-    else x * fact(x - 1)
-: Int
-
-# 3
-
-def celebrateBirthday = \self: Person ->
-    self.age = self.age + 1
-    '${self.name} is now ${self.age} years old!'.println?()
-. Unit
+    '${self.name} is now ${self.age} years old!'.println .
 
 def main =
     val jill = Person(name = 'Jill', age = 19)
-    jill.celebrateBirthday?()
-    jill.name.println?()
-. Unit
+    jill.celebrateBirthday
+    jill.name.println .
 
-def fact = \x: Int ->
-    if x == 1 do 1 else x * fact(x - 1)
-. Int
+def fact = x: Int ->
+    if x <= 1 do 1 else x * fact(x - 1) .Int
+
+def celebrateBirthday: \self: Person ->
+    self.age = self.age + 1
+    '${self.name} is now ${self.age} years old!'.println .
+
+def main:
+    val jill = Person(name = 'Jill', age = 19)
+    jill.celebrateBirthday
+    jill.name.println .
+
+def fact: \x: Int ->
+    if x == 1 do 1 else x * fact(x - 1) .Int
