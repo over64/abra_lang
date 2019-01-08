@@ -47,7 +47,7 @@ RETURN: 'return';
 BREAK: 'break';
 CONTINUE: 'continue';
 IS: 'is';
-WHEN: 'when';
+UNLESS: 'unless';
 REF: 'ref';
 DASH: '_';
 VERT_LINE: '|';

@@ -250,7 +250,7 @@ object TypeChecker {
           case (vName, _) => Ast2.Free(Ast2.Id(vName))
         }.toSeq
 
-        (lastTh, vName, stats ++ lastStat, freeStats)
+        (if (lastTh == thUndef) thNil else lastTh, vName, stats ++ lastStat, freeStats)
       }
 
       val (condTh, condName, condStats) = evalExpr(ctx, scope, thBool, cond)
@@ -293,10 +293,38 @@ object TypeChecker {
       }
 
       (thNil, null, Seq(Ast2.While(Ast2.Id(condName), condStats, stats ++ freeStats)))
-    case When(expr, isSeq, whenElse) =>
+    case Unless(expr, isSeq) =>
+      // x: Int | String | Float | None | Baz[t] = ...
+      //
+      // y: Bar | Int | String = x unless
+      //   is Float | None do return
+      //   is Baz[t] do 0
+      //   is s: String do s * 2
+      //
+      // is covered:
+      //   Float | None => Undef
+      //   Baz[t]       => Int
+      //   String       => String
+      // not covered:
+      //   Int
+      // infered:       Int | String
+      // user required: Bar | Int | String
+      val (exprTh, exprName, exprStats) = evalExpr(ctx, scope, AnyTh, expr)
+      val exprUnionVariants = exprTh match {
+        case uth: UnionTh => uth.seq
+        case sth: ScalarTh =>
+          ctx.findType(sth.name, sth.mod) match {
+            case (_, ud: UnionDecl) => ud.variants.map(v => v.spec(makeSpecMap(ud.params, sth.params)))
+            case _ => Seq(sth)
+          }
+        case th@_ => Seq(th)
+      }
+      val retValName = "_w" + ctx.nextAnonId()
+
       def evalIs(is: Is): (TypeHint, String, Seq[Ast2.Stat], Seq[Ast2.Stat]) = {
         val blockScope = scope.mkChild(p => new BlockScope(Some(p)))
-        blockScope.addLocal(ctx, is.vName.value, is.typeRef)
+
+        is.vName.foreach(vName => blockScope.addLocal(ctx, vName.value, is.typeRef))
 
         val (expressions, last) = is._do match {
           case Seq() => (Seq.empty, lNone())
@@ -308,31 +336,28 @@ object TypeChecker {
         val (lastTh, vName, lastStat) = evalExpr(ctx, blockScope, th, last)
 
         val freeStats = blockScope.vars
-          .filter({ case (vName, _) => vName != is.vName.value })
+          //.filter({ case (vName, _) => Some(vName) != is.vName.map(_.value) }) // free performed on backend side
           .map { case (vName, _) => Ast2.Free(Ast2.Id(vName)) }.toSeq
 
         (lastTh, vName, stats ++ lastStat, freeStats)
       }
 
-      def evalElse(seq: Seq[Expression]): (TypeHint, String, Seq[Ast2.Stat], Seq[Ast2.Stat]) = {
-        val blockScope = scope.mkChild(p => new BlockScope(Some(p)))
+      val lowIsSeq = isSeq.map { is =>
+        if (!Invoker.checkAndInfer(ctx, new mutable.HashMap(), exprTh, is.typeRef))
+          throw new RuntimeException(s"expected ${is.typeRef} as union member of $exprTh but no")
 
-        val (expressions, last) = seq match {
-          case Seq() => (Seq.empty, lNone())
-          case s => (s.dropRight(1), s.last)
-        }
+        val (bth, bvName, stats, freeStats) = evalIs(is)
 
-        val stats =
-          expressions.flatMap { expr => evalExpr(ctx, blockScope, AnyTh, expr)._3 }
-        val (lastTh, vName, lastStat) = evalExpr(ctx, blockScope, th, last)
+        val storeRet =
+          if (bth == thUndef) Seq()
+          else Seq(Ast2.Store(init = true, Ast2.Id(retValName), Ast2.Id(bvName)))
 
-        val freeStats = blockScope.vars
-          .map { case (vName, _) => Ast2.Free(Ast2.Id(vName)) }.toSeq
-
-        (lastTh, vName, stats ++ lastStat, freeStats)
+        (is.typeRef, bth, Ast2.Is(is.vName.map(_.value), is.typeRef.toLow(ctx), stats ++ storeRet ++ freeStats))
       }
 
-      def inferSuperType(variants: Seq[TypeHint]): UnionTh = {
+      def inferSuperType(variants: Seq[TypeHint]): TypeHint = {
+        if (variants.length == 1) return variants.head
+
         val result = new mutable.ListBuffer[TypeHint]()
         val tmp = new mutable.HashMap[GenericTh, TypeHint]()
 
@@ -344,28 +369,23 @@ object TypeChecker {
         UnionTh(result)
       }
 
-      val (exprTh, exprName, exprStats) = evalExpr(ctx, scope, thBool, expr)
-      val retValName = "_w" + ctx.nextAnonId()
-      val lowIsSeq =
-        isSeq.map { is =>
-          if (!Invoker.checkAndInfer(ctx, new mutable.HashMap(), exprTh, is.typeRef))
-            throw new RuntimeException(s"expected ${is.typeRef} as union member of $exprTh but no")
+      def inferDifferentialType(has: Seq[TypeHint], covered: TypeHint): UnionTh = {
+        val result = new mutable.ListBuffer[TypeHint]()
+        val tmp = new mutable.HashMap[GenericTh, TypeHint]()
 
-          val (bth, bvName, stats, freeStats) = evalIs(is)
-          val storeRet = Seq(Ast2.Store(init = true, Ast2.Id(retValName), Ast2.Id(bvName)))
-          (bth, Ast2.Is(is.vName.value, is.typeRef.toLow(ctx), stats ++ storeRet ++ freeStats))
+        has.foreach { v =>
+          if (!Invoker.checkAndInfer(ctx, tmp, covered, v))
+            result += v
         }
 
-      val (overallType, elseStats) = whenElse match {
-        case Some(WhenElse(elseSeq)) =>
-          val (elseTh, bvName, stats, freeStats) = evalElse(elseSeq)
-          val storeRet = Seq(Ast2.Store(init = true, Ast2.Id(retValName), Ast2.Id(bvName)))
-          val elseStats = stats ++ storeRet ++ freeStats
-
-          (inferSuperType(lowIsSeq.map(_._1) :+ elseTh), elseStats)
-        case None =>
-          (inferSuperType(lowIsSeq.map(_._1)), Seq())
+        UnionTh(result)
       }
+
+
+      val coveredType = inferSuperType(lowIsSeq.map(_._1))
+      val mappedType = lowIsSeq.map(_._2).filter(x => x != thUndef)
+      val differentialType = inferDifferentialType(exprUnionVariants, coveredType)
+      val overallType = inferSuperType(differentialType.seq ++ mappedType)
 
       val retValTh = th match {
         case AnyTh => overallType
@@ -376,7 +396,7 @@ object TypeChecker {
       }
 
       scope.addLocal(ctx, retValName, retValTh)
-      (retValTh, retValName, exprStats ++ Seq(Ast2.When(Ast2.Id(exprName), lowIsSeq.map(_._2), elseStats)))
+      (retValTh, retValName, exprStats ++ Seq(Ast2.Unless(retValName, Ast2.Id(exprName), lowIsSeq.map(_._3))))
     case Store(typeHint, to, what) =>
       // x: Int = 5 # ok
       // x = 6 # ok
@@ -450,7 +470,7 @@ object TypeChecker {
             (actualTh, "", lowStats :+ Ast2.Ret(Some(vName)))
           }
         case None =>
-          (thNil, "", Seq(Ast2.Ret(None)))
+          (thUndef, null, Seq(Ast2.Ret(None)))
       }
 
     case bc@(Break() | Continue()) =>
@@ -461,15 +481,13 @@ object TypeChecker {
           case bs: BlockScope => bs.parent.flatMap(sc => findWhileScope(sc))
         }
 
-      val ws = findWhileScope(scope).getOrElse(throw new RuntimeException("no while for break or continue"))
-      val vName = "$l" + ctx.nextAnonId()
-      scope.addLocal(ctx, vName, thNil);
+      findWhileScope(scope).getOrElse(throw new RuntimeException("no while for break or continue"))
 
       bc match {
         case Break() =>
-          (thNil, vName, Seq(Ast2.Break()))
+          (thUndef, null, Seq(Ast2.Break()))
         case Continue() =>
-          (thNil, vName, Seq(Ast2.Continue()))
+          (thUndef, null, Seq(Ast2.Continue()))
       }
   }
 

@@ -210,9 +210,9 @@ object IrGen2 {
 
     // делаем инкремент что store
     if (needAcquier && whatTref.isNeedBeforeAfterStore(ctx.types)) {
-      val fRelease = "\"" + whatTref.fullName(ctx.types) + ".acquire" + "\""
+      val fAcquire = "\"" + whatTref.fullName(ctx.types) + ".acquire" + "\""
       val irType = whatTref.toValue(ctx.types)
-      ctx.out.println(s"\tcall void @$fRelease($irType $what)")
+      ctx.out.println(s"\tcall void @$fAcquire($irType $what)")
     }
 
     // делаем декремент куда store
@@ -453,9 +453,9 @@ object IrGen2 {
       onFalse.foreach(s => evalStat(ctx, dctx, wctx, s))
       ctx.out.println(s"\tbr label %$endBr")
       ctx.out.println(s"$endBr:")
-    case When(id, isSeq, _else) =>
-      ctx.out.println(s";@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ when begin")
-      val (tref, exp) = requireValue(ctx, dctx, evalId(ctx, dctx, id))
+    case Unless(dest, src, isSeq) =>
+      ctx.out.println(s";@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ unless begin")
+      val (tref, exp) = requireValue(ctx, dctx, evalId(ctx, dctx, src))
       val uIrType = tref.toValue(ctx.types)
       var tag: Int = 0
       val u = ctx.types(tref.name).asInstanceOf[Union]
@@ -473,42 +473,58 @@ object IrGen2 {
 
       val uType = ctx.types(tref.name).asInstanceOf[Union]
 
-      val brElse = "else" + dctx.nextBranch()
       val brEnd = "end" + dctx.nextBranch()
+      val isBranches = uType.variants.indices.map(i => (i, "is" + dctx.nextBranch()))
 
-      ctx.out.println(s"\tswitch i8 %$tag, label %$brElse [")
-      val isAndBranch = isSeq.map { is =>
-        val br = "is" + dctx.nextBranch()
-        val tagValue = uType.fieldTagValue(is.ref)
-        ctx.out.println(s"\t\ti8 $tagValue, label %$br")
-        (is, tagValue, br)
+      ctx.out.println(s"\tswitch i8 %$tag, label %$brEnd [")
+      isBranches.foreach {
+        case (tagValue, br) => ctx.out.println(s"\t\ti8 $tagValue, label %$br")
       }
       ctx.out.println(s"\t]")
 
-      isAndBranch.foreach {
-        case (is, idx, br) =>
-          ctx.out.println(s"$br:")
-          u.isNullableUnion(ctx.types) match {
-            case Some(tref) =>
-              val destIrType = tref.toPtr(ctx.types);
-              val r = dctx.nextReg()
-              ctx.out.println(s"\t%$r = load $uIrType, $uIrType*  %${id.v}")
-              val fRelease = "\"" + tref.fullName(ctx.types) + ".acquire" + "\""
-              ctx.out.println(s"\tcall void @$fRelease($uIrType %$r)")
-              ctx.out.println(s"\tstore $uIrType %$r, $destIrType %${is.v}")
-            case None =>
-              evalStat(ctx, dctx, wctx, Store(init = true, Id(is.v), Id(id.v, id.props :+ idx.toString)))
-          }
-          is.seq.foreach(stat => evalStat(ctx, dctx, wctx, stat))
-          evalStat(ctx, dctx, wctx, Free(Id(is.v)))
-          ctx.out.println(s"\tbr label %$brEnd")
+      isBranches.foreach { case (tagValue, br) =>
+        ctx.out.println(s"$br:")
+
+        val variant = uType.variants(tagValue)
+
+        // FIXME!!! very bad! generalize store for NullableUnion
+        isSeq.find(_.ref == variant) match {
+          case Some(is) =>
+            is.v.foreach { isVName =>
+              u.isNullableUnion(ctx.types) match {
+                case Some(tref) =>
+                  val destIrType = tref.toPtr(ctx.types)
+                  val r = dctx.nextReg()
+                  ctx.out.println(s"\t%$r = load $uIrType, $uIrType*  %${src.v}")
+                  val fAcquire = "\"" + tref.fullName(ctx.types) + ".acquire" + "\""
+                  ctx.out.println(s"\tcall void @$fAcquire($uIrType %$r)")
+                  ctx.out.println(s"\tstore $uIrType %$r, $destIrType %${isVName}")
+                case None =>
+                  evalStat(ctx, dctx, wctx, Store(init = true, Id(isVName), Id(src.v, src.props :+ tagValue.toString)))
+              }
+            }
+
+            is.seq.foreach(stat => evalStat(ctx, dctx, wctx, stat))
+            ctx.out.println(s"\tbr label %$brEnd")
+          case None =>
+            if (!variant.isVoid(ctx.types))
+              u.isNullableUnion(ctx.types) match {
+                case Some(tref) =>
+                  val destIrType = tref.toPtr(ctx.types)
+                  val r = dctx.nextReg()
+                  ctx.out.println(s"\t%$r = load $uIrType, $uIrType*  %${src.v}")
+                  val fAcquire = "\"" + tref.fullName(ctx.types) + ".acquire" + "\""
+                  ctx.out.println(s"\tcall void @$fAcquire($uIrType %$r)")
+                  ctx.out.println(s"\tstore $uIrType %$r, $destIrType %${dest}")
+                case None =>
+                  evalStat(ctx, dctx, wctx, Store(init = true, Id(dest), Id(src.v, src.props :+ tagValue.toString)))
+              }
+            ctx.out.println(s"\tbr label %$brEnd")
+        }
       }
-      ctx.out.println(s"$brElse:")
-      _else.seq.foreach(stat => evalStat(ctx, dctx, wctx, stat))
-      ctx.out.println(s"\tbr label %$brEnd")
 
       ctx.out.println(s"$brEnd:")
-      ctx.out.println(s";@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ when end")
+      ctx.out.println(s";@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ unless end")
   }
 
   def writeProto(ctx: IrContext, external: Boolean, fnName: String, fnType: Fn, args: Seq[String]): Unit = {

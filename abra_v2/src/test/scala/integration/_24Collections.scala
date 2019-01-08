@@ -19,9 +19,8 @@ class _24Collections  extends FunSuite with IntegrationUtil {
           it.next()
           it.next()
 
-          value = it.next()
-
-          when value is i: Int do i else -1 ..
+          value = it.next() unless is None do -1 .
+          value .
   """, exit = Some(6))
   }
 }

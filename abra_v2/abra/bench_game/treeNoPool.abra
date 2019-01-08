@@ -21,7 +21,7 @@ def mkTree = depth: Int do
 def checksum = self: Node do
   sum = 1
 
-  when self.left  is l: Node do
+  self.left unless is l: Node do
      self.right asNode lambda r: Node ->
        sum = sum + l.checksum() + r.checksum() .
 

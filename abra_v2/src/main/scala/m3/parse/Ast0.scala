@@ -58,9 +58,8 @@ object Ast0 {
   case class And(left: Expression, right: Expression) extends Expression with AndOr
   case class Or(left: Expression, right: Expression) extends Expression with AndOr
   case class If(cond: Expression, _do: Seq[Expression], _else: Seq[Expression]) extends Expression
-  case class Is(vName: lId, typeRef: TypeHint, _do: Seq[Expression]) extends ParseNode
-  case class WhenElse(seq: Seq[Expression]) extends ParseNode
-  case class When(expr: Expression, is: Seq[Is], _else: Option[WhenElse]) extends Expression
+  case class Is(vName: Option[lId], typeRef: TypeHint, _do: Seq[Expression]) extends ParseNode
+  case class Unless(expr: Expression, is: Seq[Is]) extends Expression
   case class While(cond: Expression, _do: Seq[Expression]) extends Expression
   case class Store(th: TypeHint, to: Seq[lId], what: Expression) extends Expression
   case class Ret(what: Option[Expression]) extends Expression

@@ -15,6 +15,7 @@ object Util {
   val thBool = ScalarTh(params = Seq.empty, "Bool", Seq.empty)
   val thString = ScalarTh(params = Seq.empty, "String", Seq.empty)
   val thNil = ScalarTh(params = Seq.empty, "None", Seq.empty)
+  val thUndef = ScalarTh(params = Seq.empty, "Undef", Seq.empty)
 
   def makeSpecMap(gen: Seq[GenericTh], params: Seq[TypeHint]) = {
     if (gen.length != params.length)
@@ -71,12 +72,10 @@ object Util {
           _else.map(e => e.spec(specMap, ctx)))
       case While(cond, _then) =>
         While(cond.spec(specMap, ctx), _then.map(e => e.spec(specMap, ctx)))
-      case When(expr, isSeq, whenElse) =>
-        When(expr.spec(specMap, ctx),
+      case Unless(expr, isSeq) =>
+        Unless(expr.spec(specMap, ctx),
           isSeq.map(is =>
-            Is(is.vName, is.typeRef.spec(specMap), is._do.map(expr => expr.spec(specMap, ctx)))),
-          whenElse.map(we =>
-            WhenElse(we.seq.map(expr => expr.spec(specMap, ctx)))))
+            Is(is.vName, is.typeRef.spec(specMap), is._do.map(expr => expr.spec(specMap, ctx)))))
       case Store(th, to, what) =>
         Store(th.spec(specMap), to, what.spec(specMap, ctx))
       case Ret(what) => Ret(what.map(e => e.spec(specMap, ctx)))

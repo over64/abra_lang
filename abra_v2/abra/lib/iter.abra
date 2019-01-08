@@ -19,9 +19,8 @@ def iterator = self: Map[iterable, t, u] do
 type MapIter[iterator, t, u] = (iter: iterator, mapper: (t) -> u)
 
 def next = self: MapIter[iterator, t, u] do
-    when self.iter.next() is value: t do
-        self.mapper(value) .
-    .u | None
+    value = self.iter.next() unless is None do return none .
+    self.mapper(value) .u | None
 
 #def next = self: MapIter[iterator, t, u] do
 #    if self.iter.next() not None do

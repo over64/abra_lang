@@ -158,6 +158,8 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
       visitBreak_(ctx.break_())
     else if (ctx.continue_() != null)
       visitContinue_(ctx.continue_())
+    else if (ctx.ret() != null)
+      visitRet(ctx.ret())
     else visitWhile_stat(ctx.while_stat())
 
   override def visitStore(ctx: StoreContext): Expression = {
@@ -235,19 +237,15 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
 
   override def visitIs(ctx: IsContext) =
     emit(ctx, Is(
-      lId(ctx.VarId().getSymbol.getText),
+      Option(ctx.VarId()).map(vid => lId(vid.getSymbol.getText)),
       visitTypeHint(ctx.typeHint()),
       ctx.blockBody().map(bb => visitBlockBody(bb))
     ))
 
-  override def visitWhenElse(ctx: WhenElseContext) =
-    emit(ctx, WhenElse(ctx.blockBody().map(bb => visitBlockBody(bb))))
-
-  override def visitExprWnen(ctx: ExprWnenContext) =
-    emit(ctx, When(
+  override def visitExprUnless(ctx: ExprUnlessContext) =
+    emit(ctx, Unless(
       visitExpr(ctx.expr),
-      ctx.is().map(i => visitIs(i)),
-      if (ctx.whenElse() == null) None else Some(visitWhenElse(ctx.whenElse()))
+      ctx.is().map(i => visitIs(i))
     ))
 
   override def visitExprProp(ctx: ExprPropContext): Expression =

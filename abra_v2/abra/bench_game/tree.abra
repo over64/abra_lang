@@ -24,7 +24,7 @@ def mkTree = depth: Int do
 def checksum = self: Node do
   sum = 1
 
-  when self.left is l: Node do
+  self.left unless is l: Node do
     # Some hack for performance. Will be much better when macro ready
     # C version just uses nullable value, but Abra does not allows this without FORCE
     self.right asNode lambda r: Node ->

@@ -35,8 +35,8 @@ object Ast2 {
   case class Or(id: Id, checkLeft: Seq[Stat], checkRight: Seq[Stat]) extends Stat
   case class And(id: Id, checkLeft: Seq[Stat], checkRight: Seq[Stat]) extends Stat
   case class If(id: Id, onTrue: Seq[Stat], onFalse: Seq[Stat]) extends Stat
-  case class Is(v: String, ref: TypeRef, seq: Seq[Stat])
-  case class When(id: Id, is: Seq[Is], _else: Seq[Stat]) extends Stat
+  case class Is(v: Option[String], ref: TypeRef, seq: Seq[Stat])
+  case class Unless(dest: String, src: Id, is: Seq[Is]) extends Stat
   case class While(id: Id, head: Seq[Stat], body: Seq[Stat]) extends Stat
 
   sealed trait Code

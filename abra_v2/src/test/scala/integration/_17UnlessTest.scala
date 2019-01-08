@@ -2,7 +2,7 @@ package integration
 
 import org.scalatest.FunSuite
 
-class _17WhenTest extends FunSuite with IntegrationUtil {
+class _17UnlessTest extends FunSuite with IntegrationUtil {
   test("when expression") {
     assertCodeEquals(
       """
@@ -19,12 +19,12 @@ class _17WhenTest extends FunSuite with IntegrationUtil {
 
         def main =
           x: Int | String | None = 'hello'
-          y = when x
+          y = x unless
             is i: Int do i
             is s: String do print(s); 'world'
             is n: None do 42 .
 
-          z = when y
+          z = y unless
             is i: Int do i
             is s: String do print('haha'); 13 .
           z .
