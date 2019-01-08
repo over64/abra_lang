@@ -154,6 +154,10 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
       visitExpr(ctx.expression())
     else if (ctx.store() != null)
       visitStore(ctx.store())
+    else if (ctx.break_() != null)
+      visitBreak_(ctx.break_())
+    else if (ctx.continue_() != null)
+      visitContinue_(ctx.continue_())
     else visitWhile_stat(ctx.while_stat())
 
   override def visitStore(ctx: StoreContext): Expression = {
@@ -173,6 +177,12 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
 
   override def visitRet(ctx: RetContext): Ret = emit(ctx, Ret(
     Option(ctx.expression()) map (e => visitExpr(e))))
+
+  override def visitBreak_(ctx: Break_Context): Break =
+    emit(ctx, Break())
+
+  override def visitContinue_(ctx: Continue_Context): Continue =
+    emit(ctx, Continue())
 
   override def visitWhile_stat(ctx: While_statContext): While = {
     emit(ctx, While(
@@ -282,4 +292,5 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
 
   override def visitImport_(ctx: Import_Context): Import =
     emit(ctx, Import(ctx.importEntry().map(ie => visitImportEntry(ie))))
+
 }

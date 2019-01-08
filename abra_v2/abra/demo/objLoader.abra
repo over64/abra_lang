@@ -8,14 +8,13 @@ import
 
 def load = fname: String do
     objFile = io.fopen(fname, 'r')
-    hasLine = true
 
     vertexBuffer:  Vec[Float] = vec.mk(32)
     textureBuffer: Vec[Float] = vec.mk(32)
     normalBuffer:  Vec[Float] = vec.mk(32)
     meshBuffer:    Vec[Float] = vec.mk(32)
 
-    while hasLine do
+    while true do
         when objFile.readLine() is line: String do
             # io.print(line)
             reader = line.toReader()
@@ -59,7 +58,7 @@ def load = fname: String do
                     meshBuffer.push(normalBuffer(normalId * 3 + 1))    # ny
                     meshBuffer.push(normalBuffer(normalId * 3 + 2))    # nz
                     ..
-        else hasLine = false ..
+        else break ..
 
     io.fclose(objFile)
     meshBuffer.array .Array[Float]

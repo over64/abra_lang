@@ -29,6 +29,8 @@ object Ast2 {
   case class Free(id: Id) extends Stat
   case class Call(id: Id, args: Seq[Id] = Seq.empty) extends Stat with Storable
   case class Ret(lit: Option[String]) extends Stat
+  case class Break() extends Stat
+  case class Continue() extends Stat
   case class Store(init: Boolean, dest: Id, src: Storable) extends Stat
   case class Or(id: Id, checkLeft: Seq[Stat], checkRight: Seq[Stat]) extends Stat
   case class And(id: Id, checkLeft: Seq[Stat], checkRight: Seq[Stat]) extends Stat

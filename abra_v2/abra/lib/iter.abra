@@ -22,3 +22,7 @@ def next = self: MapIter[iterator, t, u] do
     when self.iter.next() is value: t do
         self.mapper(value) .
     .u | None
+
+#def next = self: MapIter[iterator, t, u] do
+#    if self.iter.next() not None do
+#        self.mapper(value) ..u | None

@@ -59,7 +59,7 @@ object IrGen2 {
                 }
               case None =>
                 // find global
-                ("@" + "\"" + name + "\"", ctx.protos(name), false)
+                ("@" + "\"" + name + "\"", ctx.protos.getOrElse(name, throw new RuntimeException("no such symbol " + name)), false)
             }
         }
     }
@@ -195,10 +195,10 @@ object IrGen2 {
           (ref, what, false)
       }
 
-//    if (whatTref.isVoid(ctx.types)) {
-//      ctx.out.println(s";@@ void store eliminated")
-//      return
-//    }
+    //    if (whatTref.isVoid(ctx.types)) {
+    //      ctx.out.println(s";@@ void store eliminated")
+    //      return
+    //    }
 
     // вычисляем куда store
     val (toTref, to) = requirePtr(evalId(ctx, dctx, dest))
@@ -370,6 +370,7 @@ object IrGen2 {
 
   def evalStat(ctx: IrContext,
                dctx: DefContext,
+               wctx: Option[WhileContext],
                stat: Stat): Unit = stat match {
     case Cons(ref, args) =>
       evalCall(ctx, dctx, Call(Id("\"" + ref.name + ".$cons\""), args))
@@ -395,39 +396,46 @@ object IrGen2 {
             ctx.out.println(s"\tret ${typeRef.toValue(ctx.types)} $what")
         case None => ctx.out.println("\tret void")
       }
+    case bc@(Break() | Continue()) =>
+      val labels = wctx.getOrElse(throw new RuntimeException("Internal compier error! Expected while context"))
+      dctx.nextReg()
+      bc match {
+        case Break() => ctx.out.println(s"\tbr label %" + labels.endBr)
+        case Continue() => ctx.out.println(s"\tbr label %" + labels.headBr)
+      }
     case Or(id, left, right) =>
-      left.foreach(r => evalStat(ctx, dctx, r))
+      left.foreach(r => evalStat(ctx, dctx, wctx, r))
       val (rightBr, endBr) = ("right" + dctx.nextBranch(), "end" + dctx.nextBranch())
       val (_, exp) = requireValue(ctx, dctx, evalId(ctx, dctx, id))
       val r1 = dctx.nextReg()
       ctx.out.println(s"\t%$r1 = icmp eq i8 $exp, 0")
       ctx.out.println(s"\tbr i1 %$r1, label %$rightBr, label %$endBr")
       ctx.out.println(s"$rightBr:")
-      right.foreach(r => evalStat(ctx, dctx, r))
+      right.foreach(r => evalStat(ctx, dctx, wctx, r))
       ctx.out.println(s"\tbr label %$endBr")
       ctx.out.println(s"$endBr:")
     case And(id, left, right) =>
-      left.foreach(r => evalStat(ctx, dctx, r))
+      left.foreach(r => evalStat(ctx, dctx, wctx, r))
       val (rightBr, endBr) = ("right" + dctx.nextBranch(), "end" + dctx.nextBranch())
       val (_, exp) = requireValue(ctx, dctx, evalId(ctx, dctx, id))
       val r1 = dctx.nextReg()
       ctx.out.println(s"\t%$r1 = icmp eq i8 $exp, 1")
       ctx.out.println(s"\tbr i1 %$r1, label %$rightBr, label %$endBr")
       ctx.out.println(s"$rightBr:")
-      right.foreach(r => evalStat(ctx, dctx, r))
+      right.foreach(r => evalStat(ctx, dctx, wctx, r))
       ctx.out.println(s"\tbr label %$endBr")
       ctx.out.println(s"$endBr:")
     case While(id, head, body) =>
       val (headBr, bodyBr, endBr) = ("headW" + dctx.nextBranch(), "bodyW" + dctx.nextBranch(), "endW" + dctx.nextBranch())
       ctx.out.println(s"\tbr label %$headBr")
       ctx.out.println(s"$headBr:")
-      head.foreach(s => evalStat(ctx, dctx, s))
+      head.foreach(s => evalStat(ctx, dctx, wctx, s))
       val (_, exp) = requireValue(ctx, dctx, evalId(ctx, dctx, id))
       val r1 = dctx.nextReg()
       ctx.out.println(s"\t%$r1 = icmp eq i8 $exp, 1")
       ctx.out.println(s"\tbr i1 %$r1, label %$bodyBr, label %$endBr")
       ctx.out.println(s"$bodyBr:")
-      body.foreach(s => evalStat(ctx, dctx, s))
+      body.foreach(s => evalStat(ctx, dctx, Some(WhileContext(headBr, endBr)), s))
       ctx.out.println(s"\tbr label %$headBr")
       ctx.out.println(s"$endBr:")
     case If(id, onTrue, onFalse) =>
@@ -438,11 +446,11 @@ object IrGen2 {
       ctx.out.println(s"\tbr i1 %$r1, label %$trueBr, label %$falseBr")
 
       ctx.out.println(s"$trueBr:")
-      onTrue.foreach(s => evalStat(ctx, dctx, s))
+      onTrue.foreach(s => evalStat(ctx, dctx, wctx, s))
       ctx.out.println(s"\tbr label %$endBr")
 
       ctx.out.println(s"$falseBr:")
-      onFalse.foreach(s => evalStat(ctx, dctx, s))
+      onFalse.foreach(s => evalStat(ctx, dctx, wctx, s))
       ctx.out.println(s"\tbr label %$endBr")
       ctx.out.println(s"$endBr:")
     case When(id, isSeq, _else) =>
@@ -489,14 +497,14 @@ object IrGen2 {
               ctx.out.println(s"\tcall void @$fRelease($uIrType %$r)")
               ctx.out.println(s"\tstore $uIrType %$r, $destIrType %${is.v}")
             case None =>
-              evalStat(ctx, dctx, Store(init = true, Id(is.v), Id(id.v, id.props :+ idx.toString)))
+              evalStat(ctx, dctx, wctx, Store(init = true, Id(is.v), Id(id.v, id.props :+ idx.toString)))
           }
-          is.seq.foreach(stat => evalStat(ctx, dctx, stat))
-          evalStat(ctx, dctx, Free(Id(is.v)))
+          is.seq.foreach(stat => evalStat(ctx, dctx, wctx, stat))
+          evalStat(ctx, dctx, wctx, Free(Id(is.v)))
           ctx.out.println(s"\tbr label %$brEnd")
       }
       ctx.out.println(s"$brElse:")
-      _else.seq.foreach(stat => evalStat(ctx, dctx, stat))
+      _else.seq.foreach(stat => evalStat(ctx, dctx, wctx, stat))
       ctx.out.println(s"\tbr label %$brEnd")
 
       ctx.out.println(s"$brEnd:")
@@ -543,7 +551,7 @@ object IrGen2 {
         }
 
         val dctx = DefContext(fn, vars)
-        stats.foreach(stat => evalStat(ctx, dctx, stat))
+        stats.foreach(stat => evalStat(ctx, dctx, None, stat))
     }
     ctx.out.println("}")
   }

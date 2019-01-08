@@ -23,6 +23,10 @@ type Ptr = llvm i8* .
 type Byte = llvm i8 .
 type Int  = llvm i32 .
 
+def + = self: Int, other: Int do llvm
+  %1 = add nsw i32 %self, %other
+  ret i32 %1 .Int
+
 def - = self: Int, other: Int do llvm
   %1 = sub nsw i32 %self, %other
   ret i32 %1 .Int

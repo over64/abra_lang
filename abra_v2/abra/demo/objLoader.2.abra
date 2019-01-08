@@ -1,0 +1,77 @@
+import
+    /universe with None, Bool, Int, String, Float
+    /vec with Vec
+    /array with Array
+    /range with Range
+    /sreader
+    /io .
+
+# findIvan.abra
+#type EUserNotFound = (uname: String)
+#
+#def requireUser = uname: String do
+#    dao.findUser(uname) unless None return EUserNotFound(uname)
+#
+#def main =
+#    ivan = requireUser('ivan')
+#    fmt.fwrite(io.stdout, 'age of ivan is %1', ivan.age)
+#    msg = fmt.string(io.stdout, 'age of ivan is %1', ivan.age)
+
+# EUserNotFound(name: ivan)
+#   at findIvan.abra(4).requireUser
+#   at findIvan.abra(7).main
+
+
+def load = fname: String do
+    file = io.fopen(fname, 'r') onexit file.close() .
+
+    vertexBuffer:  Vec[Float] = vec.mk(32)
+    textureBuffer: Vec[Float] = vec.mk(32)
+    normalBuffer:  Vec[Float] = vec.mk(32)
+    meshBuffer:    Vec[Float] = vec.mk(32)
+
+    while true do
+        line = file.readLine() unless is None do break .
+        reader = line.toReader()
+
+        if line.startsWith('v ') do
+            reader.drop('v '.len())
+            vertexBuffer.push(reader.readFloat())   # x
+            vertexBuffer.push(reader.readFloat())   # y
+            vertexBuffer.push(reader.readFloat())   # z
+            .
+
+        if line.startsWith('vt ') do
+            reader.drop('vt '.len())
+            textureBuffer.push(reader.readFloat())   # u
+            textureBuffer.push(reader.readFloat())   # v
+            .
+
+        if line.startsWith('vn ') do
+            reader.drop('vn '.len())
+            normalBuffer.push(reader.readFloat())   # nx
+            normalBuffer.push(reader.readFloat())   # ny
+            normalBuffer.push(reader.readFloat())   # nz
+            .
+
+        if line.startsWith('f ') do
+            reader.drop('f '.len())
+            Range(0, 3, 1) each lambda i: Int ->
+                vertexId = reader.readInt() - 1
+                meshBuffer.push(vertexBuffer(vertexId * 3))     # x
+                meshBuffer.push(vertexBuffer(vertexId * 3 + 1)) # y
+                meshBuffer.push(vertexBuffer(vertexId * 3 + 2)) # z
+                reader.drop('/'.len())
+
+                uvId = reader.readInt() - 1
+                meshBuffer.push(textureBuffer(uvId * 2))        # u
+                meshBuffer.push(textureBuffer(uvId * 2 + 1))    # v
+                reader.drop('/'.len())
+
+                normalId = reader.readInt() - 1
+                meshBuffer.push(normalBuffer(normalId * 3))        # nx
+                meshBuffer.push(normalBuffer(normalId * 3 + 1))    # ny
+                meshBuffer.push(normalBuffer(normalId * 3 + 2))    # nz
+                ..
+
+    meshBuffer.array .Array[Float]

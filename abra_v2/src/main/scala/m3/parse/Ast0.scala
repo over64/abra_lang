@@ -64,6 +64,8 @@ object Ast0 {
   case class While(cond: Expression, _do: Seq[Expression]) extends Expression
   case class Store(th: TypeHint, to: Seq[lId], what: Expression) extends Expression
   case class Ret(what: Option[Expression]) extends Expression
+  case class Break() extends Expression
+  case class Continue() extends Expression
   case class Arg(name: String, typeHint: TypeHint) extends ParseNode
   case class Def(name: String, lambda: Lambda, retTh: TypeHint) extends Level1Declaration
   case class ImportEntry(modName: String, path: String, withTypes: Seq[String]) extends ParseNode

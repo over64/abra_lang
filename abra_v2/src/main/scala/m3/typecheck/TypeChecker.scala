@@ -282,13 +282,13 @@ object TypeChecker {
           elseStats ++ elseStore ++ elseFree))
     case While(cond, _do) =>
       val (condTh, condName, condStats) = evalExpr(ctx, scope, thBool, cond)
-      val blockScope = scope.mkChild(p => new BlockScope(Some(p)))
+      val whileScope = scope.mkChild(p => new WhileScope(Some(p)))
       val stats =
         _do.foldLeft(Seq[Ast2.Stat]()) {
-          case (stats, expr) => stats ++ evalExpr(ctx, blockScope, AnyTh, expr)._3
+          case (stats, expr) => stats ++ evalExpr(ctx, whileScope, AnyTh, expr)._3
         }
 
-      val freeStats = blockScope.vars.map {
+      val freeStats = whileScope.vars.map {
         case (vName, _) => Ast2.Free(Ast2.Id(vName))
       }
 
@@ -451,6 +451,25 @@ object TypeChecker {
           }
         case None =>
           (thNil, "", Seq(Ast2.Ret(None)))
+      }
+
+    case bc@(Break() | Continue()) =>
+      def findWhileScope(sc: Scope): Option[WhileScope] =
+        sc match {
+          case ws: WhileScope => Some(ws)
+          case fs: FnScope => None
+          case bs: BlockScope => bs.parent.flatMap(sc => findWhileScope(sc))
+        }
+
+      val ws = findWhileScope(scope).getOrElse(throw new RuntimeException("no while for break or continue"))
+      val vName = "$l" + ctx.nextAnonId()
+      scope.addLocal(ctx, vName, thNil);
+
+      bc match {
+        case Break() =>
+          (thNil, vName, Seq(Ast2.Break()))
+        case Continue() =>
+          (thNil, vName, Seq(Ast2.Continue()))
       }
   }
 

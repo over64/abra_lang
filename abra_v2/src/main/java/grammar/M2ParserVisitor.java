@@ -198,6 +198,18 @@ public interface M2ParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitRet(M2Parser.RetContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link M2Parser#break_}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitBreak_(M2Parser.Break_Context ctx);
+	/**
+	 * Visit a parse tree produced by {@link M2Parser#continue_}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitContinue_(M2Parser.Continue_Context ctx);
+	/**
 	 * Visit a parse tree produced by {@link M2Parser#while_stat}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

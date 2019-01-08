@@ -76,15 +76,8 @@ class _21GenericTypeTest extends FunSuite with IntegrationUtil {
           ret void .None
 
         def main =
-          print('ввведите x целое')
-          x = readInt()
-          print(x) .
-
-         #include <stdio.h>
-         void main() {
-            int x;
-            scanf("%d", &x);
-         }
+          printInt(add(1, 1.0))
+          0 .
   """, exit = Some(0))
   }
 }

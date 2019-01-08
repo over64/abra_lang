@@ -49,6 +49,8 @@ object IrUtil {
     }
   }
 
+  case class WhileContext(headBr: String, endBr: String)
+
   implicit class RichType(self: Type) {
     def toDecl(types: mutable.HashMap[String, Type]): String = self match {
       case Low(pkg, ref, name, llValue) => llValue

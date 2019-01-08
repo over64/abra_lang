@@ -44,6 +44,8 @@ WITH : 'with' ;
 MATCH: 'match';
 OF: 'of';
 RETURN: 'return';
+BREAK: 'break';
+CONTINUE: 'continue';
 IS: 'is';
 WHEN: 'when';
 REF: 'ref';

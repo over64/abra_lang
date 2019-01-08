@@ -28,7 +28,6 @@ def checksum = self: Node do
     # Some hack for performance. Will be much better when macro ready
     # C version just uses nullable value, but Abra does not allows this without FORCE
     self.right asNode lambda r: Node ->
-      sum.right = Node(none, none)
       sum = sum + l.checksum() + r.checksum() .
 
   sum .Int

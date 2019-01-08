@@ -3,7 +3,7 @@ package m3.typecheck
 
 import m3.codegen.Ast2
 import m3.parse.Ast0._
-import Util._
+import m3.typecheck.Util._
 
 import scala.collection.mutable
 
@@ -11,10 +11,13 @@ import scala.collection.mutable
   * Created by over on 21.10.17.
   */
 sealed trait Location
+
 case object Local extends Location
+
 case object Param extends Location
 
 case class VarInfo(th: TypeHint, lowTh: Ast2.TypeRef, location: Location)
+
 trait Scope {
   val vars = mutable.HashMap[String, VarInfo]()
   val parent: Option[Scope]
@@ -35,11 +38,13 @@ trait Scope {
           case None => None
         }
     }
+
   def findVar(vName: String): VarInfo =
     findVarOpt(vName).getOrElse(throw new RuntimeException(s"var $vName not found"))
 
   //  def up(root: Boolean): Seq[(String, VarInfo)]
   def self: Seq[(String, VarInfo)] = vars.toSeq
+
   def down(root: Boolean): Seq[(String, VarInfo)]
 
   def setRet(th: TypeHint)
@@ -95,6 +100,9 @@ class BlockScope(val parent: Option[Scope]) extends Scope {
 
   override def setRet(th: TypeHint) =
     parent.foreach(p => p.setRet(th))
+}
+
+class WhileScope(parent: Option[Scope]) extends BlockScope(parent) {
 }
 
 // def main =

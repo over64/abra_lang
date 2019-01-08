@@ -47,7 +47,7 @@ object StoreUtil {
       Store(init = true, Id("r", Seq(f.name)), Id(f.name))
     } :+ Ast2.Ret(Some("r"))
 
-    lowStats.foreach(s => IrGen2.evalStat(ctx, dctx, s))
+    lowStats.foreach(s => IrGen2.evalStat(ctx, dctx, None, s))
 
     ctx.out.println("}")
 

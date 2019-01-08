@@ -85,11 +85,9 @@ type EventData = llvm [56 x i8] .
 type Event = (eventType: Int, data: EventData)
 
 def pollEvents = onEvent: (Event) -> None do
-  hasEvent = true
-  while hasEvent do
+  while true do
     event = pollEvent()
-    if event.eventType == noEvent() do
-      hasEvent = false
+    if event.eventType == noEvent() do break
     else
       onEvent(event) ...None
 

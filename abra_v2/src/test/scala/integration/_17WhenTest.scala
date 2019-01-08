@@ -29,5 +29,17 @@ class _17WhenTest extends FunSuite with IntegrationUtil {
             is s: String do print('haha'); 13 .
           z .
       """, exit = Some(13))
+
+//    def main =
+//      x: Int | String | None = 'hello'
+//      y = x unless
+//        is i: Int do i
+//        is s: String do print(s); 'world'
+//        is n: None do 42 .
+//
+//      z = y unless
+//        is i: Int do i
+//        is s: String do print('haha'); 13 .
+//      z .
   }
 }
