@@ -23,7 +23,7 @@ trait IntegrationUtil extends LowUtil {
   def compile(cache: mutable.HashMap[String, (ModHeader, String, Seq[String])],
               level: Int, projDir: String, pkg: String, code: String, isRelease: Boolean): (ModHeader, String, Seq[String]) = {
     println("\t" * level + s"parse $pkg")
-    val (ast, _) = parser.parse[Module](new ANTLRInputStream(code))
+    val ast = parser.parse[Module](new ANTLRInputStream(code))
     val imports =
       ast.imports.seq.map { ie =>
         cache.get(ie.path) match {

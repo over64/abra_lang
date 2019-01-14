@@ -9,7 +9,7 @@ import org.scalatest.FunSuite
   */
 class _02ScopeTest extends FunSuite {
   val tInt = ScalarTh(Seq.empty, "Int", Seq.empty)
-  val ctx = TContext.forTest(types = Seq(ScalarDecl(pkg = "test", ref = false, Seq.empty, "Int", "i32")), defs = Map())
+  val ctx = TContext.forTest(types = Seq(ScalarDecl(ref = false, Seq.empty, "Int", "i32")), defs = Map())
   test("up/ down") {
     var bottom: FnScope = null
     val root = new FnScope(None) {

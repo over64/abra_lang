@@ -1,7 +1,14 @@
 package m3.parse
 
+import scala.collection.mutable
+
+case class AstInfo(fname: String, line: Int, col: Int)
+
 object Ast0 {
-  sealed trait ParseNode
+  sealed trait ParseNode {
+    val meta: mutable.HashMap[String, Object] = new mutable.HashMap()
+  }
+
   sealed trait Expression extends ParseNode
   sealed trait FnBody
   sealed trait Level1Declaration extends ParseNode
@@ -23,10 +30,12 @@ object Ast0 {
     val name: String
   }
 
-  case class ScalarDecl(pkg: String, ref: Boolean, params: Seq[GenericTh], name: String, llType: String) extends TypeDecl
+  // Struct[String]("1", "2", "3") -> Cons(ScalarTh('String', []), [lInt('1'), lInt('2'), lInt('3')])
+
+  case class ScalarDecl(ref: Boolean, params: Seq[GenericTh], name: String, llType: String) extends TypeDecl
   case class FieldDecl(isSelf: Boolean, name: String, th: TypeHint) extends ParseNode
-  case class StructDecl(pkg: String, params: Seq[GenericTh], name: String, fields: Seq[FieldDecl]) extends TypeDecl
-  case class UnionDecl(pkg: String, params: Seq[GenericTh], name: String, variants: Seq[TypeHint]) extends TypeDecl
+  case class StructDecl(params: Seq[GenericTh], name: String, fields: Seq[FieldDecl]) extends TypeDecl
+  case class UnionDecl(params: Seq[GenericTh], name: String, variants: Seq[TypeHint]) extends TypeDecl
 
   sealed trait TypeHint extends ParseNode
   case class ScalarTh(params: Seq[TypeHint], name: String, mod: Seq[String]) extends TypeHint
@@ -45,6 +54,7 @@ object Ast0 {
 
   case class Prop(from: Expression, props: Seq[lId]) extends Expression
   case class Tuple(seq: Seq[Expression]) extends Expression
+  case class Cons(sth: ScalarTh, args: Seq[Expression]) extends Expression
   case class SelfCall(fnName: String, self: Expression, args: Seq[Expression]) extends Expression
   case class Call(expr: Expression, args: Seq[Expression]) extends Expression
 
@@ -61,12 +71,12 @@ object Ast0 {
   case class Is(vName: Option[lId], typeRef: TypeHint, _do: Seq[Expression]) extends ParseNode
   case class Unless(expr: Expression, is: Seq[Is]) extends Expression
   case class While(cond: Expression, _do: Seq[Expression]) extends Expression
-  case class Store(th: TypeHint, to: Seq[lId], what: Expression) extends Expression
+  case class Store(var th: TypeHint, to: Seq[lId], what: Expression) extends Expression
   case class Ret(what: Option[Expression]) extends Expression
   case class Break() extends Expression
   case class Continue() extends Expression
-  case class Arg(name: String, typeHint: TypeHint) extends ParseNode
-  case class Def(name: String, lambda: Lambda, retTh: TypeHint) extends Level1Declaration
+  case class Arg(name: String, var typeHint: TypeHint) extends ParseNode
+  case class Def(name: String, lambda: Lambda, var retTh: TypeHint) extends Level1Declaration
   case class ImportEntry(modName: String, path: String, withTypes: Seq[String]) extends ParseNode
   case class Import(seq: Seq[ImportEntry]) extends ParseNode
   case class Module(pkg: String, imports: Import, lowCode: Seq[llVm], types: Seq[TypeDecl], defs: Seq[Def]) extends ParseNode

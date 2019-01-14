@@ -16,12 +16,12 @@ id: VarId | 'self' ;
 
 expression: literal #exprLiteral
           | id #exprId
-          | TypeId #exprTypeId
           | '(' sp expression sp ')' #exprParen
           | tuple #exprTuple
           | expr=expression sp 'unless' sp is+ (WS | NL) DOT #exprUnless
           | expression (NL WS?)? DOT op=(VarId  | '*' | '/' | '+' | '-' | '>' | '<' | '<=' | '>=' | '==' | '!=')
               sp tuple #exprSelfCall
+          | scalarTh WS* tuple #exprCons
           | expression WS* tuple #exprCall
           | expression (NL WS?)? DOT op+=VarId #exprProp
           | lambda #exprLambda

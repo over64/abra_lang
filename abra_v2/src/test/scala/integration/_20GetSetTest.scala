@@ -2,7 +2,7 @@ package integration
 
 import org.scalatest.FunSuite
 
-class _19GetSetTest extends FunSuite with IntegrationUtil {
+class _20GetSetTest extends FunSuite with IntegrationUtil {
   test("get & set") {
     assertCodeEquals(
       """

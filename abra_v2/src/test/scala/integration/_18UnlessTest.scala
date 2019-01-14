@@ -2,7 +2,7 @@ package integration
 
 import org.scalatest.FunSuite
 
-class _17UnlessTest extends FunSuite with IntegrationUtil {
+class _18UnlessTest extends FunSuite with IntegrationUtil {
   test("when expression") {
     assertCodeEquals(
       """

@@ -12,12 +12,11 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable.HashMap
 
 class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[ParseNode] with M2ParserVisitor[ParseNode] {
-  val sourceMap = new SourceMap()
   val importedModules = new HashMap[String, String]()
   val importedTypes = new HashMap[String, String]()
 
   def emit[T <: ParseNode](token: Token, node: T): T = {
-    sourceMap.add(node, new AstInfo(fname, token.getLine, token.getCharPositionInLine))
+    node.meta.put("source.location", AstInfo(fname, token.getLine, token.getCharPositionInLine))
     node
   }
 
@@ -69,8 +68,8 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
     emit(realId.getSymbol, lId(realId.getSymbol.getText))
   }
 
-  override def visitExprTypeId(ctx: ExprTypeIdContext) =
-    emit(ctx.TypeId().getSymbol, lId(ctx.TypeId().getText))
+  //  override def visitExprTypeId(ctx: ExprTypeIdContext) =
+  //    emit(ctx.TypeId().getSymbol, lId(ctx.TypeId().getText))
 
   override def visitScalarTh(ctx: ScalarThContext): ScalarTh =
     emit(ctx, ScalarTh(
@@ -106,7 +105,6 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
 
   override def visitScalarType(ctx: ScalarTypeContext): ScalarDecl =
     emit(ctx, ScalarDecl(
-      _package,
       if (ctx.REF() != null) true else false,
       ctx.params.map(p => visitGenericTh(p)),
       ctx.tname.getText,
@@ -117,7 +115,6 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
 
   override def visitStructType(ctx: StructTypeContext): StructDecl = {
     emit(ctx, StructDecl(
-      _package,
       ctx.params.map { p => emit(p, visitGenericTh(p)) },
       ctx.name.getText,
       ctx.typeField().map { f => visitTypeField(f) }
@@ -126,7 +123,6 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
 
   override def visitUnionType(ctx: UnionTypeContext): UnionDecl = {
     emit(ctx, UnionDecl(
-      _package,
       ctx.params.map { p => emit(p, visitGenericTh(p)) },
       ctx.name.getText,
       ctx.nonUnionTh().map { th => visitNonUnionTh(th) }
@@ -199,9 +195,11 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
 
   override def visitExprId(ctx: ExprIdContext): lId = visitId(ctx.id())
 
-  override def visitExprSelfCall(ctx: ExprSelfCallContext): ParseNode = {
+  override def visitExprCons(ctx: ExprConsContext): Cons =
+    emit(ctx, Cons(visitScalarTh(ctx.scalarTh()), visitTuple(ctx.tuple()).seq))
+
+  override def visitExprSelfCall(ctx: ExprSelfCallContext): ParseNode =
     emit(ctx, SelfCall(ctx.op.getText, visitExpr(ctx.expression()), visitTuple(ctx.tuple()).seq))
-  }
 
   override def visitExprCall(ctx: ExprCallContext): Expression = {
     val args = visitTuple(ctx.tuple()).seq
@@ -290,5 +288,4 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
 
   override def visitImport_(ctx: Import_Context): Import =
     emit(ctx, Import(ctx.importEntry().map(ie => visitImportEntry(ie))))
-
 }

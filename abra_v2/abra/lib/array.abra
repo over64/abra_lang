@@ -1,6 +1,20 @@
 import /universe with None, Bool, Int .
 
 type Array[t] = ref llvm %t* .
+#def main =
+#    nums = seq.of(
+#        (0, 1, 2, 3, 4, 5),
+#        (0, 1, 2, 3, 4, 5),
+#        (0, 1, 2, 3, 4, 5)) # Seq3x5[Int]
+#
+#    x = nums.get(0, 0)
+#    nums.iter().forEach with λ x ->
+#        x + 1
+#
+#    dyn = seq.gen(10, 5, 2, λ i, j -> 0) # Seq10x5x2[Int]
+#
+#    pyramid = seq.alloc with k, λ i ->
+#        seq.alloc(i + 1, λ j -> 0) # Seq[Seq[Int]]
 
 def alloc = length: Int do llvm
   %ptr = getelementptr %t, %t* null, i32 %length
@@ -14,7 +28,6 @@ def alloc = length: Int do llvm
   %larray = getelementptr i32, i32* %lcast, i32 1
   %array = bitcast i32* %larray to %t*
   ret %t* %array .Array[t]
-
 
 def acquire = self: Array[t] do llvm
   %cast32 = bitcast %"Array[t]" %self to i32*

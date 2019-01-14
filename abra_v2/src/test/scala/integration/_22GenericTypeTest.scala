@@ -2,7 +2,7 @@ package integration
 
 import org.scalatest.FunSuite
 
-class _21GenericTypeTest extends FunSuite with IntegrationUtil {
+class _22GenericTypeTest extends FunSuite with IntegrationUtil {
   test("simplest array impl") {
     assertCodeEquals(
       """

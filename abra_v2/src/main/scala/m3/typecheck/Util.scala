@@ -34,6 +34,10 @@ object Util {
           fnName,
           self.spec(specMap, ctx),
           args.map(arg => arg.spec(specMap, ctx)))
+      case Cons(sth, args) =>
+        Cons(
+          sth.spec(specMap).asInstanceOf[ScalarTh],
+          args.map(arg => arg.spec(specMap, ctx)))
       case Call(expr, args) =>
         Call(
           expr.spec(specMap, ctx),
@@ -242,6 +246,7 @@ object Util {
         case th => th
       }
 
+    // FIXME: keep original type
     def spec(specMap: mutable.HashMap[GenericTh, TypeHint]): TypeHint =
       self match {
         case ScalarTh(params, name, pkg) =>

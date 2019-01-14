@@ -16,7 +16,7 @@ class _01CheckAndInferTest extends FunSuite {
   }
 
   implicit class RichString(self: String) {
-    def th = typeHintParser.parseStr[TypeHint](self)._1
+    def th = typeHintParser.parseStr[TypeHint](self)
   }
 
   val typeParser = new ParseUtil {
@@ -24,7 +24,7 @@ class _01CheckAndInferTest extends FunSuite {
   }
 
   def parseTypes(types: Seq[String]) =
-    types.map(t => typeParser.parseStr[TypeDecl](t)._1)
+    types.map(t => typeParser.parseStr[TypeDecl](t))
 
   val ctx = new TContext(0, mutable.Stack[String](), IrUtil.Mod(), 0, "test", Seq.empty, Map(), Seq.empty,
     parseTypes(Seq(

@@ -2,7 +2,7 @@ package integration
 
 import org.scalatest.FunSuite
 
-class _09ReturnTest extends FunSuite with IntegrationUtil {
+class _09ResultTypeTest extends FunSuite with IntegrationUtil {
   test("ret scalar value") {
     assertCodeEquals(
       """

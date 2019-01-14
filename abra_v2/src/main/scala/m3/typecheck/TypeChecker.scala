@@ -141,6 +141,12 @@ object TypeChecker {
           }
           Invoker.invokeSelfDef(ctx, scope, fnName, selfTh, (selfTask +: argTasks).iterator, th)
       }
+    case Cons(sth, args) =>
+      Invoker.invokeConstructor(ctx, scope, sth.name, args.map(arg => new InferTask {
+        override def infer(expected: TypeHint) = {
+          evalExpr(ctx, scope, expected, arg)
+        }
+      }).iterator, th)
     case Call(expr, args) =>
       val argTasks = args.map(arg => new InferTask {
         override def infer(expected: TypeHint) = {
@@ -149,30 +155,24 @@ object TypeChecker {
       })
       expr match {
         case id: lId =>
-          // is it constructor?
-          if (id.value.head.isUpper) {
-            Invoker.invokeConstructor(ctx, scope, id.value, argTasks.iterator, th)
-          } else {
-            // 1. find function
-            // 2. find var
-            if (ctx.defs.contains(id.value))
-              Invoker.invokeDef(ctx, scope, id.value, argTasks.iterator, th)
-            else {
-              val vi = scope.findVarOpt(id.value)
-                .getOrElse(throw new RuntimeException(s"no such var of function with name ${id.value}"))
+          // 1. find function
+          // 2. find var
+          if (ctx.defs.contains(id.value))
+            Invoker.invokeDef(ctx, scope, id.value, argTasks.iterator, th)
+          else {
+            val vi = scope.findVarOpt(id.value)
+              .getOrElse(throw new RuntimeException(s"no such var of function with name ${id.value}"))
 
-              vi.th match {
-                case fth: FnTh =>
-                  Invoker.invokeLambda(ctx, scope, id.value, fth, argTasks.iterator)
-                case selfTh =>
-                  val selfTask = new InferTask {
-                    override def infer(expected: TypeHint): (TypeHint, String, Seq[Ast2.Stat]) = (selfTh, id.value, Seq.empty)
-                  }
-                  Invoker.invokeSelfDef(ctx, scope, "get", selfTh, (selfTask +: argTasks).iterator, th)
-              }
+            vi.th match {
+              case fth: FnTh =>
+                Invoker.invokeLambda(ctx, scope, id.value, fth, argTasks.iterator)
+              case selfTh =>
+                val selfTask = new InferTask {
+                  override def infer(expected: TypeHint): (TypeHint, String, Seq[Ast2.Stat]) = (selfTh, id.value, Seq.empty)
+                }
+                Invoker.invokeSelfDef(ctx, scope, "get", selfTh, (selfTask +: argTasks).iterator, th)
             }
           }
-
         case _expr: Expression =>
           // 1. eval
           // 2. if th == FnTh -> call
@@ -250,7 +250,7 @@ object TypeChecker {
           case (vName, _) => Ast2.Free(Ast2.Id(vName))
         }.toSeq
 
-        (if (lastTh == thUndef) thNil else lastTh, vName, stats ++ lastStat, freeStats)
+        (lastTh, vName, stats ++ lastStat, freeStats)
       }
 
       val (condTh, condName, condStats) = evalExpr(ctx, scope, thBool, cond)
@@ -261,18 +261,18 @@ object TypeChecker {
       val (elseTh, elseName, elseStats, elseFree) = evalBlock(_else)
 
       val actualTh =
-        if (!Invoker.checkAndInfer(ctx, new mutable.HashMap(), doTh, elseTh))
+        if (doTh == thUndef && elseTh == thUndef) thNil
+        else if (doTh == thUndef) elseTh
+        else if (elseTh == thUndef) doTh
+        else if (!Invoker.checkAndInfer(ctx, new mutable.HashMap(), doTh, elseTh))
           UnionTh(Seq(doTh, elseTh))
         else doTh
 
       val resultVar = "_i" + ctx.nextAnonId()
       scope.addLocal(ctx, resultVar, actualTh)
 
-      val (doStore, elseStore) =
-        if (actualTh == thNil) (Seq(), Seq())
-        else
-          (Seq(Ast2.Store(init = true, Ast2.Id(resultVar), Ast2.Id(doName))),
-            Seq(Ast2.Store(init = true, Ast2.Id(resultVar), Ast2.Id(elseName))))
+      val doStore = if (doTh != thUndef) Seq(Ast2.Store(init = true, Ast2.Id(resultVar), Ast2.Id(doName))) else Seq.empty
+      val elseStore = if (elseTh != thUndef) Seq(Ast2.Store(init = true, Ast2.Id(resultVar), Ast2.Id(elseName))) else Seq.empty
 
       (actualTh,
         resultVar,
@@ -463,11 +463,12 @@ object TypeChecker {
         case Some(expr) =>
           val (actualTh, vName, lowStats) = evalExpr(ctx, scope, th, expr)
 
-          if (actualTh == thNil)
-            (actualTh, "", lowStats :+ Ast2.Ret(None))
-          else {
-            scope.setRet(actualTh)
-            (actualTh, "", lowStats :+ Ast2.Ret(Some(vName)))
+          scope.setRet(actualTh)
+
+          if (actualTh == thNil) {
+            (thUndef, null, lowStats :+ Ast2.Ret(None))
+          } else {
+            (thUndef, null, lowStats :+ Ast2.Ret(Some(vName)))
           }
         case None =>
           (thUndef, null, Seq(Ast2.Ret(None)))

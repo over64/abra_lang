@@ -29,19 +29,19 @@ public interface M2ParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitId(M2Parser.IdContext ctx);
 	/**
+	 * Visit a parse tree produced by the {@code exprCons}
+	 * labeled alternative in {@link M2Parser#expression}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitExprCons(M2Parser.ExprConsContext ctx);
+	/**
 	 * Visit a parse tree produced by the {@code exprUnless}
 	 * labeled alternative in {@link M2Parser#expression}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
 	T visitExprUnless(M2Parser.ExprUnlessContext ctx);
-	/**
-	 * Visit a parse tree produced by the {@code exprTypeId}
-	 * labeled alternative in {@link M2Parser#expression}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitExprTypeId(M2Parser.ExprTypeIdContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code exprLiteral}
 	 * labeled alternative in {@link M2Parser#expression}.

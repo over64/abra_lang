@@ -16,31 +16,31 @@ class _05TypesParse extends FunSuite {
   import parserType._
 
   test("scalar") {
-    withStr("type Int = llvm i32 .", ScalarDecl("test", false, Seq.empty, "Int", "i32"))
-    withStr("type Int32 = llvm i32 .", ScalarDecl("test", false, Seq.empty, "Int32", "i32"))
-    withStr("type I32Bar = ref llvm i8* .", ScalarDecl("test", true, Seq.empty, "I32Bar", "i8*"))
-    withStr("type FooBar = llvm [i32 x 5] .", ScalarDecl("test", false, Seq.empty, "FooBar", "[i32 x 5]"))
+    withStr("type Int = llvm i32 .", ScalarDecl(false, Seq.empty, "Int", "i32"))
+    withStr("type Int32 = llvm i32 .", ScalarDecl(false, Seq.empty, "Int32", "i32"))
+    withStr("type I32Bar = ref llvm i8* .", ScalarDecl(true, Seq.empty, "I32Bar", "i8*"))
+    withStr("type FooBar = llvm [i32 x 5] .", ScalarDecl(false, Seq.empty, "FooBar", "[i32 x 5]"))
   }
 
   test("struct") {
-    withStr("type S = (x: Int)", StructDecl("test", Seq(), "S", Seq(FieldDecl(false, "x", ScalarTh(Seq(), "Int", Seq.empty)))))
-    withStr("type Seq[t] = (length: Int, ptr: Ptr)", StructDecl("test", Seq(GenericTh("t")), "Seq", Seq(
+    withStr("type S = (x: Int)", StructDecl(Seq(), "S", Seq(FieldDecl(false, "x", ScalarTh(Seq(), "Int", Seq.empty)))))
+    withStr("type Seq[t] = (length: Int, ptr: Ptr)", StructDecl(Seq(GenericTh("t")), "Seq", Seq(
       FieldDecl(false, "length", ScalarTh(Seq(), "Int", Seq.empty)),
       FieldDecl(false, "ptr", ScalarTh(Seq(), "Ptr", Seq.empty))
     )))
   }
 
   test("union") {
-    withStr("type StringOpt = String | None", UnionDecl("test", Seq(), "StringOpt", Seq(
+    withStr("type StringOpt = String | None", UnionDecl(Seq(), "StringOpt", Seq(
       ScalarTh(Seq(), "String", Seq.empty),
       ScalarTh(Seq(), "None", Seq.empty))))
 
-    withStr("type U2 = String | None | Bool", UnionDecl("test", Seq(), "U2", Seq(
+    withStr("type U2 = String | None | Bool", UnionDecl(Seq(), "U2", Seq(
       ScalarTh(Seq(), "String", Seq.empty),
       ScalarTh(Seq(), "None", Seq.empty),
       ScalarTh(Seq(), "Bool", Seq.empty))))
 
-    withStr("type Option[t] = t | None", UnionDecl("test", Seq(GenericTh("t")), "Option", Seq(
+    withStr("type Option[t] = t | None", UnionDecl(Seq(GenericTh("t")), "Option", Seq(
       GenericTh("t"),
       ScalarTh(Seq(), "None", Seq.empty)
     )))
