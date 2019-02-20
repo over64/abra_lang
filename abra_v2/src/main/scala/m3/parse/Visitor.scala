@@ -9,18 +9,22 @@ import org.antlr.v4.runtime.tree.{AbstractParseTreeVisitor, TerminalNode}
 import org.antlr.v4.runtime.{ParserRuleContext, Token}
 
 import scala.collection.JavaConversions._
+import scala.collection.mutable
 import scala.collection.mutable.HashMap
 
 class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[ParseNode] with M2ParserVisitor[ParseNode] {
   val importedModules = new HashMap[String, String]()
   val importedTypes = new HashMap[String, String]()
 
-  def emit[T <: ParseNode](token: Token, node: T): T = {
-    node.meta.put("source.location", AstInfo(fname, token.getLine, token.getCharPositionInLine))
+  def emit[T <: ParseNode](start: Token, stop: Token, node: T): T = {
+    node.meta.put("source.location", AstInfo(
+      fname,
+      start.getLine, start.getCharPositionInLine,
+      stop.getLine, stop.getCharPositionInLine))
     node
   }
 
-  def emit[T <: ParseNode](ctx: ParserRuleContext, node: T): T = emit(ctx.getStart, node)
+  def emit[T <: ParseNode](ctx: ParserRuleContext, node: T): T = emit(ctx.getStart, ctx.getStop, node)
 
   override def visitSp(ctx: SpContext): ParseNode = null
 
@@ -44,7 +48,7 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
       terminal.getSymbol
     }
 
-    emit(token,
+    emit(ctx,
       token.getType match {
         case StringLiteral => // strip embracing commas
           val (text, length) = (token.getText, token.getText.length)
@@ -65,7 +69,7 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
   override def visitId(ctx: IdContext): lId = {
     val realId = if (ctx.VarId() != null) ctx.VarId()
     else ctx.getToken(SELF, 0)
-    emit(realId.getSymbol, lId(realId.getSymbol.getText))
+    emit(ctx, lId(realId.getSymbol.getText))
   }
 
   //  override def visitExprTypeId(ctx: ExprTypeIdContext) =
@@ -247,10 +251,14 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
     ))
 
   override def visitExprProp(ctx: ExprPropContext): Expression =
-    emit(ctx, Prop(visitExpr(ctx.expression()), ctx.op.map(op => emit(op, lId(op.getText)))))
+    emit(ctx, Prop(visitExpr(ctx.expression()), ctx.op.map(op => emit(ctx, lId(op.getText)))))
 
   override def visitDef(ctx: DefContext): Def = {
-    val args = ctx.fnArg().map(fa => visitFnArg(fa))
+    val args = ctx.fnArg().map { fa =>
+      val arg = visitFnArg(fa)
+      if (arg.typeHint == AnyTh) throw PE.ArgTypeHintRequired(arg.location)
+      arg
+    }
 
     val body =
       if (ctx.llvm() != null) Lambda(args, visitLlvm(ctx.llvm()))
@@ -275,7 +283,30 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
     val types = all.filter(_.isInstanceOf[TypeDecl]).map(_.asInstanceOf[TypeDecl])
     val functions = all.filter(_.isInstanceOf[Def]).map(_.asInstanceOf[Def])
 
-    emit(ctx, Module(_package, imp, lowCode, types, functions))
+    val typeMap = new mutable.HashMap[String, TypeDecl]()
+    types.foreach { td =>
+      if (typeMap.contains(td.name)) throw new PE.DoubleTypeDeclaration(td.location)
+      typeMap.put(td.name, td)
+    }
+
+    val defs = new mutable.HashMap[String, Def]()
+    val selfDefs = new mutable.ListBuffer[Def]()
+
+    functions.foreach { fn =>
+      val selfTh = fn.lambda.args.headOption match {
+        case Some(head) if head.name == "self" => Some(head.typeHint)
+        case _ => None
+      }
+
+      selfTh match {
+        case Some(th) => selfDefs += fn
+        case None =>
+          if (defs.contains(fn.name)) throw PE.DoubleDefDeclaration(fn.location)
+          defs.put(fn.name, fn)
+      }
+    }
+
+    emit(ctx, Module(_package, imp, lowCode, typeMap.toMap, defs.toMap, selfDefs.groupBy(_.name)))
   }
 
   override def visitImportEntry(ctx: ImportEntryContext): ImportEntry = {

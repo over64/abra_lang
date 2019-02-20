@@ -1,12 +1,27 @@
 package m3.parse
 
+import m3.typecheck.Equations
+
 import scala.collection.mutable
 
-case class AstInfo(fname: String, line: Int, col: Int)
+case class AstInfo(fname: String, line: Int, col: Int, lineEnd: Int, colEnd: Int) {
+  override def toString: String = s"$fname.abra:$line:$col"
+}
 
 object Ast0 {
   sealed trait ParseNode {
     val meta: mutable.HashMap[String, Object] = new mutable.HashMap()
+    def location: AstInfo = meta.getOrElse("source.location", {
+      throw new RuntimeException("no location")
+    }).asInstanceOf[AstInfo]
+
+    def getTypeHintOpt[T <: TypeHint]: Option[T] = meta.get("typecheck.typeHint").map(m => m.asInstanceOf[T])
+
+    def getTypeHint[T <: TypeHint]: T = getTypeHintOpt.getOrElse {
+      throw new RuntimeException("no typeHint")
+    }
+
+    def setTypeHint(th: TypeHint): Unit = meta.put("typecheck.typeHint", th)
   }
 
   sealed trait Expression extends ParseNode
@@ -30,27 +45,43 @@ object Ast0 {
     val name: String
   }
 
-  // Struct[String]("1", "2", "3") -> Cons(ScalarTh('String', []), [lInt('1'), lInt('2'), lInt('3')])
-
   case class ScalarDecl(ref: Boolean, params: Seq[GenericTh], name: String, llType: String) extends TypeDecl
   case class FieldDecl(isSelf: Boolean, name: String, th: TypeHint) extends ParseNode
   case class StructDecl(params: Seq[GenericTh], name: String, fields: Seq[FieldDecl]) extends TypeDecl
   case class UnionDecl(params: Seq[GenericTh], name: String, variants: Seq[TypeHint]) extends TypeDecl
 
   sealed trait TypeHint extends ParseNode
-  case class ScalarTh(params: Seq[TypeHint], name: String, mod: Seq[String]) extends TypeHint
-  case class FieldTh(name: String, typeHint: TypeHint) extends ParseNode
-  case class StructTh(seq: Seq[FieldTh]) extends TypeHint
-  case class UnionTh(seq: Seq[TypeHint]) extends TypeHint
-  case class GenericTh(typeName: String) extends TypeHint
-  case object AnyTh extends TypeHint
+  case class ScalarTh(params: Seq[TypeHint], name: String, mod: Seq[String]) extends TypeHint {
+    override def toString: String = s"${if (mod.isEmpty) "" else mod.mkString("", ".", ".")}$name${if (params.isEmpty) "" else params.mkString("[", "", "]")}"
+  }
+  case class FieldTh(name: String, typeHint: TypeHint) extends ParseNode {
+    override def toString: String = s"$name: $typeHint"
+  }
+  case class StructTh(seq: Seq[FieldTh]) extends TypeHint {
+    override def toString: String = seq.mkString("(", "", ")")
+  }
+  case class UnionTh(seq: Seq[TypeHint]) extends TypeHint {
+    override def toString: String = seq.mkString("|")
+  }
+
+  case class Bound(selfDef: String, args: Seq[TypeHint], ret: TypeHint)
+
+  case class GenericTh(var typeName: String, var isAnon: Boolean = false) extends TypeHint {
+    override def toString: String = typeName
+  }
+  case object AnyTh extends TypeHint {
+    override def toString: String = "_"
+  }
 
   sealed trait ClosureType {
     val th: TypeHint
   }
   case class CLocal(th: TypeHint) extends ClosureType
   case class CParam(th: TypeHint) extends ClosureType
-  case class FnTh(closure: Seq[ClosureType], args: Seq[TypeHint], ret: TypeHint) extends TypeHint
+  case class FnTh(closure: Seq[ClosureType], args: Seq[TypeHint], ret: TypeHint) extends TypeHint {
+    override def toString: String =
+      args.mkString("(", ", ", ")") + " -> " + ret
+  }
 
   case class Prop(from: Expression, props: Seq[lId]) extends Expression
   case class Tuple(seq: Seq[Expression]) extends Expression
@@ -71,13 +102,31 @@ object Ast0 {
   case class Is(vName: Option[lId], typeRef: TypeHint, _do: Seq[Expression]) extends ParseNode
   case class Unless(expr: Expression, is: Seq[Is]) extends Expression
   case class While(cond: Expression, _do: Seq[Expression]) extends Expression
-  case class Store(var th: TypeHint, to: Seq[lId], what: Expression) extends Expression
+  case class Store(var th: TypeHint, to: Seq[lId], what: Expression) extends Expression {
+    def getDeclTh[T <: TypeHint]: T = meta.get("typecheck.store.declTypeHint").map(m => m.asInstanceOf[T]).get
+
+    def setDeclTh(th: TypeHint): Unit = meta.put("typecheck.store.declTypeHint", th)
+  }
   case class Ret(what: Option[Expression]) extends Expression
   case class Break() extends Expression
   case class Continue() extends Expression
   case class Arg(name: String, var typeHint: TypeHint) extends ParseNode
-  case class Def(name: String, lambda: Lambda, var retTh: TypeHint) extends Level1Declaration
+  case class Def(name: String, lambda: Lambda, var retTh: TypeHint) extends Level1Declaration {
+    def getEquationsOpt: Option[Equations] = meta.get("typecheck.equations").map(m => m.asInstanceOf[Equations])
+
+    def getEquations: Equations = getEquationsOpt.getOrElse {
+      val x = 1
+      throw new RuntimeException("no equations")
+    }
+
+    def setEquations(eq: Equations): Unit = meta.put("typecheck.equations", eq)
+  }
   case class ImportEntry(modName: String, path: String, withTypes: Seq[String]) extends ParseNode
   case class Import(seq: Seq[ImportEntry]) extends ParseNode
-  case class Module(pkg: String, imports: Import, lowCode: Seq[llVm], types: Seq[TypeDecl], defs: Seq[Def]) extends ParseNode
+  case class Module(pkg: String,
+                    imports: Import,
+                    lowCode: Seq[llVm],
+                    types: Map[String, TypeDecl],
+                    defs: Map[String, Def],
+                    selfDefs: Map[String, Seq[Def]]) extends ParseNode
 }

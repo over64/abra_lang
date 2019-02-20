@@ -46,7 +46,7 @@ class _13SelfFunctionTest extends FunSuite with IntegrationUtil {
           ret i64 %1 .Long
 
         def one = llvm
-          ret i64 0 .Long
+          ret i64 1 .Long
 
         def main =
           one() - one()

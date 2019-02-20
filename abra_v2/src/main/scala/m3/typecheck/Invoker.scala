@@ -35,12 +35,12 @@ object Invoker {
           }
         } else isEqualSeq(ctx, specMap, adv.params, sth.params)
 
-      case (adv: ScalarTh, sth: StructTh) =>
+      case (adv: ScalarTh, sth: StructTh) => // FIXME: bad copy paste?
         ctx.findType(adv.name, adv.mod) match {
           case (_, ud: UnionDecl) => checkUnionMember(ctx, specMap, ud, adv.params, sth)
           case _ => false
         }
-      case (adv: ScalarTh, fth: FnTh) =>
+      case (adv: ScalarTh, fth: FnTh) => // FIXME: bad copy paste?
         ctx.findType(adv.name, adv.mod) match {
           case (_, ud: UnionDecl) => checkUnionMember(ctx, specMap, ud, adv.params, fth)
           case _ => false

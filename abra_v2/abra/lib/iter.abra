@@ -7,13 +7,19 @@ type MapIter[iterator, t, u] = (iter: iterator, mapper: (t) -> u)
 type Filter[iterable, t] = (it: iterable, predicate: (t) -> bool)
 type FilterIter[iterator, t] = (it: iterable, predicate: (t) -> bool)
 
+# iterable :: iterator() -> a1
+#       a1 :: next() -> a2
 def isIterable = it: iterable do
     iter = it.iterator()  # iterable must provide iterator
     iter.next() . # iterator must provide t | None via next function
 
 
 # lazy type inference? Higher kinded types?
+# iterable :: foo() -> a1
+# iterable :: iterator() -> a2
+#       a2 :: next() -> t | None
 def map = self: iterable, mapper: (t) -> u do
+    self.foo()
     if false do
         value: t | None = isIterable(self) .
         # real = value unless is None return . # real is t

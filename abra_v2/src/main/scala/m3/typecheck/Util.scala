@@ -239,10 +239,17 @@ object Util {
         case (adv, th) => false
       }
 
+    @Deprecated
     def assertNotAny(errorCallback: => String) =
       self match {
         case AnyTh =>
           throw new RuntimeException(errorCallback)
+        case th => th
+      }
+
+    def assertNotAny(err: TypeCheckError) =
+      self match {
+        case AnyTh => throw err
         case th => th
       }
 

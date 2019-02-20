@@ -47,21 +47,10 @@ trait IntegrationUtil extends LowUtil {
         ie.withTypes.map(tname => (tname, ie.modName))
       }.toMap
 
-    val types = ast.types.map { t => (t.name, t) }.toMap
-
-    val defs = ast.defs.filter { fn => !fn.isSelf }
-      .groupBy(fn => fn.name)
-      .map { case (name, fnList) =>
-        if (fnList.length == 1) (name, fnList.head)
-        else throw new RuntimeException(s"double definition for function $name")
-      }
-
-    val selfDefs = ast.defs.filter { fn => fn.isSelf }
-      .groupBy(fn => fn.name)
 
     val nsImports = imports.map { case (k, v) => (k, v._1) }
     val ctx = TContext(0, mutable.Stack[String](), Mod(), level, pkg, nsImports, typeImports,
-      ast.lowCode, types, defs, selfDefs, mutable.HashMap())
+      ast.lowCode, ast.types, ast.defs, ast.selfDefs, mutable.HashMap())
 
     println("\t" * level + s"compile $pkg")
     TypeChecker.infer(ctx)

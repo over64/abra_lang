@@ -38,7 +38,7 @@ def stat = nTrees: Int, name: String, depth: Int, sum: Int do
 
 def main =
   minDepth = 4
-  maxDepth = 21 # sys.arg(0).toInt()
+  maxDepth = 21 # sys.argInt(0)
 
   if maxDepth < minDepth + 2 do
     maxDepth = minDepth + 2 .

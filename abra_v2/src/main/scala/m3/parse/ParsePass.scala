@@ -57,10 +57,8 @@ case class Level(modules: mutable.HashMap[String, Module], var next: Option[Leve
     }
 
   def eachModule(callback: (Level, Module) => Unit): Unit = {
-    next match {
-      case Some(level) => level.eachModule(callback)
-      case None => modules.values.foreach(module => callback(this, module))
-    }
+    next.foreach(level => level.eachModule(callback))
+    modules.values.foreach(module => callback(this, module))
   }
 }
 
