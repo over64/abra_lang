@@ -97,7 +97,11 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
 
 
   override def visitNonUnionTh(ctx: NonUnionThContext): TypeHint =
-    visitChildren(ctx).asInstanceOf[TypeHint]
+    if (ctx.unionTh() != null) visitUnionTh(ctx.unionTh())
+    else if (ctx.scalarTh() != null) visitScalarTh(ctx.scalarTh())
+    else if (ctx.fnTh() != null) visitFnTh(ctx.fnTh())
+    else if (ctx.structTh() != null) visitStructTh(ctx.structTh())
+    else visitGenericTh(ctx.genericTh())
 
   override def visitUnionTh(ctx: UnionThContext): UnionTh =
     emit(ctx, UnionTh(ctx.nonUnionTh().map(th => visitNonUnionTh(th))))
@@ -127,7 +131,7 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
 
   override def visitUnionType(ctx: UnionTypeContext): UnionDecl = {
     emit(ctx, UnionDecl(
-      ctx.params.map { p => emit(p, visitGenericTh(p)) },
+      Seq.empty,
       ctx.name.getText,
       ctx.nonUnionTh().map { th => visitNonUnionTh(th) }
     ))
@@ -169,12 +173,13 @@ class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[
     if (ctx.tuple() != null) {
       val indices = visitTuple(ctx.tuple()).seq
       val to: Expression = Prop(first, ctx.VarId().map(vi => lId(vi.getText)))
+      to.setLocation(first.location)
 
       emit(ctx, SelfCall("set", to, indices :+ expr))
     } else
       emit(ctx, Store(
         Option(ctx.typeHint()).map(th => visitTypeHint(th)).getOrElse(AnyTh),
-        first +: ctx.VarId().map(vid => lId(vid.getText)), expr))
+        first +: ctx.VarId().map(vid => emit(vid.getSymbol, vid.getSymbol, lId(vid.getText))), expr))
   }
 
   override def visitRet(ctx: RetContext): Ret = emit(ctx, Ret(

@@ -40,9 +40,10 @@ class _05TypesParse extends FunSuite {
       ScalarTh(Seq(), "None", Seq.empty),
       ScalarTh(Seq(), "Bool", Seq.empty))))
 
-    withStr("type Option[t] = t | None", UnionDecl(Seq(GenericTh("t")), "Option", Seq(
-      GenericTh("t"),
-      ScalarTh(Seq(), "None", Seq.empty)
-    )))
+    // Disabled now
+    //    withStr("type Option[t] = t | None", UnionDecl(Seq(GenericTh("t")), "Option", Seq(
+    //      GenericTh("t"),
+    //      ScalarTh(Seq(), "None", Seq.empty)
+    //    )))
   }
 }

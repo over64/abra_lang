@@ -51,4 +51,14 @@ class _02TypeHintParse extends FunSuite {
       ScalarTh(Seq.empty, "Float", Seq.empty)
     )))
   }
+
+  test("union with union") {
+    withStr("(Int | None) | None", UnionTh(Seq(
+      UnionTh(Seq(
+        ScalarTh(Seq.empty, "Int", Seq.empty),
+        ScalarTh(Seq.empty, "None", Seq.empty)
+      )),
+      ScalarTh(Seq.empty, "None", Seq.empty)
+    )))
+  }
 }

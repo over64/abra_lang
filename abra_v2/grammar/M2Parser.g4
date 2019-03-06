@@ -41,7 +41,7 @@ fieldTh: id sp ':' sp typeHint ;
 scalarTh: (id sp DOT sp)? typeName=TypeId ('[' sp typeHint (sp ',' sp typeHint)* ']')?;
 fnTh: '(' (sp args+=typeHint (sp ',' sp args+=typeHint)*)? ')' sp '->' sp rett=typeHint ;
 structTh: '(' sp fieldTh (sp ',' sp fieldTh)+ ')' ;
-nonUnionTh: scalarTh | fnTh | structTh | genericTh ;
+nonUnionTh: '(' sp unionTh sp ')' | scalarTh | fnTh | structTh | genericTh ;
 unionTh: nonUnionTh (sp '|' sp nonUnionTh)+ ;
 genericTh: VarId;
 
@@ -65,9 +65,9 @@ lambda: 'lambda' (sp fnArg sp (',' sp fnArg)* sp '->')? sp blockBody* sp DOT?;
 blockBody: (store | break_ | continue_ | while_stat | expression | ret) sp ';'? sp ;
 
 scalarType: 'type' sp tname=TypeId (sp '[' sp params+=genericTh (sp ',' sp params+=genericTh)* sp ']')? sp '=' sp REF? sp llvm ;
-typeField: 'self'? sp VarId sp ':' sp typeHint (sp '=' sp expression)? ;
+typeField:  'self'? sp VarId sp ':' sp typeHint (sp '=' sp expression)? ;
 structType: 'type' sp name=TypeId (sp '[' sp params+=genericTh (sp ',' sp params+=genericTh)* sp ']')? sp '=' sp  '(' NL* typeField (',' NL* typeField)* NL*')' ;
-unionType: 'type' sp name=TypeId sp ('[' sp params+=genericTh (sp ',' sp params+=genericTh)* sp ']')? sp '=' sp nonUnionTh (sp '|' sp nonUnionTh)+ ;
+unionType:  'type' sp name=TypeId sp '=' sp nonUnionTh (sp '|' sp nonUnionTh)+ ;
 
 type: scalarType
     | structType

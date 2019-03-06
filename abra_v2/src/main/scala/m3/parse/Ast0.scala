@@ -11,7 +11,12 @@ case class AstInfo(fname: String, line: Int, col: Int, lineEnd: Int, colEnd: Int
 object Ast0 {
   sealed trait ParseNode {
     val meta: mutable.HashMap[String, Object] = new mutable.HashMap()
+
+    def setLocation(loc: AstInfo): Unit = meta.put("source.location", loc)
+    def getLocation = meta.get("source.location")
+
     def location: AstInfo = meta.getOrElse("source.location", {
+      val x = 1 // so weird
       throw new RuntimeException("no location")
     }).asInstanceOf[AstInfo]
 
@@ -43,6 +48,7 @@ object Ast0 {
 
   sealed trait TypeDecl extends Level1Declaration {
     val name: String
+    val params: Seq[GenericTh]
   }
 
   case class ScalarDecl(ref: Boolean, params: Seq[GenericTh], name: String, llType: String) extends TypeDecl
@@ -52,16 +58,19 @@ object Ast0 {
 
   sealed trait TypeHint extends ParseNode
   case class ScalarTh(params: Seq[TypeHint], name: String, mod: Seq[String]) extends TypeHint {
-    override def toString: String = s"${if (mod.isEmpty) "" else mod.mkString("", ".", ".")}$name${if (params.isEmpty) "" else params.mkString("[", "", "]")}"
+    override def toString: String = s"${if (mod.isEmpty) "" else mod.mkString("", ".", ".")}$name${if (params.isEmpty) "" else params.mkString("[", ", ", "]")}"
   }
   case class FieldTh(name: String, typeHint: TypeHint) extends ParseNode {
     override def toString: String = s"$name: $typeHint"
   }
   case class StructTh(seq: Seq[FieldTh]) extends TypeHint {
-    override def toString: String = seq.mkString("(", "", ")")
+    override def toString: String = seq.mkString("(", ", ", ")")
   }
   case class UnionTh(seq: Seq[TypeHint]) extends TypeHint {
-    override def toString: String = seq.mkString("|")
+    override def toString: String = seq.map {
+      case unionTh: UnionTh => "(" + unionTh + ")"
+      case other => other.toString
+    }.mkString(" | ")
   }
 
   case class Bound(selfDef: String, args: Seq[TypeHint], ret: TypeHint)

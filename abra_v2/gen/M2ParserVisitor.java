@@ -1,4 +1,4 @@
-// Generated from /home/over/build/abra_lang/abra_v2/grammar/M2Parser.g4 by ANTLR 4.7
+// Generated from /home/over/build/abra_lang/abra_v2/grammar/M2Parser.g4 by ANTLR 4.7.2
 import org.antlr.v4.runtime.tree.ParseTreeVisitor;
 
 /**
@@ -28,19 +28,19 @@ public interface M2ParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitId(M2Parser.IdContext ctx);
 	/**
-	 * Visit a parse tree produced by the {@code exprWnen}
+	 * Visit a parse tree produced by the {@code exprCons}
 	 * labeled alternative in {@link M2Parser#expression}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitExprWnen(M2Parser.ExprWnenContext ctx);
+	T visitExprCons(M2Parser.ExprConsContext ctx);
 	/**
-	 * Visit a parse tree produced by the {@code exprTypeId}
+	 * Visit a parse tree produced by the {@code exprUnless}
 	 * labeled alternative in {@link M2Parser#expression}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitExprTypeId(M2Parser.ExprTypeIdContext ctx);
+	T visitExprUnless(M2Parser.ExprUnlessContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code exprLiteral}
 	 * labeled alternative in {@link M2Parser#expression}.
@@ -161,6 +161,12 @@ public interface M2ParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitUnionTh(M2Parser.UnionThContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link M2Parser#genericTh}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitGenericTh(M2Parser.GenericThContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link M2Parser#typeHint}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -184,6 +190,18 @@ public interface M2ParserVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitRet(M2Parser.RetContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link M2Parser#break_}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitBreak_(M2Parser.Break_Context ctx);
+	/**
+	 * Visit a parse tree produced by {@link M2Parser#continue_}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitContinue_(M2Parser.Continue_Context ctx);
 	/**
 	 * Visit a parse tree produced by {@link M2Parser#while_stat}.
 	 * @param ctx the parse tree

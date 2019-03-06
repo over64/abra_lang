@@ -1,4 +1,4 @@
-// Generated from /home/over/build/abra_lang/abra_v2/grammar/M2Lexer.g4 by ANTLR 4.7
+// Generated from /home/over/build/abra_lang/abra_v2/grammar/M2Lexer.g4 by ANTLR 4.7.2
 import org.antlr.v4.runtime.Lexer;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.Token;
@@ -10,7 +10,7 @@ import org.antlr.v4.runtime.misc.*;
 
 @SuppressWarnings({"all", "warnings", "unchecked", "unused", "cast"})
 public class M2Lexer extends Lexer {
-	static { RuntimeMetaData.checkVersion("4.7", RuntimeMetaData.VERSION); }
+	static { RuntimeMetaData.checkVersion("4.7.2", RuntimeMetaData.VERSION); }
 
 	protected static final DFA[] _decisionToDFA;
 	protected static final PredictionContextCache _sharedContextCache =
@@ -35,38 +35,47 @@ public class M2Lexer extends Lexer {
 		"DEFAULT_MODE", "llvm"
 	};
 
-	public static final String[] ruleNames = {
-		"MINUS", "PLUS", "MUL", "DIV", "EXCL", "DOT", "RB", "LB", "COMMA", "MORE_", 
-		"MORE_EQ", "LESS", "LESS_EQ", "EQ", "EQEQ", "NOTEQ", "SEMI", "IF", "DO", 
-		"ELSE", "CBO", "DOLLAR_CBO", "CBC", "LOGIC_OR", "LOGIC_AND", "WHILE", 
-		"VAL", "VAR", "CON", "ARROW_RIGHT", "TYPE", "BACK_SLASH", "SELF", "MATCH_SELF", 
-		"DEF", "IMPORT", "WITH", "MATCH", "OF", "RETURN", "BREAK", "CONTINUE", 
-		"REF", "DASH", "VERT_LINE", "BRACKET_LEFT", "BRACKET_RIGTH", "LlBegin", 
-		"WS", "NL", "COMMENT", "IntLiteral", "HexLiteral", "FloatLiteral", "BooleanLiteral", 
-		"StringLiteral", "VarId", "TypeId", "MatchId", "LLVM_NL", "LLVM_WS", "IrLine", 
-		"LL_End", "LL_Dot", "StringElement", "Char", "CharEscapeSeq", "ExponentPart", 
-		"Digit", "NonZeroDigit", "HexDigit"
-	};
+	private static String[] makeRuleNames() {
+		return new String[] {
+			"MINUS", "PLUS", "MUL", "DIV", "EXCL", "DOT", "RB", "LB", "COMMA", "MORE_", 
+			"MORE_EQ", "LESS", "LESS_EQ", "EQ", "EQEQ", "NOTEQ", "SEMI", "IF", "DO", 
+			"ELSE", "CBO", "DOLLAR_CBO", "CBC", "LOGIC_OR", "LOGIC_AND", "WHILE", 
+			"VAL", "VAR", "CON", "ARROW_RIGHT", "TYPE", "BACK_SLASH", "SELF", "MATCH_SELF", 
+			"DEF", "IMPORT", "WITH", "MATCH", "OF", "RETURN", "BREAK", "CONTINUE", 
+			"REF", "DASH", "VERT_LINE", "BRACKET_LEFT", "BRACKET_RIGTH", "LlBegin", 
+			"WS", "NL", "COMMENT", "IntLiteral", "HexLiteral", "FloatLiteral", "BooleanLiteral", 
+			"StringLiteral", "VarId", "TypeId", "MatchId", "LLVM_NL", "LLVM_WS", 
+			"IrLine", "LL_End", "LL_Dot", "StringElement", "Char", "CharEscapeSeq", 
+			"ExponentPart", "Digit", "NonZeroDigit", "HexDigit"
+		};
+	}
+	public static final String[] ruleNames = makeRuleNames();
 
-	private static final String[] _LITERAL_NAMES = {
-		null, "'-'", "'+'", "'*'", "'/'", "'!'", null, "')'", "'('", "','", "'>'", 
-		"'>='", "'<'", "'<='", "'='", "'=='", "'!='", "';'", "'if'", "'do'", "'else'", 
-		"'{'", "'$('", "'}'", "'||'", "'&&'", "'while'", "'val'", "'var'", "':'", 
-		"'->'", "'type'", "'\\'", "'self'", "'$self'", "'def'", "'import'", "'with'", 
-		"'match'", "'of'", "'return'", "'break'", "'continue'", "'ref'", "'_'", 
-		"'|'", "'['", "']'"
-	};
-	private static final String[] _SYMBOLIC_NAMES = {
-		null, "MINUS", "PLUS", "MUL", "DIV", "EXCL", "DOT", "RB", "LB", "COMMA", 
-		"MORE_", "MORE_EQ", "LESS", "LESS_EQ", "EQ", "EQEQ", "NOTEQ", "SEMI", 
-		"IF", "DO", "ELSE", "CBO", "DOLLAR_CBO", "CBC", "LOGIC_OR", "LOGIC_AND", 
-		"WHILE", "VAL", "VAR", "CON", "ARROW_RIGHT", "TYPE", "BACK_SLASH", "SELF", 
-		"MATCH_SELF", "DEF", "IMPORT", "WITH", "MATCH", "OF", "RETURN", "BREAK", 
-		"CONTINUE", "REF", "DASH", "VERT_LINE", "BRACKET_LEFT", "BRACKET_RIGTH", 
-		"LlBegin", "WS", "NL", "COMMENT", "IntLiteral", "HexLiteral", "FloatLiteral", 
-		"BooleanLiteral", "StringLiteral", "VarId", "TypeId", "MatchId", "LLVM_NL", 
-		"LLVM_WS", "IrLine", "LL_End", "LL_Dot"
-	};
+	private static String[] makeLiteralNames() {
+		return new String[] {
+			null, "'-'", "'+'", "'*'", "'/'", "'!'", null, "')'", "'('", "','", "'>'", 
+			"'>='", "'<'", "'<='", "'='", "'=='", "'!='", "';'", "'if'", "'do'", 
+			"'else'", "'{'", "'$('", "'}'", "'||'", "'&&'", "'while'", "'val'", "'var'", 
+			"':'", "'->'", "'type'", "'\\'", "'self'", "'$self'", "'def'", "'import'", 
+			"'with'", "'match'", "'of'", "'return'", "'break'", "'continue'", "'ref'", 
+			"'_'", "'|'", "'['", "']'"
+		};
+	}
+	private static final String[] _LITERAL_NAMES = makeLiteralNames();
+	private static String[] makeSymbolicNames() {
+		return new String[] {
+			null, "MINUS", "PLUS", "MUL", "DIV", "EXCL", "DOT", "RB", "LB", "COMMA", 
+			"MORE_", "MORE_EQ", "LESS", "LESS_EQ", "EQ", "EQEQ", "NOTEQ", "SEMI", 
+			"IF", "DO", "ELSE", "CBO", "DOLLAR_CBO", "CBC", "LOGIC_OR", "LOGIC_AND", 
+			"WHILE", "VAL", "VAR", "CON", "ARROW_RIGHT", "TYPE", "BACK_SLASH", "SELF", 
+			"MATCH_SELF", "DEF", "IMPORT", "WITH", "MATCH", "OF", "RETURN", "BREAK", 
+			"CONTINUE", "REF", "DASH", "VERT_LINE", "BRACKET_LEFT", "BRACKET_RIGTH", 
+			"LlBegin", "WS", "NL", "COMMENT", "IntLiteral", "HexLiteral", "FloatLiteral", 
+			"BooleanLiteral", "StringLiteral", "VarId", "TypeId", "MatchId", "LLVM_NL", 
+			"LLVM_WS", "IrLine", "LL_End", "LL_Dot"
+		};
+	}
+	private static final String[] _SYMBOLIC_NAMES = makeSymbolicNames();
 	public static final Vocabulary VOCABULARY = new VocabularyImpl(_LITERAL_NAMES, _SYMBOLIC_NAMES);
 
 	/**

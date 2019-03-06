@@ -36,7 +36,7 @@ case class Level(modules: mutable.HashMap[String, Module], var next: Option[Leve
     modules.get(path) match {
       case s: Some[Module] => s
       case None =>
-        next.flatMap(level => findMod(path))
+        next.flatMap(level => level.findMod(path))
     }
 
   def stealMod(path: String): Option[Module] =
