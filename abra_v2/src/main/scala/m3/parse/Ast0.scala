@@ -10,7 +10,7 @@ case class AstInfo(fname: String, line: Int, col: Int, lineEnd: Int, colEnd: Int
 
 object Ast0 {
   sealed trait ParseNode {
-    val meta: mutable.HashMap[String, Object] = new mutable.HashMap()
+    val meta: mutable.HashMap[String, Any] = new mutable.HashMap()
 
     def setLocation(loc: AstInfo): Unit = meta.put("source.location", loc)
     def getLocation = meta.get("source.location")
@@ -49,6 +49,22 @@ object Ast0 {
   sealed trait TypeDecl extends Level1Declaration {
     val name: String
     val params: Seq[GenericTh]
+
+    def setBuiltinIntegral =
+      meta.put("builtin.integral", true)
+    def isBuiltinIntegral =
+      meta.contains("builtin.integral")
+
+    def setBuiltinArray(len: Option[Long]) = {
+      meta.put("builtin.array", true)
+      len.foreach { l => meta.put("builtin.array.len", l) }
+    }
+
+    def isBuiltinArray(): Boolean =
+      meta.contains("builtin.array")
+
+    def getBuiltinArrayLen(): Option[Long] =
+      meta.get("builtin.array.len").map(_.asInstanceOf[Long])
   }
 
   case class ScalarDecl(ref: Boolean, params: Seq[GenericTh], name: String, llType: String) extends TypeDecl

@@ -77,6 +77,11 @@ object Utils {
         case AnyTh => true
       }
 
+    def isArray: Boolean = self match {
+      case sth: ScalarTh => Builtin.isArrayThName(sth.name)
+      case _ => false
+    }
+
     def findGenerics(dest: mutable.ListBuffer[GenericTh]): Unit = self match {
       case ScalarTh(params, name, pkg) =>
         params.foreach(p => p.findGenerics(dest))
@@ -114,9 +119,9 @@ object Utils {
     match {
       case Some((ie, _)) =>
         val mod = level.findMod(ie.path).getOrElse(throw TCE.NoSuchModulePath(ie.location))
-        (mod, mod.types.getOrElse(th.name, throw TCE.NoSuchType(th.location, th.mod, th.name)))
+        resolveType(level, mod, th)
       case None =>
-        (origModule, origModule.types.getOrElse(th.name, throw TCE.NoSuchType(th.location, th.mod, th.name)))
+        (origModule, origModule.types.getOrElse(th.name, Builtin.resolveBuiltinType(th)))
     }
   }
 
@@ -129,6 +134,98 @@ object Utils {
 }
 
 import m3.typecheck.Utils._
+
+object Builtin {
+  val thLong = ScalarTh(params = Seq.empty, "Long", Seq.empty)
+  val thInt = ScalarTh(params = Seq.empty, "Int", Seq.empty)
+  val thShort = ScalarTh(params = Seq.empty, "Short", Seq.empty)
+  val thByte = ScalarTh(params = Seq.empty, "Byte", Seq.empty)
+
+  val thDouble = ScalarTh(params = Seq.empty, "Double", Seq.empty)
+  val thFloat = ScalarTh(params = Seq.empty, "Float", Seq.empty)
+  val thBool = ScalarTh(params = Seq.empty, "Bool", Seq.empty)
+  val thString = ScalarTh(params = Seq.empty, "String", Seq.empty)
+  val thNil = ScalarTh(params = Seq.empty, "None", Seq.empty)
+  val thUnreachable = ScalarTh(params = Seq.empty, "Unreachable", Seq.empty)
+  val thArraySize = ScalarTh(params = Seq.empty, "ArraySize", Seq.empty)
+  val thArraySizes = UnionTh(Seq(thByte, thShort, thInt, thLong))
+
+  val builtinTypeDecl: Map[String, TypeDecl] = (
+    Seq("Unreachable", "None", "Bool", "ArraySize", "Byte", "Short", "Int", "Long", "Float", "Double").map { name =>
+      ScalarDecl(ref = false, Seq.empty, name, "builtin")
+    } ++ Seq(
+      ScalarDecl(ref = true, Seq.empty, "String", "builtin")
+    )).map(td => (td.name, td)).toMap
+
+  def binaryOps(th: TypeHint) = Seq("+", "-", "*", "/")
+    .map(op => (op, FnTh(Seq.empty, Seq(th, th), th)))
+
+  def compareOps(th: TypeHint) = Seq(
+    ("<", FnTh(Seq.empty, Seq(th, th), thBool)),
+    (">", FnTh(Seq.empty, Seq(th, th), thBool)))
+
+  def equalityOps(th: TypeHint) = Seq(
+    ("==", FnTh(Seq.empty, Seq(th, th), thBool)),
+    ("!=", FnTh(Seq.empty, Seq(th, th), thBool)))
+
+  def upscaleOps(th: ScalarTh, order: Seq[ScalarTh]) = {
+    val idx = order.indexOf(th)
+    order.drop(idx + 1).map { to => ("to" + to.name, FnTh(Seq.empty, Seq(th), to)) }
+  }
+
+  def upscaleIntOps(th: ScalarTh) =
+    upscaleOps(th, Seq(thByte, thShort, thInt, thLong))
+
+  def upscaleFloatOps(th: ScalarTh) =
+    upscaleOps(th, Seq(thFloat, thDouble))
+
+  def ops[T <: TypeHint](th: T, gens: (T => Seq[(String, FnTh)])*) =
+    (th, gens.flatMap { gen => gen(th) }.toMap)
+
+  val builtinSelfDefs: Map[TypeHint, Map[String, FnTh]] = Seq(
+    ops(thBool, equalityOps),
+    ops(thByte, binaryOps, compareOps, equalityOps, upscaleIntOps),
+    ops(thShort, binaryOps, compareOps, equalityOps, upscaleIntOps),
+    ops(thInt, binaryOps, compareOps, equalityOps, upscaleIntOps),
+    ops(thLong, binaryOps, compareOps, equalityOps, upscaleIntOps),
+    ops(thFloat, binaryOps, compareOps, equalityOps, upscaleFloatOps),
+    ops(thDouble, binaryOps, compareOps, equalityOps, upscaleFloatOps)
+  ).toMap
+
+  def isArrayThName(name: String): Boolean =
+    name.matches("^Array[0-9]*$")
+
+  def isDeclaredBuiltIn(name: String) =
+    builtinTypeDecl.contains(name) || isArrayThName(name)
+
+  def resolveBuiltinType(th: ScalarTh): TypeDecl =
+    th.name match {
+      case name if isArrayThName(name) =>
+        val decl = StructDecl(Seq(GenericTh("t")), name, Seq.empty)
+        val len = name.replace("Array", "") match {
+          case "" => None
+          case sLen => Some(sLen.toLong)
+        }
+        decl.setBuiltinArray(len)
+        decl
+      case name =>
+        builtinTypeDecl.getOrElse(name, throw TCE.NoSuchType(th.location, th.mod, th.name))
+    }
+
+  def resolveBuiltinSelfDef(selfTh: TypeHint, name: String): FnTh =
+    selfTh match {
+      case sth: ScalarTh if isArrayThName(sth.name) =>
+        name match {
+          case "len" => FnTh(Seq.empty, Seq(sth), thLong)
+          case "get" => FnTh(Seq.empty, Seq(sth, thArraySize), sth.params.head)
+          case "set" => FnTh(Seq.empty, Seq(sth, thArraySize, sth.params.head), thNil)
+        }
+      case th =>
+        builtinSelfDefs(th)(name)
+    }
+}
+
+import m3.typecheck.Builtin._
 
 case class PassContext(deep: Int, level: Level, module: Module) {
   def deeper() = this.copy(deep = this.deep + 1)
@@ -190,6 +287,20 @@ class TypeChecker2(ctx: PassContext,
     (expected, has) match {
       case (th, AnyTh) =>
       case (AnyTh, th) =>
+      case (arraySize, sth: ScalarTh) if arraySize == thArraySize =>
+        doCheck(thArraySizes, sth)
+      case (array1: ScalarTh, array2: ScalarTh) if array1.isArray && array2.isArray =>
+        val (_, decl1) = resolveType(ctx.level, ctx.module, array1)
+        val (_, decl2) = resolveType(ctx.level, ctx.module, array2)
+
+        decl1.getBuiltinArrayLen() match {
+          case None => // ok
+          case has =>
+            if (has != decl2.getBuiltinArrayLen())
+              throw new MismatchLocal
+        }
+
+        isEqualSeq(array1.params, array2.params)
       case (adv: ScalarTh, sth: ScalarTh) =>
         if (adv.name == sth.name) {
           if (adv.params.length != sth.params.length) throw TCE.ParamsCountMismatch(sth.location)
@@ -232,7 +343,11 @@ class TypeChecker2(ctx: PassContext,
     try {
       withTransaction(() => doCheck(expected, has))
     } catch {
-      case ex: MismatchLocal => throw new TCE.TypeMismatch(location, expected, has)
+      case ex: MismatchLocal =>
+        if (expected == thArraySize)
+          throw TCE.ArraySizeExpected(thArraySizes, has)
+        else
+          throw TCE.TypeMismatch(location, expected, has)
     }
   }
 }
@@ -294,42 +409,21 @@ class TypeCheckPass {
     def infer(ctx: PassContext, eq: Equations, th: TypeHint): (AstInfo, TypeHint)
   }
 
-  val generatedCode = AstInfo("generated", 0, 0, 0, 0)
-
-  val thLong = ScalarTh(params = Seq.empty, "Long", Seq.empty)
-  val thInt = ScalarTh(params = Seq.empty, "Int", Seq.empty)
-  val thShort = ScalarTh(params = Seq.empty, "Short", Seq.empty)
-  val thByte = ScalarTh(params = Seq.empty, "Byte", Seq.empty)
-
-  val thDouble = ScalarTh(params = Seq.empty, "Double", Seq.empty)
-  val thFloat = ScalarTh(params = Seq.empty, "Float", Seq.empty)
-  val thBool = ScalarTh(params = Seq.empty, "Bool", Seq.empty)
-  val thString = ScalarTh(params = Seq.empty, "String", Seq.empty)
-  val thNil = ScalarTh(params = Seq.empty, "None", Seq.empty)
-  val thUnreachable = ScalarTh(params = Seq.empty, "Unreachable", Seq.empty)
-
-  thLong.setLocation(generatedCode)
-  thInt.setLocation(generatedCode)
-  thShort.setLocation(generatedCode)
-  thByte.setLocation(generatedCode)
-  thDouble.setLocation(generatedCode)
-  thFloat.setLocation(generatedCode)
-  thBool.setLocation(generatedCode)
-  thString.setLocation(generatedCode)
-  thNil.setLocation(generatedCode)
-  thUnreachable.setLocation(generatedCode)
-
-
   def checkTypeDecl(ctx: PassContext): Unit = {
-    ctx.module.types.values.foreach {
-      case sc: ScalarDecl =>
-      case st: StructDecl =>
-        val fieldNames = st.fields.map(_.name)
-        if (fieldNames.length != fieldNames.toSet.size) throw TCE.FieldNameNotUnique(st.location)
-        st.fields.foreach(f => f.th.assertCorrect(ctx, st.params))
-      case un: UnionDecl =>
-        if (un.variants.length != un.variants.toSet.size)
-          throw TCE.UnionMembersNotUnique(un.location)
+    ctx.module.types.values.foreach { td =>
+      if (Builtin.isDeclaredBuiltIn(td.name))
+        throw TCE.BuiltinTypeRedeclare(td.location, td.name)
+
+      td match {
+        case sc: ScalarDecl =>
+        case st: StructDecl =>
+          val fieldNames = st.fields.map(_.name)
+          if (fieldNames.length != fieldNames.toSet.size) throw TCE.FieldNameNotUnique(st.location)
+          st.fields.foreach(f => f.th.assertCorrect(ctx, st.params))
+        case un: UnionDecl =>
+          if (un.variants.length != un.variants.toSet.size)
+            throw TCE.UnionMembersNotUnique(un.location)
+      }
     }
   }
 
@@ -358,17 +452,15 @@ class TypeCheckPass {
           if (!specSelf.isInstanceOf[GenericTh] && !specSelf.containsAny) {
             ctx.log(s"instance eq $eq")
 
-            val fn = Invoker.findSelfDef(ctx, specSelf, eq.fnName)
-            if (fn.getTypeHintOpt == None) passDef(ctx, fn)
-            val fnTh: FnTh = fn.getTypeHint
+            val (fnTh, fnEq) = Invoker.findSelfDef(ctx, specSelf, eq.fnName)
 
             if (fnTh.args.drop(1).length != eq.args.length)
               throw new TCE.ArgsCountMismatch(selfLocation, fnTh.args.drop(1).length, eq.args.length)
 
-            ctx.log("instance   " + printInstance(eq, fn.getTypeHint))
+            ctx.log("instance   " + printInstance(eq, fnTh))
 
-            val next = new EqInfer(ctx.deeper(), selfLocation, fn.getEquations)
-            eqMap.put(eq, (fn.getTypeHint, ApplyIndex(0), next))
+            val next = new EqInfer(ctx.deeper(), selfLocation, fnEq)
+            eqMap.put(eq, (fnTh, ApplyIndex(0), next))
           }
         }
       }
@@ -467,7 +559,7 @@ class TypeCheckPass {
         case ex: Exception => false
       }
 
-    def findSelfDef(ctx: PassContext, selfTh: TypeHint, fnName: String): Def = {
+    def findSelfDef(ctx: PassContext, selfTh: TypeHint, fnName: String): (FnTh, Equations) = {
       selfTh match {
         case gth: GenericTh =>
           throw new RuntimeException("Unexpected to be here")
@@ -475,9 +567,11 @@ class TypeCheckPass {
           ctx.module.selfDefs.get(fnName).flatMap { defs =>
             defs.find(d => isSelfApplicable(ctx, d.lambda.args.head.typeHint, selfTh))
           } match {
-            case Some(fn) => fn
+            case Some(fn) =>
+              if (fn.getTypeHintOpt == None) passDef(ctx.deeper(), fn)
+              (fn.getTypeHint, fn.getEquations)
             case None =>
-              throw new RuntimeException("mod self call not impelemented")
+              (resolveBuiltinSelfDef(selfTh, fnName), new Equations())
           }
       }
     }
@@ -523,11 +617,8 @@ class TypeCheckPass {
           eqCaller.addEq(Equation((Seq(selfLocation), gth), fnName, argsTh, (Seq(location), eqRet)))
           eqRet
         case _ =>
-          val fn = findSelfDef(ctx, selfTh, fnName)
-
-          if (fn.getEquationsOpt == None) passDef(ctx.deeper(), fn)
-
-          invokeDef(ctx, eqCaller, location, retTh, fn, new InferTask {
+          val (fnTh, fnEq) = findSelfDef(ctx, selfTh, fnName)
+          invokePrototype(ctx, eqCaller, fnEq, location, retTh, fnTh, new InferTask {
             override def infer(ctx: PassContext, eq: Equations, th: TypeHint) = (selfLocation, selfTh)
           } +: args)
       }
@@ -726,12 +817,26 @@ class TypeCheckPass {
         val specMap = makeSpecMap(sd.params, realTh.params)
         val consTh = FnTh(Seq.empty, sd.fields.map(f => f.th.spec(specMap)), realTh)
 
-        Invoker.invokePrototype(ctx, eq, new Equations(), cons.location, th, consTh, args.map { arg =>
-          new InferTask {
-            override def infer(ctx: PassContext, eq: Equations, th: TypeHint): (AstInfo, TypeHint) =
-              (arg.location, passExpr(ctx, scope, eq, th, arg))
+        if (sd.isBuiltinArray()) {
+          if (args.length != 1)
+            throw TCE.ArgsCountMismatch(Seq(cons.location), 1, args.length)
+
+          args.head match {
+            case lit: lInt =>
+              ScalarTh(realParams, "Array" + lit.value, Seq.empty)
+            case other =>
+              val exprTh = passExpr(ctx, scope, eq, AnyTh, other)
+              new TypeChecker2(ctx).doCheck(thArraySize, exprTh)
+              ScalarTh(realParams, "Array", Seq.empty)
           }
-        })
+        } else {
+          Invoker.invokePrototype(ctx, eq, new Equations(), cons.location, th, consTh, args.map { arg =>
+            new InferTask {
+              override def infer(ctx: PassContext, eq: Equations, th: TypeHint): (AstInfo, TypeHint) =
+                (arg.location, passExpr(ctx, scope, eq, th, arg))
+            }
+          })
+        }
       case Tuple(seq) =>
         val expectedSeq =
           th match {
@@ -766,8 +871,7 @@ class TypeCheckPass {
                 store.setDeclTh(whatTh)
               case Some((toVarTh, _)) =>
                 val toTh = foldFields(toVarTh, to.drop(1))
-                val whatTh = passExpr(ctx.deeper(), scope, eq, toTh, what)
-                new TypeChecker2(ctx).check(Seq(store.location), toTh, whatTh)
+                passExpr(ctx.deeper(), scope, eq, toTh, what)
             }
           case th =>
             if (to.length != 1) throw TCE.TypeHintUnexpected(th.location)
@@ -808,44 +912,67 @@ class TypeCheckPass {
           case AbraCode(seq) =>
             val lambdaScope = LambdaScope(
               scope, (args.map(_.name) zip argsTh).toMap)
-            val lambdaBlock = BlockScope(lambdaScope)
+            val lambdaBlock = new Scope2.BlockScope(lambdaScope)
 
-            if (seq.isEmpty)
-              lambdaBlock.addRetType(thNil)
-            else {
-              seq.last match {
-                case ret: Ret =>
-                  seq.dropRight(1).foreach(expr => passExpr(ctx.deeper(), lambdaBlock, eq, AnyTh, expr))
-                  passExpr(ctx.deeper(), lambdaBlock, eq, retTh, ret)
-                case other =>
-                  seq.dropRight(1).foreach(expr => passExpr(ctx.deeper(), lambdaBlock, eq, AnyTh, expr))
-                  val ret = Ret(Some(other))
-                  ret.setLocation(other.location)
-                  passExpr(ctx.deeper(), lambdaBlock, eq, retTh, ret)
-              }
+            seq.dropRight(1).foreach(expr => passExpr(ctx.deeper(), lambdaBlock, eq, AnyTh, expr))
+            seq.lastOption.foreach { last =>
+              lambdaBlock.addRetType(passExpr(ctx.deeper(), lambdaBlock, eq, AnyTh, last))
             }
 
-            // FIXME: infer super type?
             lambdaScope.retTypes match {
               case Seq() => thNil
               case Seq(th) => th
-              case seq => UnionTh(seq)
+              case seq => UnionTh(seq.distinct)
             }
           case _ =>
             throw TCE.LambdaWithNativeCode(lambda.location)
         }
 
         FnTh(Seq.empty, argsTh, inferedRetTh)
+      case andOr: AndOr =>
+        passExpr(ctx, scope, eq, thBool, andOr.left)
+        passExpr(ctx, scope, eq, thBool, andOr.right)
+        thBool
+      case While(cond, _do) =>
+        passExpr(ctx, scope, eq, thBool, cond)
+        val block = new Scope2.WhileScope(scope)
+        _do.foreach { expr => passExpr(ctx, block, eq, AnyTh, expr) }
+        thNil
+      case bc@(Break() | Continue()) =>
+        def findWhileScope(sc: Scope2.Scope): Option[Scope2.WhileScope] =
+          sc match {
+            case ws: Scope2.WhileScope => Some(ws)
+            case ds: Scope2.DefScope => None
+            case ls: Scope2.LambdaScope => None
+            case bs: Scope2.BlockScope => findWhileScope(bs.parent)
+          }
+
+        findWhileScope(scope).getOrElse(throw TCE.NoWhileForBreakOrContinue(bc.location))
+        thNil
+      case If(cond, _do, _else) =>
+        passExpr(ctx, scope, eq, thBool, cond)
+
+        val doBlock = new Scope2.BlockScope(scope)
+        _do.dropRight(1).foreach(expr => passExpr(ctx.deeper(), doBlock, eq, AnyTh, expr))
+        val doTh = _do.lastOption.map { last =>
+          passExpr(ctx.deeper(), doBlock, eq, AnyTh, last)
+        }.getOrElse(thNil)
+
+        val elseBlock = new Scope2.BlockScope(scope)
+        _else.dropRight(1).foreach(expr => passExpr(ctx.deeper(), elseBlock, eq, AnyTh, expr))
+        val elseTh = _else.lastOption.map { last =>
+          passExpr(ctx.deeper(), elseBlock, eq, AnyTh, last)
+        }.getOrElse(thNil)
+
+        Seq(doTh, elseTh).filter(th => th != thUnreachable).distinct match {
+          case Seq(one) => one
+          case many => UnionTh(many)
+        }
     }
 
     expr.setTypeHint(exprTh)
     new TypeChecker2(ctx).check(Seq(expr.location), th, exprTh)
-
-    th match {
-      case sth: ScalarTh if resolveType(ctx.level, ctx.module, sth).isInstanceOf[UnionDecl] => th
-      case uth: UnionTh => th
-      case _ => exprTh
-    }
+    exprTh
   }
 
   def passDef(ctx: PassContext, fn: Def): Unit = {
@@ -862,33 +989,23 @@ class TypeCheckPass {
     val defScope = DefScope(args)
 
     fn.lambda.body match {
-      case llVm(code) =>
+      case llVm(_) =>
         if (fn.retTh.containsAny) throw TCE.RetTypeHintRequired(fn.location)
 
         fn.setEquations(eq)
         fn.setTypeHint(FnTh(Seq.empty, fn.lambda.args.map(_.typeHint), fn.retTh))
       case AbraCode(seq) =>
-        val bodyScope = BlockScope(defScope)
+        val bodyScope = new Scope2.BlockScope(defScope)
 
-        if (seq.isEmpty)
-          bodyScope.addRetType(thNil)
-        else {
-          seq.last match {
-            case ret: Ret =>
-              seq.dropRight(1).foreach(expr => passExpr(ctx.deeper(), bodyScope, eq, AnyTh, expr))
-              passExpr(ctx.deeper(), bodyScope, eq, fn.retTh, ret)
-            case other =>
-              seq.dropRight(1).foreach(expr => passExpr(ctx.deeper(), bodyScope, eq, AnyTh, expr))
-              val ret = Ret(Some(other))
-              ret.setLocation(other.location)
-              passExpr(ctx.deeper(), bodyScope, eq, fn.retTh, ret)
-          }
+        seq.dropRight(1).foreach(expr => passExpr(ctx.deeper(), bodyScope, eq, AnyTh, expr))
+        seq.lastOption.foreach { last =>
+          bodyScope.addRetType(passExpr(ctx.deeper(), bodyScope, eq, AnyTh, last))
         }
 
         val retTh = defScope.retTypes match {
           case Seq() => thNil
           case Seq(th) => th
-          case seq => UnionTh(seq) // FIXME: infer super type?
+          case seq => UnionTh(seq.distinct)
         }
 
         fn.setEquations(eq)

@@ -48,8 +48,8 @@ object Scope2 {
       retTypes.append(th)
   }
 
-  case class BlockScope(parent: Scope,
-                        vars: mutable.HashMap[String, TypeHint] = mutable.HashMap.empty) extends Scope {
+  class BlockScope(val parent: Scope,
+                   vars: mutable.HashMap[String, TypeHint] = mutable.HashMap.empty) extends Scope {
 
     def findVar(varName: String): Option[(TypeHint, VarType)] =
       vars.get(varName) match {
@@ -63,4 +63,7 @@ object Scope2 {
     def addRetType(th: TypeHint): Unit =
       parent.addRetType(th)
   }
+
+
+  class WhileScope(parent: Scope) extends BlockScope(parent, mutable.HashMap.empty)
 }

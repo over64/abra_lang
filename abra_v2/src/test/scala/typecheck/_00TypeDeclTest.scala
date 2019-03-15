@@ -5,35 +5,43 @@ import org.scalatest.FunSuite
 import typecheck.TypeCheckUtil._
 
 class _00TypeDeclTest extends FunSuite {
-  test("type decl: native") {
-    astNoPrelude(
-      """
+  test("type decl(fail): builtin redeclaration") {
+    assertThrows[TCE.BuiltinTypeRedeclare] {
+      astForCode(
+        """
         type Int = llvm i32 .
         type String = ref llvm i32 .
+      """)
+    }
+  }
+
+  test("type decl: native") {
+    astForCode(
+      """
+        type Ptr = llvm i8* .
+        type PtrPtr = ref llvm i8* .
       """)
   }
 
   test("type decl: struct") {
-    astNoPrelude(
+    astForCode(
       """
-        type Int = llvm i32 .
         type Vec2 = (x: Int, y: Int)
       """)
   }
 
   test("type decl: struct with unknown field type (fail)") {
     assertThrows[TCE.NoSuchType] {
-      astNoPrelude(
+      astForCode(
         """
-        type Int = llvm i32 .
-        type Vec2 = (x: Int, y: String)
+        type Vec2 = (x: Foo, y: Bar)
       """)
     }
   }
 
   test("type decl: struct with unknown field generic type (fail)") {
     assertThrows[TCE.NoSuchParameter] {
-      astNoPrelude(
+      astForCode(
         """
         type A[a]= (x: b, y: b)
       """)
@@ -41,18 +49,15 @@ class _00TypeDeclTest extends FunSuite {
   }
 
   test("type decl: struct with self reference") {
-    astNoPrelude(
+    astForCode(
       """
-        type None = llvm void .
-        type Int = llvm i32 .
         type Node = (value: Int, next: Node | None)
       """)
   }
 
   test("type decl: struct field with params") {
-    astNoPrelude(
+    astForCode(
       """
-        type Int = llvm i32 .
         type A[a] = (value: a)
         type B[a, b] = (val1: A[a], val2: b)
       """)
@@ -60,9 +65,8 @@ class _00TypeDeclTest extends FunSuite {
 
   test("type decl: struct field with params count mismatch (fail)") {
     assertThrows[TCE.ParamsCountMismatch] {
-      astNoPrelude(
+      astForCode(
         """
-        type Int = llvm i32 .
         type A[a] = (value: a)
         type B[a, b] = (value: A[a, b])
       """)
@@ -71,9 +75,8 @@ class _00TypeDeclTest extends FunSuite {
 
   test("type decl: union with duplicated members (fail)") {
     assertThrows[TCE.UnionMembersNotUnique] {
-      astNoPrelude(
+      astForCode(
         """
-        type Int = llvm i32 .
         type A[a] = (value: a)
         type U = A[Int] | A[Int]
       """)

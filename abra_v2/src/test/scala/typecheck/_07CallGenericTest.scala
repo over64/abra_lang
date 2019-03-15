@@ -9,8 +9,6 @@ class _07CallGenericTest extends FunSuite {
   test("simple generic") {
     val ast = astForCode(
       """
-         type Int = llvm i32 .
-
          def + = self: Int, other: Int do llvm
              %1 = contains nsw i32 %self, %other
              ret i32 %1 .Int
@@ -30,8 +28,6 @@ class _07CallGenericTest extends FunSuite {
   test("generic call: store to generic") {
     val ast = astForCode(
       """
-         type Int = llvm i32 .
-
          def some = x: a do
            y: b = x.function() .
       """)
@@ -45,9 +41,6 @@ class _07CallGenericTest extends FunSuite {
   test("deep generic") {
     val ast = astForCode(
       """
-         type Int = llvm i32 .
-         type Long = llvm i64 .
-
          def + = self: Int, other: Int do llvm
              %1 = contains nsw i32 %self, %other
              ret i32 %1 .Int
@@ -101,10 +94,6 @@ class _07CallGenericTest extends FunSuite {
     assertThrows[TCE.TypeMismatch] {
       val ast = astForCode(
         """
-        type None = llvm void .
-        type Bool = llvm i8 .
-        type Int = llvm i32 .
-
         type Seq[t] = llvm %t* .
         type Log    = llvm i32 .
         type F2     = llvm i32 .

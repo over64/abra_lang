@@ -19,21 +19,6 @@ object TypeCheckUtil extends FunSuite {
     assert(th === expected.toTh)
   }
 
-  def astNoPrelude(code: String): Module = {
-    val fw = new FileWriter(new File("/tmp/test.abra"))
-    fw.write(code)
-    fw.close()
-
-    val root = new ParsePass(new Resolver {
-      override def resolve(path: String): String = path match {
-        case "main" => code
-      }
-    }).pass("main")
-
-    new TypeCheckPass().pass(root)
-    root.findMod("main").get
-  }
-
   def astForCode(code: String): Module = {
     val fw = new FileWriter(new File("/tmp/test.abra"))
     fw.write(code)
@@ -41,23 +26,7 @@ object TypeCheckUtil extends FunSuite {
 
     val root = new ParsePass(new Resolver {
       override def resolve(path: String): String = path match {
-        case "main" =>
-          """
-            import /prelude with Unreachable, None, Bool, Byte, Short, Int, Long, Float, Double, String .
-          """ + code
-        case "/prelude" =>
-          """
-            type Unreachable = llvm void   .
-            type None        = llvm void   .
-            type Bool        = llvm i8     .
-            type Byte        = llvm i8     .
-            type Short       = llvm i16    .
-            type Int         = llvm i32    .
-            type Long        = llvm i64    .
-            type Float       = llvm float  .
-            type Double      = llvm double .
-            type String      = ref llvm i8* .
-          """
+        case "main" => code
       }
     }).pass("main")
 

@@ -1,5 +1,6 @@
 package typecheck
 
+import m3.typecheck.TCE
 import org.scalatest.FunSuite
 import typecheck.TypeCheckUtil._
 
@@ -88,5 +89,31 @@ class _04ArrayTest extends FunSuite {
 
     val main = ast.function("main")
     assertTh("() -> None", main)
+  }
+
+  test("array pass: arrayN as array") {
+    val ast = astForCode(
+      """
+         def bar = array: Array[Byte] do .
+         def main =
+           array: Array100[Byte] = Array[Byte](100)
+           bar(array) .
+        """)
+
+    val main = ast.function("main")
+    assertTh("() -> None", main)
+  }
+
+  test("array pass(fail): array as arrayN") {
+    assertThrows[TCE.TypeMismatch] {
+      astForCode(
+        """
+         def bar = array: Array10[Byte] do .
+         def main =
+           n = 100
+           array = Array[Byte](n)
+           bar(array) .
+        """)
+    }
   }
 }

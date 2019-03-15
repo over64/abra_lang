@@ -2,17 +2,16 @@ package typecheck
 
 import m3.typecheck.TCE
 import org.scalatest.FunSuite
-import typecheck.TypeCheckUtil.astNoPrelude
+import typecheck.TypeCheckUtil.astForCode
 
 class _01DefDeclTest extends FunSuite {
   test("def decl: trivial") {
-    astNoPrelude("""def main = .""")
+    astForCode("""def main = .""")
   }
 
   test("def decl: trivial native") {
-    astNoPrelude(
+    astForCode(
       """
-         type Int = llvm i32 .
          def bar = llvm
            ; asm .Int
       """)
@@ -20,7 +19,7 @@ class _01DefDeclTest extends FunSuite {
 
   test("def decl: native - ret typehint required (fail)") {
     assertThrows[TCE.RetTypeHintRequired] {
-      astNoPrelude(
+      astForCode(
         """
          def bar = llvm
            ; asm .
@@ -30,18 +29,18 @@ class _01DefDeclTest extends FunSuite {
 
   test("def decl: incorrect arg typehint (fail)") {
     assertThrows[TCE.NoSuchType] {
-      astNoPrelude(
+      astForCode(
         """
-         def bar = x: None do .
+         def bar = x: Foo do .
       """)
     }
   }
 
   test("def decl: incorrect ret typehint (fail)") {
     assertThrows[TCE.NoSuchType] {
-      astNoPrelude(
+      astForCode(
         """
-         def bar = .None
+         def bar = .Bar
       """)
     }
   }

@@ -46,4 +46,8 @@ object TCE {
   case class UnionMembersNotUnique(location: AstInfo) extends TypeCheckError
   case class IntegerLiteralOutOfRange(location: AstInfo, th: Option[TypeHint]) extends TypeCheckError
   case class FloatingLiteralOutOfRange(location: AstInfo, th: Option[TypeHint]) extends TypeCheckError
+  case class ExpectedIntegerType(location: AstInfo, otherTh: TypeHint) extends TypeCheckError
+  case class ArraySizeExpected(thArraySizes: Ast0.UnionTh, has: TypeHint) extends TypeCheckError
+  case class BuiltinTypeRedeclare(location: AstInfo, name: String) extends TypeCheckError
+  case class NoWhileForBreakOrContinue(location: AstInfo) extends TypeCheckError
 }
