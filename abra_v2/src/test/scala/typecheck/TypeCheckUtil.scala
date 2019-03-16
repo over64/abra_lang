@@ -6,6 +6,7 @@ import grammar.{M2LexerForIDE, M2Parser}
 import org.scalatest.FunSuite
 import m3.parse.Ast0._
 import m3.parse.{ParsePass, Resolver, Visitor}
+import m3.typecheck.TCMeta._
 import m3.typecheck.TypeCheckPass
 import org.antlr.v4.runtime.{ANTLRInputStream, BailErrorStrategy, CommonTokenStream}
 

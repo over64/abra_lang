@@ -50,4 +50,7 @@ object TCE {
   case class ArraySizeExpected(thArraySizes: Ast0.UnionTh, has: TypeHint) extends TypeCheckError
   case class BuiltinTypeRedeclare(location: AstInfo, name: String) extends TypeCheckError
   case class NoWhileForBreakOrContinue(location: AstInfo) extends TypeCheckError
+  case class ExpectedUnionType(location: AstInfo, has: TypeHint) extends TypeCheckError
+  case class UnlessExpectedOneOf(location: AstInfo, oneOf: Seq[TypeHint], has: TypeHint) extends TypeCheckError
+  case class CaseAlreadyCovered(location: AstInfo, forTh: TypeHint, coveredAt: AstInfo) extends TypeCheckError
 }

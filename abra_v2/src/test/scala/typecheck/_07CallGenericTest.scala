@@ -2,6 +2,7 @@ package typecheck
 
 import m3.parse.Ast0.GenericTh
 import m3.typecheck.TCE
+import m3.typecheck.TCMeta._
 import org.scalatest.FunSuite
 import typecheck.TypeCheckUtil._
 
@@ -48,9 +49,6 @@ class _07CallGenericTest extends FunSuite {
          def - = self: Int, other: Int do llvm
              %1 = sub nsw i32 %self, %other
              ret i32 %1 .Int
-
-         def minus = self: Int, other: t do
-            self - other .
 
          # self call :: num.add(num) -> a1
          def add = x: num, y: num do

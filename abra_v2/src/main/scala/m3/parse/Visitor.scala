@@ -5,6 +5,7 @@ import java.math.BigInteger
 import grammar.M2Parser._
 import grammar.M2ParserVisitor
 import m3.parse.Ast0._
+import ParseMeta._
 import org.antlr.v4.runtime.tree.{AbstractParseTreeVisitor, TerminalNode}
 import org.antlr.v4.runtime.{ParserRuleContext, Token}
 

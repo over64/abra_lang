@@ -11,22 +11,6 @@ case class AstInfo(fname: String, line: Int, col: Int, lineEnd: Int, colEnd: Int
 object Ast0 {
   sealed trait ParseNode {
     val meta: mutable.HashMap[String, Any] = new mutable.HashMap()
-
-    def setLocation(loc: AstInfo): Unit = meta.put("source.location", loc)
-    def getLocation = meta.get("source.location")
-
-    def location: AstInfo = meta.getOrElse("source.location", {
-      val x = 1 // so weird
-      throw new RuntimeException("no location")
-    }).asInstanceOf[AstInfo]
-
-    def getTypeHintOpt[T <: TypeHint]: Option[T] = meta.get("typecheck.typeHint").map(m => m.asInstanceOf[T])
-
-    def getTypeHint[T <: TypeHint]: T = getTypeHintOpt.getOrElse {
-      throw new RuntimeException("no typeHint")
-    }
-
-    def setTypeHint(th: TypeHint): Unit = meta.put("typecheck.typeHint", th)
   }
 
   sealed trait Expression extends ParseNode
@@ -49,22 +33,6 @@ object Ast0 {
   sealed trait TypeDecl extends Level1Declaration {
     val name: String
     val params: Seq[GenericTh]
-
-    def setBuiltinIntegral =
-      meta.put("builtin.integral", true)
-    def isBuiltinIntegral =
-      meta.contains("builtin.integral")
-
-    def setBuiltinArray(len: Option[Long]) = {
-      meta.put("builtin.array", true)
-      len.foreach { l => meta.put("builtin.array.len", l) }
-    }
-
-    def isBuiltinArray(): Boolean =
-      meta.contains("builtin.array")
-
-    def getBuiltinArrayLen(): Option[Long] =
-      meta.get("builtin.array.len").map(_.asInstanceOf[Long])
   }
 
   case class ScalarDecl(ref: Boolean, params: Seq[GenericTh], name: String, llType: String) extends TypeDecl
@@ -127,25 +95,12 @@ object Ast0 {
   case class Is(vName: Option[lId], typeRef: TypeHint, _do: Seq[Expression]) extends ParseNode
   case class Unless(expr: Expression, is: Seq[Is]) extends Expression
   case class While(cond: Expression, _do: Seq[Expression]) extends Expression
-  case class Store(var th: TypeHint, to: Seq[lId], what: Expression) extends Expression {
-    def getDeclTh[T <: TypeHint]: T = meta.get("typecheck.store.declTypeHint").map(m => m.asInstanceOf[T]).get
-
-    def setDeclTh(th: TypeHint): Unit = meta.put("typecheck.store.declTypeHint", th)
-  }
+  case class Store(var th: TypeHint, to: Seq[lId], what: Expression) extends Expression
   case class Ret(what: Option[Expression]) extends Expression
   case class Break() extends Expression
   case class Continue() extends Expression
   case class Arg(name: String, var typeHint: TypeHint) extends ParseNode
-  case class Def(name: String, lambda: Lambda, var retTh: TypeHint) extends Level1Declaration {
-    def getEquationsOpt: Option[Equations] = meta.get("typecheck.equations").map(m => m.asInstanceOf[Equations])
-
-    def getEquations: Equations = getEquationsOpt.getOrElse {
-      val x = 1
-      throw new RuntimeException("no equations")
-    }
-
-    def setEquations(eq: Equations): Unit = meta.put("typecheck.equations", eq)
-  }
+  case class Def(name: String, lambda: Lambda, var retTh: TypeHint) extends Level1Declaration
   case class ImportEntry(modName: String, path: String, withTypes: Seq[String]) extends ParseNode
   case class Import(seq: Seq[ImportEntry]) extends ParseNode
   case class Module(pkg: String,
