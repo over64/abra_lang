@@ -20,14 +20,19 @@ object TypeCheckUtil extends FunSuite {
     assert(th === expected.toTh)
   }
 
-  def astForCode(code: String): Module = {
-    val fw = new FileWriter(new File("/tmp/test.abra"))
-    fw.write(code)
-    fw.close()
+  def astForCode(code: String): Module =
+    astForModules({
+      case "main" => code
+    })
 
+  def astForModules(resolver: String => String): Module = {
     val root = new ParsePass(new Resolver {
-      override def resolve(path: String): String = path match {
-        case "main" => code
+      override def resolve(path: String): String = {
+        val code = resolver(path)
+        val fw = new FileWriter(new File("/tmp/" + path + ".abra"))
+        fw.write(code)
+        fw.close()
+        code
       }
     }).pass("main")
 

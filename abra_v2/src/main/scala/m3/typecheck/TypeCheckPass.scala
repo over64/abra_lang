@@ -2,9 +2,9 @@ package m3.typecheck
 
 import m3.parse.Ast0._
 import m3.parse.ParseMeta._
-import TCMeta._
 import m3.parse.{AstInfo, Level}
 import m3.typecheck.Scope2._
+import m3.typecheck.TCMeta._
 import m3.typecheck.Util.makeSpecMap
 
 import scala.collection.mutable
@@ -97,6 +97,28 @@ object Utils {
       case gth: GenericTh => dest += gth
       case AnyTh =>
     }
+
+    def moveToMod(ctx: PassContext, ie: ImportEntry): TypeHint = {
+      val moved = self match {
+        case sth@ScalarTh(params, name, pkg) =>
+          if (Builtin.isDeclaredBuiltIn(name) || ie.withTypes.contains(name))
+            sth
+          else
+            ScalarTh(params, name, ie.modName +: pkg)
+
+        case StructTh(fields) =>
+          StructTh(fields.map(f => FieldTh(f.name, f.typeHint.moveToMod(ctx, ie))))
+        case UnionTh(variants) =>
+          UnionTh(variants.map(v => v.moveToMod(ctx, ie)))
+        case FnTh(closure, args, ret) =>
+          FnTh(Seq.empty, args.map(a => a.moveToMod(ctx, ie)), ret.moveToMod(ctx, ie))
+        case gth: GenericTh => gth
+        case AnyTh => AnyTh
+      }
+
+      self.getLocation.foreach { location => moved.setLocation(location) }
+      moved
+    }
   }
 
   implicit class RichDef(self: Def) {
@@ -115,13 +137,16 @@ object Utils {
         level.findMod(ie.path).get
     }
 
+    val withoutMod = ScalarTh(th.params, th.name, Seq.empty)
+    th.getLocation.foreach(location => withoutMod.setLocation(location))
+
     origModule.imports.seq
       .flatMap(ie => ie.withTypes.map(tName => (ie, tName)))
       .find { case (ie, tName) => tName == th.name }
     match {
       case Some((ie, _)) =>
         val mod = level.findMod(ie.path).getOrElse(throw TCE.NoSuchModulePath(ie.location))
-        resolveType(level, mod, th)
+        resolveType(level, mod, withoutMod)
       case None =>
         (origModule, origModule.types.getOrElse(th.name, Builtin.resolveBuiltinType(th)))
     }
@@ -214,7 +239,7 @@ object Builtin {
         builtinTypeDecl.getOrElse(name, throw TCE.NoSuchType(th.location, th.mod, th.name))
     }
 
-  def resolveBuiltinSelfDef(selfTh: TypeHint, name: String): FnTh =
+  def resolveBuiltinSelfDef(location: Seq[AstInfo], selfTh: TypeHint, name: String): FnTh =
     selfTh match {
       case sth: ScalarTh if isArrayThName(sth.name) =>
         name match {
@@ -223,7 +248,8 @@ object Builtin {
           case "set" => FnTh(Seq.empty, Seq(sth, thArraySize, sth.params.head), thNil)
         }
       case th =>
-        builtinSelfDefs(th)(name)
+        builtinSelfDefs.getOrElse(th, throw TCE.NoSuchSelfDef(location, name, selfTh))
+          .getOrElse(name, throw TCE.NoSuchSelfDef(location, name, selfTh))
     }
 }
 
@@ -253,7 +279,10 @@ class TypeChecker2(ctx: PassContext,
       case (th, AnyTh) => // ok
       case (AnyTh, th) => // ok
       case (adv: ScalarTh, th: ScalarTh) =>
-        if (adv.name != th.name) throw new MismatchLocal
+        val (advMod, advDecl) = resolveType(ctx.level, ctx.module, adv)
+        val (thMod, sthDecl) = resolveType(ctx.level, ctx.module, th)
+
+        if (advMod.pkg != thMod.pkg || adv.name != th.name) throw new MismatchLocal
         if (adv.params.length != th.params.length) throw TCE.ParamsCountMismatch(th.location)
         isEqualSeq(adv.params, th.params)
       case (adv: UnionTh, th: UnionTh) =>
@@ -307,7 +336,9 @@ class TypeChecker2(ctx: PassContext,
 
         isEqualSeq(array1.params, array2.params)
       case (adv: ScalarTh, sth: ScalarTh) =>
-        if (adv.name == sth.name) {
+        val (advMod, advDecl) = resolveType(ctx.level, ctx.module, adv)
+        val (sthMod, sthDecl) = resolveType(ctx.level, ctx.module, sth)
+        if (advMod.pkg == sthMod.pkg && adv.name == sth.name) {
           if (adv.params.length != sth.params.length) throw TCE.ParamsCountMismatch(sth.location)
           isEqualSeq(adv.params, sth.params)
         }
@@ -350,7 +381,7 @@ class TypeChecker2(ctx: PassContext,
     } catch {
       case ex: MismatchLocal =>
         if (expected == thArraySize)
-          throw TCE.ArraySizeExpected(thArraySizes, has)
+          throw TCE.ArraySizeExpected(location, thArraySizes, has)
         else
           throw TCE.TypeMismatch(location, expected, has)
     }
@@ -457,7 +488,7 @@ class TypeCheckPass {
           if (!specSelf.isInstanceOf[GenericTh] && !specSelf.containsAny) {
             ctx.log(s"instance eq $eq")
 
-            val (fnTh, fnEq) = Invoker.findSelfDef(ctx, specSelf, eq.fnName)
+            val (fnTh, fnEq) = Invoker.findSelfDef(ctx, selfLocation, specSelf, eq.fnName)
 
             if (fnTh.args.drop(1).length != eq.args.length)
               throw new TCE.ArgsCountMismatch(selfLocation, fnTh.args.drop(1).length, eq.args.length)
@@ -564,7 +595,7 @@ class TypeCheckPass {
         case ex: Exception => false
       }
 
-    def findSelfDef(ctx: PassContext, selfTh: TypeHint, fnName: String): (FnTh, Equations) = {
+    def findSelfDef(ctx: PassContext, location: Seq[AstInfo], selfTh: TypeHint, fnName: String): (FnTh, Equations) = {
       selfTh match {
         case gth: GenericTh =>
           throw new RuntimeException("Unexpected to be here")
@@ -576,7 +607,15 @@ class TypeCheckPass {
               if (fn.getTypeHintOpt == None) passDef(ctx.deeperDef(Some(selfTh), fnName), fn)
               (fn.getTypeHint, fn.getEquations)
             case None =>
-              (resolveBuiltinSelfDef(selfTh, fnName), new Equations())
+              ctx.module.imports.seq.flatMap { ie =>
+                val mod = ctx.level.findMod(ie.path).getOrElse(throw TCE.NoSuchModulePath(ie.location))
+                mod.selfDefs.getOrElse(fnName, Seq()).map(fn => (ie, fn))
+              }.find { case (ie, fn) => isSelfApplicable(ctx, fn.lambda.args.head.typeHint.moveToMod(ctx, ie), selfTh) } match {
+                case Some((ie, fn)) =>
+                  (fn.getTypeHint, fn.getEquations)
+                case None =>
+                  (resolveBuiltinSelfDef(location, selfTh, fnName), new Equations())
+              }
           }
       }
     }
@@ -622,7 +661,7 @@ class TypeCheckPass {
           eqCaller.addEq(Equation((Seq(selfLocation), gth), fnName, argsTh, (Seq(location), eqRet)))
           eqRet
         case _ =>
-          val (fnTh, fnEq) = findSelfDef(ctx, selfTh, fnName)
+          val (fnTh, fnEq) = findSelfDef(ctx, Seq(location), selfTh, fnName)
           invokePrototype(ctx, eqCaller, fnEq, location, retTh, fnTh, new InferTask {
             override def infer(ctx: PassContext, eq: Equations, th: TypeHint) = (selfLocation, selfTh)
           } +: args)
@@ -711,7 +750,7 @@ class TypeCheckPass {
       case Ret(opt) =>
         val retTh = opt.map(exp => passExpr(ctx.deeperExpr(), scope, eq, th, exp)).getOrElse(thNil)
         scope.addRetType(retTh)
-        retTh
+        thUnreachable
       case call@Call(expr, args) =>
         expr match {
           case id: lId =>
@@ -761,19 +800,32 @@ class TypeCheckPass {
             throw TCE.ExpressionNotCallable(expr.location)
         }
       case call@SelfCall(fnName, self, args) =>
+        // FIXME: dedup args infer???
         self match {
           case id: lId =>
-            Invoker.invokeSelfDef(ctx, eq, call.location, th, fnName,
-              new InferTask {
-                override def infer(ctx: PassContext, eq: Equations, th: TypeHint): (AstInfo, TypeHint) =
-                  (self.location, passExpr(ctx, scope, eq, th, self))
-              },
-              args.map { arg =>
-                new InferTask {
-                  override def infer(ctx: PassContext, eq: Equations, th: TypeHint): (AstInfo, TypeHint) =
-                    (arg.location, passExpr(ctx, scope, eq, th, arg))
-                }
-              })
+            ctx.module.imports.seq.find(ie => ie.modName == id.value) match {
+              case Some(ie) =>
+                val mod = ctx.level.findMod(ie.path).getOrElse(throw TCE.NoSuchModulePath(ie.location))
+                val toCall = mod.defs.getOrElse(fnName, throw TCE.NoSuchDef(Seq(call.location), fnName))
+                Invoker.invokePrototype(ctx, eq, toCall.getEquations, call.location, th, toCall.getTypeHint, args.map { arg =>
+                  new InferTask {
+                    override def infer(ctx: PassContext, eq: Equations, th: TypeHint): (AstInfo, TypeHint) =
+                      (arg.location, passExpr(ctx, scope, eq, th, arg))
+                  }
+                }).moveToMod(ctx, ie)
+              case None =>
+                Invoker.invokeSelfDef(ctx, eq, call.location, th, fnName,
+                  new InferTask {
+                    override def infer(ctx: PassContext, eq: Equations, th: TypeHint): (AstInfo, TypeHint) =
+                      (self.location, passExpr(ctx, scope, eq, th, self))
+                  },
+                  args.map { arg =>
+                    new InferTask {
+                      override def infer(ctx: PassContext, eq: Equations, th: TypeHint): (AstInfo, TypeHint) =
+                        (arg.location, passExpr(ctx, scope, eq, th, arg))
+                    }
+                  })
+            }
           case _expr: Expression =>
             Invoker.invokeSelfDef(ctx, eq, call.location, th, fnName,
               new InferTask {
@@ -908,10 +960,10 @@ class TypeCheckPass {
               lambdaBlock.addRetType(passExpr(ctx.deeperExpr(), lambdaBlock, eq, AnyTh, last))
             }
 
-            lambdaScope.retTypes match {
+            lambdaScope.retTypes.distinct match {
               case Seq() => thNil
               case Seq(th) => th
-              case seq => UnionTh(seq.distinct)
+              case seq => UnionTh(seq)
             }
           case _ =>
             throw TCE.LambdaWithNativeCode(lambda.location)
@@ -1049,10 +1101,10 @@ class TypeCheckPass {
           bodyScope.addRetType(passExpr(ctx.deeperExpr(), bodyScope, eq, AnyTh, last))
         }
 
-        val retTh = defScope.retTypes match {
+        val retTh = defScope.retTypes.distinct match {
           case Seq() => thNil
           case Seq(th) => th
-          case seq => UnionTh(seq.distinct)
+          case seq => UnionTh(seq)
         }
 
         declaredRetTh match {

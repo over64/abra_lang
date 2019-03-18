@@ -47,10 +47,17 @@ object TCE {
   case class IntegerLiteralOutOfRange(location: AstInfo, th: Option[TypeHint]) extends TypeCheckError
   case class FloatingLiteralOutOfRange(location: AstInfo, th: Option[TypeHint]) extends TypeCheckError
   case class ExpectedIntegerType(location: AstInfo, otherTh: TypeHint) extends TypeCheckError
-  case class ArraySizeExpected(thArraySizes: Ast0.UnionTh, has: TypeHint) extends TypeCheckError
+  case class ArraySizeExpected(location: Seq[AstInfo], thArraySizes: Ast0.UnionTh, has: TypeHint) extends TypeCheckError
   case class BuiltinTypeRedeclare(location: AstInfo, name: String) extends TypeCheckError
   case class NoWhileForBreakOrContinue(location: AstInfo) extends TypeCheckError
   case class ExpectedUnionType(location: AstInfo, has: TypeHint) extends TypeCheckError
   case class UnlessExpectedOneOf(location: AstInfo, oneOf: Seq[TypeHint], has: TypeHint) extends TypeCheckError
   case class CaseAlreadyCovered(location: AstInfo, forTh: TypeHint, coveredAt: AstInfo) extends TypeCheckError
+  case class NoSuchDef(location: Seq[AstInfo], name: String) extends TypeCheckError {
+    override def toString: String = s"No such def with name $name \n${location.map(l => s"at $l").mkString("\n")}"
+  }
+
+  case class NoSuchSelfDef(location: Seq[AstInfo], name: String, forType: TypeHint) extends TypeCheckError {
+    override def toString: String = s"No such self def with name $name for type $forType \n${location.map(l => s"at $l").mkString("\n")}"
+  }
 }
