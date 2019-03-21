@@ -10,10 +10,6 @@ class _07CallGenericTest extends FunSuite {
   test("simple generic") {
     val ast = astForCode(
       """
-         def + = self: Int, other: Int do llvm
-             %1 = contains nsw i32 %self, %other
-             ret i32 %1 .Int
-
          def contains = x: num, y: num do
              x + y .
 
@@ -89,9 +85,9 @@ class _07CallGenericTest extends FunSuite {
   }
 
   test("polymorphic self replace") {
-    assertThrows[TCE.TypeMismatch] {
-      val ast = astForCode(
-        """
+    //assertThrows[TCE.TypeMismatch] {
+    val ast = astForCode(
+      """
         type Seq[t] = llvm %t* .
         type Log    = llvm i32 .
         type F2     = llvm i32 .
@@ -145,10 +141,64 @@ class _07CallGenericTest extends FunSuite {
       """)
 
 
-      println("\ncontains:\n" + ast.selfDefs("contains")(0).getEquations + "\n" + ast.selfDefs("contains")(0).getTypeHint)
-      println("\nin:\n" + ast.selfDefs("in")(0).getEquations + "\n" + ast.selfDefs("in")(0).getTypeHint)
-      println("\nbar:\n" + ast.defs("bar").getEquations + "\n" + ast.defs("bar").getTypeHint)
-      println("\nmain:\n" + ast.defs("main").getEquations + "\n" + ast.defs("main").getTypeHint)
-    }
+    println("\ncontains:\n" + ast.selfDefs("contains")(0).getEquations + "\n" + ast.selfDefs("contains")(0).getTypeHint)
+    println("\nin:\n" + ast.selfDefs("in")(0).getEquations + "\n" + ast.selfDefs("in")(0).getTypeHint)
+    println("\nbar:\n" + ast.defs("bar").getEquations + "\n" + ast.defs("bar").getTypeHint)
+    println("\nmain:\n" + ast.defs("main").getEquations + "\n" + ast.defs("main").getTypeHint)
+    // }
+  }
+
+  test("collections-like") {
+    val ast = astForCode(
+      """
+        type ArrayIter[t] = (array: Array[t], idx: Long)
+
+        def iterator = self: Array[t] do
+          ArrayIter(self, 0) .
+
+        def next = self: ArrayIter[t] do
+          if self.idx < self.array.len() do
+            self.idx = self.idx + 1
+            self.array(self.idx - 1)
+          else none ..
+
+        type Map[iterable, t, u] = (it: iterable, mapper: (t) -> u)
+        type MapIter[iterator, t, u] = (iter: iterator, mapper: (t) -> u)
+
+        def isIterable = it: iterable do
+          iter = it.iterator()  # iterable must provide iterator
+          iter.next() . # iterator must provide t | None via next function
+
+        def map = self: iterable, mapper: (t) -> u do
+          if false do
+            value: t | None = isIterable(self) .
+
+          Map(self, mapper) .
+
+        def iterator = self: Map[iterable, t, u] do
+          MapIter(self.it.iterator(), self.mapper) .
+
+        def next = self: MapIter[iterator, t, u] do
+          value: t | None = self.iter.next()
+          value unless is forMap: t do
+            self.mapper(forMap) ..u | None
+
+        def main =
+          n = 5
+          array1 = Array[Int](n)
+          it = array1.map(lambda x -> x * 2).iterator()
+
+          it.next()
+          it.next()
+          it.next()
+
+          it.next() unless is None do -1 ..
+      """)
+
+    println(ast.selfDefs("iterator")(1).getEquations)
+    println(ast.selfDefs("iterator")(1).getTypeHint)
+    println(ast.selfDefs("map").head.getEquations)
+    val main = ast.function("main")
+    assertTh("() -> Int", main)
   }
 }

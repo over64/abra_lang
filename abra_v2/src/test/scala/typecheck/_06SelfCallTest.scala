@@ -59,6 +59,41 @@ class _06SelfCallTest extends FunSuite {
     assertTh("() -> None", ast.function("main"))
   }
 
+  test("self call: get from struct field") {
+    val ast = astForCode(
+      """
+         type Gettable = (x: Int)
+         def get = self: Gettable, x: Int, y: Float do 'hello' .String
+
+         type Wrapper = (g: Gettable)
+         def mk = llvm ; assembly .Wrapper
+
+         def main =
+           wrapper = mk()
+           wrapper.g(1, 1.0) .
+      """)
+
+    assertTh("() -> String", ast.function("main"))
+  }
+
+  test("self call: get from struct field - go deeper") {
+    val ast = astForCode(
+      """
+         type Gettable = (x: Int)
+         def get = self: Gettable, x: Int, y: Float do .
+
+         type Wrapper = (g: Gettable)
+         type Wrapper2 = (w1: Wrapper)
+         def mk = llvm ; assembly .Wrapper2
+
+         def main =
+           w2 = mk()
+           w2.w1.g(1, 1.0) .
+      """)
+
+    assertTh("() -> None", ast.function("main"))
+  }
+
   test("self call fail: self function redeclaration") {
     assertThrows[TCE.DoubleSelfDefDeclaration] {
       astForCode(

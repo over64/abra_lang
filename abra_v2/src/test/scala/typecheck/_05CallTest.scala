@@ -52,6 +52,38 @@ class _05CallTest extends FunSuite {
     assertTh("() -> Int", ast.function("main"))
   }
 
+  test("call: struct field") {
+    val ast = astForCode(
+      """
+         type Some = (callback: (Int) -> Int)
+         def simple = x: Int do x .
+
+         def main =
+           some = Some(simple)
+           some.callback(42) .
+      """)
+
+    val main = ast.function("main")
+    assertTh("Some", main.varDecl("some"))
+    assertTh("() -> Int", main)
+  }
+
+  test("call: anon struct field") {
+    val ast = astForCode(
+      """
+         type Some = (callback: (Int) -> Int)
+         def simple = x: Int do x .
+
+         def main =
+           tuple = (simple, 42)
+           tuple.x0(42) .
+      """)
+
+    val main = ast.function("main")
+    assertTh("(x0: (Int) -> Int, x1: Int)", main.varDecl("tuple"))
+    assertTh("() -> Int", main)
+  }
+
   test("call fail: arg type mismatch") {
     assertThrows[TCE.TypeMismatch] {
       astForCode(

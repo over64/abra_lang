@@ -4,7 +4,7 @@ import m3.typecheck.TCE
 import org.scalatest.FunSuite
 import typecheck.TypeCheckUtil._
 
-class _16ModCallTest extends FunSuite {
+class _17ModCallTest extends FunSuite {
   test("mod call: simple") {
     val ast = astForModules({
       case "modA" => """
