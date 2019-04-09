@@ -10,7 +10,7 @@ lazy val abra1 = (project in file("abra_v1"))
     fork in Test := true,
     name := "abra-lang-compiler_v1",
     version := "1.0.0",
-    scalaVersion := "2.11.8",
+    scalaVersion := "2.12.8",
     assemblyJarName in assembly := "kadabra.jar",
     libraryDependencies ++= Seq(
       "com.github.scopt" %% "scopt" % "3.5.0",
@@ -25,12 +25,12 @@ lazy val abra2 = (project in file("abra_v2"))
   .settings(
     name := "abra-lang-compiler_v2",
     version := "1.0.0",
-    scalaVersion := "2.11.12",
+    scalaVersion := "2.12.8",
     assemblyJarName in assembly := "kadabra.jar",
     libraryDependencies ++= Seq(
       "com.github.scopt" %% "scopt" % "3.5.0",
       "org.antlr" % "antlr4-runtime" % "4.7",
-      "org.scalatest" % "scalatest_2.11" % "3.0.1" % "test"
+      "org.scalatest" % "scalatest_2.12" % "3.0.1" % "test"
     )
   )
 
@@ -39,7 +39,7 @@ lazy val ide = (project in file("ide"))
   .settings(
     name := "abra-lang-ide",
     version := "1.0.0",
-    scalaVersion := "2.11.8",
+    scalaVersion := "2.12.8",
     assemblyJarName in assembly := "ide.jar",
     libraryDependencies ++= Seq(
       "com.github.scopt" %% "scopt" % "3.5.0",

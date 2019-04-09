@@ -57,8 +57,6 @@ object Ast0 {
     }.mkString(" | ")
   }
 
-  case class Bound(selfDef: String, args: Seq[TypeHint], ret: TypeHint)
-
   case class GenericTh(var typeName: String, var isAnon: Boolean = false) extends TypeHint {
     override def toString: String = typeName
   }

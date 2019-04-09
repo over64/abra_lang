@@ -6,255 +6,10 @@ import m3.parse.{AstInfo, Level}
 import m3.typecheck.Scope2._
 import m3.typecheck.TCE.NoSuchSelfDef
 import m3.typecheck.TCMeta._
-import m3.typecheck.Util.makeSpecMap
+import m3.typecheck.Utils._
+import m3.typecheck.Builtin._
 
 import scala.collection.mutable
-
-object Utils {
-  implicit class ThExtension(self: TypeHint) {
-    def assertCorrect(ctx: PassContext, params: Seq[GenericTh]): Unit =
-      self match {
-        case sth: ScalarTh =>
-          val (_, decl) = resolveType(ctx.level, ctx.module, sth)
-
-          if (decl.params.length != sth.params.length)
-            throw TCE.ParamsCountMismatch(sth.location)
-
-          sth.params.foreach(p => p.assertCorrect(ctx, params))
-        case sth: StructTh =>
-          val fieldNames = sth.seq.map(_.name)
-          if (fieldNames.length != fieldNames.toSet.size)
-            throw TCE.FieldNameNotUnique(sth.location)
-          sth.seq.foreach(f => f.typeHint.assertCorrect(ctx, params))
-        case uth: UnionTh =>
-          if (uth.seq.length != uth.seq.toSet.size)
-            throw TCE.UnionMembersNotUnique(uth.location)
-          uth.seq.foreach(th => th.assertCorrect(ctx, params))
-        case fth: FnTh =>
-          fth.args.foreach(th => th.assertCorrect(ctx, params))
-          fth.ret.assertCorrect(ctx, params)
-        case gth: GenericTh =>
-          if (!params.contains(gth))
-            throw TCE.NoSuchParameter(gth.location, gth)
-        case AnyTh =>
-      }
-
-    def spec(specMap: mutable.HashMap[GenericTh, TypeHint],
-             onNotFound: GenericTh => TypeHint = gth => AnyTh): TypeHint = {
-      val res = self match {
-        case ScalarTh(params, name, pkg) =>
-          specMap.get(GenericTh(name)) match {
-            case Some(th) => th
-            case None =>
-              ScalarTh(params.map(p => p.spec(specMap, onNotFound)), name, pkg)
-          }
-        case StructTh(fields) =>
-          StructTh(fields.map { field =>
-            FieldTh(field.name, field.typeHint.spec(specMap, onNotFound))
-          })
-        case UnionTh(variants) =>
-          UnionTh(variants.map { th =>
-            th.spec(specMap, onNotFound)
-          })
-        case FnTh(closure, args, ret) =>
-          FnTh(closure, args.map(arg => arg.spec(specMap, onNotFound)), ret.spec(specMap, onNotFound))
-        case gth: GenericTh => specMap.getOrElse(gth, onNotFound(gth))
-        case AnyTh => AnyTh
-      }
-
-      self.getLocation.foreach(loc => res.setLocation(self.location))
-      res
-    }
-
-    def containsAny: Boolean =
-      self match {
-        case ScalarTh(params, name, pkg) =>
-          params.exists(p => p.containsAny)
-        case StructTh(fields) =>
-          fields.exists(f => f.typeHint.containsAny)
-        case UnionTh(variants) =>
-          variants.exists(v => v.containsAny)
-        case FnTh(closure, args, ret) =>
-          args.exists(a => a.containsAny) || ret.containsAny
-        case gth: GenericTh => false
-        case AnyTh => true
-      }
-
-    def isArray: Boolean = self match {
-      case sth: ScalarTh => Builtin.isArrayThName(sth.name)
-      case _ => false
-    }
-
-    def findGenerics(dest: mutable.ListBuffer[GenericTh]): Unit = self match {
-      case ScalarTh(params, name, pkg) =>
-        params.foreach(p => p.findGenerics(dest))
-      case StructTh(fields) =>
-        fields.foreach(f => f.typeHint.findGenerics(dest))
-      case UnionTh(variants) =>
-        variants.foreach(v => v.findGenerics(dest))
-      case FnTh(closure, args, ret) =>
-        args.foreach(a => a.findGenerics(dest))
-        ret.findGenerics(dest)
-      case gth: GenericTh => dest += gth
-      case AnyTh =>
-    }
-
-    def moveToMod(ctx: PassContext, ie: ImportEntry): TypeHint = {
-      val moved = self match {
-        case sth@ScalarTh(params, name, pkg) =>
-          if (Builtin.isDeclaredBuiltIn(name) || ie.withTypes.contains(name))
-            sth
-          else
-            ScalarTh(params, name, ie.modName +: pkg)
-
-        case StructTh(fields) =>
-          StructTh(fields.map(f => FieldTh(f.name, f.typeHint.moveToMod(ctx, ie))))
-        case UnionTh(variants) =>
-          UnionTh(variants.map(v => v.moveToMod(ctx, ie)))
-        case FnTh(closure, args, ret) =>
-          FnTh(Seq.empty, args.map(a => a.moveToMod(ctx, ie)), ret.moveToMod(ctx, ie))
-        case gth: GenericTh => gth
-        case AnyTh => AnyTh
-      }
-
-      self.getLocation.foreach { location => moved.setLocation(location) }
-      moved
-    }
-  }
-
-  implicit class RichDef(self: Def) {
-    def params: mutable.ListBuffer[GenericTh] = {
-      val dest = mutable.ListBuffer[GenericTh]()
-      FnTh(Seq.empty, self.lambda.args.map(_.typeHint), self.retTh)
-        .findGenerics(dest)
-      dest
-    }
-  }
-
-  def resolveType(level: Level, module: Module, th: ScalarTh): (Module, TypeDecl) = {
-    val origModule = th.mod.foldLeft(module) {
-      case (module, modName) =>
-        val ie = module.imports.seq.find(ie => ie.modName == modName).getOrElse(throw TCE.NoSuchModulePath(th.location))
-        level.findMod(ie.path).get
-    }
-
-    val withoutMod = ScalarTh(th.params, th.name, Seq.empty)
-    th.getLocation.foreach(location => withoutMod.setLocation(location))
-
-    origModule.imports.seq
-      .flatMap(ie => ie.withTypes.map(tName => (ie, tName)))
-      .find { case (ie, tName) => tName == th.name }
-    match {
-      case Some((ie, _)) =>
-        val mod = level.findMod(ie.path).getOrElse(throw TCE.NoSuchModulePath(ie.location))
-        resolveType(level, mod, withoutMod)
-      case None =>
-        (origModule, origModule.types.getOrElse(th.name, Builtin.resolveBuiltinType(th)))
-    }
-  }
-
-  def makeSpecMap(gen: Seq[GenericTh], params: Seq[TypeHint]) = {
-    if (gen.length != params.length)
-      throw new RuntimeException("params length mismatch")
-
-    mutable.HashMap((gen zip params): _*)
-  }
-}
-
-import m3.typecheck.Utils._
-
-object Builtin {
-  val thLong = ScalarTh(params = Seq.empty, "Long", Seq.empty)
-  val thInt = ScalarTh(params = Seq.empty, "Int", Seq.empty)
-  val thShort = ScalarTh(params = Seq.empty, "Short", Seq.empty)
-  val thByte = ScalarTh(params = Seq.empty, "Byte", Seq.empty)
-
-  val thDouble = ScalarTh(params = Seq.empty, "Double", Seq.empty)
-  val thFloat = ScalarTh(params = Seq.empty, "Float", Seq.empty)
-  val thBool = ScalarTh(params = Seq.empty, "Bool", Seq.empty)
-  val thString = ScalarTh(params = Seq.empty, "String", Seq.empty)
-  val thNil = ScalarTh(params = Seq.empty, "None", Seq.empty)
-  val thUnreachable = ScalarTh(params = Seq.empty, "Unreachable", Seq.empty)
-  val thArraySize = ScalarTh(params = Seq.empty, "ArraySize", Seq.empty)
-  val thArraySizes = UnionTh(Seq(thByte, thShort, thInt, thLong))
-
-  val builtinTypeDecl: Map[String, TypeDecl] = (
-    Seq("Unreachable", "None", "Bool", "ArraySize", "Byte", "Short", "Int", "Long", "Float", "Double").map { name =>
-      ScalarDecl(ref = false, Seq.empty, name, "builtin")
-    } ++ Seq(
-      ScalarDecl(ref = true, Seq.empty, "String", "builtin")
-    )).map(td => (td.name, td)).toMap
-
-  def binaryOps(th: TypeHint) = Seq("+", "-", "*", "/")
-    .map(op => (op, FnTh(Seq.empty, Seq(th, th), th)))
-
-  def compareOps(th: TypeHint) = Seq(
-    ("<", FnTh(Seq.empty, Seq(th, th), thBool)),
-    (">", FnTh(Seq.empty, Seq(th, th), thBool)))
-
-  def equalityOps(th: TypeHint) = Seq(
-    ("==", FnTh(Seq.empty, Seq(th, th), thBool)),
-    ("!=", FnTh(Seq.empty, Seq(th, th), thBool)))
-
-  def upscaleOps(th: ScalarTh, order: Seq[ScalarTh]) = {
-    val idx = order.indexOf(th)
-    order.drop(idx + 1).map { to => ("to" + to.name, FnTh(Seq.empty, Seq(th), to)) }
-  }
-
-  def upscaleIntOps(th: ScalarTh) =
-    upscaleOps(th, Seq(thByte, thShort, thInt, thLong))
-
-  def upscaleFloatOps(th: ScalarTh) =
-    upscaleOps(th, Seq(thFloat, thDouble))
-
-  def ops[T <: TypeHint](th: T, gens: (T => Seq[(String, FnTh)])*) =
-    (th, gens.flatMap { gen => gen(th) }.toMap)
-
-  val builtinSelfDefs: Map[TypeHint, Map[String, FnTh]] = Seq(
-    ops(thBool, equalityOps),
-    ops(thByte, binaryOps, compareOps, equalityOps, upscaleIntOps),
-    ops(thShort, binaryOps, compareOps, equalityOps, upscaleIntOps),
-    ops(thInt, binaryOps, compareOps, equalityOps, upscaleIntOps),
-    ops(thLong, binaryOps, compareOps, equalityOps, upscaleIntOps),
-    ops(thFloat, binaryOps, compareOps, equalityOps, upscaleFloatOps),
-    ops(thDouble, binaryOps, compareOps, equalityOps, upscaleFloatOps)
-  ).toMap
-
-  def isArrayThName(name: String): Boolean =
-    name.matches("^Array[0-9]*$")
-
-  def isDeclaredBuiltIn(name: String) =
-    builtinTypeDecl.contains(name) || isArrayThName(name)
-
-  def resolveBuiltinType(th: ScalarTh): TypeDecl =
-    th.name match {
-      case name if isArrayThName(name) =>
-        val decl = StructDecl(Seq(GenericTh("t")), name, Seq.empty)
-        val len = name.replace("Array", "") match {
-          case "" => None
-          case sLen => Some(sLen.toLong)
-        }
-        decl.setBuiltinArray(len)
-        decl
-      case name =>
-        builtinTypeDecl.getOrElse(name, throw TCE.NoSuchType(th.location, th.mod, th.name))
-    }
-
-  def resolveBuiltinSelfDef(location: Seq[AstInfo], selfTh: TypeHint, name: String): FnTh =
-    selfTh match {
-      case sth: ScalarTh if isArrayThName(sth.name) =>
-        name match {
-          case "len" => FnTh(Seq.empty, Seq(sth), thLong)
-          case "get" => FnTh(Seq.empty, Seq(sth, thArraySize), sth.params.head)
-          case "set" => FnTh(Seq.empty, Seq(sth, thArraySize, sth.params.head), thNil)
-        }
-      case th =>
-        builtinSelfDefs.getOrElse(th, throw TCE.NoSuchSelfDef(location, name, selfTh))
-          .getOrElse(name, throw TCE.NoSuchSelfDef(location, name, selfTh))
-    }
-}
-
-import m3.typecheck.Builtin._
 
 case class PassContext(deep: Int, level: Level, module: Module, defStack: List[(Option[TypeHint], String)] = List.empty) {
   def deeperExpr() = this.copy(deep = this.deep + 1)
@@ -280,8 +35,8 @@ class TypeChecker2(ctx: PassContext,
       case (th, AnyTh) => // ok
       case (AnyTh, th) => // ok
       case (adv: ScalarTh, th: ScalarTh) =>
-        val (advMod, advDecl) = resolveType(ctx.level, ctx.module, adv)
-        val (thMod, sthDecl) = resolveType(ctx.level, ctx.module, th)
+        val (_, advMod, advDecl) = resolveType(ctx.level, ctx.module, adv)
+        val (_, thMod, sthDecl) = resolveType(ctx.level, ctx.module, th)
 
         if (advMod.pkg != thMod.pkg || adv.name != th.name) throw new MismatchLocal
         if (adv.params.length != th.params.length) throw TCE.ParamsCountMismatch(th.location)
@@ -327,8 +82,8 @@ class TypeChecker2(ctx: PassContext,
       case (arraySize, sth: ScalarTh) if arraySize == thArraySize =>
         doCheck(thArraySizes, sth)
       case (array1: ScalarTh, array2: ScalarTh) if array1.isArray && array2.isArray =>
-        val (_, decl1) = resolveType(ctx.level, ctx.module, array1)
-        val (_, decl2) = resolveType(ctx.level, ctx.module, array2)
+        val (_, _, decl1) = resolveType(ctx.level, ctx.module, array1)
+        val (_, _, decl2) = resolveType(ctx.level, ctx.module, array2)
 
         decl1.getBuiltinArrayLen match {
           case None => // ok
@@ -339,22 +94,22 @@ class TypeChecker2(ctx: PassContext,
 
         isEqualSeq(array1.params, array2.params)
       case (adv: ScalarTh, sth: ScalarTh) =>
-        val (advMod, advDecl) = resolveType(ctx.level, ctx.module, adv)
-        val (sthMod, sthDecl) = resolveType(ctx.level, ctx.module, sth)
+        val (_, advMod, advDecl) = resolveType(ctx.level, ctx.module, adv)
+        val (_, sthMod, sthDecl) = resolveType(ctx.level, ctx.module, sth)
         if (advMod.pkg == sthMod.pkg && adv.name == sth.name) {
           if (adv.params.length != sth.params.length) throw TCE.ParamsCountMismatch(sth.location)
           isEqualSeq(adv.params, sth.params)
         }
         else {
           resolveType(ctx.level, ctx.module, adv) match {
-            case (_, ud: UnionDecl) => checkUnionMember(ud, adv, sth)
+            case (_, _, ud: UnionDecl) => checkUnionMember(ud, adv, sth)
             case _ => throw new MismatchLocal
           }
         }
       case (adv: ScalarTh, uth: UnionTh) => throw new MismatchLocal
       case (adv: ScalarTh, th) =>
         resolveType(ctx.level, ctx.module, adv) match {
-          case (_, ud: UnionDecl) => checkUnionMember(ud, adv, th)
+          case (_, _, ud: UnionDecl) => checkUnionMember(ud, adv, th)
           case _ => throw new MismatchLocal
         }
       case (adv: UnionTh, th: ScalarTh) =>
@@ -625,7 +380,7 @@ class TypeCheckPass {
               ctx.module.imports.seq.flatMap { ie =>
                 val mod = ctx.level.findMod(ie.path).getOrElse(throw TCE.NoSuchModulePath(ie.location))
                 mod.selfDefs.getOrElse(fnName, Seq()).map(fn => (ie, fn))
-              }.find { case (ie, fn) => isSelfApplicable(ctx, fn.lambda.args.head.typeHint.moveToMod(ctx, ie), selfTh) } match {
+              }.find { case (ie, fn) => isSelfApplicable(ctx, fn.lambda.args.head.typeHint.moveToMod(Seq(ie)), selfTh) } match {
                 case Some((ie, fn)) =>
                   (fn.getTypeHint, fn.getEquations)
                 case None =>
@@ -678,6 +433,8 @@ class TypeCheckPass {
       val (selfLocation, selfTh) = self.infer(ctx.deeperExpr(), eqCaller, AnyTh)
 
       selfTh match {
+        // FIXME: try to resolve generic function locally at first?
+        // FIXME: variant 2 - declare self function on ScalarTh only
         case gth: GenericTh =>
           val argsTh = args.map(argTask => argTask.infer(ctx.deeperExpr(), eqCaller, AnyTh))
             .map { case (loc, th) => (Seq(loc), th) }
@@ -700,12 +457,12 @@ class TypeCheckPass {
       fields.foldLeft(from) {
         case (sth: ScalarTh, fieldId) =>
           resolveType(ctx.level, ctx.module, sth) match {
-            case (_, sd: StructDecl) =>
+            case (_, _, sd: StructDecl) =>
               sd.fields
                 .find(fd => fd.name == fieldId.value)
                 .getOrElse(throw TCE.NoSuchField(fieldId.location, sth, fieldId.value))
                 .th.spec(makeSpecMap(sd.params, sth.params))
-            case (_, td) => throw TCE.NoSuchField(fieldId.location, sth, fieldId.value)
+            case (_, _, td) => throw TCE.NoSuchField(fieldId.location, sth, fieldId.value)
           }
         case (sth: StructTh, fieldId) =>
           sth.seq
@@ -836,7 +593,7 @@ class TypeCheckPass {
             val ie = ctx.module.imports.seq.find(ie => ie.modName == id.value).get
             val mod = ctx.level.findMod(ie.path).getOrElse(throw TCE.NoSuchModulePath(ie.location))
             val toCall = mod.defs.getOrElse(fnName, throw TCE.NoSuchDef(Seq(call.location), fnName))
-            Invoker.invokePrototype(ctx, eq, toCall.getEquations, call.location, th, toCall.getTypeHint, argTasks).moveToMod(ctx, ie)
+            Invoker.invokePrototype(ctx, eq, toCall.getEquations, call.location, th, toCall.getTypeHint, argTasks).moveToMod(Seq(ie))
           case _expr =>
             val selfTh = passExpr(ctx, scope, eq, AnyTh, _expr)
             val selfTask = new InferTask {
@@ -853,7 +610,7 @@ class TypeCheckPass {
             selfTh match {
               case sth: ScalarTh =>
                 resolveType(ctx.level, ctx.module, sth) match {
-                  case (_, sd: StructDecl) =>
+                  case (_, _, sd: StructDecl) =>
                     sd.fields.find(fd => fd.name == fnName) match {
                       case Some(field) =>
                         field.th.spec(makeSpecMap(sd.params, sth.params)) match {
@@ -884,7 +641,7 @@ class TypeCheckPass {
         }
       case cons@Cons(sth, args) =>
         val sd = resolveType(ctx.level, ctx.module, sth) match {
-          case (_, sd: StructDecl) => sd
+          case (_, _, sd: StructDecl) => sd
           case _ => throw TCE.StructTypeRequired(cons.location)
         }
 
@@ -1061,7 +818,7 @@ class TypeCheckPass {
           case uth: UnionTh => uth.seq
           case sth: ScalarTh =>
             resolveType(ctx.level, ctx.module, sth) match {
-              case (_, ud: UnionDecl) => ud.variants.map(v => v.spec(makeSpecMap(ud.params, sth.params)))
+              case (_, _, ud: UnionDecl) => ud.variants.map(v => v.spec(makeSpecMap(ud.params, sth.params)))
               case _ => throw TCE.ExpectedUnionType(expr.location, exprTh)
             }
           case _ => throw TCE.ExpectedUnionType(expr.location, exprTh)

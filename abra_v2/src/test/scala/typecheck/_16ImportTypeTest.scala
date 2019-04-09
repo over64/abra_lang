@@ -39,6 +39,26 @@ class _16ImportTypeTest extends FunSuite {
     assertTh("Some | Int", main.varDecl("value"))
   }
 
+  test("import type from module: deep 3") {
+    val ast = astForModules({
+      case "libB" => """
+        type B = (x: Int, y: Int)
+        """
+      case "libA" => """
+        import libB .
+        type A = (b: libB.B, x: Int)
+        """
+      case "main" => """
+        import libA with A .
+        type M = (a: A, x: Int)
+        def local = m: M do none .
+        """
+    })
+
+    val local = ast.function("local")
+    assertTh("(M) -> None", local)
+  }
+
   test("import module(fail): with type clash") {
     assertThrows[TCE.TypeAlreadyLocalDefined] {
       astForModules({

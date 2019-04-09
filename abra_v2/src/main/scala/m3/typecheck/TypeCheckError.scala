@@ -10,7 +10,9 @@ object TCE {
   case class TypeHintRequired(location: AstInfo) extends TypeCheckError
   case class RetTypeHintRequired(location: AstInfo) extends TypeCheckError
   case class TypeHintUnexpected(location: AstInfo) extends TypeCheckError
-  case class NoSuchModulePath(location: AstInfo) extends TypeCheckError
+  case class NoSuchModulePath(location: AstInfo) extends TypeCheckError {
+    override def toString: String = s"$location No such module path"
+  }
   case class NoSuchType(location: AstInfo, mod: Seq[String], name: String) extends TypeCheckError {
     override def toString: String = s"$location No such type with name ${mod.mkString(".")}.$name"
   }
