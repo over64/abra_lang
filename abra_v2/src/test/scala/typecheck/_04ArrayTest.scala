@@ -13,7 +13,7 @@ class _04ArrayTest extends FunSuite {
         """)
 
     val main = ast.function("main")
-    assertTh("Array10[Byte]", main.varDecl("array"))
+    assertTh("Array[Byte]", main.varDecl("array"))
   }
 
   test("array: cons") {

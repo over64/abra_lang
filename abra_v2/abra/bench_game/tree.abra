@@ -16,6 +16,7 @@ def asNode = self: Node | None, callback: (Node) -> None do llvm
 # hacky way for manual inline for recursive function
 # llvm cannot do this instead of gcc (Сила в GNU, брат)
 def mkTree = depth: Int do
+  root = Node(none, none)
   if depth > 0 do
     Node(mkTree(depth - 1), mkTree(depth - 1))
   else

@@ -411,7 +411,9 @@ class TypeCheckPass {
         eqInfer.infer(Seq(location), retTh, fnTh.ret)
 
       (fnTh.args zip args).foreach { case (defArgTh, argTask) =>
+        //println(eqInfer.tInfer.specMap)
         val (argLocation, argTh) = argTask.infer(eqInfer.ctx, eqCaller, eqInfer.anonSpec(defArgTh))
+        //println(argTh)
         eqInfer.infer(Seq(argLocation), defArgTh, argTh)
       }
 
@@ -521,7 +523,9 @@ class TypeCheckPass {
       case _: lNone => thNil
       case id: lId =>
         scope.findVar(id.value) match {
-          case Some((varTh, _)) => varTh
+          case Some((varTh, vt)) =>
+            id.setVarLocation(vt)
+            varTh
           case None =>
             val fn = ctx.module.defs.getOrElse(id.value, throw TCE.NoSuchSymbol(id.location, id.value))
 
@@ -584,7 +588,7 @@ class TypeCheckPass {
         val argTasks = args.map { arg =>
           new InferTask {
             override def infer(ctx: PassContext, eq: Equations, th: TypeHint): (AstInfo, TypeHint) =
-              (arg.location, passExpr(ctx, scope, eq, th, arg))
+              (arg.location, passExpr(ctx.deeperExpr(), scope, eq, th, arg))
           }
         }
 
@@ -595,7 +599,7 @@ class TypeCheckPass {
             val toCall = mod.defs.getOrElse(fnName, throw TCE.NoSuchDef(Seq(call.location), fnName))
             Invoker.invokePrototype(ctx, eq, toCall.getEquations, call.location, th, toCall.getTypeHint, argTasks).moveToMod(Seq(ie))
           case _expr =>
-            val selfTh = passExpr(ctx, scope, eq, AnyTh, _expr)
+            val selfTh = passExpr(ctx.deeperExpr(), scope, eq, AnyTh, _expr)
             val selfTask = new InferTask {
               override def infer(ctx: PassContext, eq: Equations, th: TypeHint): (AstInfo, TypeHint) =
                 (self.location, selfTh)
@@ -645,32 +649,42 @@ class TypeCheckPass {
           case _ => throw TCE.StructTypeRequired(cons.location)
         }
 
-        val realParams =
-          if (sth.params.isEmpty)
-            sd.params
-          else {
-            if (sth.params.length != sd.params.length) throw TCE.ParamsCountMismatch(sth.location)
-            sth.params
+        if (sd.isBuiltinArray) {
+          val argsTh = args.map(arg => passExpr(ctx, scope, eq, sth.params.headOption.getOrElse(AnyTh), arg))
+          val thSet = argsTh.toSet
+
+          val inferedElTh =
+            if (thSet.size == 1) thSet.head
+            else UnionTh(thSet.toSeq)
+
+
+          sth.params.headOption match {
+            case Some(elTh) =>
+              new TypeChecker2(ctx).doCheck(elTh, inferedElTh)
+            case None =>
           }
 
-        val realTh = ScalarTh(realParams, sth.name, sth.mod)
-        realTh.setLocation(sth.location)
-        val specMap = makeSpecMap(sd.params, realTh.params)
-        val consTh = FnTh(Seq.empty, sd.fields.map(f => f.th.spec(specMap)), realTh)
-
-        if (sd.isBuiltinArray) {
-          if (args.length != 1)
-            throw TCE.ArgsCountMismatch(Seq(cons.location), 1, args.length)
-
-          args.head match {
-            case lit: lInt =>
-              ScalarTh(realParams, "Array" + lit.value, Seq.empty)
-            case other =>
-              val exprTh = passExpr(ctx, scope, eq, AnyTh, other)
-              new TypeChecker2(ctx).doCheck(thArraySize, exprTh)
-              ScalarTh(realParams, "Array", Seq.empty)
+          sd.getBuiltinArrayLen match {
+            case Some(len) =>
+              ScalarTh(Seq(inferedElTh), "Array" + len, Seq.empty)
+            case None =>
+              ScalarTh(Seq(inferedElTh), "Array", Seq.empty)
           }
         } else {
+          val realParams =
+            if (th.isInstanceOf[ScalarTh]) { // FIXME: check types more pedantic
+              th.asInstanceOf[ScalarTh].params
+            } else if (sth.params.nonEmpty) {
+              if (sth.params.length != sd.params.length) throw TCE.ParamsCountMismatch(sth.location)
+              sth.params
+            } else
+              sd.params
+
+          val realTh = ScalarTh(realParams, sth.name, sth.mod)
+          realTh.setLocation(sth.location)
+          val specMap = makeSpecMap(sd.params, realTh.params)
+          val consTh = FnTh(Seq.empty, sd.fields.map(f => f.th.spec(specMap)), realTh)
+
           Invoker.invokePrototype(ctx, eq, new Equations(), cons.location, th, consTh, args.map { arg =>
             new InferTask {
               override def infer(ctx: PassContext, eq: Equations, th: TypeHint): (AstInfo, TypeHint) =
@@ -869,7 +883,12 @@ class TypeCheckPass {
     if (ctx.defStack.tail.contains(ctx.defStack.head))
       throw TCE.RetTypeHintRequired(fn.location)
 
-    ctx.log(s"pass function ${fn.name}")
+    fn.lambda.args.headOption match {
+      case Some(head) if head.name == "self" =>
+        ctx.log(s"pass function ${head.typeHint}::${fn.name}")
+      case _ =>
+        ctx.log(s"pass function ${fn.name}")
+    }
 
     val eq = new Equations(fn.params)
 
@@ -917,6 +936,7 @@ class TypeCheckPass {
 
         fn.setEquations(eq)
     }
+    ctx.log(s"** computed eq: ${fn.getEquations}")
     ctx.log("****")
   }
 

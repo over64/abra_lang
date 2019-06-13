@@ -64,11 +64,13 @@ object Ast0 {
     override def toString: String = "_"
   }
 
+  // FIXME: remove
   sealed trait ClosureType {
     val th: TypeHint
   }
   case class CLocal(th: TypeHint) extends ClosureType
   case class CParam(th: TypeHint) extends ClosureType
+
   case class FnTh(closure: Seq[ClosureType], args: Seq[TypeHint], ret: TypeHint) extends TypeHint {
     override def toString: String =
       args.mkString("(", ", ", ")") + " -> " + ret

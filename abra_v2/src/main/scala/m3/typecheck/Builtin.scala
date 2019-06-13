@@ -27,41 +27,6 @@ object Builtin {
       ScalarDecl(ref = true, Seq.empty, "String", "builtin")
     )).map(td => (td.name, td)).toMap
 
-  def binaryOps(th: TypeHint) = Seq("+", "-", "*", "/")
-    .map(op => (op, FnTh(Seq.empty, Seq(th, th), th)))
-
-  def compareOps(th: TypeHint) = Seq(
-    ("<", FnTh(Seq.empty, Seq(th, th), thBool)),
-    (">", FnTh(Seq.empty, Seq(th, th), thBool)))
-
-  def equalityOps(th: TypeHint) = Seq(
-    ("==", FnTh(Seq.empty, Seq(th, th), thBool)),
-    ("!=", FnTh(Seq.empty, Seq(th, th), thBool)))
-
-  def upscaleOps(th: ScalarTh, order: Seq[ScalarTh]) = {
-    val idx = order.indexOf(th)
-    order.drop(idx + 1).map { to => ("to" + to.name, FnTh(Seq.empty, Seq(th), to)) }
-  }
-
-  def upscaleIntOps(th: ScalarTh) =
-    upscaleOps(th, Seq(thByte, thShort, thInt, thLong))
-
-  def upscaleFloatOps(th: ScalarTh) =
-    upscaleOps(th, Seq(thFloat, thDouble))
-
-  def ops[T <: TypeHint](th: T, gens: (T => Seq[(String, FnTh)])*) =
-    (th, gens.flatMap { gen => gen(th) }.toMap)
-
-  val builtinSelfDefs: Map[TypeHint, Map[String, FnTh]] = Seq(
-    ops(thBool, equalityOps),
-    ops(thByte, binaryOps, compareOps, equalityOps, upscaleIntOps),
-    ops(thShort, binaryOps, compareOps, equalityOps, upscaleIntOps),
-    ops(thInt, binaryOps, compareOps, equalityOps, upscaleIntOps),
-    ops(thLong, binaryOps, compareOps, equalityOps, upscaleIntOps),
-    ops(thFloat, binaryOps, compareOps, equalityOps, upscaleFloatOps),
-    ops(thDouble, binaryOps, compareOps, equalityOps, upscaleFloatOps)
-  ).toMap
-
   def isArrayThName(name: String): Boolean =
     name.matches("^Array[0-9]*$")
 
@@ -83,15 +48,19 @@ object Builtin {
     }
 
   def resolveBuiltinSelfDef(location: Seq[AstInfo], selfTh: TypeHint, name: String): FnTh =
-    selfTh match {
-      case sth: ScalarTh if isArrayThName(sth.name) =>
-        name match {
-          case "len" => FnTh(Seq.empty, Seq(sth), thLong)
-          case "get" => FnTh(Seq.empty, Seq(sth, thArraySize), sth.params.head)
-          case "set" => FnTh(Seq.empty, Seq(sth, thArraySize, sth.params.head), thNil)
-        }
-      case th =>
-        builtinSelfDefs.getOrElse(th, throw TCE.NoSuchSelfDef(location, name, selfTh))
-          .getOrElse(name, throw TCE.NoSuchSelfDef(location, name, selfTh))
-    }
+    if (name == "==") {
+      FnTh(Seq.empty, Seq(selfTh, selfTh), thBool)
+    } else if (name == "clone") {
+      FnTh(Seq.empty, Seq(selfTh), selfTh)
+    } else
+      selfTh match {
+        case sth: ScalarTh if isArrayThName(sth.name) =>
+          name match {
+            case "len" => FnTh(Seq.empty, Seq(sth), thLong) // ??? why not thArraySize
+            case "get" => FnTh(Seq.empty, Seq(sth, thArraySize), sth.params.head)
+            case "set" => FnTh(Seq.empty, Seq(sth, thArraySize, sth.params.head), thNil)
+          }
+        case th =>
+          throw TCE.NoSuchSelfDef(location, name, selfTh)
+      }
 }

@@ -45,3 +45,23 @@ define void @defRcRelease(i8* %obj, void (i8*)* %releaseFn) {
 @rcRealloc = thread_local(initialexec) global i8* (i8*, i64)* @defRcRealloc
 @rcInc = thread_local(initialexec) global void (i8*)* @defRcInc
 @rcRelease = thread_local(initialexec) global void (i8*, void (i8*)*)* @defRcRelease
+
+; evaAlloc - @alias to malloc
+; evaFree - @alias for free
+; evaInc = obj: Ptr do
+;   obj.rc += 1
+;
+; def evaDec = obj: Ptr do
+;   if obj.rc == 1 do 0
+;   else
+;     obj.rc -= 1
+;     obj.rc
+;
+; scenario:
+; x = evaAlloc()
+; evaInc(x)
+; if(evaDec(y.x) == 0)
+;   $dest(y.x)
+; y.x = x
+;
+;

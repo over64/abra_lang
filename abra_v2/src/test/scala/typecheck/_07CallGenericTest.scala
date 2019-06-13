@@ -1,7 +1,6 @@
 package typecheck
 
 import m3.parse.Ast0.GenericTh
-import m3.typecheck.TCE
 import m3.typecheck.TCMeta._
 import org.scalatest.FunSuite
 import typecheck.TypeCheckUtil._
@@ -197,6 +196,66 @@ class _07CallGenericTest extends FunSuite {
 
     println(ast.selfDefs("iterator")(1).getEquations)
     println(ast.selfDefs("iterator")(1).getTypeHint)
+    println(ast.selfDefs("map").head.getEquations)
+    val main = ast.function("main")
+    assertTh("() -> Int", main)
+  }
+
+  test("collections-like-2") {
+    val ast = astForCode(
+      """
+        type ArrayIter[t] = (array: Array[t], idx: Long)
+
+        def iter = self: Array[t] do
+          ArrayIter(self, 0) .
+
+        def next = self: ArrayIter[t] do
+          if self.idx < self.array.len() do
+            self.idx = self.idx + 1
+            self.array(self.idx - 1)
+          else none ..
+
+        type MapIter[iterator, t, u] = (iter: iterator, mapper: (t) -> u)
+
+        def map = self: iterator, mapper: (t) -> u do
+          if false do
+            value: t | None = self.next() .
+          MapIter(self, mapper) .
+
+        def next = self: MapIter[iterator, t, u] do
+          value: t | None = self.iter.next()
+          value unless is forMap: t do
+            self.mapper(forMap) ..u | None
+
+
+        type FilterIter[iterator, t] = (iter: iterator, predicate: (t) -> Bool)
+
+        def filter = self: iterator, predicate: (t) -> Bool do
+          if false do
+            value: t | None = self.next() .
+          FilterIter(self, predicate) .
+
+        def next = self: FilterIter[iterator, t] do
+          while true do
+            value: t | None = self.iter.next()
+            value unless
+              is forFilter: t do
+                if self.predicate(forFilter) do
+                  return value .
+              is None do return none ...t | None
+
+        def main =
+          n = 5
+          array1 = Array[Int](n)
+          it = array1.iter().map(lambda x -> x * 2).filter(lambda x -> x == 0)
+
+          it.next()
+          it.next()
+          it.next()
+
+          it.next() unless is None do -1 ..
+      """)
+
     println(ast.selfDefs("map").head.getEquations)
     val main = ast.function("main")
     assertTh("() -> Int", main)

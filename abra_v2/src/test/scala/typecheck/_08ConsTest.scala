@@ -38,4 +38,18 @@ class _08ConsTest extends FunSuite {
 
     assertTh("Vec2[Float | None, Int]", ast.function("main").varDecl("vec"))
   }
+
+  test("cons: call arg as type hint") {
+    val ast = astForCode(
+      """
+         type A[t, u] = (x: t, y: u)
+
+         def some = v: A[Int, Int] do v.
+
+         def main =
+           some(A(1, 1)) .
+      """)
+
+    assertTh("() -> A[Int, Int]", ast.function("main"))
+  }
 }

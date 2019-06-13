@@ -2,6 +2,10 @@ package m3.typecheck
 
 import m3.parse.Ast0._
 
+//sealed trait CallType
+//case object LocalModDef extends CallType
+//case object ModDef extends CallType
+//case object
 object TCMeta {
   implicit class ParseNodeTCMetaImplicit(self: ParseNode) {
     def setTypeHint(th: TypeHint): Unit = self.meta.put("typecheck.typeHint", th)
@@ -30,6 +34,22 @@ object TCMeta {
     def getDeclTh[T <: TypeHint]: T = self.meta.get("typecheck.store.declTypeHint").map(m => m.asInstanceOf[T]).get
 
     def setDeclTh(th: TypeHint): Unit = self.meta.put("typecheck.store.declTypeHint", th)
+  }
+
+  implicit class VarTypeTCMetaImplicit(self: lId) {
+    def setVarLocation(vt: VarType): Unit =
+      self.meta.put("typecheck.var_type", vt)
+
+    def getVarLocation: VarType =
+      self.meta.get("typecheck.var_type").asInstanceOf[VarType]
+  }
+
+  implicit class CallTypeTCMetaImplicit(self: lId) {
+    def setCallType(vt: VarType): Unit =
+      self.meta.put("typecheck.var_type", vt)
+
+    def getCallType: VarType =
+      self.meta.get("typecheck.var_type").asInstanceOf[VarType]
   }
 
   implicit class DefTCMetaImplicit(self: Def) {

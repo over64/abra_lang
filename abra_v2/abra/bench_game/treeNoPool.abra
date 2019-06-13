@@ -22,10 +22,17 @@ def checksum = self: Node do
   sum = 1
 
   self.left unless is l: Node do
-     self.right asNode lambda r: Node ->
-       sum = sum + l.checksum() + r.checksum() .
+    self.right asNode lambda r: Node ->
+      sum = sum + l.checksum() + r.checksum() .
 
   sum .Int
+
+# it's seems that must be like this
+# def checksum = self: Node do
+#   self.left unless is l: Node do
+#     self.right unless is r: Node do
+#       return l.checksum() + r.checksum() + 1 .
+#   1 .Int
 
 def stat = nTrees: Int, name: String, depth: Int, sum: Int do
   if nTrees > 1 do io.printInt(nTrees) .
@@ -42,6 +49,8 @@ def main =
   stat(1, 'stretch tree of depth ', maxDepth + 1, tree.checksum())
 
   llTree = mkTree(maxDepth)
+
+  # FIXME: move this line to end
   stat(1, 'long lived tree of depth ', maxDepth, llTree.checksum())
 
   Range(minDepth, maxDepth, 2) each lambda depth: Int ->

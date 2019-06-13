@@ -43,7 +43,7 @@ class _00TypeDeclTest extends FunSuite {
     assertThrows[TCE.NoSuchParameter] {
       astForCode(
         """
-        type A[a]= (x: b, y: b)
+        type A[a] = (x: b, y: b)
       """)
     }
   }
