@@ -429,9 +429,10 @@ class TypeCheckPass {
                   retTh: TypeHint, toCall: Def, args: Seq[InferTask]): TypeHint =
       invokePrototype(ctx, eqCaller, toCall.getEquations, location, retTh, toCall.getTypeHint, args)
 
-    def invokeSelfDef(ctx: PassContext, eqCaller: Equations, location: AstInfo,
+    def invokeSelfDef(ctx: PassContext, eqCaller: Equations, call: ParseNode,
                       retTh: TypeHint, fnName: String, self: InferTask, args: Seq[InferTask]): TypeHint = {
 
+      val location = call.location
       val (selfLocation, selfTh) = self.infer(ctx.deeperExpr(), eqCaller, AnyTh)
 
       selfTh match {
@@ -446,6 +447,7 @@ class TypeCheckPass {
           eqRet
         case _ =>
           val (fnTh, fnEq) = findSelfDef(ctx, Seq(location), selfTh, fnName)
+          call.setCallFnTh(fnTh)
           invokePrototype(ctx, eqCaller, fnEq, location, retTh, fnTh, new InferTask {
             override def infer(ctx: PassContext, eq: Equations, th: TypeHint) = (selfLocation, selfTh)
           } +: args)
@@ -525,6 +527,7 @@ class TypeCheckPass {
         scope.findVar(id.value) match {
           case Some((varTh, vt)) =>
             id.setVarLocation(vt)
+            id.setTypeHint(varTh)
             varTh
           case None =>
             val fn = ctx.module.defs.getOrElse(id.value, throw TCE.NoSuchSymbol(id.location, id.value))
@@ -542,28 +545,34 @@ class TypeCheckPass {
             scope.findVar(id.value) match {
               case Some((varTh, _)) =>
                 varTh match {
-                  case fth: FnTh => Invoker.invokePrototype(ctx, eq, new Equations(), call.location, th, fth, args.map { arg =>
-                    new InferTask {
-                      override def infer(ctx: PassContext, eq: Equations, th: TypeHint): (AstInfo, TypeHint) =
-                        (arg.location, passExpr(ctx, scope, eq, th, arg))
-                    }
-                  })
-                  case selfTh => Invoker.invokeSelfDef(ctx, eq, call.location, th, "get",
-                    new InferTask {
-                      override def infer(ctx: PassContext, eq: Equations, th: TypeHint): (AstInfo, TypeHint) =
-                        (id.location, passExpr(ctx, scope, eq, th, id))
-                    },
-                    args.map { arg =>
+                  case fth: FnTh =>
+                    call.setCallType(CallFnPtr)
+                    Invoker.invokePrototype(ctx, eq, new Equations(), call.location, th, fth, args.map { arg =>
                       new InferTask {
                         override def infer(ctx: PassContext, eq: Equations, th: TypeHint): (AstInfo, TypeHint) =
                           (arg.location, passExpr(ctx, scope, eq, th, arg))
                       }
                     })
+                  case selfTh =>
+                    call.setCallType(SelfCallModLocal) // FIXME: not true if self-def in another module
+                    Invoker.invokeSelfDef(ctx, eq, call, th, "get",
+                      new InferTask {
+                        override def infer(ctx: PassContext, eq: Equations, th: TypeHint): (AstInfo, TypeHint) =
+                          (id.location, passExpr(ctx, scope, eq, th, id))
+                      },
+                      args.map { arg =>
+                        new InferTask {
+                          override def infer(ctx: PassContext, eq: Equations, th: TypeHint): (AstInfo, TypeHint) =
+                            (arg.location, passExpr(ctx, scope, eq, th, arg))
+                        }
+                      })
                 }
               case None =>
                 val toCall = ctx.module.defs.getOrElse(id.value, throw TCE.NoSuchCallable(id.location, id.value))
                 if (toCall.getTypeHintOpt == None)
                   passDef(ctx.deeperDef(None, id.value), toCall)
+
+                call.setCallType(CallModLocal)
 
                 Invoker.invokeDef(ctx, eq, call.location, th, toCall, args.map { arg =>
                   new InferTask {
@@ -574,6 +583,8 @@ class TypeCheckPass {
             }
           case lambda: Lambda =>
             val lambdaTh = passExpr(ctx, scope, eq, FnTh(Seq.empty, lambda.args.map(_ => AnyTh), th), lambda).asInstanceOf[FnTh]
+
+            call.setCallType(CallFnPtr)
 
             Invoker.invokePrototype(ctx, eq, new Equations(), call.location, th, lambdaTh, args.map { arg =>
               new InferTask {
@@ -597,6 +608,9 @@ class TypeCheckPass {
             val ie = ctx.module.imports.seq.find(ie => ie.modName == id.value).get
             val mod = ctx.level.findMod(ie.path).getOrElse(throw TCE.NoSuchModulePath(ie.location))
             val toCall = mod.defs.getOrElse(fnName, throw TCE.NoSuchDef(Seq(call.location), fnName))
+
+            call.setCallType(CallModImport)
+
             Invoker.invokePrototype(ctx, eq, toCall.getEquations, call.location, th, toCall.getTypeHint, argTasks).moveToMod(Seq(ie))
           case _expr =>
             val selfTh = passExpr(ctx.deeperExpr(), scope, eq, AnyTh, _expr)
@@ -605,11 +619,15 @@ class TypeCheckPass {
                 (self.location, selfTh)
             }
 
-            def default() =
-              Invoker.invokeSelfDef(ctx, eq, call.location, th, fnName, selfTask, argTasks)
+            def default() = {
+              call.setCallType(SelfCallModLocal) //FIXME: not true if self-def in another mod
+              Invoker.invokeSelfDef(ctx, eq, call, th, fnName, selfTask, argTasks)
+            }
 
-            def callField(fth: FnTh) =
+            def callField(fth: FnTh) = {
+              call.setCallType(CallFnPtr)
               Invoker.invokePrototype(ctx, eq, new Equations(), call.location, th, fth, argTasks)
+            }
 
             selfTh match {
               case sth: ScalarTh =>
@@ -622,6 +640,9 @@ class TypeCheckPass {
                             callField(fth)
                           case gettableTh if Invoker.findSelfDefOpt(ctx, Seq(call.location), gettableTh, "get") != None =>
                             val (selfFth, selfEq) = Invoker.findSelfDef(ctx, Seq(call.location), gettableTh, "get")
+                            call.setCallType(SelfCallModLocal) //FIXME: not true if self-def in another mod
+
+                            //FIXME: why not invoke self def???
                             Invoker.invokePrototype(ctx, eq, selfEq, call.location, th, selfFth, new InferTask {
                               override def infer(ctx: PassContext, eq: Equations, th: TypeHint): (AstInfo, TypeHint) = (self.location, gettableTh)
                             } +: argTasks)
@@ -724,8 +745,12 @@ class TypeCheckPass {
                 val whatTh = passExpr(ctx.deeperExpr(), scope, eq, varTh, what)
                 scope.addLocal(to.head.value, whatTh)
                 store.setDeclTh(whatTh)
-              case Some((toVarTh, _)) =>
+                to.head.setTypeHint(whatTh)
+                to.head.setVarLocation(VarLocal)
+              case Some((toVarTh, vt)) =>
                 val toTh = foldFields(toVarTh, to.drop(1))
+                to.head.setTypeHint(toVarTh)
+                to.head.setVarLocation(vt)
                 passExpr(ctx.deeperExpr(), scope, eq, toTh, what)
             }
           case th =>
@@ -737,6 +762,8 @@ class TypeCheckPass {
             passExpr(ctx.deeperExpr(), scope, eq, th, what)
             scope.addLocal(to.head.value, th)
             store.setDeclTh(th)
+            to.head.setTypeHint(th)
+            to.head.setVarLocation(VarLocal)
         }
         thNil
       case lambda@Lambda(args, body) =>
@@ -766,14 +793,17 @@ class TypeCheckPass {
 
         val inferedRetTh = body match {
           case AbraCode(seq) =>
-            val lambdaScope = LambdaScope(
-              scope, (args.map(_.name) zip inferedArgsTh).toMap)
+            val lambdaScope = LambdaScope(scope, (args.map(_.name) zip inferedArgsTh).toMap)
             val lambdaBlock = new Scope2.BlockScope(lambdaScope)
 
             seq.dropRight(1).foreach(expr => passExpr(ctx.deeperExpr(), lambdaBlock, eq, AnyTh, expr))
             seq.lastOption.foreach { last =>
               lambdaBlock.addRetType(passExpr(ctx.deeperExpr(), lambdaBlock, eq, AnyTh, last))
             }
+
+            lambda.setClosure(lambdaScope.closure
+              .map { case (name, (th, vt)) => (name, th, vt) }
+              .toSeq.sortBy { case (name, _, _) => name })
 
             lambdaScope.retTypes.distinct match {
               case Seq() => thNil
@@ -805,7 +835,7 @@ class TypeCheckPass {
 
         findWhileScope(scope).getOrElse(throw TCE.NoWhileForBreakOrContinue(bc.location))
         thNil
-      case If(cond, _do, _else) =>
+      case self@If(cond, _do, _else) =>
         passExpr(ctx, scope, eq, thBool, cond)
 
         val doBlock = new Scope2.BlockScope(scope)
@@ -819,6 +849,8 @@ class TypeCheckPass {
         val elseTh = _else.lastOption.map { last =>
           passExpr(ctx.deeperExpr(), elseBlock, eq, AnyTh, last)
         }.getOrElse(thNil)
+
+        self.setBranchTh((doTh, elseTh))
 
         Seq(doTh, elseTh).filter(th => th != thUnreachable).distinct match {
           case Seq(one) => one

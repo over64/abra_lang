@@ -48,12 +48,12 @@ def main =
     tree = mkTree(maxDepth + 1)
     stat(1, 'stretch tree of depth ', maxDepth + 1, tree.checksum()) .
 
-  Range(minDepth, maxDepth, 2) each lambda depth: Int ->
+  Range(minDepth, maxDepth, 2).each with |depth|
     iters    = 1 shl (maxDepth + minDepth - depth)
     totalSum = 0
     mp = pool.mk()
 
-    Range(1, iters + 1, 1) each lambda i: Int ->
+    Range(1, iters + 1, 1).each with |i|
       mp withPool lambda
         totalSum = totalSum + mkTree(depth).checksum() ..
 
@@ -64,3 +64,50 @@ def main =
     stat(1, 'long lived tree of depth ', maxDepth, llTree.checksum()) .
 
   0 .
+
+  type Node[t] = (v: t, next: Node[t] | None)
+
+  def twoLambda = x: Int,
+                  f1: (Int) -> Int,
+                  f2: (Int) -> Int do f2(f1(x))
+
+  def main =
+    (0 to 100).iter()
+      .map(|x| x * 2)
+      .zip((100 to 0).iter())
+      .filter(|p| p.x1 mod 2 == 1)
+      .take(10)
+      .each with |p|
+        fmt.write(io.stdout, 'pair is {}', p)
+
+    (0 to 100).reduce(0, |a, b| a + b)
+    (0 to 100).reduce with 0, |a, b|
+      fmt.write('a = {} b = {}', a, b)
+      a + b
+
+    twoLambda(1, |x| x * 100, |y| y + 1)
+    # with keeps ident?
+    twoLambda with 1,
+      |x| x * 100,
+      |y| y + 1
+
+
+  def main =
+    (0 to 100).iter()
+      .map(|x| do x * 2)
+      .zip((100 to 0).iter())
+      .filter(|p| do p.x1 mod 2 == 1)
+      .take(10)
+      .each with |p| do
+        fmt.write(io.stdout, 'pair is {}', p)
+
+    (0 to 100).reduce(0, |a, b| do a + b)
+    (0 to 100).reduce with 0, |a, b| do
+      fmt.write('a = {} b = {}', a, b)
+      a + b
+
+    twoLambda(1, |x| do x * 100, |y| do y + 1)
+    twoLambda with 1,
+      |x| do x * 100,
+      |y| do y + 1
+

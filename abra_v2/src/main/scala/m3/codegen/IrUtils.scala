@@ -26,7 +26,11 @@ case object ValueScalar extends TypeClass
 object IrUtils {
   implicit class RichString(self: String) {
     def escaped: String =
-      if (self.contains(" ") || self.contains("[")) "\"" + self + "\"" else self
+      if (self.contains(" ") || self.contains("[") ||
+        self.contains("<") || self.contains(">") ||
+        self.contains("+") || self.contains("-") ||
+        self.contains("*") || self.contains("/") ||
+        self.contains("|") || self.contains("&" )) "\"" + self + "\"" else self
   }
 
   sealed trait IsUnion

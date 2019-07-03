@@ -8,8 +8,8 @@ import scala.collection.mutable.ListBuffer
 sealed trait VarType
 case object VarParam extends VarType
 case object VarLocal extends VarType
-case object VarClosureParam extends VarType
-case object VarClosureLocal extends VarType
+case class VarClosureParam(nested: Boolean) extends VarType
+case class VarClosureLocal(nested: Boolean) extends VarType
 // FIXME: remove object after remove Scope1
 object Scope2 {
   sealed trait Scope {
@@ -30,6 +30,7 @@ object Scope2 {
 
   case class LambdaScope(parent: Scope,
                          params: Map[String, TypeHint],
+                         closure: mutable.HashMap[String, (TypeHint, VarType)] = mutable.HashMap(),
                          retTypes: mutable.ListBuffer[TypeHint] = ListBuffer.empty) extends Scope {
 
     def findVar(varName: String): Option[(TypeHint, VarType)] =
@@ -38,9 +39,13 @@ object Scope2 {
           Some((th, VarParam))
         case None =>
           parent.findVar(varName).map {
-            case (th, VarParam) => (th, VarClosureParam)
-            case (th, VarLocal) => (th, VarClosureLocal)
-            case (th, vt) => (th, vt)
+            case (th, VarParam) => (th, VarClosureParam(false))
+            case (th, VarLocal) => (th, VarClosureLocal(false))
+            case (th, VarClosureLocal(_)) => (th, VarClosureLocal(true))
+            case (th, VarClosureParam(_)) => (th, VarClosureParam(true))
+          }.map { res =>
+            closure.put(varName, res)
+            res
           }
       }
 

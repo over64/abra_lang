@@ -3,44 +3,44 @@ package codegen2
 import codegen2.CodeGenUtil.compile
 import org.scalatest.FunSuite
 
-class _03ConsTest extends FunSuite {
+class _02ConsTest extends FunSuite {
   test("construction: value struct") {
     compile(
       """
         type Foo = (x: Int, y: Int)
-
         def main =
-          Foo(1, 2) .
+          Foo(1, 1)
+          42.
       """)
   }
 
   test("construction: ref struct") {
     compile(
       """
-        type Bar = (x: Int, y: String)
-
+        type Foo = (x: Int, y: String)
         def main =
-          Bar(1, 'hello') .
+          Foo(1, 'hello')
+          42.
       """)
   }
 
   test("construction: generic value struct") {
     compile(
       """
-        type A[t, u] = (x: t, y: u)
-
+        type A[t, u]= (x: t, y: u)
         def main =
-          A(1, 1) .
+          A(1, 1)
+          42.
       """)
   }
 
   test("construction: generic ref struct") {
     compile(
       """
-        type A[t, u] = (x: t, y: u)
-
+        type A[t, u]= (x: t, y: String)
         def main =
-          A(1, 'hello') .
+          A(1, 'hello')
+          42.
       """)
   }
 
@@ -90,8 +90,6 @@ class _03ConsTest extends FunSuite {
           A[Int, Int | String](1, 'world') .
       """)
   }
-
-  // FIX ABI: arrays & strings as plain ptr
 
   test("construction: nullable union field conv") {
     compile(

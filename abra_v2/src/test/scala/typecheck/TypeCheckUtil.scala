@@ -55,7 +55,7 @@ object TypeCheckUtil extends FunSuite {
         .filter(expr => expr.isInstanceOf[Store])
         .map(expr => expr.asInstanceOf[Store])
         .filter(store => store.to == Seq(lId(varName)))
-        .head.getDeclTh
+        .head.getDeclTh.get
     }
   }
 
