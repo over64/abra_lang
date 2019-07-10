@@ -57,4 +57,16 @@ class _14OIfElseTest extends FunSuite {
            42 .
       """.stripMargin)
   }
+
+  test("if: block vars clash") {
+    compile(
+      """
+         def main =
+           if true do
+             x = 42 .
+           if true do
+             x = 'hello' .
+           42 .
+      """.stripMargin)
+  }
 }

@@ -8,6 +8,7 @@ import m3.parse.Level
 import m3.typecheck.TCMeta._
 import m3.typecheck._
 
+import scala.collection.mutable
 import scala.collection.mutable.{HashMap, ListBuffer}
 
 trait OutConf {
@@ -33,10 +34,27 @@ case class ModContext(out: PrintStream,
 sealed trait ScopeKind
 case object OtherKind extends ScopeKind
 case class WhileKind(condBr: String, endBr: String) extends ScopeKind
-case class Scope(parent: Option[Scope], kind: ScopeKind, freeSet: ListBuffer[String] = ListBuffer())
+case class Scope(parent: Option[Scope],
+                 kind: ScopeKind,
+                 aliases: HashMap[String, String] = HashMap(),
+                 freeSet: ListBuffer[String] = ListBuffer()) {
+
+  def findAlias(name: String): Option[String] =
+    aliases.get(name) match {
+      case s: Some[String] => s
+      case None => parent match {
+        case Some(p) => p.findAlias(name)
+        case None => None
+      }
+    }
+
+  def getAlias(name: String) =
+    findAlias(name).get
+}
 
 case class DContext(fn: Def,
                     isClosure: Boolean,
+                    symbols: HashMap[String, Int] = HashMap(),
                     vars: HashMap[String, TypeHint] = HashMap(),
                     closureSlots: ListBuffer[String] = ListBuffer(),
                     slots: ListBuffer[TypeHint] = ListBuffer(),
@@ -50,6 +68,17 @@ case class DContext(fn: Def,
                     var regSeq: Int = 0,
                     var branchSeq: Int = 0,
                     var exprDeep: Int = 1) {
+
+  def addSymbol(name: String): String = {
+    val newVersion =
+      symbols.get(name) match {
+        case Some(version) => version + 1
+        case None => 0
+      }
+    symbols.put(name, newVersion)
+    val suffix = if (newVersion == 0) "" else "_" + newVersion
+    name + suffix
+  }
 
   def nextLambdaName(): String = {
     lambdaSeq += 1
@@ -242,7 +271,7 @@ class IrGenPass {
         EResult(r, false, true)
       case id: lId =>
         id.getVarLocation match {
-          case VarLocal => EResult("%" + id.value, true, false)
+          case VarLocal => EResult("%" + dctx.scope.getAlias(id.value), true, false)
           case VarParam =>
             id.getTypeHint[TypeHint].classify(mctx.level, mctx.module) match {
               case RefUnion(_) | ValueUnion(_) | ValueStruct(_) =>
@@ -316,8 +345,10 @@ class IrGenPass {
           store.getDeclTh[TypeHint] match {
             case Some(newVarTh) =>
               val vName = to.head.value
-              dctx.vars.put(vName, newVarTh)
-              EResult("%" + vName, true, true)
+              val alias = dctx.addSymbol(vName)
+              dctx.vars.put(alias, newVarTh)
+              dctx.scope.aliases.put(vName, alias)
+              EResult("%" + alias, true, true)
             case None =>
               val toRes = passExpr(mctx, dctx, to.head)
               if (!toRes.isPtr)
@@ -499,6 +530,15 @@ class IrGenPass {
           dctx.write(s"$endBr:")
           EResult(slot, true, true)
         }
+      //      case Unless(exp, isSeq) =>
+      //        val expTh = exp.getTypeHint[TypeHint]
+      //        val expRes = Abi.syncValue(mctx, dctx, passExpr(mctx, dctx, exp), AsStoreSrc, expTh, expTh)
+      //
+      //        if(expTh == Builtin.thNil) {
+      //
+      //        } else if() {
+      //
+      //        }
     }
   }
 
