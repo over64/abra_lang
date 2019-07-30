@@ -32,8 +32,11 @@ case class ModContext(out: PrintStream,
 }
 
 sealed trait ScopeKind
+
 case object OtherKind extends ScopeKind
+
 case class WhileKind(condBr: String, endBr: String) extends ScopeKind
+
 case class Scope(parent: Option[Scope],
                  kind: ScopeKind,
                  aliases: HashMap[String, String] = HashMap(),
@@ -120,8 +123,11 @@ case class DContext(fn: Def,
 }
 
 sealed trait RequireDest
+
 case object AsStoreSrc extends RequireDest
+
 case object AsCallArg extends RequireDest
+
 case object AsRetVal extends RequireDest
 
 case class EResult(value: String, isPtr: Boolean, isAnon: Boolean)
@@ -249,6 +255,67 @@ class IrGenPass {
       val r2 = "%" + dctx.nextReg("")
       dctx.write(s"$r2 = phi i8 [ $rightVal, %$rightBr ], [ ${if (isAnd) "0" else "1"}, %$leftBr ]")
       EResult(r2, false, false)
+    }
+
+    case class Branch(beginLabel: String, before: DContext => Unit,
+                      th: TypeHint, seq: Seq[Expression])
+
+    def performBranches(resultTh: TypeHint, branches: Seq[Branch], endLabel: String): EResult = {
+      val branchesTh = branches.map(_.th)
+
+      if (resultTh == Builtin.thNil) {
+        branches.foreach { br =>
+          dctx.write(br.beginLabel + ":")
+          br.before(dctx)
+          dctx.deeper(OtherKind, { dctx =>
+            performBlock(mctx, dctx, br.seq)
+            dctx.write(s"br label %$endLabel")
+          })
+        }
+
+        dctx.write(endLabel + ":")
+        EResult("__no_result__", false, false)
+      } else if (branchesTh.toSet.size == 1) {
+        val results = branches.map { br =>
+          dctx.write(br.beginLabel + ":")
+          dctx.deeper(OtherKind, { dctx =>
+            br.before(dctx)
+            val (eth, res) = performBlock(mctx, dctx, br.seq)
+            val sync = Abi.syncValue(mctx, dctx, res, AsStoreSrc, eth, eth)
+            dctx.write(s"br label %$endLabel")
+            sync
+          })
+        }
+
+        dctx.write(endLabel + ":")
+        val r = "%" + dctx.nextReg("")
+        dctx.write(s"$r = phi ${AbiTh.toStoreSrc(mctx, resultTh)} ")
+        (branches zip results).zipWithIndex.foreach { case ((br, res), idx) =>
+          dctx.write(s"  [${res.value}, %${br.beginLabel}]${if (idx != branches.length - 1) "," else ""}")
+        }
+
+        val isPtr = resultTh.classify(mctx.level, mctx.module) match {
+          case RefUnion(_) => true
+          case _ => false
+        }
+
+        EResult(r, isPtr, true)
+      } else {
+        val slot = dctx.addSlot(resultTh)
+        branches.foreach { br =>
+          dctx.write(br.beginLabel + ":")
+          dctx.deeper(OtherKind, { dctx =>
+            br.before(dctx)
+            val (eth, res) = performBlock(mctx, dctx, br.seq)
+            val sync = Abi.syncValue(mctx, dctx, res, AsStoreSrc, eth, eth)
+            Abi.store(mctx, dctx, needDec = false, needInc = !sync.isAnon, resultTh, eth, slot, sync.value)
+            dctx.write(s"br label %$endLabel")
+          })
+        }
+
+        dctx.write(endLabel + ":")
+        EResult(slot, true, true)
+      }
     }
 
     expr match {
@@ -453,6 +520,7 @@ class IrGenPass {
         dctx.write(s"br label %${wk.endBr}")
         EResult("__not_result", false, false)
       case self@If(cond, _do, _else) =>
+        val ifTh = self.getTypeHint[TypeHint]
         val (doTh, elseTh) = self.getBranchTh
         val brId = dctx.nextBranch("")
         val (condBr, doBr, elseBr, endBr) = (s"if$brId", s"do$brId", s"else$brId", s"end$brId")
@@ -467,78 +535,61 @@ class IrGenPass {
           dctx.write(s"br i1 $r1, label %$doBr, label %$elseBr")
         })
 
-        if (self.getTypeHint[TypeHint] == Builtin.thNil) {
-          dctx.write(s"$doBr:")
-          dctx.deeper(OtherKind, { dctx =>
-            performBlock(mctx, dctx, _do)
-            dctx.write(s"br label %$endBr")
-          })
+        performBranches(ifTh, Seq(
+          Branch(doBr, { _ => }, doTh, _do),
+          Branch(elseBr, { _ => }, elseTh, _else)
+        ), endBr)
+      case self@Unless(exp, isSeq) =>
+        val unlessTh = self.getTypeHint[TypeHint]
+        val expTh = exp.getTypeHint[TypeHint]
+        val brId = dctx.nextBranch("")
+        val (unlessBr, endBr) = (s"unless$brId", s"end$brId")
 
-          dctx.write(s"$elseBr:")
-          dctx.deeper(OtherKind, { dctx =>
-            performBlock(mctx, dctx, _else)
-            dctx.write(s"br label %$endBr")
-          })
+        dctx.write(s"br label %$unlessBr")
+        dctx.write(s"$unlessBr:")
+        val (expRes, branches) = dctx.deeper(OtherKind, { dctx =>
+          val res = Abi.syncValue(mctx, dctx, passExpr(mctx, dctx, exp), AsStoreSrc, expTh, expTh)
 
-          dctx.write(s"$endBr:")
-          EResult("__no_result__", false, false)
-        } else if (doTh == elseTh) {
-          dctx.write(s"$doBr:")
-          val doRes = dctx.deeper(OtherKind, { dctx =>
-            val (eth, res) = performBlock(mctx, dctx, _do)
-            val sync = Abi.syncValue(mctx, dctx, res, AsStoreSrc, eth, eth)
-            dctx.write(s"br label %$endBr")
-            sync
-          })
-
-          dctx.write(s"$elseBr:")
-          val elseRes = dctx.deeper(OtherKind, { dctx =>
-            val (eth, res) = performBlock(mctx, dctx, _else)
-            val sync = Abi.syncValue(mctx, dctx, res, AsStoreSrc, eth, eth)
-            dctx.write(s"br label %$endBr")
-            sync
-          })
-
-          val r = "%" + dctx.nextReg("")
-          dctx.write(s"$endBr:")
-          dctx.write(s"$r = phi ${AbiTh.toStoreSrc(mctx, doTh)} [${doRes.value}, %$doBr], [${elseRes.value}, %$elseBr]")
-          val isPtr = doTh.classify(mctx.level, mctx.module) match {
-            case RefUnion(_) => true
-            case _ => false
+          val matched = isSeq.zipWithIndex.map { case (is, idx) =>
+            Branch(s"unless${brId}_matched$idx", dctx => {
+              is.vName.foreach { vName =>
+                val alias = dctx.addSymbol(vName.value)
+                dctx.scope.aliases.put(vName.value, alias)
+                val r = "%" + dctx.nextReg("")
+                dctx.write(s"$r =  bitcast ${expTh.toValue}* ${res.value} to {i64, ${is.typeRef.toValue}}*")
+                dctx.write(s"%$alias =  getelementptr {i64, ${is.typeRef.toValue}}, {i64, ${is.typeRef.toValue}}* $r, i64 0, i32 1")
+              }
+            }, is.typeRef, is._do)
           }
-          EResult(r, isPtr, true)
-        } else {
-          val ifTh = self.getTypeHint[TypeHint]
-          val slot = dctx.addSlot(ifTh)
 
-          dctx.write(s"$doBr:")
-          dctx.deeper(OtherKind, { dctx =>
-            val (eth, res) = performBlock(mctx, dctx, _do)
-            val sync = Abi.syncValue(mctx, dctx, res, AsStoreSrc, eth, eth)
-            Abi.store(mctx, dctx, needDec = false, needInc = !sync.isAnon, ifTh, eth, slot, sync.value)
-            dctx.write(s"br label %$endBr")
-          })
+          val unmatched = self.getUncovered.zipWithIndex.map { case (th, idx) =>
+            val id = lId("unmatched")
+            id.setTypeHint(th)
+            id.setVarLocation(VarLocal)
 
-          dctx.write(s"$elseBr:")
-          dctx.deeper(OtherKind, { dctx =>
-            val (eth, res) = performBlock(mctx, dctx, _else)
-            val sync = Abi.syncValue(mctx, dctx, res, AsStoreSrc, eth, eth)
-            Abi.store(mctx, dctx, needDec = false, needInc = !sync.isAnon, ifTh, eth, slot, sync.value)
-            dctx.write(s"br label %$endBr")
-          })
+            Branch(s"unless${brId}_unmatched$idx", dctx => {
+              val alias = dctx.addSymbol("unmatched")
+              dctx.scope.aliases.put("unmatched", alias)
+              val r = "%" + dctx.nextReg("")
+              dctx.write(s"$r =  bitcast ${expTh.toValue}* ${res.value} to {i64, ${th.toValue}}*")
+              dctx.write(s"%$alias =  getelementptr {i64, ${th.toValue}}, {i64, ${th.toValue}}* $r, i64 0, i32 1")
+            }, th, Seq(id))
+          }
 
-          dctx.write(s"$endBr:")
-          EResult(slot, true, true)
-        }
-      //      case Unless(exp, isSeq) =>
-      //        val expTh = exp.getTypeHint[TypeHint]
-      //        val expRes = Abi.syncValue(mctx, dctx, passExpr(mctx, dctx, exp), AsStoreSrc, expTh, expTh)
-      //
-      //        if(expTh == Builtin.thNil) {
-      //
-      //        } else if() {
-      //
-      //        }
+          val r1, r2 = "%" + dctx.nextReg("")
+          dctx.write(s"$r1 = getelementptr ${expTh.toValue}, ${expTh.toValue}* ${res.value}, i64 0, i32 0")
+          dctx.write(s"$r2 = load i64, i64* $r1")
+          dctx.write(s"switch i64 $r2, label %$endBr [")
+          expTh.asUnion(mctx.level, mctx.module).zipWithIndex.foreach { case (variant, idx) =>
+            val branch = matched.find(br => br.th == variant)
+              .getOrElse(unmatched.find(br => br.th == variant).get)
+            dctx.write(s"  i64 $idx, label %${branch.beginLabel}")
+          }
+          dctx.write(s"]")
+          (res, matched ++ unmatched)
+        })
+
+        performBranches(unlessTh, branches, endBr)
     }
   }
 

@@ -7,7 +7,7 @@ class _14OIfElseTest extends FunSuite {
   test("if: true") {
     compile(
       """def main =
-           x = if true do 1 else 2 ..
+           if true do 1 else 2 ..
       """.stripMargin)
   }
 
@@ -54,6 +54,15 @@ class _14OIfElseTest extends FunSuite {
          def main =
            x: A | String = A(0, 0)
            y = if true do 'hello' else x .
+           42 .
+      """.stripMargin)
+  }
+
+  test("if: one branch") {
+    compile(
+      """
+         def main =
+           x = if true do 1 .
            42 .
       """.stripMargin)
   }

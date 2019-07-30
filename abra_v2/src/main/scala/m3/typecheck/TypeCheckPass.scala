@@ -856,7 +856,7 @@ class TypeCheckPass {
           case Seq(one) => one
           case many => UnionTh(many)
         }
-      case Unless(expr, isSeq) =>
+      case self@Unless(expr, isSeq) =>
         val tc = new TypeChecker2(ctx)
         val exprTh = passExpr(ctx, scope, eq, AnyTh, expr)
 
@@ -897,8 +897,10 @@ class TypeCheckPass {
 
         val coveredType = isSeq.map(is => is.typeRef).toSet
         val mappedType = mappedSeq.filter(x => x != thUnreachable).toSet
-        val differentialType = exprUnionVariants.toSet -- coveredType
-        val overallType = (differentialType ++ mappedType).toSeq
+        val uncoveredTypes = exprUnionVariants.toSet -- coveredType
+        self.setUncovered(uncoveredTypes.toSeq)
+
+        val overallType = (uncoveredTypes ++ mappedType).toSeq
 
         overallType match {
           case Seq(one) => one

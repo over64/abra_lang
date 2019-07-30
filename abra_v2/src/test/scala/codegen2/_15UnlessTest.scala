@@ -15,7 +15,7 @@ class _15UnlessTest extends FunSuite {
          def main =
            x: Int | String | Bool = 42
            x unless
-             is i: Int do i > 5
+             is i: Int do i > 5n
              is String do false ..
       """)
   }

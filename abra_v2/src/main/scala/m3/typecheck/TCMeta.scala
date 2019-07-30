@@ -5,13 +5,19 @@ import m3.parse.Ast0._
 import scala.collection.mutable
 
 sealed trait CallType
+
 case object CallModLocal extends CallType
+
 case object CallModImport extends CallType
+
 case object SelfCallModLocal extends CallType
+
 case object SelfCallModImport extends CallType
+
 case object CallFnPtr extends CallType
 
 object TCMeta {
+
   implicit class ParseNodeTCMetaImplicit(self: ParseNode) {
     def setTypeHint(th: TypeHint): Unit = self.meta.put("typecheck.typeHint", th)
 
@@ -91,4 +97,13 @@ object TCMeta {
     def getBranchTh: (TypeHint, TypeHint) =
       self.meta("typecheck.if.branchTh").asInstanceOf[(TypeHint, TypeHint)]
   }
+
+  implicit class UnlessMetaImplicit(self: Unless) {
+    def setUncovered(variants: Seq[TypeHint]): Unit =
+      self.meta.put("typecheck.unless.uncovered", variants)
+
+    def getUncovered: Seq[TypeHint] =
+      self.meta("typecheck.unless.uncovered").asInstanceOf[Seq[TypeHint]]
+  }
+
 }
