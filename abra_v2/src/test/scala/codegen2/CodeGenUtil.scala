@@ -48,37 +48,64 @@ object CodeGenUtil {
     }
   }
 
-  def compile(code: String): Unit =
-    compileModules({
+  def run(code: String, exitCode: Int, stdout: Option[String] = None): Unit =
+    runModules({
       case "main" => code
-    })
+    }, exitCode, stdout)
 
-  def compileModules(resolver: String => String): Unit = {
-    val (root, _) = astForModules(resolver)
-    val outConf = new FileOutProvider
-    new IrGenPass().pass(root, outConf)
-
-    outConf.files.foreach { file =>
-      val src = file.getAbsolutePath
-      val dest = src.stripSuffix(".ll") + ".o"
-      val args = Seq("sh", "-c", s"llc-7 -filetype=obj $src -o $dest")
+  def runModules(resolver: String => String, exitCode: Int, stdout: Option[String] = None): Unit = {
+    def invoke(args: Seq[String]): (Int, String, String) = {
+      def streamToString(stream: InputStream) = {
+        val buff = new StringBuffer()
+        val sc = new Scanner(stream)
+        while (sc.hasNextLine) {
+          buff.append(sc.nextLine())
+          buff.append('\n')
+        }
+        buff.toString
+      }
 
       println(s"invoke: ${args.mkString(" ")}")
 
       val proc = Runtime.getRuntime.exec(args.toArray)
       proc.waitFor()
+      val (out, err) = (streamToString(proc.getInputStream), streamToString(proc.getErrorStream))
 
-      def printStream(stream: InputStream) = {
-        val sc = new Scanner(stream)
-        while (sc.hasNextLine)
-          println(sc.nextLine())
-      }
+      System.out.println(out)
+      System.out.println(err)
 
-      printStream(proc.getErrorStream)
-      printStream(proc.getInputStream)
-
-      if (proc.exitValue() != 0)
-        throw new RuntimeException("Compilation error: llc")
+      (proc.exitValue(), out, err)
     }
+
+    val (root, _) = astForModules(resolver)
+    val outConf = new FileOutProvider
+    new IrGenPass().pass(root, outConf)
+
+    val objects = outConf.files.map { file =>
+      val src = file.getAbsolutePath
+      val dest = src.stripSuffix(".ll") + ".o"
+
+      if (invoke(Seq("sh", "-c", s"llc-7 -filetype=obj $src -o $dest"))._1 != 0)
+        throw new RuntimeException("Compilation error: llc")
+
+      dest
+    }
+
+    if (invoke(Seq("sh", "-c",
+      s"clang-7 ${objects.mkString(" ")} ${System.getProperty("user.dir")}/abra_v2/abra/lib/runtime2.ll -o /tmp/main"))._1 != 0)
+      throw new RuntimeException("Compilation error: llc")
+
+    val (code, out, err) = invoke(Seq("sh", "-c", "valgrind -q --leak-check=full /tmp/main"))
+
+    if (err != "")
+      throw new RuntimeException("valgrind memcheck error")
+
+    stdout.foreach { expectedOut =>
+      if (expectedOut != out)
+        throw new RuntimeException("run error: stdout mismatch")
+    }
+
+    if (code != exitCode)
+      throw new RuntimeException(s"run error: expected exit($exitCode) has exit($code)")
   }
 }

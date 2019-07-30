@@ -1,11 +1,9 @@
 package codegen2
-
-import codegen2.CodeGenUtil.compile
 import org.scalatest.FunSuite
 
 class _09ClosureLocalOpTest extends FunSuite {
   def generic(th: String, value: String) = {
-    compile(
+    CodeGenUtil.run(
       s"""
         def dummy = x: $th do none .
         def main =
@@ -17,7 +15,7 @@ class _09ClosureLocalOpTest extends FunSuite {
             dummy(x)    # as call arg
             x .()       # as ret val
 
-          42 .""")
+          42 .""", exitCode = 42)
   }
 
   val test = "closure local ops"

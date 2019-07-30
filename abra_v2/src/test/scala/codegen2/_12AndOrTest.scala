@@ -1,11 +1,9 @@
 package codegen2
-
-import codegen2.CodeGenUtil.compile
 import org.scalatest.FunSuite
 
 class _12AndOrTest extends FunSuite {
   test("and: left false") {
-    compile(
+    CodeGenUtil.run(
       """
         llvm
           declare void @exit(i32) .
@@ -16,19 +14,19 @@ class _12AndOrTest extends FunSuite {
 
         def main =
           false && panic(666) .
-      """)
+      """, 0)
   }
 
   test("and: left true right true") {
-    compile("""def main = true && true .""")
+    CodeGenUtil.run("""def main = true && true .""", 1)
   }
 
   test("and: left true right false") {
-    compile("""def main = true && false .""")
+    CodeGenUtil.run("""def main = true && false .""", 0)
   }
 
   test("or: left true") {
-    compile(
+    CodeGenUtil.run(
       """
         llvm
           declare void @exit(i32) .
@@ -39,14 +37,14 @@ class _12AndOrTest extends FunSuite {
 
         def main =
           true || panic(666) .
-      """)
+      """, 1)
   }
 
   test("or: left false right true") {
-    compile("""def main = false || true .""")
+    CodeGenUtil.run("""def main = false || true .""", 1)
   }
 
   test("or: left false right false") {
-    compile("""def main = false || false .""")
+    CodeGenUtil.run("""def main = false || false .""", 0)
   }
 }

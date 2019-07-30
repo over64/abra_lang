@@ -1,11 +1,9 @@
 package codegen2
-
-import codegen2.CodeGenUtil.compile
 import org.scalatest.FunSuite
 
 class _11ClosureNestedTest extends FunSuite {
   test("closure nested: local") {
-    compile(
+    CodeGenUtil.run(
       """
         def main =
           x1 = 0
@@ -16,11 +14,11 @@ class _11ClosureNestedTest extends FunSuite {
               x1 .()
             .()
           x1 .
-      """)
+      """, exitCode = 42)
   }
 
   test("closure nested: param") {
-    compile(
+    CodeGenUtil.run(
       """
         def some = x: String | None do
           lambda
@@ -33,6 +31,6 @@ class _11ClosureNestedTest extends FunSuite {
         def main =
           some('hello')
           42 .
-      """)
+      """, exitCode = 42)
   }
 }

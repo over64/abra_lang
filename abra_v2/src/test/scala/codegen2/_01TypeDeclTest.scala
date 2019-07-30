@@ -5,7 +5,7 @@ import codegen2.CodeGenUtil._
 
 class _01TypeDeclTest extends FunSuite {
   test("simple type decl") {
-    compile(
+    CodeGenUtil.run(
       """
         type S1 = (a: Int, b: Double)
         type S2 = (a: Int, b: String)
@@ -19,17 +19,18 @@ class _01TypeDeclTest extends FunSuite {
         type Vec3i = llvm <4 x i32> .
         type U3 = Int | Vec3i
 
-        def some = x1: Int, x2: Long, x3: S1, x4: S2, x5: R,
+        def main = x1: Int, x2: Long, x3: S1, x4: S2, x5: R,
                    x6: Array[String], x7: A[Int, Int], x8: A[String, Float], x9: U2,
                    x10: Node, x11: Node2, x12: (x1: Short, x2: Byte),
                    x13: S3, x14: Array5[Int], x15: Vec3i, x16: U3,
                    x17: Array[Int] do
-          .None
-      """)
+           42
+          .Int
+      """, 42)
   }
 
   test("intermodule type decl") {
-    compileModules({
+    CodeGenUtil.runModules({
       case "libB" => """
         type B = (x: Int, y: Int)
         """
@@ -41,7 +42,8 @@ class _01TypeDeclTest extends FunSuite {
         import libA with A .
         type M = (a: A, x: Int)
         def local = m: M do none .
+        def main = 42 .
         """
-    })
+    }, 42)
   }
 }

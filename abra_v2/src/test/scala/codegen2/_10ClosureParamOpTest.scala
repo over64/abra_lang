@@ -1,12 +1,10 @@
 package codegen2
-
-import codegen2.CodeGenUtil.compile
 import org.scalatest.FunSuite
 
 class _10ClosureParamOpTest extends FunSuite {
 
   def generic(th: String, value: String) =
-    compile(
+    CodeGenUtil.run(
       """
         def dummy = x: Int do none .
 
@@ -18,7 +16,7 @@ class _10ClosureParamOpTest extends FunSuite {
 
         def main =
           some(42)
-          42 .""")
+          42 .""", exitCode = 42)
 
   val test = "closure param ops"
 

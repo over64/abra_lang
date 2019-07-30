@@ -1,25 +1,24 @@
 package codegen2
 
-import codegen2.CodeGenUtil.compile
 import org.scalatest.FunSuite
 
 class _14OIfElseTest extends FunSuite {
   test("if: true") {
-    compile(
+    CodeGenUtil.run(
       """def main =
            if true do 1 else 2 ..
-      """.stripMargin)
+      """.stripMargin, exitCode = 1)
   }
 
   test("if: false") {
-    compile(
+    CodeGenUtil.run(
       """def main =
            x = if false do 1 else 2 ..
-      """.stripMargin)
+      """.stripMargin, exitCode = 1)
   }
 
   test("if: none vs unreachable") {
-    compile(
+    CodeGenUtil.run(
       """
         llvm
           declare void @exit(i32) .
@@ -31,11 +30,11 @@ class _14OIfElseTest extends FunSuite {
         def main =
           if true do none else panic(666) .
           42 .
-      """.stripMargin)
+      """.stripMargin, exitCode = 42)
   }
 
   test("if: value vs ref") {
-    compile(
+    CodeGenUtil.run(
       """
          type A = (x: Int, y: Int)
          def mkA = A(1, 1) .
@@ -43,11 +42,11 @@ class _14OIfElseTest extends FunSuite {
            x = A(0, 0)
            y = if true do x else mkA() .
            42 .
-      """.stripMargin)
+      """.stripMargin, exitCode = 42)
   }
 
   test("if: different types") {
-    compile(
+    CodeGenUtil.run(
       """
          type A = (x: Int, y: Int)
          def mkA = A(1, 1) .
@@ -55,20 +54,20 @@ class _14OIfElseTest extends FunSuite {
            x: A | String = A(0, 0)
            y = if true do 'hello' else x .
            42 .
-      """.stripMargin)
+      """.stripMargin, exitCode = 42)
   }
 
   test("if: one branch") {
-    compile(
+    CodeGenUtil.run(
       """
          def main =
            x = if true do 1 .
            42 .
-      """.stripMargin)
+      """.stripMargin, exitCode = 42)
   }
 
   test("if: block vars clash") {
-    compile(
+    CodeGenUtil.run(
       """
          def main =
            if true do
@@ -76,6 +75,6 @@ class _14OIfElseTest extends FunSuite {
            if true do
              x = 'hello' .
            42 .
-      """.stripMargin)
+      """.stripMargin, exitCode = 1)
   }
 }

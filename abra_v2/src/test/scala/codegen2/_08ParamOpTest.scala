@@ -1,11 +1,9 @@
 package codegen2
-
-import codegen2.CodeGenUtil.compile
 import org.scalatest.FunSuite
 
 class _08ParamOpTest extends FunSuite {
   def generic(th: String, value: String): Unit =
-    compile(
+    CodeGenUtil.run(
       s"""
         def callArg = x: $th do none .
         def xxx = x: $th do
@@ -15,7 +13,7 @@ class _08ParamOpTest extends FunSuite {
 
         def main =
           xxx($value)
-          42 .""")
+          42 .""", exitCode = 42)
 
   val test = "param ops"
 

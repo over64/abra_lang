@@ -1,6 +1,4 @@
 package codegen2
-
-import codegen2.CodeGenUtil.compile
 import org.scalatest.FunSuite
 
 class _06CallOpTest extends FunSuite {
@@ -18,7 +16,7 @@ class _06CallOpTest extends FunSuite {
           42 ."""
 
     println(code)
-    compile(code)
+    CodeGenUtil.run(code, exitCode = 42)
   }
 
   val test = "call ops"

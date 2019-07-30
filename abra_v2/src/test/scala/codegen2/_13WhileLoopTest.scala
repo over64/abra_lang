@@ -1,11 +1,9 @@
 package codegen2
-
-import codegen2.CodeGenUtil.compile
 import org.scalatest.FunSuite
 
 class _13WhileLoopTest extends FunSuite {
   test("while: condition") {
-    compile(
+    CodeGenUtil.run(
       """
         def + = self: Int, other: Int do llvm
           %1 = add nsw i32 %self, %other
@@ -21,11 +19,11 @@ class _13WhileLoopTest extends FunSuite {
           while x < 255 do
             x = x + 1 .
           x .
-      """)
+      """, exitCode = 255)
   }
 
   test("while: break") {
-    compile(
+    CodeGenUtil.run(
       """
         def + = self: Int, other: Int do llvm
           %1 = add nsw i32 %self, %other
@@ -42,11 +40,11 @@ class _13WhileLoopTest extends FunSuite {
             x = x + 1
             break .
           x .
-      """)
+      """, 1)
   }
 
   test("while: continue") {
-    compile(
+    CodeGenUtil.run(
       """
         def + = self: Int, other: Int do llvm
           %1 = add nsw i32 %self, %other
@@ -65,7 +63,7 @@ class _13WhileLoopTest extends FunSuite {
             continue
             y = y + 1 .
           y .
-      """)
+      """, 0)
   }
 
 }

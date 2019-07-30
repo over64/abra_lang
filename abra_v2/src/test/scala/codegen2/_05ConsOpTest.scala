@@ -1,11 +1,9 @@
 package codegen2
-
-import codegen2.CodeGenUtil.compile
 import org.scalatest.FunSuite
 
 class _05ConsOpTest extends FunSuite {
   def generic(tname: String, tdecl: String, cons: String): Unit =
-    compile(
+    CodeGenUtil.run(
       s"""
         type $tname = $tdecl
         def mk = $cons .
@@ -14,7 +12,8 @@ class _05ConsOpTest extends FunSuite {
         def main =
           mk()
           dummy($cons)
-          x = $cons . """)
+          x = $cons
+          42 . """, exitCode = 42)
 
   test("cons op: value struct") {
     generic("Foo", "(x: Int, y: Int)", "Foo(1, 2)")

@@ -1,6 +1,4 @@
 package codegen2
-
-import codegen2.CodeGenUtil.compile
 import org.scalatest.FunSuite
 
 class _07LocalOpTest extends FunSuite {
@@ -23,7 +21,7 @@ class _07LocalOpTest extends FunSuite {
           42 ."""
 
     println(code)
-    compile(code)
+    CodeGenUtil.run(code, exitCode = 42)
   }
 
   val test = "local ops"
