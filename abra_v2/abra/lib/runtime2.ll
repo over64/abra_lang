@@ -33,7 +33,7 @@ define i64 @defEvaDec(i8* %obj) {
     %2 = icmp eq i64 %rc, 1
     br i1 %2, label %free, label %store
   free:
-    ret i64 1
+    ret i64 0
   store:
     %newRc = sub nsw i64 %rc, 1
     store i64 %newRc, i64* %rcPtr

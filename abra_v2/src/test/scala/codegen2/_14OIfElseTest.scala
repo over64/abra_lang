@@ -14,7 +14,7 @@ class _14OIfElseTest extends FunSuite {
     CodeGenUtil.run(
       """def main =
            x = if false do 1 else 2 ..
-      """.stripMargin, exitCode = 1)
+      """.stripMargin, exitCode = 2)
   }
 
   test("if: none vs unreachable") {
@@ -75,6 +75,6 @@ class _14OIfElseTest extends FunSuite {
            if true do
              x = 'hello' .
            42 .
-      """.stripMargin, exitCode = 1)
+      """.stripMargin, exitCode = 42)
   }
 }

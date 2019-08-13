@@ -24,6 +24,7 @@ object TCMeta {
     def getTypeHintOpt[T <: TypeHint]: Option[T] = self.meta.get("typecheck.typeHint").map(m => m.asInstanceOf[T])
 
     def getTypeHint[T <: TypeHint]: T = getTypeHintOpt.getOrElse {
+      val x = 1
       throw new RuntimeException("no typeHint")
     }
   }

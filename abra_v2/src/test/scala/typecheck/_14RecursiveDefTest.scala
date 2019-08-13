@@ -8,6 +8,14 @@ class _14RecursiveDefTest extends FunSuite {
   test("recursive def: simple") {
     val ast = astForCode(
       """
+        def * = self: Int, other: Int do llvm
+          ; native code
+          .Int
+
+        def - = self: Int, other: Int do llvm
+          ; native code
+          .Int
+
         def fact = x: Int do
           if x == 1 do 1 else x * fact(x - 1) ..Int
 
@@ -22,6 +30,14 @@ class _14RecursiveDefTest extends FunSuite {
     assertThrows[TCE.RetTypeHintRequired] {
       astForCode(
         """
+        def * = self: Int, other: Int do llvm
+          ; native code
+          .Int
+
+        def - = self: Int, other: Int do llvm
+          ; native code
+          .Int
+
         def fact = x: Int do
           if x == 1 do 1 else x * fact(x - 1) ..
 

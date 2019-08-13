@@ -49,7 +49,8 @@ class _02ConsTest extends FunSuite {
         type A[t, u] = (x: t, y: u)
 
         def main =
-          A(1, Bar(1, 'hello')) .
+          A(1, Bar(1, 'hello'))
+          42 .
       """, exitCode = 42)
   }
 

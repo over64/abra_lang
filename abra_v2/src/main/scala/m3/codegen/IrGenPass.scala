@@ -8,7 +8,6 @@ import m3.parse.Level
 import m3.typecheck.TCMeta._
 import m3.typecheck._
 
-import scala.collection.mutable
 import scala.collection.mutable.{HashMap, ListBuffer}
 
 trait OutConf {
@@ -40,7 +39,7 @@ case class WhileKind(condBr: String, endBr: String) extends ScopeKind
 case class Scope(parent: Option[Scope],
                  kind: ScopeKind,
                  aliases: HashMap[String, String] = HashMap(),
-                 freeSet: ListBuffer[String] = ListBuffer()) {
+                 freeSet: ListBuffer[(TypeHint, EResult)] = ListBuffer()) {
 
   def findAlias(name: String): Option[String] =
     aliases.get(name) match {
@@ -212,6 +211,10 @@ class IrGenPass {
         }
 
       val argsIr = (fth.args zip argsResults).map { case (argTh, argRes) =>
+        if (argRes.isAnon && argTh.isRefType(mctx.level, mctx.module))
+          dctx.scope.freeSet += ((argTh, argRes))
+
+
         s"${AbiTh.toCallArg(mctx, argTh)} ${argRes.value}"
       }
       val argsWithEnvIr = envArg match {
@@ -219,7 +222,7 @@ class IrGenPass {
         case Some(env) => argsIr :+ s"i8* $env"
       }
 
-      if (fth.ret == Builtin.thNil || fth.ret == Builtin.thUnreachable) {
+      val res = if (fth.ret == Builtin.thNil || fth.ret == Builtin.thUnreachable) {
         dctx.write(s"call void $fName(${argsWithEnvIr.mkString(", ")})")
         EResult("__no_result__", false, true)
       } else {
@@ -227,6 +230,8 @@ class IrGenPass {
         dctx.write(s"$r = call ${AbiTh.toRetVal(mctx, fth.ret)} $fName(${argsWithEnvIr.mkString(", ")})")
         EResult(r, false, true)
       }
+
+      res
     }
 
     def performAndOr(lhs: Expression, rhs: Expression, isAnd: Boolean): EResult = {
@@ -389,11 +394,12 @@ class IrGenPass {
             case CallFnPtr =>
               val fnPtrRes = passExpr(mctx, dctx, e)
               val fth = e.getTypeHint[FnTh]
+              val sync = Abi.syncValue(mctx, dctx, fnPtrRes, AsRetVal, fth, fth)
               val irArgs = fth.args.map(th => AbiTh.toCallArg(mctx, th)) :+ "i8*"
               // fixme: don't forget for sync
               val r1, r2 = "%" + dctx.nextReg("")
-              dctx.write(s"$r1 = extractvalue ${fth.toValue} ${fnPtrRes.value}, 0")
-              dctx.write(s"$r2 = extractvalue ${fth.toValue} ${fnPtrRes.value}, 1")
+              dctx.write(s"$r1 = extractvalue ${fth.toValue} ${sync.value}, 0")
+              dctx.write(s"$r2 = extractvalue ${fth.toValue} ${sync.value}, 1")
               (r1, args, Some(r2), fth)
           }
 
@@ -415,6 +421,8 @@ class IrGenPass {
               val alias = dctx.addSymbol(vName)
               dctx.vars.put(alias, newVarTh)
               dctx.scope.aliases.put(vName, alias)
+              dctx.scope.freeSet += ((newVarTh, EResult("%" + alias, true, false)))
+
               EResult("%" + alias, true, true)
             case None =>
               val toRes = passExpr(mctx, dctx, to.head)
@@ -594,11 +602,32 @@ class IrGenPass {
   }
 
   def performBlock(mctx: ModContext, dctx: DContext, seq: Seq[Expression]): (TypeHint, EResult) = {
-    seq.dropRight(1).foreach(expr => passExpr(mctx, dctx, expr))
+    seq.dropRight(1).foreach { expr =>
+      val eth = expr.getTypeHint[TypeHint]
+      val res = passExpr(mctx, dctx, expr)
 
-    seq.lastOption.map(expr =>
-      (expr.getTypeHint[TypeHint], passExpr(mctx, dctx, expr)))
-      .getOrElse((Builtin.thNil, EResult("__no_result__", false, true)))
+      if (res.isAnon && eth.isRefType(mctx.level, mctx.module))
+        dctx.scope.freeSet += ((eth, res))
+    }
+
+    val bresult = seq.lastOption.map { expr =>
+      val retTh = expr.getTypeHint[TypeHint]
+      val retRes = passExpr(mctx, dctx, expr)
+
+      // if fn arg
+      if (!retRes.isAnon && !dctx.scope.freeSet.exists { case (_, res) => res.value == retRes.value })
+        RC.doRC(mctx, dctx, Inc, retTh, retRes.isPtr, retRes.value)
+
+      (retTh, retRes)
+    }.getOrElse((Builtin.thNil, EResult("__no_result__", false, true)))
+
+    dctx.scope.freeSet.foreach { case (freeTh, freeRes) =>
+      if (freeRes.value != bresult._2.value) {
+        RC.doRC(mctx, dctx, Dec, freeTh, freeRes.isPtr, freeRes.value)
+      }
+    }
+
+    bresult
   }
 
   def passDef(mctx: ModContext, fn: Def, isClosure: Boolean): Unit = {

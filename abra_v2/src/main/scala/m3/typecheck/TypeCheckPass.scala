@@ -543,10 +543,12 @@ class TypeCheckPass {
         expr match {
           case id: lId =>
             scope.findVar(id.value) match {
-              case Some((varTh, _)) =>
+              case Some((varTh, vt)) =>
                 varTh match {
                   case fth: FnTh =>
                     call.setCallType(CallFnPtr)
+                    id.setVarLocation(vt)
+                    id.setTypeHint(fth)
                     Invoker.invokePrototype(ctx, eq, new Equations(), call.location, th, fth, args.map { arg =>
                       new InferTask {
                         override def infer(ctx: PassContext, eq: Equations, th: TypeHint): (AstInfo, TypeHint) =

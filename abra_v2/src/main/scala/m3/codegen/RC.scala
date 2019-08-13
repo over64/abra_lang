@@ -227,20 +227,17 @@ object RC {
     }
   }
 
-  def doRC(mctx: ModContext, dctx: DContext, mode: RCMode, th: TypeHint, value: String): Unit = {
+  def doRC(mctx: ModContext, dctx: DContext, mode: RCMode, th: TypeHint, isPtr: Boolean, value: String): Unit = {
     genRcBase(mctx, mode, th)
+    val sync = Abi.syncValue(mctx, dctx, EResult(value, isPtr, true /* no matters */), AsStoreSrc, th, th)
 
     th.classify(mctx.level, mctx.module) match {
       case RefUnion(_) =>
         val fnName = if (mode == Dec) decFnName(th) else incFnName(th)
-        dctx.write(s"call void @$fnName(${th.toValue}* $value)")
+        dctx.write(s"call void @$fnName(${th.toValue}* ${sync.value})")
       case NullableUnion(_) | RefStruct(_) | RefScalar =>
-        if (mode == Dec) {
-          val r = "%" + dctx.nextReg("")
-          dctx.write(s"$r = load ${th.toValue}, ${th.toValue}* $value")
-          dctx.write(s"call void @${decFnName(th)}(${th.toValue} $r)")
-        } else
-          dctx.write(s"call void @${incFnName(th)}(${th.toValue} $value)")
+        val fnName = if (mode == Dec) decFnName(th) else incFnName(th)
+        dctx.write(s"call void @$fnName(${th.toValue} ${sync.value})")
       case _ =>
     }
   }

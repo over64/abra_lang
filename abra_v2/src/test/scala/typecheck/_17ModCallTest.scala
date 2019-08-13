@@ -9,7 +9,7 @@ class _17ModCallTest extends FunSuite {
     val ast = astForModules({
       case "modA" => """
         def some = x: Int, y: Int do
-          x + y .
+          42 .
         """
       case "main" => """
         import modA .
@@ -27,7 +27,7 @@ class _17ModCallTest extends FunSuite {
       case "modA" => """
         type Bar = (value: Int)
         def some = x: Int, y: Int do
-          Bar(x + y) .
+          Bar(42) .
         """
       case "main" => """
         import modA .
@@ -45,7 +45,7 @@ class _17ModCallTest extends FunSuite {
       case "modA" => """
         type Bar = (value: Int)
         def some = x: Int, y: Int do
-          Bar(x + y) .
+          Bar(42) .
         """
       case "main" => """
         import modA with Bar .
@@ -85,22 +85,6 @@ class _17ModCallTest extends FunSuite {
     })
 
     assertTh("() -> Bar", ast.function("main"))
-  }
-
-  test("mod self-extension: builtin") {
-    val ast = astForModules({
-      case "modA" =>
-        """
-        def twice = self: Int do self * 2 .
-          """.stripMargin
-      case "main" => """
-        import modA .
-        def main =
-          1.twice() .
-        """
-    })
-
-    assertTh("() -> Int", ast.function("main"))
   }
 
   test("mod self-extension: user-defined") {

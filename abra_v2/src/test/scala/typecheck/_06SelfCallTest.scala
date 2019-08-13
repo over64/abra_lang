@@ -23,6 +23,14 @@ class _06SelfCallTest extends FunSuite {
   test("self call: self functions with same name") {
     val ast = astForCode(
       """
+         def + = self: Int, other: Int do llvm
+           ; native code
+           .Int
+
+         def + = self: Long, other: Long do llvm
+           ; native code
+           .Long
+
          def one = llvm
            ; assembly stub .Long
 

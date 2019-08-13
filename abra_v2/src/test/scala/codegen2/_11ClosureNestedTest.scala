@@ -1,4 +1,5 @@
 package codegen2
+
 import org.scalatest.FunSuite
 
 class _11ClosureNestedTest extends FunSuite {
@@ -29,7 +30,7 @@ class _11ClosureNestedTest extends FunSuite {
         .
 
         def main =
-          some('hello')
+          some('hello') # no move analysis, so poor performance
           42 .
       """, exitCode = 42)
   }

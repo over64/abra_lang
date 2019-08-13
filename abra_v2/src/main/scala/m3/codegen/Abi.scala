@@ -117,9 +117,9 @@ object Abi {
             destTh: TypeHint, srcTh: TypeHint,
             destPtr: String, src: String): Unit = {
     if (needInc)
-      RC.doRC(mctx, dctx, Inc, srcTh, src)
+      RC.doRC(mctx, dctx, Inc, srcTh, srcTh.classify(mctx.level, mctx.module) match { case RefUnion(_) => true case _ => false }, src) // ppc
     if (needDec)
-      RC.doRC(mctx, dctx, Dec, destTh, destPtr)
+      RC.doRC(mctx, dctx, Dec, destTh, true, destPtr)
 
     val srcIrType = srcTh.toValue
     val destIrType = destTh.toValue
