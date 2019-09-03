@@ -133,7 +133,10 @@ object Utils {
         .findGenerics(dest)
       dest
     }
+
+    def isGeneric: Boolean = params.nonEmpty
   }
+
 
   def resolveType(level: Level, module: Module, th: ScalarTh): (Seq[ImportEntry], Module, TypeDecl) = {
     val (origSeq, origModule) = th.mod.foldLeft((Seq.empty[ImportEntry], module)) {

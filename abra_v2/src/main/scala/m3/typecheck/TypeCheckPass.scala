@@ -3,14 +3,13 @@ package m3.typecheck
 import m3.parse.Ast0._
 import m3.parse.ParseMeta._
 import m3.parse.{AstInfo, Level}
+import m3.typecheck.Builtin._
 import m3.typecheck.Scope2._
 import m3.typecheck.TCE.NoSuchSelfDef
 import m3.typecheck.TCMeta._
 import m3.typecheck.Utils._
-import m3.typecheck.Builtin._
 
 import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
 
 case class PassContext(prefix: String, colorId: Int,
                        level: Level, module: Module,
@@ -421,8 +420,10 @@ class TypeCheckPass {
         case _: NoSuchSelfDef => None
       }
 
-    def invokePrototype(ctx: PassContext, eqCaller: Equations, eqCallee: Equations, location: AstInfo,
+    def invokePrototype(ctx: PassContext, caller: ParseNode, eqCaller: Equations, eqCallee: Equations,
                         retTh: TypeHint, fnTh: FnTh, args: Seq[InferTask]): TypeHint = {
+
+      val location = caller.location
 
       if (fnTh.args.length != args.length)
         throw TCE.ArgsCountMismatch(Seq(location), fnTh.args.length, args.length)
@@ -436,26 +437,31 @@ class TypeCheckPass {
         ctx.log("callspec " + eqInfer.tInfer.specMap.mkString("{", " , ", "}"))
       }
 
+      val inferedArgs =
+        (fnTh.args zip args).zipWithIndex.map { case ((defArgTh, argTask), idx) =>
+          val advice = eqInfer.advice(defArgTh)
+            .spec(mutable.HashMap()) /* sieve generics??? */
 
-      (fnTh.args zip args).zipWithIndex.foreach { case ((defArgTh, argTask), idx) =>
-        val advice = eqInfer.advice(defArgTh)
-          .spec(mutable.HashMap()) /* sieve generics??? */
+          ctx.log(s"inferarg $idx adviced $advice")
+          val (argLocation, argTh) = argTask.infer(eqInfer.ctx, eqCaller, advice)
 
-        ctx.log(s"inferarg $idx adviced $advice")
-        val (argLocation, argTh) = argTask.infer(eqInfer.ctx, eqCaller, advice)
+          ctx.log(s"passarg $idx $defArgTh <= $argTh")
+          eqInfer.infer(Seq(argLocation), defArgTh, argTh)
+          ctx.log("callspec " + eqInfer.tInfer.specMap.mkString("{", " , ", "}"))
 
-        ctx.log(s"passarg $idx $defArgTh <= $argTh")
-        eqInfer.infer(Seq(argLocation), defArgTh, argTh)
-        ctx.log("callspec " + eqInfer.tInfer.specMap.mkString("{", " , ", "}"))
-      }
+          eqInfer.advice(defArgTh)
+        }
 
       eqInfer.lift(eqCaller)
-      eqInfer.advice(fnTh.ret)
+
+      val inferedRet = eqInfer.advice(fnTh.ret)
+      caller.setCallAppliedTh(FnTh(Seq.empty, inferedArgs, inferedRet))
+      inferedRet
     }
 
-    def invokeDef(ctx: PassContext, eqCaller: Equations, location: AstInfo,
+    def invokeDef(ctx: PassContext, call: Call, eqCaller: Equations,
                   retTh: TypeHint, toCall: Def, args: Seq[InferTask]): TypeHint =
-      invokePrototype(ctx, eqCaller, toCall.getEquations, location, retTh, toCall.getTypeHint, args)
+      invokePrototype(ctx, call, eqCaller, toCall.getEquations, retTh, toCall.getTypeHint, args)
 
     def invokeSelfDef(ctx: PassContext, eqCaller: Equations, call: ParseNode,
                       retTh: TypeHint, fnName: String, self: InferTask, args: Seq[InferTask]): TypeHint = {
@@ -475,8 +481,7 @@ class TypeCheckPass {
           eqRet
         case _ =>
           val (fnTh, fnEq) = findSelfDef(ctx, Seq(location), selfTh, fnName)
-          call.setCallFnTh(fnTh)
-          invokePrototype(ctx, eqCaller, fnEq, location, retTh, fnTh, new InferTask {
+          invokePrototype(ctx, call, eqCaller, fnEq, retTh, fnTh, new InferTask {
             override def infer(ctx: PassContext, eq: Equations, th: TypeHint) = (selfLocation, selfTh)
           } +: args)
       }
@@ -579,7 +584,7 @@ class TypeCheckPass {
                     call.setCallType(CallFnPtr)
                     id.setVarLocation(vt)
                     id.setTypeHint(fth)
-                    Invoker.invokePrototype(ctx, eq, new Equations(), call.location, th, fth, args.map { arg =>
+                    Invoker.invokePrototype(ctx, call, eq, new Equations(), th, fth, args.map { arg =>
                       new InferTask {
                         override def infer(ctx: PassContext, eq: Equations, th: TypeHint): (AstInfo, TypeHint) =
                           (arg.location, passExpr(ctx.deeperExpr(), scope, eq, th, arg))
@@ -606,7 +611,7 @@ class TypeCheckPass {
 
                 call.setCallType(CallModLocal)
 
-                Invoker.invokeDef(ctx, eq, call.location, th, toCall, args.map { arg =>
+                Invoker.invokeDef(ctx, call, eq, th, toCall, args.map { arg =>
                   new InferTask {
                     override def infer(ctx: PassContext, eq: Equations, th: TypeHint): (AstInfo, TypeHint) =
                       (arg.location, passExpr(ctx.deeperExpr(), scope, eq, th, arg))
@@ -618,7 +623,7 @@ class TypeCheckPass {
 
             call.setCallType(CallFnPtr)
 
-            Invoker.invokePrototype(ctx, eq, new Equations(), call.location, th, lambdaTh, args.map { arg =>
+            Invoker.invokePrototype(ctx, call, eq, new Equations(), th, lambdaTh, args.map { arg =>
               new InferTask {
                 override def infer(ctx: PassContext, eq: Equations, th: TypeHint): (AstInfo, TypeHint) =
                   (arg.location, passExpr(ctx, scope, eq, th, arg))
@@ -643,7 +648,7 @@ class TypeCheckPass {
 
             call.setCallType(CallModImport)
 
-            Invoker.invokePrototype(ctx, eq, toCall.getEquations, call.location, th, toCall.getTypeHint, argTasks).moveToMod(Seq(ie))
+            Invoker.invokePrototype(ctx, call, eq, toCall.getEquations, th, toCall.getTypeHint, argTasks).moveToMod(Seq(ie))
           case _expr =>
             val selfTh = passExpr(ctx.deeperExpr(), scope, eq, AnyTh, _expr)
             val selfTask = new InferTask {
@@ -658,7 +663,7 @@ class TypeCheckPass {
 
             def callField(fth: FnTh) = {
               call.setCallType(CallFnPtr)
-              Invoker.invokePrototype(ctx, eq, new Equations(), call.location, th, fth, argTasks)
+              Invoker.invokePrototype(ctx, call, eq, new Equations(), th, fth, argTasks)
             }
 
             selfTh match {
@@ -675,7 +680,7 @@ class TypeCheckPass {
                             call.setCallType(SelfCallModLocal) //FIXME: not true if self-def in another mod
 
                             //FIXME: why not invoke self def???
-                            Invoker.invokePrototype(ctx, eq, selfEq, call.location, th, selfFth, new InferTask {
+                            Invoker.invokePrototype(ctx, call, eq, selfEq, th, selfFth, new InferTask {
                               override def infer(ctx: PassContext, eq: Equations, th: TypeHint): (AstInfo, TypeHint) = (self.location, gettableTh)
                             } +: argTasks)
                           case _ => default()
@@ -738,7 +743,7 @@ class TypeCheckPass {
           val specMap = makeSpecMap(sd.params, realTh.params)
           val consTh = FnTh(Seq.empty, sd.fields.map(f => f.th.spec(specMap)), realTh)
 
-          Invoker.invokePrototype(ctx, eq, new Equations(), cons.location, AnyTh, consTh, args.map { arg =>
+          Invoker.invokePrototype(ctx, cons, eq, new Equations(), AnyTh, consTh, args.map { arg =>
             new InferTask {
               override def infer(ctx: PassContext, eq: Equations, th: TypeHint): (AstInfo, TypeHint) =
                 (arg.location, passExpr(ctx.deeperExpr(), scope, eq, th, arg))

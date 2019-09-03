@@ -27,6 +27,12 @@ object TCMeta {
       val x = 1
       throw new RuntimeException("no typeHint")
     }
+
+    def setCallAppliedTh(fth: FnTh): Unit =
+      self.meta.put("typecheck.call_applied_th", fth)
+
+    def getCallAppliedTh: FnTh =
+      self.meta("typecheck.call_applied_th").asInstanceOf[FnTh]
   }
 
   implicit class TypeDeclTCMetaImplicit(self: TypeDecl) {
@@ -64,12 +70,6 @@ object TCMeta {
 
     def getCallType: CallType =
       self.meta("typecheck.call_type").asInstanceOf[CallType]
-
-    def setCallFnTh(fth: FnTh): Unit =
-      self.meta.put("typecheck.call_fn_th", fth)
-
-    def getCallFnTh: FnTh =
-      self.meta("typecheck.call_fn_th").asInstanceOf[FnTh]
   }
 
   implicit class ClosureTCMetaImplicit(self: Lambda) {

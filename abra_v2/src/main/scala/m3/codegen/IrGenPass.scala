@@ -6,6 +6,7 @@ import m3.codegen.IrUtils._
 import m3.parse.Ast0._
 import m3.parse.Level
 import m3.typecheck.TCMeta._
+import m3.typecheck.Utils.RichDef
 import m3.typecheck._
 
 import scala.collection.mutable.{HashMap, ListBuffer}
@@ -21,6 +22,7 @@ case class ModContext(out: PrintStream,
                       rcDef: HashMap[(TypeHint, RCMode), StringBuilder] = HashMap(),
                       strings: ListBuffer[String] = ListBuffer(),
                       defs: HashMap[String, DContext] = HashMap()) {
+
   def write(line: String): Unit =
     out.println(line)
 
@@ -385,18 +387,16 @@ class IrGenPass {
           call.getCallType match {
             case CallModLocal =>
               val id = e.asInstanceOf[lId]
-              //FIXME: use getCallFnTh
-              val toCall = mctx.module.defs(id.value)
-              ("@" + id.value, args, None, toCall.getTypeHint[FnTh])
+              ("@" + id.value, args, None, call.getCallAppliedTh)
             case SelfCallModLocal =>
               val selfTh = e.getTypeHint[TypeHint]
-              ("@" + (selfTh + ".get").escaped, e +: args, None, call.getCallFnTh)
+              ("@" + (selfTh + ".get").escaped, e +: args, None, call.getCallAppliedTh)
             case CallFnPtr =>
               val fnPtrRes = passExpr(mctx, dctx, e)
               val fth = e.getTypeHint[FnTh]
               val sync = Abi.syncValue(mctx, dctx, fnPtrRes, AsRetVal, fth, fth)
-              val irArgs = fth.args.map(th => AbiTh.toCallArg(mctx, th)) :+ "i8*"
-              // fixme: don't forget for sync
+              val irArgs = fth.args.map(th => AbiTh.toCallArg(mctx, th)) :+ "i8*" /// ???
+
               val r1, r2 = "%" + dctx.nextReg("")
               dctx.write(s"$r1 = extractvalue ${fth.toValue} ${sync.value}, 0")
               dctx.write(s"$r2 = extractvalue ${fth.toValue} ${sync.value}, 1")
@@ -406,7 +406,7 @@ class IrGenPass {
         performCall(fth, callArgs, envArg, fName)
       case call@SelfCall(fnName, self, args) =>
         val selfTh = self.getTypeHint[TypeHint]
-        val fth = call.getCallFnTh
+        val fth = call.getCallAppliedTh
         val selfFnName = "@" + (selfTh + "." + fnName).escaped
         performCall(fth, self +: args, None, selfFnName)
       case Prop(from, props) =>
@@ -666,8 +666,12 @@ class IrGenPass {
 
         val mctx = ModContext(out, level, module)
 
-        module.defs.values.foreach(fn => passDef(mctx, fn, false))
-        module.selfDefs.values.foreach(defs => defs.foreach(fn => passDef(mctx, fn, false)))
+        module.defs.values.filter(d => !d.isGeneric)
+          .foreach(fn => passDef(mctx, fn, false))
+
+        module.selfDefs.values.foreach(defs =>
+          defs.filter(d => !d.isGeneric).
+            foreach(fn => passDef(mctx, fn, false)))
 
         mctx.write("declare void @llvm.memcpy.p0i8.p0i8.i64(i8* nocapture, i8* nocapture readonly, i64, i32, i1)")
         mctx.write("@evaAlloc = external thread_local(initialexec) global i8* (i64)*")
