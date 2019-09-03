@@ -1,30 +1,23 @@
 package parse
 
-import java.io.File
-
 import grammar.{M2LexerForIDE, M2Parser}
 import m3.parse.Ast0.ParseNode
 import m3.parse.Visitor
+import org.antlr.v4.runtime._
 import org.antlr.v4.runtime.misc.ParseCancellationException
 import org.antlr.v4.runtime.tree.ParseTree
-import org.antlr.v4.runtime._
 import org.scalatest.Matchers
 
 trait ParseUtil extends Matchers {
   def whatToParse: M2Parser => ParseTree
 
   def withStr[T <: ParseNode](str: String, res: T): Unit = {
-    val ast = parse[T](new ANTLRInputStream(str))
+    val ast = parse[T](str)
     ast shouldEqual res
   }
 
-  def withFile[T <: ParseNode](file: File, res: T): Unit = {
-    val ast = parse[T](new ANTLRFileStream(file.getAbsolutePath))
-    ast shouldEqual res
-  }
-
-  def parse[T <: ParseNode](input: ANTLRInputStream): T = {
-    val lexer = new M2LexerForIDE(input)
+  def parse[T <: ParseNode](input: String): T = {
+    val lexer = new M2LexerForIDE(new ANTLRInputStream(input))
 
     val tokens = new CommonTokenStream(lexer)
     val parser = new M2Parser(tokens)
@@ -32,7 +25,7 @@ trait ParseUtil extends Matchers {
 
     try {
       val tree = whatToParse(parser)
-      val visitor = new Visitor("test.abra", "test")
+      val visitor = new Visitor(input, "test.abra", "test")
       visitor.visit(tree).asInstanceOf[T]
     } catch {
       case ex: ParseCancellationException =>
@@ -42,5 +35,5 @@ trait ParseUtil extends Matchers {
   }
 
   def parseStr[T <: ParseNode](input: String): T =
-    parse(new ANTLRInputStream(input))
+    parse(input)
 }

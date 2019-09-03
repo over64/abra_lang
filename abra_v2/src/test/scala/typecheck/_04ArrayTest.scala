@@ -5,43 +5,25 @@ import org.scalatest.FunSuite
 import typecheck.TypeCheckUtil._
 
 class _04ArrayTest extends FunSuite {
-  test("array: cons literal") {
-    val ast = astForCode(
-      """
-           def main =
-             array = Array[Byte](10) .
-        """)
-
-    val main = ast.function("main")
-    assertTh("Array[Byte]", main.varDecl("array"))
-  }
-
   test("array: cons") {
     val ast = astForCode(
       """
            def main =
-             iSize: Int   = 10
-             lSize: Long  = 10
-             sSize: Short = 10
-             bSize: Byte  = 10
-
-             Array[String](iSize)
-             Array[String](lSize)
-             Array[String](sSize)
-             Array[String](bSize) .
+             array1 = Array[Byte](10)
+             array2 = Array(10, 20)
+             .
         """)
 
     val main = ast.function("main")
-    assertTh("() -> Array[String]", main)
+    assertTh("Array1[Byte]", main.varDecl("array1"))
+    assertTh("Array2[Int]", main.varDecl("array2"))
   }
 
   test("array: len") {
     val ast = astForCode(
       """
            def main =
-             size = 10
-             array = Array[String](size)
-             array.len() .
+             Array('hello', 'world').len() .
         """)
 
     val main = ast.function("main")
@@ -53,38 +35,19 @@ class _04ArrayTest extends FunSuite {
     val ast = astForCode(
       """
            def main =
-             iSize: Int   = 10
-             lSize: Long  = 10
-             sSize: Short = 10
-             bSize: Byte  = 10
-
-             array = Array[Byte](100)
-
-             array(iSize)
-             array(lSize)
-             array(sSize)
-             array(bSize) .
+             Array(1, 2, 3)(0) .
         """)
 
     val main = ast.function("main")
-    assertTh("() -> Byte", main)
+    assertTh("() -> Int", main)
   }
 
   test("array: set") {
     val ast = astForCode(
       """
            def main =
-             iSize: Int   = 10
-             lSize: Long  = 10
-             sSize: Short = 10
-             bSize: Byte  = 10
-
-             array = Array[Byte](100)
-
-             array(iSize) = 0
-             array(lSize) = 0
-             array(sSize) = 0
-             array(bSize) = 0 .
+             array = Array[Byte](1, 2, 3)
+             array(0) = 0 .
         """)
 
     val main = ast.function("main")
@@ -94,10 +57,13 @@ class _04ArrayTest extends FunSuite {
   test("array pass: arrayN as array") {
     val ast = astForCode(
       """
+         def mkArray100 = llvm
+           ; native .Array100[Byte]
+
          def bar = array: Array[Byte] do .
+
          def main =
-           array: Array100[Byte] = Array[Byte](100)
-           bar(array) .
+           bar(mkArray100()) .
         """)
 
     val main = ast.function("main")
@@ -108,11 +74,13 @@ class _04ArrayTest extends FunSuite {
     assertThrows[TCE.TypeMismatch] {
       astForCode(
         """
-         def bar = array: Array10[Byte] do .
+         def mkArray = llvm
+           ; native .Array[Byte]
+
+         def bar = array: Array100[Byte] do .
+
          def main =
-           n = 100
-           array = Array[Byte](n)
-           bar(array) .
+           bar(mkArray()) .
         """)
     }
   }

@@ -54,7 +54,9 @@ object Utils {
           })
         case FnTh(closure, args, ret) =>
           FnTh(closure, args.map(arg => arg.spec(specMap, onNotFound)), ret.spec(specMap, onNotFound))
-        case gth: GenericTh => specMap.getOrElse(gth, onNotFound(gth))
+        case gth: GenericTh =>
+          // make deep spec???
+          specMap.getOrElse(gth, onNotFound(gth))
         case AnyTh => AnyTh
       }
 

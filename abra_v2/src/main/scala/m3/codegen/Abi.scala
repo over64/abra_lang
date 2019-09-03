@@ -1,11 +1,8 @@
 package m3.codegen
 
-import m3.codegen.IrUtils.{NoUnion, NullableU, SimpleU, ThIrExtension}
+import m3.codegen.IrUtils.{NullableU, ThIrExtension}
 import m3.parse.Ast0._
 import m3.typecheck.{Builtin, VarClosureLocal, VarClosureParam, VarType}
-import IrUtils.RichString
-
-import scala.collection.mutable
 
 sealed trait RCMode
 case object Inc extends RCMode

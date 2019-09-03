@@ -13,15 +13,21 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.collection.mutable.HashMap
 
-class Visitor(fname: String, _package: String) extends AbstractParseTreeVisitor[ParseNode] with M2ParserVisitor[ParseNode] {
+class Visitor(source: String, fname: String, _package: String) extends AbstractParseTreeVisitor[ParseNode] with M2ParserVisitor[ParseNode] {
+  val byLine = source.split("\n")
   val importedModules = new HashMap[String, String]()
   val importedTypes = new HashMap[String, String]()
 
   def emit[T <: ParseNode](start: Token, stop: Token, node: T): T = {
+    val (endLine, endCol) =
+      if (start == stop) (start.getLine, start.getCharPositionInLine + start.getText.length - 1)
+      else (stop.getLine, stop.getCharPositionInLine)
+
     node.meta.put("source.location", AstInfo(
+      byLine,
       fname,
       start.getLine, start.getCharPositionInLine,
-      stop.getLine, stop.getCharPositionInLine))
+      endLine, endCol))
     node
   }
 

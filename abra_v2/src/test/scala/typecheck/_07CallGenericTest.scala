@@ -9,6 +9,10 @@ class _07CallGenericTest extends FunSuite {
   test("simple generic") {
     val ast = astForCode(
       """
+         def + = self: Int, other: Int do llvm
+           ; native code
+           .Int
+
          def contains = x: num, y: num do
              x + y .
 
@@ -18,7 +22,6 @@ class _07CallGenericTest extends FunSuite {
 
     assertTh("() -> Int", ast.function("main"))
     println(ast.defs("contains").getEquations)
-    astPrint(ast)
   }
 
   test("generic call: store to generic") {
@@ -59,28 +62,22 @@ class _07CallGenericTest extends FunSuite {
              subAdd(1, 1) .
       """)
 
-    println(
-      """
-        |z = loadConf()
-        |    ↑
-        |
-        |main.abra:20:5 tce002: No such function 'loadConf'
-        |
-        |
-        |           ↓ any2
-        |           ~~~~~
-        |add(x - y, y + 1)
-        |    ~~~~~
-        |    ↑ any1
-        |
-        |main.abra:31:5 tce001: Type mismatch. Expected any1 has any2
-      """.stripMargin)
-    //println("\033[0;40m\033[0;37mhello\033[0m")
-    println("\nadd:\n" + ast.defs("add").getEquations + "\n" + ast.defs("add").getTypeHint)
-    println("\nsubAdd:\n" + ast.defs("subAdd").getEquations + "\n" + ast.defs("subAdd").getTypeHint)
-    println("\nbar:\n" + ast.defs("bar").getEquations + "\n" + ast.defs("bar").getTypeHint)
-
-    astPrint("\n" + ast)
+//    println(
+//      """
+//        |z = loadConf()
+//        |    ↑
+//        |
+//        |main.abra:20:5 tce002: No such function 'loadConf'
+//        |
+//        |
+//        |           ↓ any2
+//        |           ~~~~~
+//        |add(x - y, y + 1)
+//        |    ~~~~~
+//        |    ↑ any1
+//        |
+//        |main.abra:31:5 tce001: Type mismatch. Expected any1 has any2
+//      """.stripMargin)
   }
 
   test("polymorphic self replace") {
@@ -91,6 +88,15 @@ class _07CallGenericTest extends FunSuite {
         type Log    = llvm i32 .
         type F2     = llvm i32 .
         type F3     = llvm i32 .
+
+        def debug = self: Log, str: String, f3: F3 do
+          none .
+
+        def doDump = self: Log, str: String do
+          none .
+
+        def some = self: Int do
+          none .
 
         def mkSeqInt = llvm
           ; nop .Seq[Int]
@@ -104,7 +110,7 @@ class _07CallGenericTest extends FunSuite {
         def mkF3 = llvm
            ; nop .F3
 
-        # t :: some() -> logger
+        # t :: some() -> a1
         # logger :: debug(String, fake) -> a2
         def contains = self: Seq[t], value: t, xx: fake, log: logger do
           value.some()
@@ -115,21 +121,14 @@ class _07CallGenericTest extends FunSuite {
         def dump = log: logger3 do
           log.doDump('hello') .
 
-        # collection :: contains(b, logger1) -> Bool
+        # logger1 :: doDump(String) -> a1
+        # collection :: contains(b, fake1, logger1) -> Bool
         def in = self: b, coll: collection, log: logger1, f: fake1 do
           dump(log)
           coll.contains(self, f, log) .Bool
 
-        def debug = self: Log, str: String, f3: F3 do
-          none .
-
-        def doDump = self: Log, str: String do
-          none .
-
-        def some = self: Int do
-          none .
-
         # logger2 :: debug(String, F2) -> a1
+        # logger2 :: doDump(String) -> a2
         def bar = log: logger2 do
           seq = mkSeqInt()
           f = mkF2()
@@ -138,116 +137,72 @@ class _07CallGenericTest extends FunSuite {
         def main =
           bar(mkLog()) .
       """)
-
-
-    println("\ncontains:\n" + ast.selfDefs("contains")(0).getEquations + "\n" + ast.selfDefs("contains")(0).getTypeHint)
-    println("\nin:\n" + ast.selfDefs("in")(0).getEquations + "\n" + ast.selfDefs("in")(0).getTypeHint)
-    println("\nbar:\n" + ast.defs("bar").getEquations + "\n" + ast.defs("bar").getTypeHint)
-    println("\nmain:\n" + ast.defs("main").getEquations + "\n" + ast.defs("main").getTypeHint)
-    // }
-  }
-
-  test("collections-like") {
-    val ast = astForCode(
-      """
-        type ArrayIter[t] = (array: Array[t], idx: Long)
-
-        def iterator = self: Array[t] do
-          ArrayIter(self, 0) .
-
-        def next = self: ArrayIter[t] do
-          if self.idx < self.array.len() do
-            self.idx = self.idx + 1
-            self.array(self.idx - 1)
-          else none ..
-
-        type Map[iterable, t, u] = (it: iterable, mapper: (t) -> u)
-        type MapIter[iterator, t, u] = (iter: iterator, mapper: (t) -> u)
-
-        def isIterable = it: iterable do
-          iter = it.iterator()  # iterable must provide iterator
-          iter.next() . # iterator must provide t | None via next function
-
-        def map = self: iterable, mapper: (t) -> u do
-          if false do
-            value: t | None = isIterable(self) .
-
-          Map(self, mapper) .
-
-        def iterator = self: Map[iterable, t, u] do
-          MapIter(self.it.iterator(), self.mapper) .
-
-        def next = self: MapIter[iterator, t, u] do
-          value: t | None = self.iter.next()
-          value unless is forMap: t do
-            self.mapper(forMap) ..u | None
-
-        def main =
-          n = 5
-          array1 = Array[Int](n)
-          it = array1.map(lambda x -> x * 2).iterator()
-
-          it.next()
-          it.next()
-          it.next()
-
-          it.next() unless is None do -1 ..
-      """)
-
-    println(ast.selfDefs("iterator")(1).getEquations)
-    println(ast.selfDefs("iterator")(1).getTypeHint)
-    println(ast.selfDefs("map").head.getEquations)
-    val main = ast.function("main")
-    assertTh("() -> Int", main)
   }
 
   test("collections-like-2") {
     val ast = astForCode(
       """
+        def + = self: Long, other: Long do llvm
+          ;native .Long
+
+        def - = self: Long, other: Long do llvm
+          ;native .Long
+
+        def * = self: Int, other: Int do llvm
+          ;native .Int
+
+        def < = self: Long, other: Long do llvm
+          ;native .Bool
+
         type ArrayIter[t] = (array: Array[t], idx: Long)
 
         def iter = self: Array[t] do
           ArrayIter(self, 0) .
 
-        def next = self: ArrayIter[t] do
-          if self.idx < self.array.len() do
-            self.idx = self.idx + 1
-            self.array(self.idx - 1)
-          else none ..
+        def next = self: ArrayIter[t1] do llvm
+          ; native .t1 | None
+        #  if self.idx < self.array.len() do
+        #    self.idx = self.idx + 1
+        #    self.array(self.idx - 1)
+        #  else none ..
 
-        type MapIter[iterator, t, u] = (iter: iterator, mapper: (t) -> u)
+        type MapIter[iterator2, t2, u2] = (iter: iterator2, mapper: (t2) -> u2)
 
-        def map = self: iterator, mapper: (t) -> u do
+        # iterator3 :: next() -> t3 | None
+        def map = self: iterator3, mapper: (t3) -> u3 do
           if false do
-            value: t | None = self.next() .
+            value: t3 | None = self.next() .
           MapIter(self, mapper) .
 
-        def next = self: MapIter[iterator, t, u] do
-          value: t | None = self.iter.next()
-          value unless is forMap: t do
-            self.mapper(forMap) ..u | None
+        def next = self: MapIter[iterator4, t4, u4] do
+          value: t4 | None = self.iter.next()
+          value unless is forMap: t4 do
+            self.mapper(forMap) ..u4 | None
 
 
-        type FilterIter[iterator, t] = (iter: iterator, predicate: (t) -> Bool)
+        type FilterIter[iterator5, t5] = (iter: iterator5, predicate: (t5) -> Bool)
 
-        def filter = self: iterator, predicate: (t) -> Bool do
+        # iterator6 :: next() -> t6 | None
+        def filter = self: iterator6, predicate: (t6) -> Bool do
           if false do
-            value: t | None = self.next() .
+            value: t6 | None = self.next() .
           FilterIter(self, predicate) .
 
-        def next = self: FilterIter[iterator, t] do
+        def next = self: FilterIter[iterator7, t7] do
           while true do
-            value: t | None = self.iter.next()
+            value: t7 | None = self.iter.next()
             value unless
-              is forFilter: t do
+              is forFilter: t7 do
                 if self.predicate(forFilter) do
                   return value .
-              is None do return none ...t | None
+              is None do return none ...t7 | None
 
         def main =
           n = 5
           array1 = Array[Int](n)
-          it = array1.iter().map(lambda x -> x * 2).filter(lambda x -> x == 0)
+          it = array1.iter()
+            .map(lambda x -> x * 2)
+            .filter(lambda x -> x == 0)
 
           it.next()
           it.next()
@@ -259,5 +214,34 @@ class _07CallGenericTest extends FunSuite {
     println(ast.selfDefs("map").head.getEquations)
     val main = ast.function("main")
     assertTh("() -> Int", main)
+  }
+
+  test("foobar") {
+    val ast = astForCode(
+      """
+        type Seq[t] = llvm ;native .
+        def get = self: Seq[t], idx: Int do llvm
+          ; native .t
+
+        type T1 = llvm ;native .
+
+        def mkT1 = llvm
+          ; native .T1
+
+        # e2 :: bar() -> Int
+        def some = self: T1, x2: Seq[e2], x3: Int do
+          gg: Int = x2(0).bar() .None
+
+        # t1 :: some(t2, t3) -> a1
+        def f1 = x1: t1, x2: t2, x3: t3 do
+          x1.some(x2, x3) .a1
+
+        # c2 :: bar() -> Int
+        def f2 = x2: Seq[c2], x3: Int do
+          f1(mkT1(), x2, x3) .
+      """)
+
+    val f2 = ast.function("f2")
+    assertTh("(Seq[c2], Int) -> None", f2)
   }
 }

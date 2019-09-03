@@ -71,7 +71,7 @@ class ParsePass(resolver: Resolver) {
 
     val parser = new M2Parser(tokens)
     parser.setErrorHandler(new BailErrorStrategy)
-    val visitor = new Visitor(path, path)
+    val visitor = new Visitor(code, path, path)
 
     try {
       visitor.visit(parser.module()).asInstanceOf[Module]

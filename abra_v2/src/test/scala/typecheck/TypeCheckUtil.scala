@@ -66,7 +66,7 @@ object TypeCheckUtil extends FunSuite {
 
       val parser = new M2Parser(tokens)
       parser.setErrorHandler(new BailErrorStrategy)
-      val visitor = new Visitor("test.abra", "test")
+      val visitor = new Visitor(self, "test.abra", "test")
 
       visitor.visit(parser.typeHint()).asInstanceOf[TypeHint]
     }
