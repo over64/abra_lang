@@ -63,7 +63,8 @@ object IrUtils {
       case uth: UnionTh =>
         uth.seq.exists(v => v.isRefTypeRecursive(level, module, stack))
       case _: FnTh => false
-      case other => throw new RuntimeException(s"Internal compiler error: unexpected to see th: $other here")
+      case other =>
+        throw new RuntimeException(s"Internal compiler error: unexpected to see th: $other here")
     }
 
     def isRefType(level: Level, module: Module): Boolean =

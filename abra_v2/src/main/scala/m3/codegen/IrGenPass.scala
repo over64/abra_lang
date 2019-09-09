@@ -5,10 +5,14 @@ import java.io.PrintStream
 import m3.codegen.IrUtils._
 import m3.parse.Ast0._
 import m3.parse.Level
-import m3.typecheck.TCMeta._
 import m3.typecheck.Utils.RichDef
+import m3.typecheck.Utils.ThExtension
 import m3.typecheck._
+import TCMeta.TypeDeclTCMetaImplicit
+import TCMeta.VarTypeTCMetaImplicit
+import TCMeta.CallTypeTCMetaImplicit
 
+import scala.collection.mutable
 import scala.collection.mutable.{HashMap, ListBuffer}
 
 trait OutConf {
@@ -33,9 +37,7 @@ case class ModContext(out: PrintStream,
 }
 
 sealed trait ScopeKind
-
 case object OtherKind extends ScopeKind
-
 case class WhileKind(condBr: String, endBr: String) extends ScopeKind
 
 case class Scope(parent: Option[Scope],
@@ -56,7 +58,8 @@ case class Scope(parent: Option[Scope],
     findAlias(name).get
 }
 
-case class DContext(fn: Def,
+case class DContext(specMap: mutable.HashMap[GenericTh, TypeHint],
+                    fn: Def,
                     isClosure: Boolean,
                     symbols: HashMap[String, Int] = HashMap(),
                     vars: HashMap[String, TypeHint] = HashMap(),
@@ -121,24 +124,55 @@ case class DContext(fn: Def,
     exprDeep -= 1
     t
   }
+
+  def specialized(th: TypeHint): TypeHint =
+    th.spec(specMap)
+
+  object meta {
+
+    import TCMeta._
+
+    def typeHintAs[T <: TypeHint](self: ParseNode): T = {
+      specialized(self.getTypeHint[T]).asInstanceOf[T]
+    }
+
+    def typeHint(self: ParseNode): TypeHint = {
+      specialized(self.getTypeHint[TypeHint])
+    }
+
+    def closure(self: Lambda) =
+      self.getClosure.map { case (name, th, vt) => (name, specialized(th), vt) }
+
+    def callAppliedTh(self: ParseNode) =
+      specialized(self.getCallAppliedTh).asInstanceOf[FnTh]
+
+    def storeDeclTh(self: Store) =
+      self.getDeclTh[TypeHint].map(x => specialized(x))
+
+    def ifBranchTh(self: If) = {
+      val (a, b) = self.getBranchTh
+      (specialized(a), specialized(b))
+    }
+
+    def unlessUncovered(self: Unless) =
+      self.getUncovered.map(th => specialized(th))
+  }
 }
 
 sealed trait RequireDest
 
 case object AsStoreSrc extends RequireDest
-
 case object AsCallArg extends RequireDest
-
 case object AsRetVal extends RequireDest
 
 case class EResult(value: String, isPtr: Boolean, isAnon: Boolean)
 
 class IrGenPass {
   def passExpr(mctx: ModContext, dctx: DContext, expr: Expression): EResult = {
-    mctx.typeHints += expr.getTypeHint[TypeHint]
+    mctx.typeHints += dctx.meta.typeHint(expr)
 
     def performCons(cons: Expression, args: Seq[Expression]): EResult = {
-      val th = cons.getTypeHint[TypeHint]
+      val th = dctx.meta.typeHint(cons)
       val irType = th.toValue
 
       if (th.isValueType(mctx.level, mctx.module)) {
@@ -161,7 +195,7 @@ class IrGenPass {
           val r = "%" + dctx.nextReg("")
           dctx.write(s"$r = getelementptr $irType, $irType* $slot, i64 0, $base$idx")
 
-          Abi.store(mctx, dctx, false, false, fieldTh, field.getTypeHint, r, fRes.value)
+          Abi.store(mctx, dctx, false, false, fieldTh, dctx.meta.typeHint(field), r, fRes.value)
         }
 
         EResult(slot, true, true)
@@ -200,7 +234,7 @@ class IrGenPass {
           val fRes = passExpr(mctx, dctx, field)
           val fieldDestPtr = "%" + dctx.nextReg("")
           dctx.write(s"$fieldDestPtr = getelementptr $toIrType, $toIrType* $to, ${base}i32 $idx")
-          Abi.store(mctx, dctx, false, !fRes.isAnon, fieldTh, field.getTypeHint, fieldDestPtr, fRes.value)
+          Abi.store(mctx, dctx, false, !fRes.isAnon, fieldTh, dctx.meta.typeHint(field), fieldDestPtr, fRes.value)
         }
         EResult(to, false, true)
       }
@@ -209,7 +243,7 @@ class IrGenPass {
     def performCall(fth: FnTh, callArgs: Seq[Expression], envArg: Option[String], fName: String): EResult = {
       val argsResults =
         (fth.args zip callArgs).map { case (argTh, arg) =>
-          Abi.syncValue(mctx, dctx, passExpr(mctx, dctx, arg), AsCallArg, argTh, arg.getTypeHint)
+          Abi.syncValue(mctx, dctx, passExpr(mctx, dctx, arg), AsCallArg, argTh, dctx.meta.typeHint(arg))
         }
 
       val argsIr = (fth.args zip argsResults).map { case (argTh, argRes) =>
@@ -329,7 +363,7 @@ class IrGenPass {
       case lInt(value) => EResult(value, false, true)
       case lit@lFloat(value) =>
         val striped =
-          if (lit.getTypeHint[TypeHint] == Builtin.thFloat)
+          if (dctx.meta.typeHint(lit) == Builtin.thFloat)
             new java.lang.Float(value).toDouble
           else
             new java.lang.Double(value).toDouble
@@ -347,14 +381,14 @@ class IrGenPass {
         id.getVarLocation match {
           case VarLocal => EResult("%" + dctx.scope.getAlias(id.value), true, false)
           case VarParam =>
-            id.getTypeHint[TypeHint].classify(mctx.level, mctx.module) match {
+            dctx.meta.typeHint(id).classify(mctx.level, mctx.module) match {
               case RefUnion(_) | ValueUnion(_) | ValueStruct(_) =>
                 EResult("%" + id.value, true, false)
               case _ =>
                 EResult("%" + id.value, false, false)
             }
           case VarClosureLocal(_) =>
-            val closure = dctx.fn.lambda.getClosure
+            val closure = dctx.meta.closure(dctx.fn.lambda)
             val closureTh = AbiTh.toClosure(mctx, closure)
             val ((_, idTh, vt), idx) = closure.zipWithIndex.find { case ((name, _, _), _) => name == id.value }.get
 
@@ -363,7 +397,7 @@ class IrGenPass {
             dctx.write(s"$r2 = load ${idTh.toValue}*, ${idTh.toValue}** $r1")
             EResult(r2, true, false)
           case VarClosureParam(_) =>
-            val closure = dctx.fn.lambda.getClosure
+            val closure = dctx.meta.closure(dctx.fn.lambda)
             val closureTh = AbiTh.toClosure(mctx, closure)
             val ((_, idTh, vt), idx) = closure.zipWithIndex.find { case ((name, _, _), _) => name == id.value }.get
 
@@ -383,19 +417,66 @@ class IrGenPass {
       case t@Tuple(seq) => performCons(t, seq)
       case cons@Cons(sth, args) => performCons(cons, args)
       case call@Call(e, args) =>
+        val callAppliedTh = dctx.meta.callAppliedTh(call)
+
         val (fName, callArgs, envArg, fth) =
           call.getCallType match {
+
             case CallModLocal =>
               val id = e.asInstanceOf[lId]
-              ("@" + id.value, args, None, call.getCallAppliedTh)
+              val fn = mctx.module.defs(id.value)
+
+              if (fn.isGeneric) {
+                val fnTh = {
+                  import TCMeta.ParseNodeTCMetaImplicit
+                  fn.getTypeHint[FnTh]
+                }
+                val tInfer = new TypeInfer(mctx.level, mctx.module)
+
+                (callAppliedTh.args zip fnTh.args).foreach { case (ath, fth) =>
+                  tInfer.infer(Seq.empty, fth, ath)
+                }
+                tInfer.infer(Seq.empty, fnTh.ret, callAppliedTh.ret)
+
+                passDef(mctx, DContext(tInfer.specMap, fn, false))
+
+                val genericArgs = "[" + callAppliedTh.args.mkString(", ") + "]"
+                ("@" + (id.value + genericArgs).escaped, args, None, callAppliedTh)
+              } else
+                ("@" + id.value, args, None, callAppliedTh)
             case SelfCallModLocal =>
-              val selfTh = e.getTypeHint[TypeHint]
-              ("@" + (selfTh + ".get").escaped, e +: args, None, call.getCallAppliedTh)
+              val selfTh = dctx.meta.typeHintAs[ScalarTh](e)
+
+              val fn = mctx.module.selfDefs("get").find { d =>
+                d.lambda.args.head.typeHint match {
+                  case sth: ScalarTh => sth.name == selfTh.name
+                  case _ => false
+                }
+              }.get
+
+              if (fn.isGeneric) {
+                val fnTh = {
+                  import TCMeta.ParseNodeTCMetaImplicit
+                  fn.getTypeHint[FnTh]
+                }
+
+                val tInfer = new TypeInfer(mctx.level, mctx.module)
+
+                (callAppliedTh.args zip fnTh.args).foreach { case (ath, fth) =>
+                  tInfer.infer(Seq.empty, fth, ath)
+                }
+                tInfer.infer(Seq.empty, fnTh.ret, callAppliedTh.ret)
+
+                passDef(mctx, DContext(tInfer.specMap, fn, false))
+
+                val genericArgs = "[" + callAppliedTh.args.map(ath => ath.spec(tInfer.specMap)) mkString (", ") + "]"
+                ("@" + (selfTh + ".get" + genericArgs).escaped, e +: args, None, callAppliedTh)
+              } else
+                ("@" + (selfTh + ".get").escaped, e +: args, None, callAppliedTh)
             case CallFnPtr =>
               val fnPtrRes = passExpr(mctx, dctx, e)
-              val fth = e.getTypeHint[FnTh]
+              val fth = dctx.meta.typeHintAs[FnTh](e)
               val sync = Abi.syncValue(mctx, dctx, fnPtrRes, AsRetVal, fth, fth)
-              val irArgs = fth.args.map(th => AbiTh.toCallArg(mctx, th)) :+ "i8*" /// ???
 
               val r1, r2 = "%" + dctx.nextReg("")
               dctx.write(s"$r1 = extractvalue ${fth.toValue} ${sync.value}, 0")
@@ -405,17 +486,18 @@ class IrGenPass {
 
         performCall(fth, callArgs, envArg, fName)
       case call@SelfCall(fnName, self, args) =>
-        val selfTh = self.getTypeHint[TypeHint]
-        val fth = call.getCallAppliedTh
+        val selfTh = dctx.meta.typeHint(self)
+        val callAppliedTh = dctx.meta.callAppliedTh(call)
+
         val selfFnName = "@" + (selfTh + "." + fnName).escaped
-        performCall(fth, self +: args, None, selfFnName)
+        performCall(callAppliedTh, self +: args, None, selfFnName)
       case Prop(from, props) =>
         // FIXME: gep
         passExpr(mctx, dctx, from)
       case store@Store(_, to, what) =>
-        val destTh = to.head.getTypeHint[TypeHint]
+        val destTh = dctx.meta.typeHint(to.head)
         val dRes =
-          store.getDeclTh[TypeHint] match {
+          dctx.meta.storeDeclTh(store) match {
             case Some(newVarTh) =>
               val vName = to.head.value
               val alias = dctx.addSymbol(vName)
@@ -431,20 +513,24 @@ class IrGenPass {
               toRes
           }
 
-        val whatTh = what.getTypeHint[TypeHint]
+        val whatTh = dctx.meta.typeHint(what)
         val wRes = Abi.syncValue(mctx, dctx, passExpr(mctx, dctx, what),
           AsStoreSrc, whatTh, whatTh)
         Abi.store(mctx, dctx, !dRes.isAnon, !wRes.isAnon, destTh, whatTh, dRes.value, wRes.value)
         EResult("__no_result__", false, true)
       case lambda: Lambda =>
-        val fth = lambda.getTypeHint[FnTh]
+        val fth = dctx.meta.typeHintAs[FnTh](lambda)
         val lambdaName = dctx.nextLambdaName()
-        val fn = Def(lambdaName, lambda, fth.ret)
-        fn.setTypeHint(fth)
+        val fn = {
+          import TCMeta.ParseNodeTCMetaImplicit
+          val d = Def(lambdaName, lambda, fth.ret)
+          d.setTypeHint(fth)
+          d
+        }
 
-        passDef(mctx, fn, true)
+        passDef(mctx, DContext(dctx.specMap, fn, true))
 
-        val closure = lambda.getClosure
+        val closure = dctx.meta.closure(lambda)
         val closureTh = AbiTh.toClosure(mctx, closure)
         val slot = dctx.addClosureSlot(closureTh)
 
@@ -455,7 +541,10 @@ class IrGenPass {
                 if (nested) {
                   val nestedId = lId(vName)
                   nestedId.setVarLocation(VarClosureLocal(false))
-                  nestedId.setTypeHint(vTh)
+                  val _ = {
+                    import TCMeta.ParseNodeTCMetaImplicit
+                    nestedId.setTypeHint(vTh)
+                  }
                   passExpr(mctx, dctx, nestedId).value
                 } else
                   "%" + vName
@@ -468,7 +557,10 @@ class IrGenPass {
                 if (nested) {
                   val nestedId = lId(vName)
                   nestedId.setVarLocation(VarClosureParam(false))
-                  nestedId.setTypeHint(vTh)
+                  val _ = {
+                    import TCMeta.ParseNodeTCMetaImplicit
+                    nestedId.setTypeHint(vTh)
+                  }
                   passExpr(mctx, dctx, nestedId).value
                 } else
                   "%" + vName
@@ -528,8 +620,8 @@ class IrGenPass {
         dctx.write(s"br label %${wk.endBr}")
         EResult("__not_result", false, false)
       case self@If(cond, _do, _else) =>
-        val ifTh = self.getTypeHint[TypeHint]
-        val (doTh, elseTh) = self.getBranchTh
+        val ifTh = dctx.meta.typeHint(self)
+        val (doTh, elseTh) = dctx.meta.ifBranchTh(self)
         val brId = dctx.nextBranch("")
         val (condBr, doBr, elseBr, endBr) = (s"if$brId", s"do$brId", s"else$brId", s"end$brId")
 
@@ -548,8 +640,8 @@ class IrGenPass {
           Branch(elseBr, { _ => }, elseTh, _else)
         ), endBr)
       case self@Unless(exp, isSeq) =>
-        val unlessTh = self.getTypeHint[TypeHint]
-        val expTh = exp.getTypeHint[TypeHint]
+        val unlessTh = dctx.meta.typeHint(self)
+        val expTh = dctx.meta.typeHint(exp)
         val brId = dctx.nextBranch("")
         val (unlessBr, endBr) = (s"unless$brId", s"end$brId")
 
@@ -570,9 +662,12 @@ class IrGenPass {
             }, is.typeRef, is._do)
           }
 
-          val unmatched = self.getUncovered.zipWithIndex.map { case (th, idx) =>
+          val unmatched = dctx.meta.unlessUncovered(self).zipWithIndex.map { case (th, idx) =>
             val id = lId("unmatched")
-            id.setTypeHint(th)
+            val _ = {
+              import TCMeta.ParseNodeTCMetaImplicit
+              id.setTypeHint(th)
+            }
             id.setVarLocation(VarLocal)
 
             Branch(s"unless${brId}_unmatched$idx", dctx => {
@@ -603,7 +698,7 @@ class IrGenPass {
 
   def performBlock(mctx: ModContext, dctx: DContext, seq: Seq[Expression]): (TypeHint, EResult) = {
     seq.dropRight(1).foreach { expr =>
-      val eth = expr.getTypeHint[TypeHint]
+      val eth = dctx.meta.typeHint(expr)
       val res = passExpr(mctx, dctx, expr)
 
       if (res.isAnon && eth.isRefType(mctx.level, mctx.module))
@@ -611,7 +706,7 @@ class IrGenPass {
     }
 
     val bresult = seq.lastOption.map { expr =>
-      val retTh = expr.getTypeHint[TypeHint]
+      val retTh = dctx.meta.typeHint(expr)
       val retRes = passExpr(mctx, dctx, expr)
 
       // if fn arg
@@ -630,21 +725,23 @@ class IrGenPass {
     bresult
   }
 
-  def passDef(mctx: ModContext, fn: Def, isClosure: Boolean): Unit = {
-    val dctx = DContext(fn, isClosure)
-    val fth = fn.getTypeHint[FnTh]
+  def passDef(mctx: ModContext, dctx: DContext): Unit = {
+    val fth = dctx.meta.typeHintAs[FnTh](dctx.fn)
     val retTh = fth.ret
 
+    val params = dctx.fn.params
+    val irParams = if(params.isEmpty) "" else params.map(p => p.spec(dctx.specMap)).mkString("[", ", ", "]")
+
     val fnName =
-      fn.lambda.args.headOption match {
-        case Some(arg) if arg.name == "self" => (arg.typeHint + "." + fn.name).escaped
-        case _ => fn.name
+      dctx.fn.lambda.args.headOption match {
+        case Some(arg) if arg.name == "self" => (arg.typeHint + "." + dctx.fn.name + irParams).escaped
+        case _ => (dctx.fn.name + irParams).escaped
       }
 
     fth.args.foreach(th => mctx.typeHints += th)
     mctx.typeHints += retTh
 
-    fn.lambda.body match {
+    dctx.fn.lambda.body match {
       case llVm(code) => dctx.write(code)
       case AbraCode(seq) =>
         val (eth, eRes) = performBlock(mctx, dctx, seq)
@@ -667,11 +764,11 @@ class IrGenPass {
         val mctx = ModContext(out, level, module)
 
         module.defs.values.filter(d => !d.isGeneric)
-          .foreach(fn => passDef(mctx, fn, false))
+          .foreach(fn => passDef(mctx, DContext(mutable.HashMap.empty, fn, false)))
 
         module.selfDefs.values.foreach(defs =>
           defs.filter(d => !d.isGeneric).
-            foreach(fn => passDef(mctx, fn, false)))
+            foreach(fn => passDef(mctx, DContext(mutable.HashMap.empty, fn, false))))
 
         mctx.write("declare void @llvm.memcpy.p0i8.p0i8.i64(i8* nocapture, i8* nocapture readonly, i64, i32, i1)")
         mctx.write("@evaAlloc = external thread_local(initialexec) global i8* (i64)*")
@@ -696,14 +793,14 @@ class IrGenPass {
         mctx.rcDef.foreach { case (_, code) => mctx.write(code.toString()) }
 
         mctx.defs.foreach { case (fnName, dctx) =>
-          val fth = dctx.fn.getTypeHint[FnTh]
-          val irArgs = dctx.fn.lambda.args.map(arg => s"${AbiTh.toCallArg(mctx, arg.typeHint)} %${arg.name}")
+          val fth = dctx.meta.typeHintAs[FnTh](dctx.fn)
+          val irArgs = dctx.fn.lambda.args.map(arg => s"${AbiTh.toCallArg(mctx, dctx.specialized(arg.typeHint))} %${arg.name}")
           val realArgs = if (dctx.isClosure) irArgs :+ "i8* %__env" else irArgs
 
           mctx.write(s"define ${AbiTh.toRetVal(mctx, fth.ret)} @$fnName (${realArgs.mkString(", ")}) {")
 
           if (dctx.isClosure)
-            mctx.write(s"  %__closure = bitcast i8* %__env to ${AbiTh.toClosure(mctx, dctx.fn.lambda.getClosure)}*")
+            mctx.write(s"  %__closure = bitcast i8* %__env to ${AbiTh.toClosure(mctx, dctx.meta.closure(dctx.fn.lambda))}*")
 
           dctx.vars.foreach { case (vName, th) =>
             mctx.write(s"  %$vName = alloca ${th.toValue}")

@@ -2,18 +2,12 @@ package m3.typecheck
 
 import m3.parse.Ast0._
 
-import scala.collection.mutable
-
 sealed trait CallType
 
 case object CallModLocal extends CallType
-
 case object CallModImport extends CallType
-
 case object SelfCallModLocal extends CallType
-
 case object SelfCallModImport extends CallType
-
 case object CallFnPtr extends CallType
 
 object TCMeta {

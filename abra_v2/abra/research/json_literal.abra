@@ -1,0 +1,14 @@
+data =
+  ('sender_batch_header', (
+    ('sender_batch_id', 1234),
+    ('email_subject', 'Payment from Fonbet')),
+    ('items', (
+      ('recipient_type', 'Email'),
+      ('amount', (
+        ('currency', Currency.getInstance('EUR')),
+        ('value', BigDecimal.ONE))),
+      ('note', 'Payment from Fonbet'),
+      ('receiver', 'devnull@mail.ru'),
+      ('sender_item_id', 'fon_batch_item' + 1234))))
+
+json.write(data)

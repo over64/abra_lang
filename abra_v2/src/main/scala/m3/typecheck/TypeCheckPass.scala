@@ -76,7 +76,7 @@ sealed trait SpecResult
 case object NewSpec extends SpecResult
 case class Specified(th: TypeHint) extends SpecResult
 class MismatchLocal extends Exception
-class TypeChecker2(ctx: PassContext,
+class TypeChecker2(level: Level, module: Module,
                    genericSpec: (GenericTh, TypeHint) => SpecResult = (adv, th) => Specified(adv),
                    withTransaction: (() => Unit) => Unit = { callback => callback() }) {
 
@@ -90,8 +90,8 @@ class TypeChecker2(ctx: PassContext,
       case (th, AnyTh) => // ok
       case (AnyTh, th) => // ok
       case (adv: ScalarTh, th: ScalarTh) =>
-        val (_, advMod, advDecl) = resolveType(ctx.level, ctx.module, adv)
-        val (_, thMod, sthDecl) = resolveType(ctx.level, ctx.module, th)
+        val (_, advMod, advDecl) = resolveType(level, module, adv)
+        val (_, thMod, sthDecl) = resolveType(level, module, th)
 
         if (advMod.pkg != thMod.pkg || adv.name != th.name) throw new MismatchLocal
         if (adv.params.length != th.params.length) throw TCE.ParamsCountMismatch(th.location)
@@ -139,8 +139,8 @@ class TypeChecker2(ctx: PassContext,
       case (arraySize, sth: ScalarTh) if arraySize == thArraySize =>
         doCheck(thArraySizes, sth)
       case (array1: ScalarTh, array2: ScalarTh) if array1.isArray && array2.isArray =>
-        val (_, _, decl1) = resolveType(ctx.level, ctx.module, array1)
-        val (_, _, decl2) = resolveType(ctx.level, ctx.module, array2)
+        val (_, _, decl1) = resolveType(level, module, array1)
+        val (_, _, decl2) = resolveType(level, module, array2)
 
         decl1.getBuiltinArrayLen match {
           case None => // ok
@@ -151,21 +151,21 @@ class TypeChecker2(ctx: PassContext,
 
         isEqualSeq(array1.params, array2.params)
       case (adv: ScalarTh, sth: ScalarTh) =>
-        val (_, advMod, advDecl) = resolveType(ctx.level, ctx.module, adv)
-        val (_, sthMod, sthDecl) = resolveType(ctx.level, ctx.module, sth)
+        val (_, advMod, advDecl) = resolveType(level, module, adv)
+        val (_, sthMod, sthDecl) = resolveType(level, module, sth)
         if (advMod.pkg == sthMod.pkg && adv.name == sth.name) {
           if (adv.params.length != sth.params.length) throw TCE.ParamsCountMismatch(sth.location)
           isEqualSeq(adv.params, sth.params)
         }
         else {
-          resolveType(ctx.level, ctx.module, adv) match {
+          resolveType(level, module, adv) match {
             case (_, _, ud: UnionDecl) => checkUnionMember(ud, adv, sth)
             case _ => throw new MismatchLocal
           }
         }
       case (adv: ScalarTh, uth: UnionTh) => throw new MismatchLocal
       case (adv: ScalarTh, th) =>
-        resolveType(ctx.level, ctx.module, adv) match {
+        resolveType(level, module, adv) match {
           case (_, _, ud: UnionDecl) => checkUnionMember(ud, adv, th)
           case _ => throw new MismatchLocal
         }
@@ -205,7 +205,7 @@ class TypeChecker2(ctx: PassContext,
   }
 }
 
-class TypeInfer(val ctx: PassContext,
+class TypeInfer(val level: Level, module: Module,
                 val onSpec: (TypeInfer, GenericTh, TypeHint) => Unit = (self, gth, th) => {}) {
 
   var specMap = mutable.HashMap[GenericTh, TypeHint]()
@@ -224,7 +224,7 @@ class TypeInfer(val ctx: PassContext,
 
   def infer(location: Seq[AstInfo], expected: TypeHint, has: TypeHint): Unit = {
     new TypeChecker2(
-      ctx,
+      level, module,
       genericSpec = (adv, th) => {
         specMap.get(adv) match {
           case Some(specified) => Specified(specified)
@@ -255,7 +255,7 @@ class Equations(val typeParams: mutable.ListBuffer[GenericTh] = mutable.ListBuff
   def addEq(eq: Equation): Unit =
     eqSeq += eq
 
-  override def toString: String = if (eqSeq.length < 2) eqSeq.mkString("[ ", "", " ]") else eqSeq.mkString("[ ", " , ", " ]")
+  override def toString: String = eqSeq.mkString("[ ", " , ", " ]")
 }
 
 class TypeCheckPass {
@@ -292,7 +292,7 @@ class TypeCheckPass {
 
     var anonIdSeq = eqCallee.idSeq
     var eqSeq = eqCallee.eqSeq
-    val tInfer = new TypeInfer(ctx)
+    val tInfer = new TypeInfer(ctx.level, ctx.module)
 
     def check(lctx: PassContext, infer: TypeInfer, eq: Equation): Seq[Equation] = {
       val (eqSelfLocation, eqSelfTh) = eq.selfType
@@ -301,15 +301,15 @@ class TypeCheckPass {
       if (!eqSelfSpec.isInstanceOf[GenericTh] && !eqSelfSpec.containsAny) {
         lctx.log(s"check $eq vs $eqSelfSpec")
 
-        val (fnTh, fnEq) = Invoker.findSelfDef(lctx, eqSelfLocation, eqSelfSpec, eq.fnName)
+        val (_, fnTh, fnEq) = Invoker.findSelfDef(lctx, eqSelfLocation, eqSelfSpec, eq.fnName)
 
-        val selfFnInfer = new TypeInfer(lctx)
+        val selfFnInfer = new TypeInfer(lctx.level, lctx.module)
         selfFnInfer.infer(Seq() /* ??? */ , fnTh.args(0), eqSelfSpec)
 
         val selfFn = fnTh.spec(selfFnInfer.specMap, gth => gth).asInstanceOf[FnTh]
 
 
-        val localInfer = new TypeInfer(lctx)
+        val localInfer = new TypeInfer(lctx.level, lctx.module)
 
         ((eq.ret +: eq.args) zip (selfFn.ret +: selfFn.args.drop(1)))
           .foreach { case ((eqArgLocation, eqArgTh), fnArgTh) =>
@@ -376,13 +376,14 @@ class TypeCheckPass {
   object Invoker {
     def isSelfApplicable(ctx: PassContext, selfTh: TypeHint, selfArgTh: TypeHint): Boolean =
       try {
-        new TypeInfer(ctx).infer(Seq(selfTh.location), selfTh, selfArgTh);
+        new TypeInfer(ctx.level, ctx.module).infer(Seq(selfTh.location), selfTh, selfArgTh);
         true
       } catch {
         case ex: Exception => false
       }
 
-    def findSelfDef(ctx: PassContext, location: Seq[AstInfo], selfTh: TypeHint, fnName: String): (FnTh, Equations) = {
+    // Move from type infer to symbol resolve system?
+    def findSelfDef(ctx: PassContext, location: Seq[AstInfo], selfTh: TypeHint, fnName: String): (Def, FnTh, Equations) = {
       selfTh match {
         case gth: GenericTh =>
           throw new RuntimeException("Unexpected to be here")
@@ -398,22 +399,23 @@ class TypeCheckPass {
                 dctx.log(s":${fn.getTypeHint}")
                 dctx.log(s"eq ${fn.getEquations}")
               }
-              (fn.getTypeHint, fn.getEquations)
+              (fn, fn.getTypeHint, fn.getEquations)
             case None =>
               ctx.module.imports.seq.flatMap { ie =>
                 val mod = ctx.level.findMod(ie.path).getOrElse(throw TCE.NoSuchModulePath(ie.location))
                 mod.selfDefs.getOrElse(fnName, Seq()).map(fn => (ie, fn))
               }.find { case (ie, fn) => isSelfApplicable(ctx, fn.lambda.args.head.typeHint.moveToMod(Seq(ie)), selfTh) } match {
                 case Some((ie, fn)) =>
-                  (fn.getTypeHint, fn.getEquations)
+                  (fn, fn.getTypeHint, fn.getEquations)
                 case None =>
-                  (resolveBuiltinSelfDef(location, selfTh, fnName), new Equations())
+                  // oops
+                  (null, resolveBuiltinSelfDef(location, selfTh, fnName), new Equations())
               }
           }
       }
     }
 
-    def findSelfDefOpt(ctx: PassContext, location: Seq[AstInfo], selfTh: TypeHint, fnName: String): Option[(FnTh, Equations)] =
+    def findSelfDefOpt(ctx: PassContext, location: Seq[AstInfo], selfTh: TypeHint, fnName: String): Option[(Def, FnTh, Equations)] =
       try {
         Some(findSelfDef(ctx, location, selfTh, fnName))
       } catch {
@@ -470,7 +472,7 @@ class TypeCheckPass {
       val (selfLocation, selfTh) = self.infer(ctx, eqCaller, AnyTh)
 
       selfTh match {
-        // FIXME: try to resolve generic function locally at first?
+        // FIXME: try to resolve generic function locally at first? <---
         // FIXME: variant 2 - declare self function on ScalarTh only
         case gth: GenericTh =>
           val argsTh = args.map(argTask => argTask.infer(ctx, eqCaller, AnyTh))
@@ -478,9 +480,14 @@ class TypeCheckPass {
           val eqRet = if (retTh != AnyTh) retTh else eqCaller.nextAnonType()
 
           eqCaller.addEq(Equation((Seq(selfLocation), gth), fnName, argsTh, (Seq(location), eqRet)))
+          call.setCallAppliedTh(FnTh(Seq.empty, gth +: argsTh.map(_._2), eqRet))
+
           eqRet
         case _ =>
-          val (fnTh, fnEq) = findSelfDef(ctx, Seq(location), selfTh, fnName)
+          val (fn, fnTh, fnEq) = findSelfDef(ctx, Seq(location), selfTh, fnName)
+
+          call.setCallType(SelfCallModLocal) // FIXME: not true if self-def in another module
+
           invokePrototype(ctx, call, eqCaller, fnEq, retTh, fnTh, new InferTask {
             override def infer(ctx: PassContext, eq: Equations, th: TypeHint) = (selfLocation, selfTh)
           } +: args)
@@ -591,7 +598,6 @@ class TypeCheckPass {
                       }
                     })
                   case selfTh =>
-                    call.setCallType(SelfCallModLocal) // FIXME: not true if self-def in another module
                     Invoker.invokeSelfDef(ctx, eq, call, th, "get",
                       new InferTask {
                         override def infer(ctx: PassContext, eq: Equations, th: TypeHint): (AstInfo, TypeHint) =
@@ -657,7 +663,6 @@ class TypeCheckPass {
             }
 
             def default() = {
-              call.setCallType(SelfCallModLocal) //FIXME: not true if self-def in another mod
               Invoker.invokeSelfDef(ctx, eq, call, th, fnName, selfTask, argTasks)
             }
 
@@ -676,13 +681,9 @@ class TypeCheckPass {
                           case fth: FnTh =>
                             callField(fth)
                           case gettableTh if Invoker.findSelfDefOpt(ctx, Seq(call.location), gettableTh, "get") != None =>
-                            val (selfFth, selfEq) = Invoker.findSelfDef(ctx, Seq(call.location), gettableTh, "get")
-                            call.setCallType(SelfCallModLocal) //FIXME: not true if self-def in another mod
-
-                            //FIXME: why not invoke self def???
-                            Invoker.invokePrototype(ctx, call, eq, selfEq, th, selfFth, new InferTask {
+                            Invoker.invokeSelfDef(ctx, eq, call, th, "get", new InferTask {
                               override def infer(ctx: PassContext, eq: Equations, th: TypeHint): (AstInfo, TypeHint) = (self.location, gettableTh)
-                            } +: argTasks)
+                            }, argTasks)
                           case _ => default()
                         }
                       case _ => default()
@@ -718,7 +719,7 @@ class TypeCheckPass {
 
           sth.params.headOption match {
             case Some(elTh) =>
-              new TypeChecker2(ctx).doCheck(elTh, inferedElTh)
+              new TypeChecker2(ctx.level, ctx.module).doCheck(elTh, inferedElTh)
             case None =>
           }
 
@@ -812,7 +813,7 @@ class TypeCheckPass {
               case (expectedTh, AnyTh) => expectedTh
               case (expectedTh, argTh) =>
                 try {
-                  new TypeChecker2(ctx).isEqual(expectedTh, argTh);
+                  new TypeChecker2(ctx.level, ctx.module).isEqual(expectedTh, argTh);
                   argTh
                 } catch {
                   case ex: MismatchLocal => throw TCE.TypeMismatch(Seq(argTh.location), expectedTh, argTh)
@@ -895,7 +896,7 @@ class TypeCheckPass {
           case many => UnionTh(many)
         }
       case self@Unless(expr, isSeq) =>
-        val tc = new TypeChecker2(ctx)
+        val tc = new TypeChecker2(ctx.level, ctx.module)
         val exprTh = passExpr(ctx.deeperExpr(), scope, eq, AnyTh, expr)
 
         val exprUnionVariants = exprTh match {
@@ -948,7 +949,7 @@ class TypeCheckPass {
     }
 
     expr.setTypeHint(exprTh)
-    new TypeChecker2(ctx).check(Seq(expr.location), th, exprTh)
+    new TypeChecker2(ctx.level, ctx.module).check(Seq(expr.location), th, exprTh)
     ctx.log(":" + exprTh)
     exprTh
   }
@@ -1003,7 +1004,7 @@ class TypeCheckPass {
 
         declaredRetTh match {
           case Some(declared) =>
-            new TypeChecker2(ctx).check(Seq(declared.location), declared, retTh)
+            new TypeChecker2(ctx.level, ctx.module).check(Seq(declared.location), declared, retTh)
           case None =>
             fn.setTypeHint(FnTh(Seq.empty, fn.lambda.args.map(_.typeHint), retTh))
         }
