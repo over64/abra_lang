@@ -9,6 +9,7 @@ import m3.typecheck.Utils.RichDef
 import m3.typecheck.Utils.ThExtension
 import m3.typecheck._
 import TCMeta.TypeDeclTCMetaImplicit
+import TCMeta.ModuleTCMetaImplicit
 import TCMeta.VarTypeTCMetaImplicit
 import TCMeta.CallTypeTCMetaImplicit
 
@@ -440,26 +441,20 @@ class IrGenPass {
 
                 passDef(mctx, DContext(tInfer.specMap, fn, false))
 
-                val genericArgs = "[" + callAppliedTh.args.mkString(", ") + "]"
+                val genericArgs = "[" + fn.params.map(p => p.spec(tInfer.specMap)).mkString(", ") + "]"
                 ("@" + (id.value + genericArgs).escaped, args, None, callAppliedTh)
               } else
                 ("@" + id.value, args, None, callAppliedTh)
             case SelfCallModLocal =>
               val selfTh = dctx.meta.typeHintAs[ScalarTh](e)
 
-              val fn = mctx.module.selfDefs("get").find { d =>
-                d.lambda.args.head.typeHint match {
-                  case sth: ScalarTh => sth.name == selfTh.name
-                  case _ => false
-                }
-              }.get
+              val fn = mctx.module.getResolvedSelfDefs()((selfTh, "get"))
+              val fnTh = {
+                import TCMeta.ParseNodeTCMetaImplicit
+                fn.getTypeHint[FnTh]
+              }
 
               if (fn.isGeneric) {
-                val fnTh = {
-                  import TCMeta.ParseNodeTCMetaImplicit
-                  fn.getTypeHint[FnTh]
-                }
-
                 val tInfer = new TypeInfer(mctx.level, mctx.module)
 
                 (callAppliedTh.args zip fnTh.args).foreach { case (ath, fth) =>
@@ -469,10 +464,10 @@ class IrGenPass {
 
                 passDef(mctx, DContext(tInfer.specMap, fn, false))
 
-                val genericArgs = "[" + callAppliedTh.args.map(ath => ath.spec(tInfer.specMap)) mkString (", ") + "]"
-                ("@" + (selfTh + ".get" + genericArgs).escaped, e +: args, None, callAppliedTh)
+                val genericArgs = "[" + fn.params.map(p => p.spec(tInfer.specMap)).mkString(", ") + "]"
+                ("@" + (fnTh.args.head + ".get" + genericArgs).escaped, e +: args, None, callAppliedTh)
               } else
-                ("@" + (selfTh + ".get").escaped, e +: args, None, callAppliedTh)
+                ("@" + (fnTh.args.head + ".get").escaped, e +: args, None, callAppliedTh)
             case CallFnPtr =>
               val fnPtrRes = passExpr(mctx, dctx, e)
               val fth = dctx.meta.typeHintAs[FnTh](e)
@@ -489,7 +484,23 @@ class IrGenPass {
         val selfTh = dctx.meta.typeHint(self)
         val callAppliedTh = dctx.meta.callAppliedTh(call)
 
-        val selfFnName = "@" + (selfTh + "." + fnName).escaped
+        val fn = mctx.module.getResolvedSelfDefs()((selfTh, fnName))
+        val fnTh = {
+          import TCMeta.ParseNodeTCMetaImplicit
+          fn.getTypeHint[FnTh]
+        }
+
+        val tInfer = new TypeInfer(mctx.level, mctx.module)
+
+        (callAppliedTh.args zip fnTh.args).foreach { case (ath, fth) =>
+          tInfer.infer(Seq.empty, fth, ath)
+        }
+        tInfer.infer(Seq.empty, fnTh.ret, callAppliedTh.ret)
+
+        passDef(mctx, DContext(tInfer.specMap, fn, false))
+
+        val genericArgs = if (fn.params.isEmpty) "" else "[" + fn.params.map(p => p.spec(tInfer.specMap)).mkString(", ") + "]"
+        val selfFnName = "@" + (fnTh.args.head + "." + fnName + genericArgs).escaped
         performCall(callAppliedTh, self +: args, None, selfFnName)
       case Prop(from, props) =>
         // FIXME: gep
@@ -730,7 +741,7 @@ class IrGenPass {
     val retTh = fth.ret
 
     val params = dctx.fn.params
-    val irParams = if(params.isEmpty) "" else params.map(p => p.spec(dctx.specMap)).mkString("[", ", ", "]")
+    val irParams = if (params.isEmpty) "" else params.map(p => p.spec(dctx.specMap)).mkString("[", ", ", "]")
 
     val fnName =
       dctx.fn.lambda.args.headOption match {
@@ -738,11 +749,44 @@ class IrGenPass {
         case _ => (dctx.fn.name + irParams).escaped
       }
 
+    if(mctx.defs.contains(fnName)) return
+
     fth.args.foreach(th => mctx.typeHints += th)
     mctx.typeHints += retTh
 
     dctx.fn.lambda.body match {
-      case llVm(code) => dctx.write(code)
+      case llVm(code) =>
+
+        code.split("\n").map(line => line.trim).foreach { line =>
+          if (line.startsWith(";meta ")) {
+            val cmd = line.stripPrefix(";meta ")
+
+            if (cmd.startsWith("rc_")) {
+              val pattern = """rc_(inc|dec)\[([a-zA-Z0-9]+)\]\(([a-zA-Z0-9]+)\)""".r
+              cmd match {
+                case pattern(incOrDec, typeName, symName) =>
+                  val mode = if (incOrDec == "inc") Inc else Dec
+                  val th = dctx.specMap(GenericTh(typeName, false))
+                  RC.doRC(mctx, dctx, mode, th, false, "%" + symName)
+
+              }
+            }
+          } else {
+            var r = dctx.fn.params.foldLeft(line) { case (l, gth) =>
+              try {
+                l.replace("$" + gth, dctx.specMap(gth).toValue)
+              } catch {
+                case ex: NoSuchElementException =>
+                  var x = 1
+                  throw ex
+              }
+            }
+
+            r = r.replace("$retTypeof()", dctx.specialized(dctx.fn.retTh).toValue)
+            dctx.write(r)
+          }
+
+        }
       case AbraCode(seq) =>
         val (eth, eRes) = performBlock(mctx, dctx, seq)
 
@@ -794,7 +838,9 @@ class IrGenPass {
 
         mctx.defs.foreach { case (fnName, dctx) =>
           val fth = dctx.meta.typeHintAs[FnTh](dctx.fn)
-          val irArgs = dctx.fn.lambda.args.map(arg => s"${AbiTh.toCallArg(mctx, dctx.specialized(arg.typeHint))} %${arg.name}")
+          val irArgs = (fth.args zip dctx.fn.lambda.args).map {
+            case (ath, arg) => s"${AbiTh.toCallArg(mctx, dctx.specialized(ath))} %${arg.name}"
+          }
           val realArgs = if (dctx.isClosure) irArgs :+ "i8* %__env" else irArgs
 
           mctx.write(s"define ${AbiTh.toRetVal(mctx, fth.ret)} @$fnName (${realArgs.mkString(", ")}) {")

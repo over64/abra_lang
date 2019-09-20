@@ -2,6 +2,8 @@ package m3.typecheck
 
 import m3.parse.Ast0._
 
+import scala.collection.mutable.HashMap
+
 sealed trait CallType
 
 case object CallModLocal extends CallType
@@ -11,6 +13,22 @@ case object SelfCallModImport extends CallType
 case object CallFnPtr extends CallType
 
 object TCMeta {
+
+  implicit class ModuleTCMetaImplicit(self: Module) {
+    def valueOrEmpty() =
+      self.meta.getOrElseUpdate("typecheck.resolved_self_defs",
+        new HashMap[(TypeHint, String), Def]())
+        .asInstanceOf[HashMap[(TypeHint, String), Def]]
+
+
+    def addResolvedSelfDef(selfTh: TypeHint, fnName: String, fn: Def): Unit = {
+      val cont = valueOrEmpty()
+      cont.put((selfTh, fnName), fn)
+    }
+
+    def getResolvedSelfDefs() =
+      valueOrEmpty()
+  }
 
   implicit class ParseNodeTCMetaImplicit(self: ParseNode) {
     def setTypeHint(th: TypeHint): Unit = self.meta.put("typecheck.typeHint", th)

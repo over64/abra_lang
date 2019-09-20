@@ -392,6 +392,7 @@ class TypeCheckPass {
             defs.find(d => isSelfApplicable(ctx, d.lambda.args.head.typeHint, selfTh))
           } match {
             case Some(fn) =>
+              ctx.module.addResolvedSelfDef(selfTh, fnName, fn)
               if (fn.getTypeHintOpt == None) passDef(ctx.deeperDef(Some(selfTh), fnName), fn)
               else {
                 val dctx = ctx.deeperExpr()
@@ -591,12 +592,14 @@ class TypeCheckPass {
                     call.setCallType(CallFnPtr)
                     id.setVarLocation(vt)
                     id.setTypeHint(fth)
+                    //FIXME: может быть тут не нужен invokePrototype?
                     Invoker.invokePrototype(ctx, call, eq, new Equations(), th, fth, args.map { arg =>
                       new InferTask {
                         override def infer(ctx: PassContext, eq: Equations, th: TypeHint): (AstInfo, TypeHint) =
                           (arg.location, passExpr(ctx.deeperExpr(), scope, eq, th, arg))
                       }
                     })
+                    fth.ret
                   case selfTh =>
                     Invoker.invokeSelfDef(ctx, eq, call, th, "get",
                       new InferTask {

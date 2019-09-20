@@ -54,24 +54,6 @@ class _02ConsTest extends FunSuite {
       """, exitCode = 42)
   }
 
-  test("construction: value array") {
-    CodeGenUtil.run(
-      """
-        def main =
-          Array3(1, 2, 3)
-          42 .
-      """, exitCode = 42)
-  }
-
-  test("construction: ref array") {
-    CodeGenUtil.run(
-      """
-        def main =
-          Array(1, 2, 3)
-          42 .
-      """, exitCode = 42)
-  }
-
   test("construction: value union field conv") {
     CodeGenUtil.run(
       """

@@ -56,7 +56,7 @@ object Builtin {
       selfTh match {
         case sth: ScalarTh if isArrayThName(sth.name) =>
           name match {
-            case "len" => FnTh(Seq.empty, Seq(sth), thLong) // ??? why not thArraySize
+            case "len" => FnTh(Seq.empty, Seq(sth), thInt) // ??? why not thArraySize
             case "get" => FnTh(Seq.empty, Seq(sth, thArraySize), sth.params.head)
             case "set" => FnTh(Seq.empty, Seq(sth, thArraySize, sth.params.head), thNil)
           }

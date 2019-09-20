@@ -267,9 +267,9 @@ object IrUtils {
                       case (_, _, sd: StructDecl) if sd.isBuiltinArray =>
                         val elementIr = th.params(0).toValue
                         if (th.isRefType(level, module))
-                          s"$elementIr*"
+                          s"{i32, $elementIr*}"
                         else
-                          s"{i64, [${sd.getBuiltinArrayLen.get} x $elementIr]}"
+                          s"[${sd.getBuiltinArrayLen.get} x $elementIr]"
                       case (ieSeq, _, sd: StructDecl) =>
                         val specMap = Utils.makeSpecMap(sd.params, th.params)
                         val fieldsIr = sd.fields.map { f => f.th.moveToMod(ieSeq).spec(specMap).toValue }

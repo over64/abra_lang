@@ -110,7 +110,7 @@ def startsWith = self: String, prefix: String do llvm
 type Float = llvm float .
 
 def == = self: Float, other: Float do llvm
-  %1 = fcmp oeq float %self, %other
+  %1 = fcmp eq float %self, %other
   %2 = zext i1 %1 to i8
   ret i8 %2 .Bool
 

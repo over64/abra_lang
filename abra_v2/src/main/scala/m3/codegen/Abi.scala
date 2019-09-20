@@ -3,6 +3,7 @@ package m3.codegen
 import m3.codegen.IrUtils.{NullableU, ThIrExtension}
 import m3.parse.Ast0._
 import m3.typecheck.{Builtin, VarClosureLocal, VarClosureParam, VarType}
+import m3.typecheck.Utils.ThExtension
 
 sealed trait RCMode
 case object Inc extends RCMode
@@ -72,6 +73,14 @@ object Abi {
             val slot = dctx.addSlot(requireTh)
             store(mctx, dctx, false, false, requireTh, hasTh, slot, loadResValue(hasTh, res).value)
             EResult(slot, true, res.isAnon)
+          case RefStruct(_) if requireTh.isArray =>
+            val r1, r2, r3 = "%" + dctx.nextReg("")
+            val elTh = hasTh.asInstanceOf[ScalarTh].params(0)
+            dctx.write(s"$r1 = bitcast ${hasTh.toValue}* ${res.value} to ${elTh.toValue}*")
+            val len = hasTh.getArrayLen
+            dctx.write(s"$r2 = insertvalue ${requireTh.toValue} undef, i32 $len, 0")
+            dctx.write(s"$r3 = insertvalue ${requireTh.toValue} $r2, ${elTh.toValue}* $r1, 1")
+            EResult(r3, false, res.isAnon)
           case _ =>
             throw new RuntimeException("unreachable")
         }

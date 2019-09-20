@@ -83,6 +83,9 @@ object Utils {
       case _ => false
     }
 
+    def getArrayLen: Long = self.asInstanceOf[ScalarTh].name
+      .replace("Array", "").toLong
+
     def isBuiltin = self match {
       case sth: ScalarTh =>
     }
@@ -97,7 +100,7 @@ object Utils {
       case FnTh(closure, args, ret) =>
         args.foreach(a => a.findGenerics(dest))
         ret.findGenerics(dest)
-      case gth: GenericTh => dest += gth
+      case gth: GenericTh => if (!dest.contains(gth)) dest += gth
       case AnyTh =>
     }
 

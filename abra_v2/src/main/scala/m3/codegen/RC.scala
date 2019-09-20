@@ -59,26 +59,26 @@ object RC {
     val elTh = arrayTh.params(0)
     genRcBase(mctx, mode, elTh)
 
+    val arrayIrType = arrayTh.toValue
     val elIrType = elTh.toValue
 
     genIncDec(mctx, mode, buff, arrayTh,
       irType => {
-        buff.write(s"  %dataOffset = bitcast $elIrType* %self to i8*")
-        buff.write(s"  %data = getelementptr i8, i8* %dataOffset, i64 -8")
+        buff.write(s"  %ptr = extractvalue $arrayIrType %self, 1")
+        buff.write(s"  %data = bitcast $elIrType* %ptr to i8*")
       },
       irType => {
         if (elTh.isRefType(mctx.level, mctx.module)) {
-          buff.write(s"      %lenPtr = bitcast i8* %data to i64*")
-          buff.write(s"      %len = load i64, i64* %lenPtr")
-          buff.write(s"      %i = alloca i64")
-          buff.write(s"      store i64 0, i64* %i")
+          buff.write(s"      %len = extractvalue $arrayIrType %self, 0")
+          buff.write(s"      %i = alloca i32")
+          buff.write(s"      store i32 0, i32* %i")
           buff.write(s"      br label %ehead")
           buff.write(s"    ehead:")
-          buff.write(s"      %iv = load i64, i64* %i")
-          buff.write(s"      %econd = icmp eq i64 %iv, %len")
+          buff.write(s"      %iv = load i32, i32* %i")
+          buff.write(s"      %econd = icmp eq i32 %iv, %len")
           buff.write(s"      br i1 %econd, label %eend, label %efree")
           buff.write(s"    efree:")
-          buff.write(s"      %tPtr = getelementptr $elIrType, $elIrType* %self, i64 %iv")
+          buff.write(s"      %tPtr = getelementptr $elIrType, $elIrType* %ptr, i32 %iv")
 
           elTh.isUnion(mctx.level, mctx.module) match {
             case SimpleU =>
@@ -88,8 +88,8 @@ object RC {
               buff.write(s"      call void @${decFnName(elTh)}($elIrType %tValue)")
           }
 
-          buff.write(s"      %ii = add nsw i64 %iv, 1")
-          buff.write(s"      store i64 %ii, i64* %i")
+          buff.write(s"      %ii = add nsw i32 %iv, 1")
+          buff.write(s"      store i32 %ii, i32* %i")
           buff.write(s"      br label %ehead")
           buff.write(s"    eend:")
         }
