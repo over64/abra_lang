@@ -151,9 +151,9 @@ def main =
 
   running = true
   while running do
-    sdl.pollEvents(lambda event: Event ->
+    sdl.pollEvents with event ->
       if event.eventType == sdl.eventQuit() do
-        running = false .)
+        running = false ..
 
     renderer.render()
     window.glSwap() .

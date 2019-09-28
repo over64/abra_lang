@@ -11,20 +11,20 @@ case object Dec extends RCMode
 
 object AbiTh {
   def toStoreSrc(mctx: ModContext, th: TypeHint): String =
-    th.classify(mctx.level, mctx.module) match {
-      case NullableUnion(_) | RefStruct(_) | RefScalar | ValueScalar => th.toValue
-      case RefUnion(_) => th.toValue + "*"
-      case ValueUnion(_) | ValueStruct(_) => th.toValue
+    th.classify(mctx) match {
+      case NullableUnion(_) | RefStruct(_) | RefScalar | ValueScalar => th.toValue(mctx)
+      case RefUnion(_) => th.toValue(mctx) + "*"
+      case ValueUnion(_) | ValueStruct(_) => th.toValue(mctx)
     }
 
   def toRetVal(mctx: ModContext, th: TypeHint): String =
-    th.toValue
+    th.toValue(mctx)
 
   def toCallArg(mctx: ModContext, th: TypeHint): String =
-    th.classify(mctx.level, mctx.module) match {
-      case NullableUnion(_) | RefStruct(_) | RefScalar | ValueScalar => th.toValue
-      case RefUnion(_) => th.toValue + "*"
-      case ValueUnion(_) | ValueStruct(_) => th.toValue + "*"
+    th.classify(mctx) match {
+      case NullableUnion(_) | RefStruct(_) | RefScalar | ValueScalar => th.toValue(mctx)
+      case RefUnion(_) => th.toValue(mctx) + "*"
+      case ValueUnion(_) | ValueStruct(_) => th.toValue(mctx) + "*"
     }
 
   def toClosure(mctx: ModContext,
@@ -32,11 +32,11 @@ object AbiTh {
     val fields =
       closure.map { case (_, th, vt) =>
         vt match {
-          case VarClosureLocal(_) => th.toValue + "*"
+          case VarClosureLocal(_) => th.toValue(mctx) + "*"
           case VarClosureParam(_) =>
-            th.classify(mctx.level, mctx.module) match {
-              case RefUnion(_) | ValueUnion(_) | ValueStruct(_) => th.toValue + "*"
-              case _ => th.toValue
+            th.classify(mctx) match {
+              case RefUnion(_) | ValueUnion(_) | ValueStruct(_) => th.toValue(mctx) + "*"
+              case _ => th.toValue(mctx)
             }
           case _ => throw new RuntimeException("unreachable")
         }
@@ -55,13 +55,13 @@ object Abi {
       if (!res.isPtr) res
       else {
         val r = "%" + dctx.nextReg("")
-        dctx.write(s"$r = load ${th.toValue}, ${th.toValue}* ${res.value}")
+        dctx.write(s"$r = load ${th.toValue(mctx)}, ${th.toValue(mctx)}* ${res.value}")
         EResult(r, false, res.isAnon)
       }
 
     val sameThRes =
       if (requireTh != hasTh)
-        requireTh.classify(mctx.level, mctx.module) match {
+        requireTh.classify(mctx) match {
           case NullableUnion(_) =>
             if (hasTh == Builtin.thNil) EResult("null", false, res.isAnon)
             else res
@@ -76,17 +76,17 @@ object Abi {
           case RefStruct(_) if requireTh.isArray =>
             val r1, r2, r3 = "%" + dctx.nextReg("")
             val elTh = hasTh.asInstanceOf[ScalarTh].params(0)
-            dctx.write(s"$r1 = bitcast ${hasTh.toValue}* ${res.value} to ${elTh.toValue}*")
+            dctx.write(s"$r1 = bitcast ${hasTh.toValue(mctx)}* ${res.value} to ${elTh.toValue(mctx)}*")
             val len = hasTh.getArrayLen
-            dctx.write(s"$r2 = insertvalue ${requireTh.toValue} undef, i32 $len, 0")
-            dctx.write(s"$r3 = insertvalue ${requireTh.toValue} $r2, ${elTh.toValue}* $r1, 1")
+            dctx.write(s"$r2 = insertvalue ${requireTh.toValue(mctx)} undef, i32 $len, 0")
+            dctx.write(s"$r3 = insertvalue ${requireTh.toValue(mctx)} $r2, ${elTh.toValue(mctx)}* $r1, 1")
             EResult(r3, false, res.isAnon)
           case _ =>
             throw new RuntimeException("unreachable")
         }
       else res
 
-    requireTh.classify(mctx.level, mctx.module) match {
+    requireTh.classify(mctx) match {
       case NullableUnion(_) | RefStruct(_) | RefScalar | ValueScalar =>
         loadResValue(requireTh, sameThRes)
       case RefUnion(_) =>
@@ -96,7 +96,7 @@ object Abi {
             else {
               val value = loadResValue(requireTh, sameThRes).value
               val slot = dctx.addSlot(requireTh)
-              dctx.write(s"store ${requireTh.toValue} $value, ${requireTh.toValue}* $slot")
+              dctx.write(s"store ${requireTh.toValue(mctx)} $value, ${requireTh.toValue(mctx)}* $slot")
               EResult(slot, true, sameThRes.isAnon)
             }
           case _ => loadResValue(requireTh, sameThRes)
@@ -108,7 +108,7 @@ object Abi {
             else {
               val value = loadResValue(requireTh, sameThRes).value
               val slot = dctx.addSlot(requireTh)
-              dctx.write(s"store ${requireTh.toValue} $value, ${requireTh.toValue}* $slot")
+              dctx.write(s"store ${requireTh.toValue(mctx)} $value, ${requireTh.toValue(mctx)}* $slot")
               EResult(slot, true, sameThRes.isAnon)
             }
           case _ => loadResValue(requireTh, sameThRes)
@@ -123,15 +123,15 @@ object Abi {
             destTh: TypeHint, srcTh: TypeHint,
             destPtr: String, src: String): Unit = {
     if (needInc)
-      RC.doRC(mctx, dctx, Inc, srcTh, srcTh.classify(mctx.level, mctx.module) match { case RefUnion(_) => true case _ => false }, src) // ppc
+      RC.doRC(mctx, dctx, Inc, srcTh, srcTh.classify(mctx) match { case RefUnion(_) => true case _ => false }, src) // ppc
     if (needDec)
       RC.doRC(mctx, dctx, Dec, destTh, true, destPtr)
 
-    val srcIrType = srcTh.toValue
-    val destIrType = destTh.toValue
+    val srcIrType = srcTh.toValue(mctx)
+    val destIrType = destTh.toValue(mctx)
 
     val realSrc =
-      srcTh.classify(mctx.level, mctx.module) match {
+      srcTh.classify(mctx) match {
         case RefUnion(_) =>
           val r = "%" + dctx.nextReg("")
           dctx.write(s"$r = load $srcIrType, $srcIrType* $src")
@@ -143,9 +143,9 @@ object Abi {
       dctx.write(s"store $srcIrType $realSrc, $destIrType* $destPtr")
     else {
       /* member to union */
-      val variants = destTh.asUnion(mctx.level, mctx.module)
+      val variants = destTh.asUnion(mctx)
 
-      destTh.isUnion(mctx.level, mctx.module) match {
+      destTh.isUnion(mctx) match {
         case NullableU(_) =>
           if (srcTh == Builtin.thNil)
             dctx.write(s"store $destIrType null, $destIrType* $destPtr")

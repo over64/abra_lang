@@ -96,15 +96,15 @@ class _17ArraysTest extends FunSuite {
     CodeGenUtil.run(
       safeCode +
         """
-        def main =
-          array: Array[String] = mk(100, lambda i -> 'hello')
+      def main =
+        array = mk(100, lambda i -> 'hello')
 
-          j = 0
-          while j < 100 do
-            array(j) = 'world'
-            j = j + 1 .
+        j = 0
+        while j < 100 do
+          array(j) = 'world'
+          j = j + 1 .
 
-          array.len() .
+        array.len() .
       """, 100)
   }
 

@@ -5,16 +5,16 @@ import m3.parse.Ast0._
 import scala.collection.mutable.HashMap
 
 sealed trait CallType
-
-case object CallModLocal extends CallType
-case object CallModImport extends CallType
-case object SelfCallModLocal extends CallType
-case object SelfCallModImport extends CallType
 case object CallFnPtr extends CallType
+case class CallLocal(fn: Def) extends CallType
+case class CallImport(module: Module, fn: Def) extends CallType
+case class SelfCallLocal(fn: Def) extends CallType
+case class SelfCallImport(module: Module, fn: Def) extends CallType
+case class SelfCallPolymorphic(fth: FnTh) extends CallType
 
 object TCMeta {
 
-  implicit class ModuleTCMetaImplicit(self: Module) {
+  implicit class PolymorphicTCMetaImplicit(self: ParseNode) {
     def valueOrEmpty() =
       self.meta.getOrElseUpdate("typecheck.resolved_self_defs",
         new HashMap[(TypeHint, String), Def]())
@@ -40,11 +40,11 @@ object TCMeta {
       throw new RuntimeException("no typeHint")
     }
 
-    def setCallAppliedTh(fth: FnTh): Unit =
-      self.meta.put("typecheck.call_applied_th", fth)
+    def setCallSpecMap(specMap: HashMap[GenericTh, TypeHint]): Unit =
+      self.meta.put("typecheck.call_spec_map", specMap)
 
-    def getCallAppliedTh: FnTh =
-      self.meta("typecheck.call_applied_th").asInstanceOf[FnTh]
+    def getCallSpecMap =
+      self.meta("typecheck.call_spec_map").asInstanceOf[HashMap[GenericTh, TypeHint]]
   }
 
   implicit class TypeDeclTCMetaImplicit(self: TypeDecl) {

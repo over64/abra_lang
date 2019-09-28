@@ -22,7 +22,7 @@ object RC {
                 unpackSelf: String => Unit,
                 writeDest: String => Unit): Unit = {
 
-    val irType = th.toValue
+    val irType = th.toValue(mctx)
 
     mode match {
       case Inc =>
@@ -59,8 +59,8 @@ object RC {
     val elTh = arrayTh.params(0)
     genRcBase(mctx, mode, elTh)
 
-    val arrayIrType = arrayTh.toValue
-    val elIrType = elTh.toValue
+    val arrayIrType = arrayTh.toValue(mctx)
+    val elIrType = elTh.toValue(mctx)
 
     genIncDec(mctx, mode, buff, arrayTh,
       irType => {
@@ -68,7 +68,7 @@ object RC {
         buff.write(s"  %data = bitcast $elIrType* %ptr to i8*")
       },
       irType => {
-        if (elTh.isRefType(mctx.level, mctx.module)) {
+        if (elTh.isRefType(mctx)) {
           buff.write(s"      %len = extractvalue $arrayIrType %self, 0")
           buff.write(s"      %i = alloca i32")
           buff.write(s"      store i32 0, i32* %i")
@@ -80,7 +80,7 @@ object RC {
           buff.write(s"    efree:")
           buff.write(s"      %tPtr = getelementptr $elIrType, $elIrType* %ptr, i32 %iv")
 
-          elTh.isUnion(mctx.level, mctx.module) match {
+          elTh.isUnion(mctx) match {
             case SimpleU =>
               buff.write(s"      call void @${decFnName(elTh)}($elIrType* %tPtr)")
             case _ =>
@@ -103,19 +103,19 @@ object RC {
     )
 
   def forStruct(mctx: ModContext, mode: RCMode, buff: StringBuilder, th: TypeHint, fields: Seq[FieldTh]): Unit = {
-    val irTypeBody = (th + ".body").escaped
+    val irTypeBody = th.toValue(mctx, suffix = ".body")
 
     genIncDec(mctx, mode, buff, th,
       irType => buff.write(s"  %data = bitcast $irType %self to i8*"),
       irType => {
-        fields.zipWithIndex.filter { case (f, i) => f.typeHint.isRefType(mctx.level, mctx.module) }.foreach {
+        fields.zipWithIndex.filter { case (f, i) => f.typeHint.isRefType(mctx) }.foreach {
           case (f, idx) =>
             genRcBase(mctx, mode, f.typeHint)
 
-            val typeRef = f.typeHint.toValue
-            buff.write(s"    %${f.name} = getelementptr %$irTypeBody, $irType %self, i64 0, i32 $idx")
+            val typeRef = f.typeHint.toValue(mctx)
+            buff.write(s"    %${f.name} = getelementptr $irTypeBody, $irType %self, i64 0, i32 $idx")
 
-            f.typeHint.isUnion(mctx.level, mctx.module) match {
+            f.typeHint.isUnion(mctx) match {
               case SimpleU =>
                 buff.write(s"    call void @${decFnName(f.typeHint)}($typeRef* %${f.name})")
               case _ =>
@@ -129,12 +129,12 @@ object RC {
   def forNullableUnion(mctx: ModContext, mode: RCMode, buff: StringBuilder, th: TypeHint, variant: TypeHint): Unit = {
     genRcBase(mctx, mode, variant)
 
-    val irType = th.toValue
+    val irType = th.toValue(mctx)
     val dname = if (mode == Inc) incFnName(th) else decFnName(th)
 
     buff.write(s"""define private void @$dname ($irType %self) { """)
 
-    val vIrType = variant.toValue
+    val vIrType = variant.toValue(mctx)
     buff.write(s"  %1 = icmp eq $irType %self, null ")
     buff.write(s"  br i1 %1, label %end, label %do")
     buff.write(s"  do:")
@@ -151,7 +151,7 @@ object RC {
   }
 
   def forUnion(mctx: ModContext, mode: RCMode, buff: StringBuilder, th: TypeHint, variants: Seq[TypeHint]): Unit = {
-    val irType = th.toValue
+    val irType = th.toValue(mctx)
     val dname = if (mode == Inc) incFnName(th) else decFnName(th)
 
     buff.write(s"""define private void @$dname ($irType* %self) { """)
@@ -163,7 +163,7 @@ object RC {
     val needSeq = variants.zipWithIndex.map { case (v, idx) =>
       genRcBase(mctx, mode, v)
 
-      val need = v.isRefType(mctx.level, mctx.module)
+      val need = v.isRefType(mctx)
       if (need)
         buff.write(s"    i64 $idx, label %br$idx")
 
@@ -177,13 +177,13 @@ object RC {
         buff.write(s"  br$idx:")
 
 
-        val vIrType = vth.toValue
+        val vIrType = vth.toValue(mctx)
         val f = if (mode == Inc) incFnName(vth) else decFnName(vth)
 
         buff.write(s"  %cast$idx = bitcast $irType* %self to {i64, $vIrType}*")
         buff.write(s"  %x${idx}Ptr = getelementptr {i64, $vIrType}, {i64, $vIrType}* %cast$idx, i64 0, i32 1")
 
-        vth.isUnion(mctx.level, mctx.module) match {
+        vth.isUnion(mctx) match {
           case SimpleU =>
             buff.write(s"    call void @$f($vIrType* %x${idx}Ptr)")
           case _ =>
@@ -201,7 +201,7 @@ object RC {
   }
 
   def genRc(mctx: ModContext, mode: RCMode, buff: StringBuilder, th: TypeHint): Unit =
-    th.classify(mctx.level, mctx.module) match {
+    th.classify(mctx) match {
       case NullableUnion(variant) =>
         forNullableUnion(mctx, mode, buff, th, variant)
       case RefUnion(variants) =>
@@ -231,13 +231,13 @@ object RC {
     genRcBase(mctx, mode, th)
     val sync = Abi.syncValue(mctx, dctx, EResult(value, isPtr, true /* no matters */), AsStoreSrc, th, th)
 
-    th.classify(mctx.level, mctx.module) match {
+    th.classify(mctx) match {
       case RefUnion(_) =>
         val fnName = if (mode == Dec) decFnName(th) else incFnName(th)
-        dctx.write(s"call void @$fnName(${th.toValue}* ${sync.value})")
+        dctx.write(s"call void @$fnName(${th.toValue(mctx)}* ${sync.value})")
       case NullableUnion(_) | RefStruct(_) | RefScalar =>
         val fnName = if (mode == Dec) decFnName(th) else incFnName(th)
-        dctx.write(s"call void @$fnName(${th.toValue} ${sync.value})")
+        dctx.write(s"call void @$fnName(${th.toValue(mctx)} ${sync.value})")
       case _ =>
     }
   }

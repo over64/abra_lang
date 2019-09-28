@@ -287,7 +287,7 @@ class TypeCheckPass {
   }
 
   class CallInfer(val ctx: PassContext,
-                  val callLocation: Seq[AstInfo],
+                  val caller: ParseNode,
                   val eqCallee: Equations) {
 
     var anonIdSeq = eqCallee.idSeq
@@ -301,7 +301,8 @@ class TypeCheckPass {
       if (!eqSelfSpec.isInstanceOf[GenericTh] && !eqSelfSpec.containsAny) {
         lctx.log(s"check $eq vs $eqSelfSpec")
 
-        val (_, fnTh, fnEq) = Invoker.findSelfDef(lctx, eqSelfLocation, eqSelfSpec, eq.fnName)
+        val (_, fn, fnTh, fnEq) = Invoker.findSelfDef(lctx, eqSelfLocation, eqSelfSpec, eq.fnName)
+        caller.addResolvedSelfDef(eqSelfTh, eq.fnName, fn)
 
         val selfFnInfer = new TypeInfer(lctx.level, lctx.module)
         selfFnInfer.infer(Seq() /* ??? */ , fnTh.args(0), eqSelfSpec)
@@ -325,7 +326,7 @@ class TypeCheckPass {
         def mySmartSpec(th: TypeHint): TypeHint = {
           th.spec(reversed, onNotFound = { gth =>
             anonIdSeq += 1 // FIXME BUG
-            val bound = GenericTh("a" + (anonIdSeq + 1) /*FIXME BUG */ , isAnon = true)
+            val bound = GenericTh("a" + anonIdSeq, isAnon = true)
             localInfer.specMap.put(bound, gth)
             reversed.put(gth, bound)
             bound
@@ -362,15 +363,29 @@ class TypeCheckPass {
     def advice(thCallee: TypeHint): TypeHint =
       thCallee.spec(tInfer.specMap)
 
-    def lift(eqCaller: Equations): Unit =
+    def lift(eqCaller: Equations): Unit = {
+      def mySmartSpec(th: TypeHint): TypeHint = {
+        th.spec(tInfer.specMap, onNotFound = { gth =>
+          if (gth.isAnon) {
+            anonIdSeq += 1
+            val bound = GenericTh("a" + anonIdSeq, isAnon = true)
+            tInfer.specMap.put(gth, bound)
+            bound
+          } else throw new RuntimeException("oops???")
+        })
+      }
+
       eqCaller.eqSeq ++= eqSeq.map { eq =>
-        val lifted = Equation((eq.selfType._1, eq.selfType._2.spec(tInfer.specMap).asInstanceOf[GenericTh]), eq.fnName, eq.args.map { arg =>
-          (arg._1, arg._2.spec(tInfer.specMap))
-        }, (eq.ret._1, eq.ret._2.spec(tInfer.specMap)))
+        val lifted = Equation((eq.selfType._1, mySmartSpec(eq.selfType._2).asInstanceOf[GenericTh]), eq.fnName, eq.args.map { arg =>
+          (arg._1, mySmartSpec(arg._2))
+        }, (eq.ret._1, mySmartSpec(eq.ret._2)))
 
         ctx.log(s"lift $lifted")
         lifted
       }
+
+      eqCaller.idSeq = anonIdSeq
+    }
   }
 
   object Invoker {
@@ -383,7 +398,7 @@ class TypeCheckPass {
       }
 
     // Move from type infer to symbol resolve system?
-    def findSelfDef(ctx: PassContext, location: Seq[AstInfo], selfTh: TypeHint, fnName: String): (Def, FnTh, Equations) = {
+    def findSelfDef(ctx: PassContext, location: Seq[AstInfo], selfTh: TypeHint, fnName: String): (Module, Def, FnTh, Equations) = {
       selfTh match {
         case gth: GenericTh =>
           throw new RuntimeException("Unexpected to be here")
@@ -392,7 +407,6 @@ class TypeCheckPass {
             defs.find(d => isSelfApplicable(ctx, d.lambda.args.head.typeHint, selfTh))
           } match {
             case Some(fn) =>
-              ctx.module.addResolvedSelfDef(selfTh, fnName, fn)
               if (fn.getTypeHintOpt == None) passDef(ctx.deeperDef(Some(selfTh), fnName), fn)
               else {
                 val dctx = ctx.deeperExpr()
@@ -400,23 +414,23 @@ class TypeCheckPass {
                 dctx.log(s":${fn.getTypeHint}")
                 dctx.log(s"eq ${fn.getEquations}")
               }
-              (fn, fn.getTypeHint, fn.getEquations)
+              (ctx.module, fn, fn.getTypeHint, fn.getEquations)
             case None =>
               ctx.module.imports.seq.flatMap { ie =>
                 val mod = ctx.level.findMod(ie.path).getOrElse(throw TCE.NoSuchModulePath(ie.location))
-                mod.selfDefs.getOrElse(fnName, Seq()).map(fn => (ie, fn))
-              }.find { case (ie, fn) => isSelfApplicable(ctx, fn.lambda.args.head.typeHint.moveToMod(Seq(ie)), selfTh) } match {
-                case Some((ie, fn)) =>
-                  (fn, fn.getTypeHint, fn.getEquations)
+                mod.selfDefs.getOrElse(fnName, Seq()).map(fn => (mod, ie, fn))
+              }.find { case (mod, ie, fn) => isSelfApplicable(ctx, fn.lambda.args.head.typeHint.moveToMod(Seq(ie)), selfTh) } match {
+                case Some((mod, ie, fn)) =>
+                  (mod, fn, fn.getTypeHint, fn.getEquations)
                 case None =>
-                  // oops
-                  (null, resolveBuiltinSelfDef(location, selfTh, fnName), new Equations())
+                  // FIXME: oops
+                  (null, null, resolveBuiltinSelfDef(location, selfTh, fnName), new Equations())
               }
           }
       }
     }
 
-    def findSelfDefOpt(ctx: PassContext, location: Seq[AstInfo], selfTh: TypeHint, fnName: String): Option[(Def, FnTh, Equations)] =
+    def findSelfDefOpt(ctx: PassContext, location: Seq[AstInfo], selfTh: TypeHint, fnName: String): Option[(Module, Def, FnTh, Equations)] =
       try {
         Some(findSelfDef(ctx, location, selfTh, fnName))
       } catch {
@@ -431,7 +445,7 @@ class TypeCheckPass {
       if (fnTh.args.length != args.length)
         throw TCE.ArgsCountMismatch(Seq(location), fnTh.args.length, args.length)
 
-      val eqInfer = new CallInfer(ctx, Seq(location), eqCallee)
+      val eqInfer = new CallInfer(ctx, caller, eqCallee)
 
 
       if (retTh != AnyTh) {
@@ -458,7 +472,8 @@ class TypeCheckPass {
       eqInfer.lift(eqCaller)
 
       val inferedRet = eqInfer.advice(fnTh.ret)
-      caller.setCallAppliedTh(FnTh(Seq.empty, inferedArgs, inferedRet))
+      caller.setCallSpecMap(eqInfer.tInfer.specMap)
+      //      caller.setCallAppliedTh(FnTh(Seq.empty, inferedArgs, inferedRet))
       inferedRet
     }
 
@@ -480,14 +495,17 @@ class TypeCheckPass {
             .map { case (loc, th) => (Seq(loc), th) }
           val eqRet = if (retTh != AnyTh) retTh else eqCaller.nextAnonType()
 
+
           eqCaller.addEq(Equation((Seq(selfLocation), gth), fnName, argsTh, (Seq(location), eqRet)))
-          call.setCallAppliedTh(FnTh(Seq.empty, gth +: argsTh.map(_._2), eqRet))
+          call.setCallType(SelfCallPolymorphic(FnTh(Seq.empty, gth +: argsTh.map(_._2), eqRet)))
 
           eqRet
         case _ =>
-          val (fn, fnTh, fnEq) = findSelfDef(ctx, Seq(location), selfTh, fnName)
-
-          call.setCallType(SelfCallModLocal) // FIXME: not true if self-def in another module
+          val (mod, fn, fnTh, fnEq) = findSelfDef(ctx, Seq(location), selfTh, fnName)
+          if (mod != null && mod.pkg != ctx.module.pkg) // null for builtin
+            call.setCallType(SelfCallImport(mod, fn))
+          else
+            call.setCallType(SelfCallLocal(fn))
 
           invokePrototype(ctx, call, eqCaller, fnEq, retTh, fnTh, new InferTask {
             override def infer(ctx: PassContext, eq: Equations, th: TypeHint) = (selfLocation, selfTh)
@@ -618,7 +636,7 @@ class TypeCheckPass {
                 if (toCall.getTypeHintOpt == None)
                   passDef(ctx.deeperDef(None, id.value), toCall)
 
-                call.setCallType(CallModLocal)
+                call.setCallType(CallLocal(toCall))
 
                 Invoker.invokeDef(ctx, call, eq, th, toCall, args.map { arg =>
                   new InferTask {
@@ -655,7 +673,7 @@ class TypeCheckPass {
             val mod = ctx.level.findMod(ie.path).getOrElse(throw TCE.NoSuchModulePath(ie.location))
             val toCall = mod.defs.getOrElse(fnName, throw TCE.NoSuchDef(Seq(call.location), fnName))
 
-            call.setCallType(CallModImport)
+            call.setCallType(CallImport(mod, toCall))
 
             Invoker.invokePrototype(ctx, call, eq, toCall.getEquations, th, toCall.getTypeHint, argTasks).moveToMod(Seq(ie))
           case _expr =>

@@ -28,22 +28,4 @@ class _01TypeDeclTest extends FunSuite {
           .Int
       """, 42)
   }
-
-  test("intermodule type decl") {
-    CodeGenUtil.runModules({
-      case "libB" => """
-        type B = (x: Int, y: Int)
-        """
-      case "libA" => """
-        import libB .
-        type A = (b: libB.B, x: Int)
-        """
-      case "main" => """
-        import libA with A .
-        type M = (a: A, x: Int)
-        def local = m: M do none .
-        def main = 42 .
-        """
-    }, 42)
-  }
 }

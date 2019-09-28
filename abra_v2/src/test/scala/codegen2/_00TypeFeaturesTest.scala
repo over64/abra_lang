@@ -3,6 +3,7 @@ package codegen2
 import codegen2.CodeGenUtil._
 import grammar.M2Parser
 import m3.codegen.IrUtils.ThIrExtension
+import m3.codegen.ModContext
 import m3.parse.Ast0.TypeHint
 import org.antlr.v4.runtime.tree.ParseTree
 import org.scalatest.FunSuite
@@ -43,10 +44,10 @@ class _00TypeFeaturesTest extends FunSuite {
       """)
 
   def assertRefType(thStr: String) =
-    assert(thStr.th.isRefType(root, main) === true, s"Expected $thStr IS ref type")
+    assert(thStr.th.isRefType(ModContext(System.out, root, Seq(main))) === true, s"Expected $thStr IS ref type")
 
   def assertNotRefType(thStr: String) =
-    assert(thStr.th.isRefType(root, main) === false, s"Expected $thStr NOT ref type")
+    assert(thStr.th.isRefType(ModContext(System.out, root, Seq(main))) === false, s"Expected $thStr NOT ref type")
 
 
   test("is ref type") {

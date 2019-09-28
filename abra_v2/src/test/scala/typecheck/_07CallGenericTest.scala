@@ -1,5 +1,6 @@
 package typecheck
 
+import codegen2.CodeGenUtil
 import m3.parse.Ast0.GenericTh
 import m3.typecheck.TCMeta._
 import org.scalatest.FunSuite
@@ -62,22 +63,74 @@ class _07CallGenericTest extends FunSuite {
              subAdd(1, 1) .
       """)
 
-//    println(
-//      """
-//        |z = loadConf()
-//        |    ↑
-//        |
-//        |main.abra:20:5 tce002: No such function 'loadConf'
-//        |
-//        |
-//        |           ↓ any2
-//        |           ~~~~~
-//        |add(x - y, y + 1)
-//        |    ~~~~~
-//        |    ↑ any1
-//        |
-//        |main.abra:31:5 tce001: Type mismatch. Expected any1 has any2
-//      """.stripMargin)
+    //    println(
+    //      """
+    //        |z = loadConf()
+    //        |    ↑
+    //        |
+    //        |main.abra:20:5 tce002: No such function 'loadConf'
+    //        |
+    //        |
+    //        |           ↓ any2
+    //        |           ~~~~~
+    //        |add(x - y, y + 1)
+    //        |    ~~~~~
+    //        |    ↑ any1
+    //        |
+    //        |main.abra:31:5 tce001: Type mismatch. Expected any1 has any2
+    //      """.stripMargin)
+  }
+
+  test("deep generic 2") {
+    val ast = astForCode(
+      """
+        def + = self: Int, other: Int do llvm
+          ;native .Int
+
+        def - = self: Int, other: Int do llvm
+          ;native .Int
+
+        def sub = x: num, y: num do
+          x - y .
+
+        def addSub = x: num, y: num do
+          x + y
+          sub(x, y) .
+
+        def main =
+          addSub(43, 1) .
+        """)
+
+    val main = ast.function("main")
+    assertTh("() -> Int", main)
+  }
+
+  test("deep generic over self 2") {
+    val ast = astForCode(
+      """
+         def + = self: Int, other: Int do llvm
+           %1 = add nsw i32 %self, %other
+           ret i32 %1 .Int
+
+         def sub = self: Int, other: Int do llvm
+           %1 = sub nsw i32 %self, %other
+           ret i32 %1 .Int
+
+         def addSub = self: num, y: num do
+           self + y
+           self.sub(y) .
+
+         # incorrect replacement ???
+         # expected Int::sub ???
+         # def sub = self: num1, y: num1 do
+         #   self - y .
+
+         def main =
+           43.addSub(1) .
+      """)
+
+    val main = ast.function("main")
+    assertTh("() -> Int", main)
   }
 
   test("polymorphic self replace") {

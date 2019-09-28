@@ -103,7 +103,7 @@ def of = args: t do
   inst
 
 
-
+    -- xxx
 
 # usage
 def main =
@@ -116,3 +116,9 @@ def main =
   ))
 
   buff = array.buffer(4096, 0)
+  (0 to 100).iter().zipWithIndex().map with ((x, ^)) ->
+    x + 1
+
+  hmap.map((k, ^) -> 'hello' + k)
+  x, ^, z = unpack(Vec3f(1.0, 1.0, 1.0))
+

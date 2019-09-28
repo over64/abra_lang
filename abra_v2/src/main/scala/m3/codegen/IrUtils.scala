@@ -30,7 +30,7 @@ object IrUtils {
         self.contains("<") || self.contains(">") ||
         self.contains("+") || self.contains("-") ||
         self.contains("*") || self.contains("/") ||
-        self.contains("|") || self.contains("&" )) "\"" + self + "\"" else self
+        self.contains("|") || self.contains("&")) "\"" + self + "\"" else self
   }
 
   sealed trait IsUnion
@@ -41,45 +41,45 @@ object IrUtils {
   implicit class ThIrExtension(self: TypeHint) {
     class RecursiveSelfRefEx extends Exception
 
-    def isRefTypeRecursive(level: Level, module: Module, stack: Seq[String] = Seq.empty): Boolean = self match {
+    def isRefTypeRecursive(mctx: ModContext, stack: Seq[String] = Seq.empty): Boolean = self match {
       case th: ScalarTh =>
         if (stack.contains(th.name)) throw new RecursiveSelfRefEx
 
-        Utils.resolveType(level, module, th) match {
+        Utils.resolveType(mctx.level, mctx.modules.head, th) match {
           case (_, _, sd: ScalarDecl) => sd.ref
           case (ieSeq, mod, sd: StructDecl) =>
             if (sd.isBuiltinArray) {
               val elTh = th.params(0)
-              sd.getBuiltinArrayLen == None || elTh.isRefTypeRecursive(level, mod, stack)
+              sd.getBuiltinArrayLen == None || elTh.isRefTypeRecursive(mctx, stack)
             } else {
               val specMap = Utils.makeSpecMap(sd.params, th.params)
-              sd.fields.exists(f => f.th.spec(specMap).isRefTypeRecursive(level, mod, stack :+ th.name))
+              sd.fields.exists(f => f.th.spec(specMap).isRefTypeRecursive(mctx.copy(modules = mod +: mctx.modules), stack :+ th.name))
             }
           case (ieSeq, mod, ud: UnionDecl) =>
-            ud.variants.foreach(v => v.isRefTypeRecursive(level, mod, stack :+ th.name))
+            ud.variants.foreach(v => v.isRefTypeRecursive(mctx.copy(modules = mod +: mctx.modules), stack :+ th.name))
             false
         }
-      case sth: StructTh => sth.seq.exists(fth => fth.typeHint.isRefTypeRecursive(level, module, stack))
+      case sth: StructTh => sth.seq.exists(fth => fth.typeHint.isRefTypeRecursive(mctx, stack))
       case uth: UnionTh =>
-        uth.seq.exists(v => v.isRefTypeRecursive(level, module, stack))
+        uth.seq.exists(v => v.isRefTypeRecursive(mctx, stack))
       case _: FnTh => false
       case other =>
         throw new RuntimeException(s"Internal compiler error: unexpected to see th: $other here")
     }
 
-    def isRefType(level: Level, module: Module): Boolean =
+    def isRefType(mctx: ModContext): Boolean =
       try {
-        isRefTypeRecursive(level, module, Seq.empty)
+        isRefTypeRecursive(mctx, Seq.empty)
       } catch {
         case _: RecursiveSelfRefEx => true
       }
 
-    def isValueType(level: Level, module: Module): Boolean =
-      !isRefType(level, module)
+    def isValueType(mctx: ModContext): Boolean =
+      !isRefType(mctx)
 
 
-    def classify(level: Level, module: Module): TypeClass = {
-      val isValue = self.isValueType(level, module)
+    def classify(mctx: ModContext): TypeClass = {
+      val isValue = self.isValueType(mctx)
 
       def sieveVariants(variants: Seq[TypeHint]) =
         if (variants.length == 2 && variants.contains(Builtin.thNil)) {
@@ -92,7 +92,7 @@ object IrUtils {
 
       self match {
         case sth: ScalarTh =>
-          Utils.resolveType(level, module, sth) match {
+          Utils.resolveType(mctx.level, mctx.modules.head, sth) match {
             case (ieSeq, _, sd: StructDecl) =>
               val specMap = Utils.makeSpecMap(sd.params, sth.params)
               val fields = sd.fields.map(f => FieldTh(f.name, f.th.moveToMod(ieSeq).spec(specMap)))
@@ -112,18 +112,18 @@ object IrUtils {
       }
     }
 
-    def isUnion(level: Level, module: Module): IsUnion = {
+    def isUnion(mctx: ModContext): IsUnion = {
       def sieveVariants(variants: Seq[TypeHint]) =
         if (variants.length == 2 && variants.contains(Builtin.thNil)) {
           val variant = variants.find(th => th != Builtin.thNil).get
-          if (variant.isValueType(level, module)) SimpleU
+          if (variant.isValueType(mctx)) SimpleU
           else NullableU(variant)
         }
         else SimpleU
 
       self match {
         case sth: ScalarTh =>
-          Utils.resolveType(level, module, sth) match {
+          Utils.resolveType(mctx.level, mctx.modules.head, sth) match {
             case (ieSeq, _, ud: UnionDecl) => sieveVariants(ud.variants.map(v => v.moveToMod(ieSeq)))
             case _ => NoUnion
           }
@@ -132,10 +132,10 @@ object IrUtils {
       }
     }
 
-    def asUnion(level: Level, module: Module): Seq[TypeHint] =
+    def asUnion(mctx: ModContext): Seq[TypeHint] =
       self match {
         case sth: ScalarTh =>
-          Utils.resolveType(level, module, sth) match {
+          Utils.resolveType(mctx.level, mctx.modules.head, sth) match {
             case (ieSeq, _, ud: UnionDecl) =>
               ud.variants.map(th => th.moveToMod(ieSeq))
             case _ => throw new RuntimeException("unreachable")
@@ -145,20 +145,20 @@ object IrUtils {
       }
 
     //FIXME: clash with TC.isArray
-    def isIrArray(level: Level, module: Module): Option[StructDecl] =
+    def isIrArray(mctx: ModContext): Option[StructDecl] =
       self match {
         case sth: ScalarTh =>
-          Utils.resolveType(level, module, sth) match {
+          Utils.resolveType(mctx.level, mctx.modules.head, sth) match {
             case (_, _, sd: StructDecl) if sd.isBuiltinArray => Some(sd)
             case _ => None
           }
         case _ => None
       }
 
-    def isStruct(level: Level, module: Module): Boolean =
+    def isStruct(mctx: ModContext): Boolean =
       self match {
         case sth: ScalarTh =>
-          Utils.resolveType(level, module, sth) match {
+          Utils.resolveType(mctx.level, mctx.modules.head, sth) match {
             case (_, _, _: StructDecl) => true
             case _ => false
           }
@@ -166,9 +166,9 @@ object IrUtils {
         case _ => false
       }
 
-    def structFields(level: Level, module: Module): Seq[FieldTh] = self match {
+    def structFields(mctx: ModContext): Seq[FieldTh] = self match {
       case sth: ScalarTh =>
-        Utils.resolveType(level, module, sth) match {
+        Utils.resolveType(mctx.level, mctx.modules.head, sth) match {
           case (ieSeq, _, sd: StructDecl) if !sd.isBuiltinArray =>
             val specMap = Utils.makeSpecMap(sd.params, sth.params)
             sd.fields.map(f => FieldTh(f.name, f.th.moveToMod(ieSeq).spec(specMap)))
@@ -189,11 +189,6 @@ object IrUtils {
           }
         case _ => false
       }
-
-    def toValue: String = self match {
-      case Builtin.thNil | Builtin.thUnreachable => "void"
-      case other => "%" + other.toString.escaped
-    }
 
     def orderTypeHints(level: Level, module: Module, result: mutable.ListBuffer[TypeHint]): Unit =
       orderTypeHintsRec(level, module, result, Seq.empty)
@@ -233,23 +228,47 @@ object IrUtils {
       result += self
     }
 
-    def toDecl(level: Level, module: Module,
-               typeDecls: mutable.ListBuffer[(TypeHint, String)]): Unit = {
+
+    def toValueRec(mctx: ModContext): String = self match {
+      case sth: ScalarTh =>
+        if (Builtin.isDeclaredBuiltIn(sth.name))
+          sth.toString
+        else {
+          val (_, mod, _) = Utils.resolveType(mctx.level, mctx.modules.head, sth)
+          mod.pkg + "." + sth.copy(mod = Seq.empty).toString
+        }
+      case UnionTh(seq) =>
+        seq.map {
+          case unionTh: UnionTh => "(" + unionTh.toValueRec(mctx) + ")"
+          case other => other.toValueRec(mctx)
+        }.mkString(" | ")
+      case StructTh(seq) =>
+        seq.map(f => f.typeHint.toValueRec(mctx)).mkString("(", ", ", ")")
+      case _ => self.toString
+    }
+
+    def toValue(mctx: ModContext, prefix: String = "%", suffix: String = ""): String = self match {
+      case Builtin.thNil | Builtin.thUnreachable => "void"
+      case other =>
+        prefix + (other.toValueRec(mctx) + suffix).escaped
+    }
+
+    def toDecl(mctx: ModContext, typeDecls: mutable.ListBuffer[(TypeHint, String)]): Unit = {
 
       def forUnion(variants: Seq[TypeHint]) = {
-        val size = calculateSize(variants, typeDecls)
+        val size = calculateSize(mctx, variants, typeDecls)
         s"{i64, [$size x i8]}"
       }
 
       if (self != Builtin.thNil && self != Builtin.thUnreachable) {
         typeDecls +=
           ((self,
-            s"""%${self.toString.escaped} = type """ + (self.isUnion(level, module) match {
-              case NullableU(_) => "i8*"
+            s"""${self.toValue(mctx)} = type """ + (self.isUnion(mctx) match {
+              case NullableU(_) => "i8*" //FIXME: ???
               case _ =>
                 self match {
                   case th: ScalarTh =>
-                    Utils.resolveType(level, module, th) match {
+                    Utils.resolveType(mctx.level, mctx.modules.head, th) match {
                       case (_, _, sd: ScalarDecl) if Builtin.isDeclaredBuiltIn(sd.name) =>
                         sd.name match {
                           case "Long" => "i64"
@@ -265,16 +284,16 @@ object IrUtils {
                         }
                       case (_, _, sd: ScalarDecl) => sd.llType
                       case (_, _, sd: StructDecl) if sd.isBuiltinArray =>
-                        val elementIr = th.params(0).toValue
-                        if (th.isRefType(level, module))
+                        val elementIr = th.params(0).toValue(mctx)
+                        if (th.isRefType(mctx))
                           s"{i32, $elementIr*}"
                         else
                           s"[${sd.getBuiltinArrayLen.get} x $elementIr]"
                       case (ieSeq, _, sd: StructDecl) =>
                         val specMap = Utils.makeSpecMap(sd.params, th.params)
-                        val fieldsIr = sd.fields.map { f => f.th.moveToMod(ieSeq).spec(specMap).toValue }
-                        if (th.isRefType(level, module))
-                          s"%${(self.toString + ".body").escaped}*\n%${(self.toString + ".body").escaped} = type { ${fieldsIr.mkString(", ")} }" // crunch
+                        val fieldsIr = sd.fields.map { f => f.th.moveToMod(ieSeq).spec(specMap).toValue(mctx) }
+                        if (th.isRefType(mctx))
+                          s"${self.toValue(mctx, suffix = ".body")}*\n${self.toValue(mctx, suffix = ".body")} = type { ${fieldsIr.mkString(", ")} }" // crunch
                         else
                           s"{ ${fieldsIr.mkString(", ")} }"
                       case (ieSeq, _, ud: UnionDecl) =>
@@ -282,28 +301,28 @@ object IrUtils {
                         forUnion(variants)
                     }
                   case sth: StructTh =>
-                    val fieldsIr = sth.seq.map { f => f.typeHint.toValue }
-                    if (sth.isRefType(level, module))
-                      s"%${(self.toString + ".body").escaped}*\n%${(self.toString + ".body").escaped} = type { ${fieldsIr.mkString(", ")} }" // crunch
+                    val fieldsIr = sth.seq.map { f => f.typeHint.toValue(mctx) }
+                    if (sth.isRefType(mctx))
+                      s"${self.toValue(mctx, suffix = ".body")}*\n${self.toValue(mctx, suffix = ".body")} = type { ${fieldsIr.mkString(", ")} }" // crunch
                     else
                       s"{ ${fieldsIr.mkString(", ")} }"
                   case uth: UnionTh => forUnion(uth.seq)
                   case fth: FnTh =>
-                    s"{ ${fth.ret.toValue} (${(fth.args.map(th => th.toValue) :+ "i8*").mkString(", ")})*, i8* }"
+                    s"{ ${fth.ret.toValue(mctx)} (${(fth.args.map(th => th.toValue(mctx)) :+ "i8*").mkString(", ")})*, i8* }"
                 }
             })))
       }
     }
   }
 
-  def calculateSize(variants: Seq[TypeHint], typeDecl: mutable.ListBuffer[(TypeHint, String)]): Long = {
+  def calculateSize(mctx: ModContext, variants: Seq[TypeHint], typeDecl: mutable.ListBuffer[(TypeHint, String)]): Long = {
     val fw = new FileWriter("/tmp/sizes.ll")
     typeDecl.foreach { case (th, decl) => fw.write(decl + "\n") }
 
     val filtered = variants.filter(th => th != Builtin.thNil && th != Builtin.thUnreachable && typeDecl.map(_._1).contains(th))
 
     filtered.foreach { th =>
-      fw.write(s"@${(th + "__union_sizeof").escaped} = global {i64, %${th.toString.escaped}} undef\n")
+      fw.write(s"@${th.toValue(mctx, prefix = "", suffix = "__union_sizeof")} = global {i64, ${th.toValue(mctx)}} undef\n")
     }
 
     if (filtered.isEmpty) return 8
