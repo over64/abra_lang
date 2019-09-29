@@ -13,17 +13,26 @@ case class SelfCallImport(module: Module, fn: Def) extends CallType
 case class SelfCallPolymorphic(fth: FnTh) extends CallType
 
 object TCMeta {
+  def setSthModule(self: ScalarTh, mod: Module): Unit =
+    self.meta.put("module_for_scalar_th.declared_at", mod)
+
+  def getSthModule(self: ScalarTh): Module =
+    self.meta.getOrElse("module_for_scalar_th.declared_at", {
+      var x = 1
+      throw new RuntimeException("unreachable")
+    }).asInstanceOf[Module]
+
 
   implicit class PolymorphicTCMetaImplicit(self: ParseNode) {
     def valueOrEmpty() =
       self.meta.getOrElseUpdate("typecheck.resolved_self_defs",
         new HashMap[(TypeHint, String), Def]())
-        .asInstanceOf[HashMap[(TypeHint, String), Def]]
+        .asInstanceOf[HashMap[(TypeHint, String), (Module, Def)]]
 
 
-    def addResolvedSelfDef(selfTh: TypeHint, fnName: String, fn: Def): Unit = {
+    def addResolvedSelfDef(selfTh: TypeHint, fnName: String, module: Module, fn: Def): Unit = {
       val cont = valueOrEmpty()
-      cont.put((selfTh, fnName), fn)
+      cont.put((selfTh, fnName), (module, fn))
     }
 
     def getResolvedSelfDefs() =

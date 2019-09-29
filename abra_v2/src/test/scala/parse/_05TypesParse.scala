@@ -6,8 +6,8 @@ import org.antlr.v4.runtime.tree.ParseTree
 import org.scalatest.FunSuite
 
 /**
-  * Created by over on 01.05.17.
-  */
+ * Created by over on 01.05.17.
+ */
 class _05TypesParse extends FunSuite {
   val parserType = new ParseUtil {
     override def whatToParse: (M2Parser) => ParseTree = { parser => parser.`type`() }
@@ -23,22 +23,22 @@ class _05TypesParse extends FunSuite {
   }
 
   test("struct") {
-    withStr("type S = (x: Int)", StructDecl(Seq(), "S", Seq(FieldDecl(false, "x", ScalarTh(Seq(), "Int", Seq.empty)))))
+    withStr("type S = (x: Int)", StructDecl(Seq(), "S", Seq(FieldDecl(false, "x", ScalarTh(Seq(), "Int", None)))))
     withStr("type Seq[t] = (length: Int, ptr: Ptr)", StructDecl(Seq(GenericTh("t")), "Seq", Seq(
-      FieldDecl(false, "length", ScalarTh(Seq(), "Int", Seq.empty)),
-      FieldDecl(false, "ptr", ScalarTh(Seq(), "Ptr", Seq.empty))
+      FieldDecl(false, "length", ScalarTh(Seq(), "Int", None)),
+      FieldDecl(false, "ptr", ScalarTh(Seq(), "Ptr", None))
     )))
   }
 
   test("union") {
     withStr("type StringOpt = String | None", UnionDecl(Seq(), "StringOpt", Seq(
-      ScalarTh(Seq(), "String", Seq.empty),
-      ScalarTh(Seq(), "None", Seq.empty))))
+      ScalarTh(Seq(), "String", None),
+      ScalarTh(Seq(), "None", None))))
 
     withStr("type U2 = String | None | Bool", UnionDecl(Seq(), "U2", Seq(
-      ScalarTh(Seq(), "String", Seq.empty),
-      ScalarTh(Seq(), "None", Seq.empty),
-      ScalarTh(Seq(), "Bool", Seq.empty))))
+      ScalarTh(Seq(), "String", None),
+      ScalarTh(Seq(), "None", None),
+      ScalarTh(Seq(), "Bool", None))))
 
     // Disabled now
     //    withStr("type Option[t] = t | None", UnionDecl(Seq(GenericTh("t")), "Option", Seq(

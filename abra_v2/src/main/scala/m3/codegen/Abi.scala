@@ -172,4 +172,29 @@ object Abi {
       }
     }
   }
+
+  def getProperty(mctx: ModContext, dctx: DContext,
+                  srcTh: TypeHint,
+                  res: EResult, props: Seq[lId]): (TypeHint, EResult) = {
+
+    val (destTh, fieldSeq) = props.foldLeft((srcTh, Seq[Int]())) { case ((th, seq), prop) =>
+      srcTh.classify(mctx) match {
+        case ValueStruct(fields) =>
+          val got = fields.zipWithIndex.find { case (f, _) => f.name == props(0).value }.get
+          (got._1.typeHint, seq :+ got._2)
+        case RefStruct(fields) =>
+          val got = fields.zipWithIndex.find { case (f, _) => f.name == props(0).value }.get
+          (got._1.typeHint, seq :+ got._2)
+      }
+    }
+
+    val sync = syncValue(mctx, dctx, res, AsCallArg, srcTh, srcTh)
+    val r1 = "%" + dctx.nextReg("")
+    val srcIrType =
+      if (srcTh.isRefType(mctx)) srcTh.toValue(mctx, suffix = ".body")
+      else srcTh.toValue(mctx)
+
+    dctx.write(s"$r1 = getelementptr $srcIrType, $srcIrType* ${sync.value}, i64 0 ${fieldSeq.map(id => ", i32 " + id).mkString(", ")}")
+    (destTh, EResult(r1, true, false))
+  }
 }

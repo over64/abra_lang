@@ -10,12 +10,12 @@ import scala.collection.mutable
   * Created by over on 23.10.17.
   */
 object Util {
-  val thInt = ScalarTh(params = Seq.empty, "Int", Seq.empty)
-  val thFloat = ScalarTh(params = Seq.empty, "Float", Seq.empty)
-  val thBool = ScalarTh(params = Seq.empty, "Bool", Seq.empty)
-  val thString = ScalarTh(params = Seq.empty, "String", Seq.empty)
-  val thNil = ScalarTh(params = Seq.empty, "None", Seq.empty)
-  val thUndef = ScalarTh(params = Seq.empty, "Undef", Seq.empty)
+  val thInt = ScalarTh(params = Seq.empty, "Int", None)
+  val thFloat = ScalarTh(params = Seq.empty, "Float", None)
+  val thBool = ScalarTh(params = Seq.empty, "Bool", None)
+  val thString = ScalarTh(params = Seq.empty, "String", None)
+  val thNil = ScalarTh(params = Seq.empty, "None", None)
+  val thUndef = ScalarTh(params = Seq.empty, "Undef", None)
 
   def makeSpecMap(gen: Seq[GenericTh], params: Seq[TypeHint]) = {
     if (gen.length != params.length)
@@ -155,7 +155,7 @@ object Util {
   implicit class RichLowDecl(self: ScalarDecl) {
     def toLow(params: Seq[TypeHint], ctx: TContext) = {
       val specMap = makeSpecMap(self.params, params)
-      val lowName = ScalarTh(params, self.name, mod = Seq.empty).toGenericName
+      val lowName = ScalarTh(params, self.name, ie = None).toGenericName
       var llType = self.llType
 
       specMap.foreach {
@@ -177,7 +177,7 @@ object Util {
   implicit class RichStructDecl(self: StructDecl) {
     def toLow(params: Seq[TypeHint], ctx: TContext) = {
       val specMap = makeSpecMap(self.params, params)
-      val lowName = ScalarTh(params, self.name, mod = Seq.empty).toGenericName
+      val lowName = ScalarTh(params, self.name, ie = None).toGenericName
 
       ctx.lowMod.types.get(lowName) match {
         case Some(lowType) => Ast2.TypeRef(lowName)
@@ -197,7 +197,7 @@ object Util {
   implicit class RichUnionDecl(self: UnionDecl) {
     def toLow(params: Seq[TypeHint], ctx: TContext) = {
       val specMap = makeSpecMap(self.params, params)
-      val lowName = ScalarTh(params, self.name, mod = Seq.empty).toGenericName
+      val lowName = ScalarTh(params, self.name, ie = None).toGenericName
       ctx.lowMod.defineType(
         Ast2.Union(ctx.pkg, lowName, self.variants.map { th =>
           th.spec(specMap).toLow(ctx)
@@ -278,7 +278,7 @@ object Util {
     def moveToMod(modName: String): TypeHint =
       self match {
         case ScalarTh(params, name, mod) =>
-          ScalarTh(params.map(p => p.moveToMod(modName)), name, modName +: mod)
+          ScalarTh(params.map(p => p.moveToMod(modName)), name, mod)
         case StructTh(seq) =>
           StructTh(seq.map { case FieldTh(fname, th) => FieldTh(fname, th.moveToMod(modName)) })
         case UnionTh(seq) =>
@@ -294,7 +294,7 @@ object Util {
     def moveToModSeq(modNames: Seq[String]): TypeHint =
       self match {
         case ScalarTh(params, name, mod) =>
-          ScalarTh(params.map(p => p.moveToModSeq(modNames)), name, modNames ++ mod)
+          ScalarTh(params.map(p => p.moveToModSeq(modNames)), name, mod)
         case StructTh(seq) =>
           StructTh(seq.map { case FieldTh(fname, th) => FieldTh(fname, th.moveToModSeq(modNames)) })
         case UnionTh(seq) =>
@@ -310,9 +310,9 @@ object Util {
       self match {
         case sth@ScalarTh(params, name, mod) =>
           if (mod.headOption == Some(removeFrom))
-            ScalarTh(params.map(p => p.swapMod(removeFrom, moveTo)), name, mod.drop(1))
+            ScalarTh(params.map(p => p.swapMod(removeFrom, moveTo)), name, mod)
           else
-            ScalarTh(params.map(p => p.swapMod(removeFrom, moveTo)), name, moveTo +: mod)
+            ScalarTh(params.map(p => p.swapMod(removeFrom, moveTo)), name, mod)
         case StructTh(seq) =>
           StructTh(seq.map { case FieldTh(fname, th) => FieldTh(fname, th.swapMod(removeFrom, moveTo)) })
         case UnionTh(seq) =>
@@ -341,7 +341,7 @@ object Util {
     def toLow(ctx: TContext): Ast2.TypeRef = {
       self match {
         case ScalarTh(params, name, pkg) =>
-          val (mod, decl) = ctx.findType(name, pkg)
+          val (mod, decl) = ctx.findType(name, pkg.toSeq)
 
           if (ctx.inferStack.headOption != Some("acquire_release_eval_no_stack_overflow_stub"))
             Seq("acquire", "release").foreach { ackOrRelease =>

@@ -37,7 +37,7 @@ class _17ModCallTest extends FunSuite {
     })
 
     val main = ast.function("main")
-    assertTh("() -> modA.Bar", main)
+    assertTh("() -> Bar", main)
   }
 
   test("mod call: imported foreign type return") {

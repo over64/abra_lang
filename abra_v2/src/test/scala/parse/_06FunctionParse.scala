@@ -19,9 +19,9 @@ class _06FunctionParse extends FunSuite {
     withStr("def + = x: Int, y: Int do llvm ;asm .Int", Def(
       name = "+",
       lambda = Lambda(Seq(
-        Arg("x", ScalarTh(Seq(), "Int", Seq.empty)),
-        Arg("y", ScalarTh(Seq(), "Int", Seq.empty))),
+        Arg("x", ScalarTh(Seq(), "Int", None)),
+        Arg("y", ScalarTh(Seq(), "Int", None))),
         body = llVm(";asm")),
-      retTh = ScalarTh(Seq(), "Int", Seq.empty)))
+      retTh = ScalarTh(Seq(), "Int", None)))
   }
 }

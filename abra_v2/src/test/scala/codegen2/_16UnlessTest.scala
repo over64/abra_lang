@@ -2,7 +2,7 @@ package codegen2
 
 import org.scalatest.FunSuite
 
-class _15UnlessTest extends FunSuite {
+class _16UnlessTest extends FunSuite {
   test("unless: simple") {
     CodeGenUtil.run(
       """

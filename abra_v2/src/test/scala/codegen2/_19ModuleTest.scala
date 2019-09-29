@@ -2,7 +2,7 @@ package codegen2
 
 import org.scalatest.FunSuite
 
-class _18ModuleTest extends FunSuite {
+class _19ModuleTest extends FunSuite {
   test("CallImport") {
     CodeGenUtil.runModules({
       case "modA" => """

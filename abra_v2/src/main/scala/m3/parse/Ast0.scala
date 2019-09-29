@@ -1,7 +1,5 @@
 package m3.parse
 
-import m3.typecheck.Equations
-
 import scala.collection.mutable
 
 case class AstInfo(source: Seq[String], fname: String, line: Int, col: Int, lineEnd: Int, colEnd: Int) {
@@ -41,8 +39,8 @@ object Ast0 {
   case class UnionDecl(params: Seq[GenericTh], name: String, variants: Seq[TypeHint]) extends TypeDecl
 
   sealed trait TypeHint extends ParseNode
-  case class ScalarTh(params: Seq[TypeHint], name: String, mod: Seq[String]) extends TypeHint {
-    override def toString: String = s"${if (mod.isEmpty) "" else mod.mkString("", ".", ".")}$name${if (params.isEmpty) "" else params.mkString("[", ", ", "]")}"
+  case class ScalarTh(params: Seq[TypeHint], name: String, ie: Option[String]) extends TypeHint {
+    override def toString: String = s"${ie.map(s => s + ".").getOrElse("")}$name${if (params.isEmpty) "" else params.mkString("[", ", ", "]")}"
   }
   case class FieldTh(name: String, typeHint: TypeHint) extends ParseNode {
     override def toString: String = s"$name: $typeHint"

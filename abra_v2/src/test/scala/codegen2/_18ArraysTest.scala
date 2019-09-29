@@ -2,7 +2,7 @@ package codegen2
 
 import org.scalatest.FunSuite
 
-class _17ArraysTest extends FunSuite {
+class _18ArraysTest extends FunSuite {
   val unsafeCode =
     """
       def + = self: Int, other: Int do llvm
@@ -24,31 +24,31 @@ class _17ArraysTest extends FunSuite {
           %rv2 = insertvalue $retTypeof() %rv1, $t* %array, 1
           ret $retTypeof() %rv2 .Array[t]
 
-        def len = slf: array do llvm
-          %1 = extractvalue $array %slf, 0
-          ret $index %1 .index
+      def len = slf: array do llvm
+        %1 = extractvalue $array %slf, 0
+        ret $index %1 .index
 
-        def get = slf: array, idx: index do llvm
-          %ptr = extractvalue $array %slf, 1
-          %elPtr = getelementptr $t, $t* %ptr, $index %idx
-          %value = load $t, $t* %elPtr
-          ret $t %value .t
+      def get = slf: array, idx: index do llvm
+        %ptr = extractvalue $array %slf, 1
+        %elPtr = getelementptr $t, $t* %ptr, $index %idx
+        %value = load $t, $t* %elPtr
+        ret $t %value .t
 
-        def set = slf: array, idx: index, value: t do llvm
-          %ptr = extractvalue $array %slf, 1
-          %elPtr = getelementptr $t, $t* %ptr, $index %idx
-          %old = load $t, $t* %elPtr
-          ;meta rc_inc[t](value)
-          ;meta rc_dec[t](old)
-          store $t %value, $t* %elPtr
-          ret void .None
+      def set = slf: array, idx: index, value: t do llvm
+        %ptr = extractvalue $array %slf, 1
+        %elPtr = getelementptr $t, $t* %ptr, $index %idx
+        %old = load $t, $t* %elPtr
+        ;meta rc_inc[t](value)
+        ;meta rc_dec[t](old)
+        store $t %value, $t* %elPtr
+        ret void .None
 
-        def setInit = slf: array, idx: index, value: t do llvm
-          %ptr = extractvalue $array %slf, 1
-          %elPtr = getelementptr $t, $t* %ptr, $index %idx
-          ;meta rc_inc[t](value)
-          store $t %value, $t* %elPtr
-          ret void .None
+      def setInit = slf: array, idx: index, value: t do llvm
+        %ptr = extractvalue $array %slf, 1
+        %elPtr = getelementptr $t, $t* %ptr, $index %idx
+        ;meta rc_inc[t](value)
+        store $t %value, $t* %elPtr
+        ret void .None
 
       """
   test("array: unsafe") {

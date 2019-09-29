@@ -29,24 +29,24 @@ object Invoker {
       case (th, gth: GenericTh) => true
       case (adv: ScalarTh, sth: ScalarTh) =>
         if (adv.name != sth.name) {
-          ctx.findType(adv.name, adv.mod) match {
+          ctx.findType(adv.name, adv.ie.toSeq) match {
             case (_, ud: UnionDecl) => checkUnionMember(ctx, specMap, ud, adv.params, sth)
             case _ => false
           }
         } else isEqualSeq(ctx, specMap, adv.params, sth.params)
 
       case (adv: ScalarTh, sth: StructTh) => // FIXME: bad copy paste?
-        ctx.findType(adv.name, adv.mod) match {
+        ctx.findType(adv.name, adv.ie.toSeq) match {
           case (_, ud: UnionDecl) => checkUnionMember(ctx, specMap, ud, adv.params, sth)
           case _ => false
         }
       case (adv: ScalarTh, fth: FnTh) => // FIXME: bad copy paste?
-        ctx.findType(adv.name, adv.mod) match {
+        ctx.findType(adv.name, adv.ie.toSeq) match {
           case (_, ud: UnionDecl) => checkUnionMember(ctx, specMap, ud, adv.params, fth)
           case _ => false
         }
       case (adv: ScalarTh, uth: UnionTh) =>
-        ctx.findType(adv.name, adv.mod) match {
+        ctx.findType(adv.name, adv.ie.toSeq) match {
           case (_, ud: UnionDecl) =>
             if (ud.params.length != adv.params.length) throw new RuntimeException(s"expected ${ud.params.length} for $ud has ${adv.params.length}")
 
@@ -153,7 +153,7 @@ object Invoker {
         case (_, sd: StructDecl) => sd
         case _ => throw new RuntimeException(s"$typeName is not struct type")
       }
-    val consTh = ScalarTh(consType.params, consType.name, Seq.empty)
+    val consTh = ScalarTh(consType.params, consType.name, None)
 
     val specMap = mutable.HashMap.empty[GenericTh, TypeHint]
     if (!checkAndInfer(ctx, specMap, consTh, ret))
@@ -163,7 +163,7 @@ object Invoker {
       consType.fields.map(f => f.th).toIterator, args)
 
     val flatSpecs = consType.params.map(cp => specMap(cp))
-    val retTh = ScalarTh(flatSpecs, consType.name, Seq())
+    val retTh = ScalarTh(flatSpecs, consType.name, None)
 
     // code generation will be performed on codegen part
     val virtualArgs = consType.fields.map(f => Arg(f.name, f.th))

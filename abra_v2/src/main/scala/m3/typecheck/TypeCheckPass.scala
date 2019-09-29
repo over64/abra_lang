@@ -90,8 +90,8 @@ class TypeChecker2(level: Level, module: Module,
       case (th, AnyTh) => // ok
       case (AnyTh, th) => // ok
       case (adv: ScalarTh, th: ScalarTh) =>
-        val (_, advMod, advDecl) = resolveType(level, module, adv)
-        val (_, thMod, sthDecl) = resolveType(level, module, th)
+        val (advMod, _) = typeDecl(adv)
+        val (thMod, _) = typeDecl(th)
 
         if (advMod.pkg != thMod.pkg || adv.name != th.name) throw new MismatchLocal
         if (adv.params.length != th.params.length) throw TCE.ParamsCountMismatch(th.location)
@@ -139,8 +139,8 @@ class TypeChecker2(level: Level, module: Module,
       case (arraySize, sth: ScalarTh) if arraySize == thArraySize =>
         doCheck(thArraySizes, sth)
       case (array1: ScalarTh, array2: ScalarTh) if array1.isArray && array2.isArray =>
-        val (_, _, decl1) = resolveType(level, module, array1)
-        val (_, _, decl2) = resolveType(level, module, array2)
+        val (_, decl1) = typeDecl(array1)
+        val (_, decl2) = typeDecl(array2)
 
         decl1.getBuiltinArrayLen match {
           case None => // ok
@@ -151,22 +151,22 @@ class TypeChecker2(level: Level, module: Module,
 
         isEqualSeq(array1.params, array2.params)
       case (adv: ScalarTh, sth: ScalarTh) =>
-        val (_, advMod, advDecl) = resolveType(level, module, adv)
-        val (_, sthMod, sthDecl) = resolveType(level, module, sth)
+        val (advMod, advDecl) = typeDecl(adv)
+        val (sthMod, sthDecl) = typeDecl(sth)
         if (advMod.pkg == sthMod.pkg && adv.name == sth.name) {
           if (adv.params.length != sth.params.length) throw TCE.ParamsCountMismatch(sth.location)
           isEqualSeq(adv.params, sth.params)
         }
         else {
-          resolveType(level, module, adv) match {
-            case (_, _, ud: UnionDecl) => checkUnionMember(ud, adv, sth)
+          typeDecl(adv) match {
+            case (_, ud: UnionDecl) => checkUnionMember(ud, adv, sth)
             case _ => throw new MismatchLocal
           }
         }
       case (adv: ScalarTh, uth: UnionTh) => throw new MismatchLocal
       case (adv: ScalarTh, th) =>
-        resolveType(level, module, adv) match {
-          case (_, _, ud: UnionDecl) => checkUnionMember(ud, adv, th)
+        typeDecl(adv) match {
+          case (_, ud: UnionDecl) => checkUnionMember(ud, adv, th)
           case _ => throw new MismatchLocal
         }
       case (adv: UnionTh, th: ScalarTh) =>
@@ -301,14 +301,13 @@ class TypeCheckPass {
       if (!eqSelfSpec.isInstanceOf[GenericTh] && !eqSelfSpec.containsAny) {
         lctx.log(s"check $eq vs $eqSelfSpec")
 
-        val (_, fn, fnTh, fnEq) = Invoker.findSelfDef(lctx, eqSelfLocation, eqSelfSpec, eq.fnName)
-        caller.addResolvedSelfDef(eqSelfTh, eq.fnName, fn)
+        val (ieSeq, mod, fn, fnTh, fnEq) = Invoker.findSelfDef(lctx, eqSelfLocation, eqSelfSpec, eq.fnName)
+        caller.addResolvedSelfDef(eqSelfTh, eq.fnName, mod, fn)
 
         val selfFnInfer = new TypeInfer(lctx.level, lctx.module)
         selfFnInfer.infer(Seq() /* ??? */ , fnTh.args(0), eqSelfSpec)
 
         val selfFn = fnTh.spec(selfFnInfer.specMap, gth => gth).asInstanceOf[FnTh]
-
 
         val localInfer = new TypeInfer(lctx.level, lctx.module)
 
@@ -398,7 +397,7 @@ class TypeCheckPass {
       }
 
     // Move from type infer to symbol resolve system?
-    def findSelfDef(ctx: PassContext, location: Seq[AstInfo], selfTh: TypeHint, fnName: String): (Module, Def, FnTh, Equations) = {
+    def findSelfDef(ctx: PassContext, location: Seq[AstInfo], selfTh: TypeHint, fnName: String): (Seq[ImportEntry], Module, Def, FnTh, Equations) = {
       selfTh match {
         case gth: GenericTh =>
           throw new RuntimeException("Unexpected to be here")
@@ -414,23 +413,23 @@ class TypeCheckPass {
                 dctx.log(s":${fn.getTypeHint}")
                 dctx.log(s"eq ${fn.getEquations}")
               }
-              (ctx.module, fn, fn.getTypeHint, fn.getEquations)
+              (Seq.empty, ctx.module, fn, fn.getTypeHint, fn.getEquations)
             case None =>
               ctx.module.imports.seq.flatMap { ie =>
                 val mod = ctx.level.findMod(ie.path).getOrElse(throw TCE.NoSuchModulePath(ie.location))
                 mod.selfDefs.getOrElse(fnName, Seq()).map(fn => (mod, ie, fn))
-              }.find { case (mod, ie, fn) => isSelfApplicable(ctx, fn.lambda.args.head.typeHint.moveToMod(Seq(ie)), selfTh) } match {
+              }.find { case (mod, ie, fn) => isSelfApplicable(ctx, fn.lambda.args.head.typeHint, selfTh) } match {
                 case Some((mod, ie, fn)) =>
-                  (mod, fn, fn.getTypeHint, fn.getEquations)
+                  (Seq(ie), mod, fn, fn.getTypeHint, fn.getEquations)
                 case None =>
                   // FIXME: oops
-                  (null, null, resolveBuiltinSelfDef(location, selfTh, fnName), new Equations())
+                  (null, null, null, resolveBuiltinSelfDef(location, selfTh, fnName), new Equations())
               }
           }
       }
     }
 
-    def findSelfDefOpt(ctx: PassContext, location: Seq[AstInfo], selfTh: TypeHint, fnName: String): Option[(Module, Def, FnTh, Equations)] =
+    def findSelfDefOpt(ctx: PassContext, location: Seq[AstInfo], selfTh: TypeHint, fnName: String): Option[(Seq[ImportEntry], Module, Def, FnTh, Equations)] =
       try {
         Some(findSelfDef(ctx, location, selfTh, fnName))
       } catch {
@@ -501,7 +500,7 @@ class TypeCheckPass {
 
           eqRet
         case _ =>
-          val (mod, fn, fnTh, fnEq) = findSelfDef(ctx, Seq(location), selfTh, fnName)
+          val (ieSeq, mod, fn, fnTh, fnEq) = findSelfDef(ctx, Seq(location), selfTh, fnName)
           if (mod != null && mod.pkg != ctx.module.pkg) // null for builtin
             call.setCallType(SelfCallImport(mod, fn))
           else
@@ -519,13 +518,13 @@ class TypeCheckPass {
     def foldFields(from: TypeHint, fields: Seq[lId]): TypeHint =
       fields.foldLeft(from) {
         case (sth: ScalarTh, fieldId) =>
-          resolveType(ctx.level, ctx.module, sth) match {
-            case (_, _, sd: StructDecl) =>
+          typeDecl(sth) match {
+            case (_, sd: StructDecl) =>
               sd.fields
                 .find(fd => fd.name == fieldId.value)
                 .getOrElse(throw TCE.NoSuchField(fieldId.location, sth, fieldId.value))
                 .th.spec(makeSpecMap(sd.params, sth.params))
-            case (_, _, td) => throw TCE.NoSuchField(fieldId.location, sth, fieldId.value)
+            case (_, td) => throw TCE.NoSuchField(fieldId.location, sth, fieldId.value)
           }
         case (sth: StructTh, fieldId) =>
           sth.seq
@@ -660,6 +659,7 @@ class TypeCheckPass {
             throw TCE.ExpressionNotCallable(expr.location)
         }
       case call@SelfCall(fnName, self, args) =>
+        var x = 1
         val argTasks = args.map { arg =>
           new InferTask {
             override def infer(ctx: PassContext, eq: Equations, th: TypeHint): (AstInfo, TypeHint) =
@@ -675,7 +675,7 @@ class TypeCheckPass {
 
             call.setCallType(CallImport(mod, toCall))
 
-            Invoker.invokePrototype(ctx, call, eq, toCall.getEquations, th, toCall.getTypeHint, argTasks).moveToMod(Seq(ie))
+            Invoker.invokePrototype(ctx, call, eq, toCall.getEquations, th, toCall.getTypeHint, argTasks)
           case _expr =>
             val selfTh = passExpr(ctx.deeperExpr(), scope, eq, AnyTh, _expr)
             val selfTask = new InferTask {
@@ -694,8 +694,8 @@ class TypeCheckPass {
 
             selfTh match {
               case sth: ScalarTh =>
-                resolveType(ctx.level, ctx.module, sth) match {
-                  case (_, _, sd: StructDecl) =>
+                typeDecl(sth) match {
+                  case (_, sd: StructDecl) =>
                     sd.fields.find(fd => fd.name == fnName) match {
                       case Some(field) =>
                         field.th.spec(makeSpecMap(sd.params, sth.params)) match {
@@ -720,12 +720,13 @@ class TypeCheckPass {
                     }
                   case _ => default()
                 }
-              case _ => default()
+              case _ =>
+                default()
             }
         }
       case cons@Cons(sth, args) =>
-        val sd = resolveType(ctx.level, ctx.module, sth) match {
-          case (_, _, sd: StructDecl) => sd
+        val sd = typeDecl(sth) match {
+          case (_, sd: StructDecl) => sd
           case _ => throw TCE.StructTypeRequired(cons.location)
         }
 
@@ -746,9 +747,13 @@ class TypeCheckPass {
 
           sd.getBuiltinArrayLen match {
             case Some(len) =>
-              ScalarTh(Seq(inferedElTh), "Array" + len, Seq.empty)
+              val newTh = ScalarTh(Seq(inferedElTh), "Array" + len, None)
+              TCMeta.setSthModule(newTh, Builtin.builtInMod)
+              newTh
             case None =>
-              ScalarTh(Seq(inferedElTh), "Array", Seq.empty)
+              val newTh = ScalarTh(Seq(inferedElTh), "Array", None)
+              TCMeta.setSthModule(newTh, Builtin.builtInMod)
+              newTh
           }
         } else {
           val realParams =
@@ -760,7 +765,8 @@ class TypeCheckPass {
             } else
               sd.params
 
-          val realTh = ScalarTh(realParams, sth.name, sth.mod)
+          val realTh = ScalarTh(realParams, sth.name, sth.ie)
+          TCMeta.setSthModule(realTh, TCMeta.getSthModule(sth))
           realTh.setLocation(sth.location)
           val specMap = makeSpecMap(sd.params, realTh.params)
           val consTh = FnTh(Seq.empty, sd.fields.map(f => f.th.spec(specMap)), realTh)
@@ -923,8 +929,8 @@ class TypeCheckPass {
         val exprUnionVariants = exprTh match {
           case uth: UnionTh => uth.seq
           case sth: ScalarTh =>
-            resolveType(ctx.level, ctx.module, sth) match {
-              case (_, _, ud: UnionDecl) => ud.variants.map(v => v.spec(makeSpecMap(ud.params, sth.params)))
+            typeDecl(sth) match {
+              case (_, ud: UnionDecl) => ud.variants.map(v => v.spec(makeSpecMap(ud.params, sth.params)))
               case _ => throw TCE.ExpectedUnionType(expr.location, exprTh)
             }
           case _ => throw TCE.ExpectedUnionType(expr.location, exprTh)

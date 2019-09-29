@@ -7,7 +7,7 @@ import org.scalatest.FunSuite
 import m3.parse.Ast0._
 import m3.parse.{ParsePass, Resolver, Visitor}
 import m3.typecheck.TCMeta._
-import m3.typecheck.TypeCheckPass
+import m3.typecheck.{TypeHintPass, TypeCheckPass}
 import org.antlr.v4.runtime.{ANTLRInputStream, BailErrorStrategy, CommonTokenStream}
 
 object TypeCheckUtil extends FunSuite {
@@ -36,6 +36,7 @@ object TypeCheckUtil extends FunSuite {
       }
     }).pass("main")
 
+    TypeHintPass.pass(root)
     new TypeCheckPass().pass(root)
     root.findMod("main").get
   }

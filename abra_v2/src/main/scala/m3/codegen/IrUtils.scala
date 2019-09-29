@@ -45,17 +45,20 @@ object IrUtils {
       case th: ScalarTh =>
         if (stack.contains(th.name)) throw new RecursiveSelfRefEx
 
-        Utils.resolveType(mctx.level, mctx.modules.head, th) match {
-          case (_, _, sd: ScalarDecl) => sd.ref
-          case (ieSeq, mod, sd: StructDecl) =>
+        Utils.typeDecl(th) match {
+          case (_, sd: ScalarDecl) => sd.ref
+          case (mod, sd: StructDecl) =>
             if (sd.isBuiltinArray) {
               val elTh = th.params(0)
               sd.getBuiltinArrayLen == None || elTh.isRefTypeRecursive(mctx, stack)
             } else {
               val specMap = Utils.makeSpecMap(sd.params, th.params)
-              sd.fields.exists(f => f.th.spec(specMap).isRefTypeRecursive(mctx.copy(modules = mod +: mctx.modules), stack :+ th.name))
+              sd.fields.exists { f =>
+
+                f.th.spec(specMap).isRefTypeRecursive(mctx, stack :+ th.name)
+              }
             }
-          case (ieSeq, mod, ud: UnionDecl) =>
+          case (mod, ud: UnionDecl) =>
             ud.variants.foreach(v => v.isRefTypeRecursive(mctx.copy(modules = mod +: mctx.modules), stack :+ th.name))
             false
         }
@@ -92,14 +95,14 @@ object IrUtils {
 
       self match {
         case sth: ScalarTh =>
-          Utils.resolveType(mctx.level, mctx.modules.head, sth) match {
-            case (ieSeq, _, sd: StructDecl) =>
+          Utils.typeDecl(sth) match {
+            case (_, sd: StructDecl) =>
               val specMap = Utils.makeSpecMap(sd.params, sth.params)
-              val fields = sd.fields.map(f => FieldTh(f.name, f.th.moveToMod(ieSeq).spec(specMap)))
+              val fields = sd.fields.map(f => FieldTh(f.name, f.th.spec(specMap)))
 
               if (isValue) ValueStruct(fields) else RefStruct(fields)
-            case (ieSeq, _, ud: UnionDecl) =>
-              sieveVariants(ud.variants.map(v => v.moveToMod(ieSeq)))
+            case (_, ud: UnionDecl) =>
+              sieveVariants(ud.variants.map(v => v))
             case _ =>
               if (isValue) ValueScalar else RefScalar
           }
@@ -123,8 +126,8 @@ object IrUtils {
 
       self match {
         case sth: ScalarTh =>
-          Utils.resolveType(mctx.level, mctx.modules.head, sth) match {
-            case (ieSeq, _, ud: UnionDecl) => sieveVariants(ud.variants.map(v => v.moveToMod(ieSeq)))
+          Utils.typeDecl(sth) match {
+            case (_, ud: UnionDecl) => sieveVariants(ud.variants.map(v => v))
             case _ => NoUnion
           }
         case uth: UnionTh => sieveVariants(uth.seq)
@@ -135,10 +138,11 @@ object IrUtils {
     def asUnion(mctx: ModContext): Seq[TypeHint] =
       self match {
         case sth: ScalarTh =>
-          Utils.resolveType(mctx.level, mctx.modules.head, sth) match {
-            case (ieSeq, _, ud: UnionDecl) =>
-              ud.variants.map(th => th.moveToMod(ieSeq))
-            case _ => throw new RuntimeException("unreachable")
+          Utils.typeDecl(sth) match {
+            case (_, ud: UnionDecl) =>
+              ud.variants.map(th => th)
+            case _ =>
+              throw new RuntimeException("unreachable")
           }
         case uth: UnionTh => uth.seq
         case _ => throw new RuntimeException("unreachable")
@@ -148,8 +152,8 @@ object IrUtils {
     def isIrArray(mctx: ModContext): Option[StructDecl] =
       self match {
         case sth: ScalarTh =>
-          Utils.resolveType(mctx.level, mctx.modules.head, sth) match {
-            case (_, _, sd: StructDecl) if sd.isBuiltinArray => Some(sd)
+          Utils.typeDecl(sth) match {
+            case (_, sd: StructDecl) if sd.isBuiltinArray => Some(sd)
             case _ => None
           }
         case _ => None
@@ -158,8 +162,8 @@ object IrUtils {
     def isStruct(mctx: ModContext): Boolean =
       self match {
         case sth: ScalarTh =>
-          Utils.resolveType(mctx.level, mctx.modules.head, sth) match {
-            case (_, _, _: StructDecl) => true
+          Utils.typeDecl(sth) match {
+            case (_, _: StructDecl) => true
             case _ => false
           }
         case _: StructTh => true
@@ -168,10 +172,10 @@ object IrUtils {
 
     def structFields(mctx: ModContext): Seq[FieldTh] = self match {
       case sth: ScalarTh =>
-        Utils.resolveType(mctx.level, mctx.modules.head, sth) match {
-          case (ieSeq, _, sd: StructDecl) if !sd.isBuiltinArray =>
+        Utils.typeDecl(sth) match {
+          case (_, sd: StructDecl) if !sd.isBuiltinArray =>
             val specMap = Utils.makeSpecMap(sd.params, sth.params)
-            sd.fields.map(f => FieldTh(f.name, f.th.moveToMod(ieSeq).spec(specMap)))
+            sd.fields.map(f => FieldTh(f.name, f.th.spec(specMap)))
           case _ =>
             throw new RuntimeException(s"Internal compiler error: $self is not struct type")
         }
@@ -183,8 +187,8 @@ object IrUtils {
     def isScalar(level: Level, module: Module): Boolean =
       self match {
         case sth: ScalarTh =>
-          Utils.resolveType(level, module, sth) match {
-            case (_, _, _: ScalarDecl) => true
+          Utils.typeDecl(sth) match {
+            case (_, _: ScalarDecl) => true
             case _ => false
           }
         case _ => false
@@ -201,20 +205,20 @@ object IrUtils {
 
       self match {
         case th: ScalarTh =>
-          Utils.resolveType(level, module, th) match {
-            case (_, _, sd: ScalarDecl) =>
+          Utils.typeDecl(th) match {
+            case (_, sd: ScalarDecl) =>
               th.params.foreach(th => th.orderTypeHintsRec(level, module, result, stack :+ (module, self)))
-            case (ieSeq, _, sd: StructDecl) if sd.isBuiltinArray =>
+            case (_, sd: StructDecl) if sd.isBuiltinArray =>
               val elementTh = th.params(0)
               elementTh.orderTypeHintsRec(level, module, result, stack)
-            case (ieSeq, _, sd: StructDecl) =>
+            case (_, sd: StructDecl) =>
               val specMap = Utils.makeSpecMap(sd.params, th.params)
               sd.fields.foreach { f =>
-                val specked = f.th.moveToMod(ieSeq).spec(specMap)
+                val specked = f.th.spec(specMap)
                 specked.orderTypeHintsRec(level, module, result, stack :+ (module, self))
               }
-            case (ieSeq, _, ud: UnionDecl) =>
-              ud.variants.foreach(th => th.moveToMod(ieSeq).orderTypeHintsRec(level, module, result, stack :+ (module, self)))
+            case (_, ud: UnionDecl) =>
+              ud.variants.foreach(th => th.orderTypeHintsRec(level, module, result, stack :+ (module, self)))
           }
         case sth: StructTh =>
           sth.seq.foreach(f => f.typeHint.orderTypeHintsRec(level, module, result, stack))
@@ -234,8 +238,8 @@ object IrUtils {
         if (Builtin.isDeclaredBuiltIn(sth.name))
           sth.toString
         else {
-          val (_, mod, _) = Utils.resolveType(mctx.level, mctx.modules.head, sth)
-          mod.pkg + "." + sth.copy(mod = Seq.empty).toString
+          val (mod, _) = Utils.typeDecl(sth)
+          mod.pkg + "." + sth.copy(ie = None).toString
         }
       case UnionTh(seq) =>
         seq.map {
@@ -268,8 +272,8 @@ object IrUtils {
               case _ =>
                 self match {
                   case th: ScalarTh =>
-                    Utils.resolveType(mctx.level, mctx.modules.head, th) match {
-                      case (_, _, sd: ScalarDecl) if Builtin.isDeclaredBuiltIn(sd.name) =>
+                    Utils.typeDecl(th) match {
+                      case (_, sd: ScalarDecl) if Builtin.isDeclaredBuiltIn(sd.name) =>
                         sd.name match {
                           case "Long" => "i64"
                           case "Int" => "i32"
@@ -282,22 +286,22 @@ object IrUtils {
                           case "None" | "Unreachable" =>
                             throw new RuntimeException("Internal compiler error: cannot make IR alias for void type")
                         }
-                      case (_, _, sd: ScalarDecl) => sd.llType
-                      case (_, _, sd: StructDecl) if sd.isBuiltinArray =>
+                      case (_, sd: ScalarDecl) => sd.llType
+                      case (_, sd: StructDecl) if sd.isBuiltinArray =>
                         val elementIr = th.params(0).toValue(mctx)
                         if (th.isRefType(mctx))
                           s"{i32, $elementIr*}"
                         else
                           s"[${sd.getBuiltinArrayLen.get} x $elementIr]"
-                      case (ieSeq, _, sd: StructDecl) =>
+                      case (_, sd: StructDecl) =>
                         val specMap = Utils.makeSpecMap(sd.params, th.params)
-                        val fieldsIr = sd.fields.map { f => f.th.moveToMod(ieSeq).spec(specMap).toValue(mctx) }
+                        val fieldsIr = sd.fields.map { f => f.th.spec(specMap).toValue(mctx) }
                         if (th.isRefType(mctx))
                           s"${self.toValue(mctx, suffix = ".body")}*\n${self.toValue(mctx, suffix = ".body")} = type { ${fieldsIr.mkString(", ")} }" // crunch
                         else
                           s"{ ${fieldsIr.mkString(", ")} }"
-                      case (ieSeq, _, ud: UnionDecl) =>
-                        val variants = ud.variants.map(v => v.moveToMod(ieSeq))
+                      case (_, ud: UnionDecl) =>
+                        val variants = ud.variants.map(v => v)
                         forUnion(variants)
                     }
                   case sth: StructTh =>

@@ -1,7 +1,7 @@
 package codegen2
 import org.scalatest.FunSuite
 
-class _12AndOrTest extends FunSuite {
+class _13AndOrTest extends FunSuite {
   test("and: left false") {
     CodeGenUtil.run(
       """

@@ -86,7 +86,7 @@ class Visitor(source: String, fname: String, _package: String) extends AbstractP
     emit(ctx, ScalarTh(
       params = ctx.typeHint().map(th => visitTypeHint(th)),
       name = ctx.typeName.getText,
-      mod = Option(ctx.id()).map(_.getText).toSeq))
+      ie = Option(ctx.id()).map(_.getText)))
 
   override def visitFieldTh(ctx: FieldThContext): FieldTh =
     emit(ctx, FieldTh(
@@ -179,7 +179,9 @@ class Visitor(source: String, fname: String, _package: String) extends AbstractP
 
     if (ctx.tuple() != null) {
       val indices = visitTuple(ctx.tuple()).seq
-      val to: Expression = Prop(first, ctx.VarId().map(vi => lId(vi.getText)))
+      val to: Expression =
+        if(ctx.VarId().isEmpty) first
+        else Prop(first, ctx.VarId().map(vi => lId(vi.getText)))
       to.setLocation(first.location)
 
       emit(ctx, SelfCall("set", to, indices :+ expr))

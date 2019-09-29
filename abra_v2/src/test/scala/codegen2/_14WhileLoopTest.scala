@@ -1,7 +1,7 @@
 package codegen2
 import org.scalatest.FunSuite
 
-class _13WhileLoopTest extends FunSuite {
+class _14WhileLoopTest extends FunSuite {
   test("while: condition") {
     CodeGenUtil.run(
       """

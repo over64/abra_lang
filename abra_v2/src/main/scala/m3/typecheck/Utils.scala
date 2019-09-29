@@ -1,17 +1,17 @@
 package m3.typecheck
 
 import m3.parse.Ast0._
-import m3.parse.Level
 import m3.parse.ParseMeta._
 
 import scala.collection.mutable
 
 object Utils {
   implicit class ThExtension(self: TypeHint) {
+    //FIXME: move to TypeHintPass
     def assertCorrect(ctx: PassContext, params: Seq[GenericTh]): Unit =
       self match {
         case sth: ScalarTh =>
-          val (_, _, decl) = resolveType(ctx.level, ctx.module, sth)
+          val (_, decl) = typeDecl(sth)
 
           if (decl.params.length != sth.params.length)
             throw TCE.ParamsCountMismatch(sth.location)
@@ -38,11 +38,14 @@ object Utils {
     def spec(specMap: mutable.HashMap[GenericTh, TypeHint],
              onNotFound: GenericTh => TypeHint = gth => AnyTh): TypeHint = {
       val res = self match {
-        case ScalarTh(params, name, pkg) =>
+        case oldTh@ScalarTh(params, name, pkg) =>
           specMap.get(GenericTh(name)) match {
             case Some(th) => th
             case None =>
-              ScalarTh(params.map(p => p.spec(specMap, onNotFound)), name, pkg)
+
+              val newTh = ScalarTh(params.map(p => p.spec(specMap, onNotFound)), name, pkg)
+              TCMeta.setSthModule(newTh, TCMeta.getSthModule(oldTh))
+              newTh
           }
         case StructTh(fields) =>
           StructTh(fields.map { field =>
@@ -103,30 +106,6 @@ object Utils {
       case gth: GenericTh => if (!dest.contains(gth)) dest += gth
       case AnyTh =>
     }
-
-    def moveToMod(ieSeq: Seq[ImportEntry]): TypeHint = {
-      if (ieSeq.isEmpty) return self
-
-      val moved = self match {
-        case sth@ScalarTh(params, name, pkg) =>
-          if (Builtin.isDeclaredBuiltIn(name) || ieSeq.head.withTypes.contains(name))
-            sth
-          else
-            ScalarTh(params, name, ieSeq.map(_.modName) ++ pkg)
-
-        case StructTh(fields) =>
-          StructTh(fields.map(f => FieldTh(f.name, f.typeHint.moveToMod(ieSeq))))
-        case UnionTh(variants) =>
-          UnionTh(variants.map(v => v.moveToMod(ieSeq)))
-        case FnTh(closure, args, ret) =>
-          FnTh(Seq.empty, args.map(a => a.moveToMod(ieSeq)), ret.moveToMod(ieSeq))
-        case gth: GenericTh => gth
-        case AnyTh => AnyTh
-      }
-
-      self.getLocation.foreach { location => moved.setLocation(location) }
-      moved
-    }
   }
 
   implicit class RichDef(self: Def) {
@@ -141,31 +120,16 @@ object Utils {
   }
 
 
-  def resolveType(level: Level, module: Module, th: ScalarTh): (Seq[ImportEntry], Module, TypeDecl) = {
-    val (origSeq, origModule) = th.mod.foldLeft((Seq.empty[ImportEntry], module)) {
-      case ((ieSeq, mod), modName) =>
-        val ieOpt = mod.imports.seq.toArray.find(ie => ie.modName == modName)
-        val ie = ieOpt match {
-          case Some(x) => x
-          case None =>
-            throw TCE.NoSuchModulePath(th.location)
-        }
-        (ieSeq :+ ie, level.findMod(ie.path).get)
-    }
-
-    val withoutMod = ScalarTh(th.params, th.name, Seq.empty)
-    th.getLocation.foreach(location => withoutMod.setLocation(location))
-
-    origModule.imports.seq
-      .flatMap(ie => ie.withTypes.map(tName => (ie, tName)))
-      .find { case (ie, tName) => tName == th.name }
-    match {
-      case Some((ie, _)) =>
-        val mod = level.findMod(ie.path).getOrElse(throw TCE.NoSuchModulePath(ie.location))
-        val (ieSeq, declMod, td) = resolveType(level, mod, withoutMod)
-        ((origSeq :+ ie) ++ ieSeq, declMod, td)
-      case None =>
-        (origSeq, origModule, origModule.types.getOrElse(th.name, Builtin.resolveBuiltinType(th)))
+  def typeDecl(th: ScalarTh): (Module, TypeDecl) = {
+    val declaredIn = TCMeta.getSthModule(th)
+    if (Builtin.isDeclaredBuiltIn(th.name))
+      (declaredIn, Builtin.resolveBuiltinType(th))
+    else {
+      val td = declaredIn.types.getOrElse(th.name, {
+        var x = 1
+        throw TCE.NoSuchType(th.location, Seq.empty, th.name)
+      })
+      (declaredIn, td)
     }
   }
 

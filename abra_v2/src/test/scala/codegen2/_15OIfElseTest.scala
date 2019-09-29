@@ -2,7 +2,7 @@ package codegen2
 
 import org.scalatest.FunSuite
 
-class _14OIfElseTest extends FunSuite {
+class _15OIfElseTest extends FunSuite {
   test("if: true") {
     CodeGenUtil.run(
       """def main =

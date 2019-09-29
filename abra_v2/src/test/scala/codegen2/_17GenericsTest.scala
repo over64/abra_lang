@@ -2,7 +2,7 @@ package codegen2
 
 import org.scalatest.FunSuite
 
-class _16GenericsTest extends FunSuite {
+class _17GenericsTest extends FunSuite {
   test("call") {
     CodeGenUtil.run(
       """

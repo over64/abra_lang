@@ -229,13 +229,14 @@ object RC {
 
   def doRC(mctx: ModContext, dctx: DContext, mode: RCMode, th: TypeHint, isPtr: Boolean, value: String): Unit = {
     genRcBase(mctx, mode, th)
-    val sync = Abi.syncValue(mctx, dctx, EResult(value, isPtr, true /* no matters */), AsStoreSrc, th, th)
 
     th.classify(mctx) match {
       case RefUnion(_) =>
+        val sync = Abi.syncValue(mctx, dctx, EResult(value, isPtr, true /* no matters */), AsStoreSrc, th, th)
         val fnName = if (mode == Dec) decFnName(th) else incFnName(th)
         dctx.write(s"call void @$fnName(${th.toValue(mctx)}* ${sync.value})")
       case NullableUnion(_) | RefStruct(_) | RefScalar =>
+        val sync = Abi.syncValue(mctx, dctx, EResult(value, isPtr, true /* no matters */), AsStoreSrc, th, th)
         val fnName = if (mode == Dec) decFnName(th) else incFnName(th)
         dctx.write(s"call void @$fnName(${th.toValue(mctx)} ${sync.value})")
       case _ =>

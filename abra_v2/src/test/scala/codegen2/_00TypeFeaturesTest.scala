@@ -5,6 +5,7 @@ import grammar.M2Parser
 import m3.codegen.IrUtils.ThIrExtension
 import m3.codegen.ModContext
 import m3.parse.Ast0.TypeHint
+import m3.typecheck.{Builtin, TCMeta, TypeHintPass}
 import org.antlr.v4.runtime.tree.ParseTree
 import org.scalatest.FunSuite
 import parse.ParseUtil
@@ -15,7 +16,12 @@ class _00TypeFeaturesTest extends FunSuite {
   }
 
   implicit class RichString(self: String) {
-    def th = thParser.parseStr[TypeHint](self)
+    def th = {
+      val parsed  = thParser.parseStr[TypeHint](self)
+      // FIXME
+      //TCMeta.setSthModule(parsed, Builtin.builtInMod)
+      parsed
+    }
   }
 
   val (root, main) = astForCode(

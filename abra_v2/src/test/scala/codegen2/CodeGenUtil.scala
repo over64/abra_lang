@@ -6,7 +6,7 @@ import java.util.Scanner
 import m3.codegen.{IrGenPass, OutConf}
 import m3.parse.Ast0.Module
 import m3.parse.{Level, ParsePass, Resolver}
-import m3.typecheck.TypeCheckPass
+import m3.typecheck.{TypeHintPass, TypeCheckPass}
 
 import scala.collection.mutable
 
@@ -28,6 +28,7 @@ object CodeGenUtil {
       }
     }).pass("main")
 
+    TypeHintPass.pass(root)
     new TypeCheckPass().pass(root)
 
     (root, root.findMod("main").get)

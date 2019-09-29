@@ -61,6 +61,25 @@ class _06SelfCallTest extends FunSuite {
     assertTh("() -> None", ast.function("main"))
   }
 
+  test("self call: set") {
+    val ast = astForCode(
+      """
+         type ArrayLike = (x: Int)
+
+         def mk = llvm
+            ; assembly .ArrayLike
+
+         def set = self: ArrayLike, x1: Int, x2: Float, value: Int do llvm
+           ; assembly .None
+
+         def main =
+           like = mk()
+           like(1, 1.0) = 42 .
+      """)
+
+    assertTh("() -> None", ast.function("main"))
+  }
+
   test("self call: get from struct field") {
     val ast = astForCode(
       """

@@ -54,10 +54,10 @@ object TypeChecker {
         case (fth, fieldId) =>
           fth match {
             case sth: ScalarTh =>
-              ctx.findType(sth.name, sth.mod) match {
+              ctx.findType(sth.name, sth.ie.toSeq) match {
                 case (_, sd: StructDecl) =>
                   sd.fields.find(fd => fd.name == fieldId.value).getOrElse(throw new RuntimeException(s"no such field $fieldId")).th
-                    .moveToModSeq(sth.mod)
+                    .moveToModSeq(sth.ie.toSeq)
                     .spec(makeSpecMap(sd.params, sth.params))
                 case _ => throw new RuntimeException(s"no such field ${fieldId.value} on type $fth")
               }
@@ -106,7 +106,7 @@ object TypeChecker {
           val vi = scope.findVar(id.value)
           vi.th match {
             case sth: ScalarTh =>
-              ctx.findType(sth.name, sth.mod) match {
+              ctx.findType(sth.name, sth.ie.toSeq) match {
                 case (_, sd: StructDecl) =>
                   sd.fields.find(fd => fd.name == fnName) match {
                     case Some(field) =>
@@ -313,7 +313,7 @@ object TypeChecker {
       val exprUnionVariants = exprTh match {
         case uth: UnionTh => uth.seq
         case sth: ScalarTh =>
-          ctx.findType(sth.name, sth.mod) match {
+          ctx.findType(sth.name, sth.ie.toSeq) match {
             case (_, ud: UnionDecl) => ud.variants.map(v => v.spec(makeSpecMap(ud.params, sth.params)))
             case _ => Seq(sth)
           }
@@ -422,7 +422,7 @@ object TypeChecker {
                   case (fth, fieldId) =>
                     fth match {
                       case sth: ScalarTh =>
-                        ctx.findType(sth.name, sth.mod) match {
+                        ctx.findType(sth.name, sth.ie.toSeq) match {
                           case (_, sd: StructDecl) =>
                             sd.fields.find(fd => fd.name == fieldId.value).get
                               .th.spec(makeSpecMap(sd.params, sth.params))
