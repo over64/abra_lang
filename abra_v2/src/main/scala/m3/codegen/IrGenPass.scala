@@ -490,6 +490,11 @@ class IrGenPass {
       case call@SelfCall(fnName, self, args) =>
         call.getCallType match {
           case CallFnPtr =>
+            val xx = {
+              import TCMeta.ParseNodeTCMetaImplicit
+              val realTh = call.getTypeHint[TypeHint]
+              var x = 1
+            }
             val objRes = passExpr(mctx, dctx, self)
             val (fth, fnPtrRes) = Abi.getProperty(mctx, dctx, dctx.meta.typeHint(self), objRes, Seq(lId(fnName)))
             val sync = Abi.syncValue(mctx, dctx, fnPtrRes, AsRetVal, fth, fth)
@@ -570,10 +575,9 @@ class IrGenPass {
 
             performCall(mctx, dctx, callAppliedTh, self +: args, None, selfFnName)
           case SelfCallPolymorphic(callAppliedTh) =>
-            val selfTh = {
-              import TCMeta.ParseNodeTCMetaImplicit
-              self.getTypeHint[TypeHint]
-            }
+            val selfTh = dctx.meta.typeHint(self)
+
+            var x = 1
 
             val (mod, fn) = dctx.resolvedSelfDefs((selfTh, fnName))
             val fnTh = {
@@ -582,8 +586,12 @@ class IrGenPass {
             }
 
             val isGeneric = fn.params.nonEmpty
-            if (isGeneric)
-              passDef(mctx.copy(modules = Seq(mod)), DContext(dctx.specMap, dctx.resolvedSelfDefs, fn, false))
+            if (isGeneric) {
+              val tInter = new TypeInfer(mctx.level, mctx.modules.head)
+              tInter.infer(Seq.empty, fn.lambda.args.head.typeHint, selfTh)
+              val mappedSpecMap = tInter.specMap
+              passDef(mctx.copy(modules = Seq(mod)), DContext(mappedSpecMap, dctx.resolvedSelfDefs, fn, false))
+            }
 
             val genericArgs = if (isGeneric) "[" + fn.params.map(p => p.spec(dctx.specMap)).mkString(", ") + "]" else ""
             val selfFnName = "@" + (mod.pkg + "." + fnTh.args.head + "." + fnName + genericArgs).escaped
@@ -797,13 +805,16 @@ class IrGenPass {
             }
             id.setVarLocation(VarLocal)
 
-            Branch(s"unless${brId}_unmatched$idx", dctx => {
-              val alias = dctx.addSymbol("unmatched")
-              dctx.scope.aliases.put("unmatched", alias)
-              val r = "%" + dctx.nextReg("")
-              dctx.write(s"$r =  bitcast ${expTh.toValue(mctx)}* ${res.value} to {i64, ${th.toValue(mctx)}}*")
-              dctx.write(s"%$alias =  getelementptr {i64, ${th.toValue(mctx)}}, {i64, ${th.toValue(mctx)}}* $r, i64 0, i32 1")
-            }, th, Seq(id))
+            if (th == Builtin.thNil) {
+              Branch(s"unless${brId}_unmatched$idx", dctx => {}, th, Seq.empty)
+            } else
+              Branch(s"unless${brId}_unmatched$idx", dctx => {
+                val alias = dctx.addSymbol("unmatched")
+                dctx.scope.aliases.put("unmatched", alias)
+                val r = "%" + dctx.nextReg("")
+                dctx.write(s"$r =  bitcast ${expTh.toValue(mctx)}* ${res.value} to {i64, ${th.toValue(mctx)}}*")
+                dctx.write(s"%$alias =  getelementptr {i64, ${th.toValue(mctx)}}, {i64, ${th.toValue(mctx)}}* $r, i64 0, i32 1")
+              }, th, Seq(id))
           }
 
           val r1, r2 = "%" + dctx.nextReg("")

@@ -302,7 +302,7 @@ class TypeCheckPass {
         lctx.log(s"check $eq vs $eqSelfSpec")
 
         val (ieSeq, mod, fn, fnTh, fnEq) = Invoker.findSelfDef(lctx, eqSelfLocation, eqSelfSpec, eq.fnName)
-        caller.addResolvedSelfDef(eqSelfTh, eq.fnName, mod, fn)
+        caller.addResolvedSelfDef(eqSelfSpec, eq.fnName, mod, fn)
 
         val selfFnInfer = new TypeInfer(lctx.level, lctx.module)
         selfFnInfer.infer(Seq() /* ??? */ , fnTh.args(0), eqSelfSpec)
@@ -472,7 +472,6 @@ class TypeCheckPass {
 
       val inferedRet = eqInfer.advice(fnTh.ret)
       caller.setCallSpecMap(eqInfer.tInfer.specMap)
-      //      caller.setCallAppliedTh(FnTh(Seq.empty, inferedArgs, inferedRet))
       inferedRet
     }
 
@@ -690,6 +689,7 @@ class TypeCheckPass {
             def callField(fth: FnTh) = {
               call.setCallType(CallFnPtr)
               Invoker.invokePrototype(ctx, call, eq, new Equations(), th, fth, argTasks)
+              fth.ret
             }
 
             selfTh match {
@@ -967,7 +967,7 @@ class TypeCheckPass {
         val uncoveredTypes = exprUnionVariants.toSet -- coveredType
         self.setUncovered(uncoveredTypes.toSeq)
 
-        val overallType = (uncoveredTypes ++ mappedType).toSeq
+        val overallType = (mappedType ++ uncoveredTypes).toSeq
 
         overallType match {
           case Seq(one) => one
