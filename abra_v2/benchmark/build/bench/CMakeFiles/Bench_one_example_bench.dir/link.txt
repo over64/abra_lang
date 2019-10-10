@@ -1,1 +1,0 @@
-/usr/bin/c++    -std=c++11 -O3 -DNDEBUG    CMakeFiles/Bench_one_example_bench.dir/some.cpp.o CMakeFiles/Bench_one_example_bench.dir/one_example_bench.cpp.o  -o one_example_bench -rdynamic ../googlebenchmark-build/src/libbenchmark.a -lpthread -lrt 

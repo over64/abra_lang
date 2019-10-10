@@ -1,5 +1,0 @@
-import abra.io
-
-type LinesIterator = (fd: abra.io.Fd) # rewrites to io.Fd
-def mkLinesIterator: (path: String) -> LinesIterator
-def nextLine: (self: LinesIterator) -> String

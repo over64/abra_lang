@@ -1,4 +1,0 @@
-def main = {
-    match 3
-        of y -> y
-}: Int

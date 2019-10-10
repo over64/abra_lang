@@ -1,7 +1,0 @@
-type U1 = Boolean | Int
-
-def main = {
-    val u1: U1 = 3
-    val u2: U1 = false
-    0
-}: Int # 0 expected

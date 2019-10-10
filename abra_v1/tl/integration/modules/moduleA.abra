@@ -1,5 +1,0 @@
-import integration.modules.moduleB
-
-def main = {
-    moduleB.foo
-}: Int

@@ -1,1 +1,0 @@
-void bench_routine();

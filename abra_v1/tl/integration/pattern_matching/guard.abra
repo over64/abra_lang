@@ -1,9 +1,0 @@
-def ==: (self: Boolean, other: Boolean) -> Boolean = llvm {
-  %1 = icmp eq i1 %self, %other
-  ret i1 %1
-}
-
-def main = {
-    match 1
-        of _ if true == true -> 1
-}: Int

@@ -1,2 +1,0 @@
-Bench_one_example 3 3.27931
----

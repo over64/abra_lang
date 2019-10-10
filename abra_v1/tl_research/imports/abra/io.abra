@@ -1,5 +1,0 @@
-type Fd = llvm { i32 }
-
-def open: (path: String) -> Fd = llvm {}
-def close: (self: Fd) -> Unit = llvm {}
-def readLine: (self: Fd) -> String = llvm {}

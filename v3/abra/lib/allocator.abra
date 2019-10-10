@@ -1,0 +1,51 @@
+type Ptr = native i8* .  -- TODO: move Ptr decl to prelude
+type Allocator = ( alloc: (Long) -> Ptr,
+                   free : (Ptr)  -> None,
+                   inc  : (Ptr)  -> None,
+                   dec  : (Ptr)  -> Long )
+
+def load = native
+  %a = alloca %allocator.Allocator
+
+  %old.alloc = load i8*  (i64)*, i8*  (i64)** @evaAlloc
+  %old.free  = load void (i8*)*, void (i8*)** @evaFree
+  %old.inc   = load void (i8*)*, void (i8*)** @evaInc
+  %old.dec   = load i64  (i8*)*, i64  (i8*)** @evaDec
+
+  %old.alloc.cl = bitcast i8*  (i64)* %old.alloc to i8*  (i64, i8*)*
+  %old.free.cl  = bitcast void (i8*)* %old.free  to void (i8*, i8*)*
+  %old.inc.cl   = bitcast void (i8*)* %old.inc   to void (i8*, i8*)*
+  %old.dec.cl   = bitcast i64  (i8*)* %old.dec   to i64  (i8*, i8*)*
+  
+  %a.alloc = getelementptr %allocator.Allocator, %allocator.Allocator* %a, i64 0, i32 0, i32 0
+  %a.free  = getelementptr %allocator.Allocator, %allocator.Allocator* %a, i64 0, i32 1, i32 0
+  %a.inc   = getelementptr %allocator.Allocator, %allocator.Allocator* %a, i64 0, i32 2, i32 0
+  %a.dec   = getelementptr %allocator.Allocator, %allocator.Allocator* %a, i64 0, i32 3, i32 0
+
+  store i8*  (i64, i8*)* %old.alloc.cl, i8*  (i64, i8*)**  %a.alloc
+  store void (i8*, i8*)* %old.free.cl,  void (i8*, i8*)**  %a.free
+  store void (i8*, i8*)* %old.inc.cl,   void (i8*, i8*)**  %a.inc
+  store i64  (i8*, i8*)* %old.dec.cl,   i64  (i8*, i8*)**  %a.dec
+
+  %ret = load %allocator.Allocator, %allocator.Allocator* %a
+  ret %allocator.Allocator %ret .Allocator
+
+def store = alloc: Allocator native
+  %a = load %allocator.Allocator, %allocator.Allocator* %alloc
+
+  %a.alloc.cl = extractvalue %allocator.Allocator %a, 0, 0
+  %a.free.cl  = extractvalue %allocator.Allocator %a, 1, 0
+  %a.inc.cl   = extractvalue %allocator.Allocator %a, 2, 0
+  %a.dec.cl   = extractvalue %allocator.Allocator %a, 3, 0
+
+  %a.alloc = bitcast i8*  (i64, i8*)* %a.alloc.cl to i8*  (i64)*
+  %a.free  = bitcast void (i8*, i8*)* %a.free.cl  to void (i8*)*
+  %a.inc   = bitcast void (i8*, i8*)* %a.inc.cl   to void (i8*)*
+  %a.dec   = bitcast i64  (i8*, i8*)* %a.dec.cl   to i64  (i8*)*
+
+  store i8*  (i64)* %a.alloc, i8*  (i64)**  @evaAlloc
+  store void (i8*)* %a.free,  void (i8*)**  @evaFree
+  store void (i8*)* %a.inc,   void (i8*)**  @evaInc
+  store i64  (i8*)* %a.dec,   i64  (i8*)**  @evaDec
+
+  ret void .None

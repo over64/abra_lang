@@ -1,7 +1,0 @@
-type U1 = Boolean | Int
-
-def main = {
-    var u1: U1 = 3
-    u1 = false
-    0
-}: Int # 0 expected

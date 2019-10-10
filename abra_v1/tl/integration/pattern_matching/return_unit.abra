@@ -1,7 +1,0 @@
-def foo = { }: Unit
-
-def main = {
-    match 1
-        of _ -> foo()
-    1
-}: Int
