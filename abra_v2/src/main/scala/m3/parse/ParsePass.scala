@@ -16,10 +16,10 @@ trait Resolver {
 class FsResolver(libDir: String, projDir: String) extends Resolver {
   override def resolve(path: String): String =
     new String(Files.readAllBytes(Paths.get(
-      if (path.startsWith("/"))
-        libDir + path + ".abra"
+      if (path.startsWith("."))
+        projDir + path.stripPrefix(".") + ".abra"
       else
-        projDir + path + ".abra"
+        libDir + path + ".abra"
     )))
 }
 
@@ -64,14 +64,14 @@ case class Level(modules: mutable.HashMap[String, Module], var next: Option[Leve
 
 class CircularModReference(val stack: Seq[String]) extends Exception
 
-class ParsePass(resolver: Resolver) {
+class ParsePass(resolver: Resolver, prelude: Option[String]) {
   def parseMod(path: String, code: String): Module = {
     val lexer = new M2LexerForIDE(new ANTLRInputStream(code))
     val tokens = new CommonTokenStream(lexer)
 
     val parser = new M2Parser(tokens)
     parser.setErrorHandler(new BailErrorStrategy)
-    val visitor = new Visitor(code, path, path)
+    val visitor = new Visitor(code, path, path, prelude)
 
     try {
       visitor.visit(parser.module()).asInstanceOf[Module]
@@ -96,23 +96,26 @@ class ParsePass(resolver: Resolver) {
     val current = Level(mutable.HashMap.empty, None)
 
     paths.map { path =>
-      val module = try {
-        root.stealMod(path)
+      try {
+        val module = root.stealMod(path)
+        module match {
+          case Some(module) =>
+            println(s"${"\t" * deep}cache $path")
+            current.modules.put(path, module)
+          case None =>
+            println(s"${"\t" * deep}parse $path")
+            current.modules.put(path, parseMod(path, resolver.resolve(path)))
+        }
       } catch {
         case ex: CircularException =>
-          println(s"${"\t" * deep}circular reference $path")
-          root.append(current)
-          throwLoop(Seq.empty, root.next.get /* root is always empty by design */ , path)
-          throw new RuntimeException("internal compiler error") // if throwLoop will not throw
-      }
+          if (path != "prelude") {
+            println(s"${"\t" * deep}circular reference $path")
+            root.append(current)
+            throwLoop(Seq.empty, root.next.get /* root is always empty by design */ , path)
+            throw new RuntimeException("internal compiler error") // if throwLoop will not throw
+          }
 
-      module match {
-        case Some(module) =>
-          println(s"${"\t" * deep}cache $path")
-          current.modules.put(path, module)
-        case None =>
-          println(s"${"\t" * deep}parse $path")
-          current.modules.put(path, parseMod(path, resolver.resolve(path)))
+          None
       }
     }
 

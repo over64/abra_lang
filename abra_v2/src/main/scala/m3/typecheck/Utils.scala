@@ -86,8 +86,15 @@ object Utils {
       case _ => false
     }
 
-    def getArrayLen: Long = self.asInstanceOf[ScalarTh].name
-      .replace("Array", "").toLong
+    def getArrayLen: Long =
+      try {
+        self.asInstanceOf[ScalarTh].name
+          .replace("Array", "").toLong
+      } catch {
+        case ex: NumberFormatException =>
+          var x = 1
+          throw ex
+      }
 
     def isBuiltin = self match {
       case sth: ScalarTh =>

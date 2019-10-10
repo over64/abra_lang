@@ -16,10 +16,10 @@ class _12StructTest extends FunSuite {
   test("struct: load ref prop") {
     CodeGenUtil.run(
       """
-        llvm
+        native
           declare void @puts(i8*)  .
 
-        def print = str: String do llvm
+        def print = str: String native
           call void @puts(i8* %str)
           ret void .None
 
@@ -45,10 +45,10 @@ class _12StructTest extends FunSuite {
   test("struct: store ref prop") {
     CodeGenUtil.run(
       """
-        llvm
+        native
           declare void @puts(i8*)  .
 
-        def print = str: String do llvm
+        def print = str: String native
           call void @puts(i8* %str)
           ret void .None
 

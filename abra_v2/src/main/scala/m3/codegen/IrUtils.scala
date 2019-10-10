@@ -27,6 +27,7 @@ object IrUtils {
   implicit class RichString(self: String) {
     def escaped: String =
       if (self.contains(" ") || self.contains("[") ||
+        self.contains("!") || self.contains("!=") || self.contains("==") ||
         self.contains("<") || self.contains(">") ||
         self.contains("+") || self.contains("-") ||
         self.contains("*") || self.contains("/") ||
@@ -268,7 +269,11 @@ object IrUtils {
         typeDecls +=
           ((self,
             s"""${self.toValue(mctx)} = type """ + (self.isUnion(mctx) match {
-              case NullableU(_) => "i8*" //FIXME: ???
+              case NullableU(vth) =>
+                vth.classify(mctx) match {
+                  case RefStruct(_) => vth.toValue(mctx, suffix = ".body") + "*"
+                  case _ => vth.toValue(mctx)
+                }
               case _ =>
                 self match {
                   case th: ScalarTh =>
@@ -312,7 +317,7 @@ object IrUtils {
                       s"{ ${fieldsIr.mkString(", ")} }"
                   case uth: UnionTh => forUnion(uth.seq)
                   case fth: FnTh =>
-                    s"{ ${fth.ret.toValue(mctx)} (${(fth.args.map(th => th.toValue(mctx)) :+ "i8*").mkString(", ")})*, i8* }"
+                    s"{ ${fth.ret.toValue(mctx)} (${(fth.args.map(th => AbiTh.toCallArg(mctx, th)) :+ "i8*").mkString(", ")})*, i8* }"
                 }
             })))
       }

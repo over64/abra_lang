@@ -6,7 +6,7 @@ class _08LambdaDeclTest extends FunSuite {
     CodeGenUtil.run(
       """
         def main =
-          z = lambda x: Int, y: Int ->
+          z = |x: Int, y: Int|
             42 .
           z(1, 1) .
       """, exitCode = 42)

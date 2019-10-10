@@ -11,7 +11,7 @@ class _16ImportTypeTest extends FunSuite {
         type Some = (x: Int)
         """
       case "main" => """
-        import modA .
+        import modA
         def main =
           value: modA.Some | Int = 42 .
         """
@@ -28,7 +28,7 @@ class _16ImportTypeTest extends FunSuite {
         type Some = (x: Int)
         """
       case "main" => """
-        import modA with Some .
+        import modA with Some
         def main =
           value: Some | Int = 42 .
         """
@@ -45,11 +45,11 @@ class _16ImportTypeTest extends FunSuite {
         type B = (x: Int, y: Int)
         """
       case "libA" => """
-        import libB .
+        import libB
         type A = (b: libB.B, x: Int)
         """
       case "main" => """
-        import libA with A .
+        import libA with A
         type M = (a: A, x: Int)
         def local = m: M do none .
         """
@@ -66,7 +66,7 @@ class _16ImportTypeTest extends FunSuite {
         type Some = (x: Int)
         """
         case "main" => """
-        import modA with Some .
+        import modA with Some
         type Some = (f: Float)
         def main = .
         """

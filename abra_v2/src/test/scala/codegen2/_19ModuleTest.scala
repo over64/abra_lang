@@ -6,12 +6,12 @@ class _19ModuleTest extends FunSuite {
   test("CallImport") {
     CodeGenUtil.runModules({
       case "modA" => """
-        def add = x: Int, y: Int do llvm
+        def add = x: Int, y: Int native
           %1 = add nsw i32 %x, %y
           ret i32 %1 .Int
         """
       case "main" => """
-        import modA .
+        import modA
         def main =
            modA.add(1, 41) .
         """
@@ -21,13 +21,13 @@ class _19ModuleTest extends FunSuite {
   test("native function intermod inline") {
     CodeGenUtil.runModules({
       case "modA" => """
-        def add = x: Int, y: Int do llvm
+        def add = x: Int, y: Int native
           ;meta intermodule_inline
           %1 = add nsw i32 %x, %y
           ret i32 %1 .Int
         """
       case "main" => """
-        import modA .
+        import modA
         def main =
            modA.add(1, 41) .
         """
@@ -37,14 +37,14 @@ class _19ModuleTest extends FunSuite {
   test("CallImport generic") {
     CodeGenUtil.runModules({
       case "modA" => """
-        def + = self: Int, y: Int do llvm
+        def + = self: Int, y: Int native
           %1 = add nsw i32 %self, %y
           ret i32 %1 .Int
 
         def add = x: num, y: num do 1 + 1 .
         """
       case "main" => """
-        import modA .
+        import modA
 
         def main =
            modA.add(1, 41) .
@@ -55,14 +55,14 @@ class _19ModuleTest extends FunSuite {
   test("SelfCallImport") {
     CodeGenUtil.runModules({
       case "modA" => """
-        def + = self: Int, y: Int do llvm
+        def + = self: Int, y: Int native
           %1 = add nsw i32 %self, %y
           ret i32 %1 .Int
 
         def add = self: Int, y: Int do self + y .
         """
       case "main" => """
-        import modA .
+        import modA
         def main =
            1.add(41) .
         """
@@ -75,7 +75,7 @@ class _19ModuleTest extends FunSuite {
         def add = self: num, y: num do 42 .
         """
       case "main" => """
-        import modA .
+        import modA
 
         def main =
            1.add(41) .
@@ -90,9 +90,9 @@ class _19ModuleTest extends FunSuite {
         def add = self: num, y: num do self + y .
         """
       case "main" => """
-        import modA .
+        import modA
 
-        def + = self: Int, y: Int do llvm
+        def + = self: Int, y: Int native
           %1 = add nsw i32 %self, %y
           ret i32 %1 .Int
 
@@ -108,11 +108,11 @@ class _19ModuleTest extends FunSuite {
         type B = (x: Int, y: Int)
         """
       case "libA" => """
-        import libB .
+        import libB
         type A = (b: libB.B, x: Int)
         """
       case "main" => """
-        import libA with A .
+        import libA with A
         type M = (a: A, x: Int)
         def local = m: M do none .
         def main = 42 .

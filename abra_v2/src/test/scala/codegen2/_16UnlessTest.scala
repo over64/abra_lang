@@ -6,7 +6,7 @@ class _16UnlessTest extends FunSuite {
   test("unless: simple") {
     CodeGenUtil.run(
       """
-         def > = self: Int, other: Int do llvm
+         def > = self: Int, other: Int native
            %1 = icmp sgt i32 %self, %other
            %2 = zext i1 %1 to i8
            ret i8 %2 .Bool

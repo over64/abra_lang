@@ -6,30 +6,30 @@ class _20ModulesAdvancedTest extends FunSuite {
   test("a collections demo") {
     CodeGenUtil.runModules({
       case "prelude" => """
-        def + = self: Int, other: Int do llvm
+        def + = self: Int, other: Int native
           %1 = add nsw i32 %self, %other
           ret i32 %1 .Int
 
-        def - = self: Int, other: Int do llvm
+        def - = self: Int, other: Int native
           %1 = sub nsw i32 %self, %other
           ret i32 %1 .Int
 
-        def * = self: Int, other: Int do llvm
+        def * = self: Int, other: Int native
           %1 = mul nsw i32 %self, %other
           ret i32 %1 .Int
 
-        def > = self: Int, other: Int do llvm
+        def > = self: Int, other: Int native
           %1 = icmp sgt i32 %self, %other
           %2 = zext i1 %1 to i8
           ret i8 %2 .Bool
 
-        def < = self: Int, other: Int do llvm
+        def < = self: Int, other: Int native
           %1 = icmp slt i32 %self, %other
           %2 = zext i1 %1 to i8
           ret i8 %2 .Bool
         """
       case "unsafeArray" => """
-        def alloc = len: index do llvm
+        def alloc = len: index native
           %allocFn = load i8* (i64)*, i8* (i64)** @evaAlloc
           %ptr = getelementptr $t, $t* null, $index %len
           %size = ptrtoint $t* %ptr to i64
@@ -39,17 +39,17 @@ class _20ModulesAdvancedTest extends FunSuite {
           %rv2 = insertvalue $retTypeof() %rv1, $t* %array, 1
           ret $retTypeof() %rv2 .Array[t]
 
-        def len = slf: array do llvm
+        def len = slf: array native
           %1 = extractvalue $array %slf, 0
           ret $index %1 .index
 
-        def get = slf: array, idx: index do llvm
+        def get = slf: array, idx: index native
           %ptr = extractvalue $array %slf, 1
           %elPtr = getelementptr $t, $t* %ptr, $index %idx
           %value = load $t, $t* %elPtr
           ret $t %value .t
 
-        def set = slf: array, idx: index, value: t do llvm
+        def set = slf: array, idx: index, value: t native
           %ptr = extractvalue $array %slf, 1
           %elPtr = getelementptr $t, $t* %ptr, $index %idx
           %old = load $t, $t* %elPtr
@@ -58,7 +58,7 @@ class _20ModulesAdvancedTest extends FunSuite {
           store $t %value, $t* %elPtr
           ret void .None
 
-        def setInit = slf: array, idx: index, value: t do llvm
+        def setInit = slf: array, idx: index, value: t native
           %ptr = extractvalue $array %slf, 1
           %elPtr = getelementptr $t, $t* %ptr, $index %idx
           ;meta rc_inc[t](value)
@@ -66,9 +66,7 @@ class _20ModulesAdvancedTest extends FunSuite {
           ret void .None
         """
       case "array" => """
-        import
-          prelude
-          unsafeArray .
+        import prelude, unsafeArray
 
         def set = self: Array[t], idx: Int, value: t do
           unsafeArray.set(self, idx, value) .None
@@ -127,29 +125,36 @@ class _20ModulesAdvancedTest extends FunSuite {
                 if self.predicate(forFilter) do
                   return value .
               is None do return none ...t | None
+
+        def forEach = self: iterator, callback: (t) -> None do
+          while true do
+            value: t | None = self.next()
+            value unless
+              is exist: t do callback(exist)
+              is None do return ...None
         """
       case "io" => """
+        native
+          @.printfInt = private constant [3 x i8] c"%d\00", align 1
+          declare i32 @printf(i8*,...) .
 
+        def printInt = i: Int native
+          %format = bitcast [3 x i8]* @.printfInt to i8*
+          call i32 (i8*,...) @printf(i8* %format, i32 %i)
+          ret void .None
         """
       case "main" => """
-        import
-          prelude
-          array
-          seq
-          io .
+        import prelude, array, seq, io
 
         def main =
-          array1 = array.mk(10, lambda i -> i)
-          it = array1.iter()
-            .map(lambda x -> x * 2)
-            .filter(lambda x -> x > 10)
+          nums = array.mk(10, |i| i)
+          nums.iter()
+            .map(|x| x * 2)
+            .filter(|x| x > 10)
+            .forEach(|x| io.printInt(x))
 
-          it.next()
-          it.next()
-          it.next()
-
-          it.next() unless is None do -1 ..
+          42 .
         """
-    }, 42)
+    }, 42, stdout = Some("12141618\n"))
   }
 }

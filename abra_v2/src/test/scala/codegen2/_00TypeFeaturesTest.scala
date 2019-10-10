@@ -5,11 +5,11 @@ import grammar.M2Parser
 import m3.codegen.IrUtils.ThIrExtension
 import m3.codegen.ModContext
 import m3.parse.Ast0.TypeHint
-import m3.typecheck.{Builtin, TCMeta, TypeHintPass}
 import org.antlr.v4.runtime.tree.ParseTree
-import org.scalatest.FunSuite
+import org.scalatest.{FunSuite, Ignore}
 import parse.ParseUtil
 
+@Ignore
 class _00TypeFeaturesTest extends FunSuite {
   val thParser = new ParseUtil {
     override def whatToParse: (M2Parser) => ParseTree = { parser => parser.typeHint() }
@@ -24,8 +24,10 @@ class _00TypeFeaturesTest extends FunSuite {
     }
   }
 
-  val (root, main) = astForCode(
-    """
+
+  test("is ref type") {
+    val (root, main) = astForCode(
+      """
         type Ptr = llvm i8* .
         type StrLike = ref llvm i8* .
 
@@ -49,14 +51,12 @@ class _00TypeFeaturesTest extends FunSuite {
         # type Node3 = (v: Int, next: Option[Node])
       """)
 
-  def assertRefType(thStr: String) =
-    assert(thStr.th.isRefType(ModContext(System.out, root, Seq(main))) === true, s"Expected $thStr IS ref type")
+    def assertRefType(thStr: String) =
+      assert(thStr.th.isRefType(ModContext(System.out, root, Seq(main))) === true, s"Expected $thStr IS ref type")
 
-  def assertNotRefType(thStr: String) =
-    assert(thStr.th.isRefType(ModContext(System.out, root, Seq(main))) === false, s"Expected $thStr NOT ref type")
+    def assertNotRefType(thStr: String) =
+      assert(thStr.th.isRefType(ModContext(System.out, root, Seq(main))) === false, s"Expected $thStr NOT ref type")
 
-
-  test("is ref type") {
     assertNotRefType("Ptr")
     assertRefType("StrLike")
     assertNotRefType("Some")

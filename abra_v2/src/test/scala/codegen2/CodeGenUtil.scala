@@ -17,7 +17,7 @@ object CodeGenUtil {
       case "main" => code
     })
 
-  def astForModules(resolver: String => String): (Level, Module) = {
+  def astForModules(resolver: String => String, entry: String = "main", prelude: Option[String]  = None): (Level, Module) = {
     val root = new ParsePass(new Resolver {
       override def resolve(path: String): String = {
         val code = resolver(path)
@@ -26,12 +26,12 @@ object CodeGenUtil {
         fw.close()
         code
       }
-    }).pass("main")
+    }, prelude).pass(entry)
 
     TypeHintPass.pass(root)
     new TypeCheckPass().pass(root)
 
-    (root, root.findMod("main").get)
+    (root, root.findMod(entry).get)
   }
 
   class FileOutProvider extends OutConf {
@@ -52,9 +52,14 @@ object CodeGenUtil {
   def run(code: String, exitCode: Int, stdout: Option[String] = None): Unit =
     runModules({
       case "main" => code
-    }, exitCode, stdout)
+    }, exitCode, stdout = stdout)
 
-  def runModules(resolver: String => String, exitCode: Int, stdout: Option[String] = None): Unit = {
+  def runModules(resolver: String => String, exitCode: Int,
+                 entry: String = "main", prelude: Option[String] = None,
+                 stdout: Option[String] = None,
+                 linkerFlags: Seq[String] = Seq.empty): Unit = {
+    val m1 = System.currentTimeMillis()
+
     def invoke(args: Seq[String]): (Int, String, String) = {
       def streamToString(stream: InputStream) = {
         val buff = new StringBuffer()
@@ -78,7 +83,7 @@ object CodeGenUtil {
       (proc.exitValue(), out, err)
     }
 
-    val (root, _) = astForModules(resolver)
+    val (root, _) = astForModules(resolver, entry, prelude)
     val outConf = new FileOutProvider
     new IrGenPass().pass(root, outConf)
 
@@ -86,15 +91,22 @@ object CodeGenUtil {
       val src = file.getAbsolutePath
       val dest = src.stripSuffix(".ll") + ".o"
 
-      if (invoke(Seq("sh", "-c", s"llc-7 -filetype=obj $src -o $dest"))._1 != 0)
+      if (invoke(Seq("sh", "-c", s"opt-8 -O3 -debugify $src | llc-8 -O3 -filetype=obj -o $dest"))._1 != 0)
         throw new RuntimeException("Compilation error: llc")
 
       dest
     }
 
+    val m2 = System.currentTimeMillis()
+    println(s"__LLVM pass elapsed: ${m2 - m1}ms")
+
     if (invoke(Seq("sh", "-c",
-      s"clang-7 ${objects.mkString(" ")} ${System.getProperty("user.dir")}/abra_v2/abra/lib/runtime2.ll -o /tmp/main"))._1 != 0)
+      s"clang-8 -O3 ${objects.mkString(" ")} ${System.getProperty("user.dir")}/abra_v2/abra/lib/runtime2.ll -o /tmp/main  ${linkerFlags.mkString(" ")}"))._1 != 0)
       throw new RuntimeException("Compilation error: llc")
+
+    val m3 = System.currentTimeMillis()
+    println(s"__Linker pass elapsed: ${m3 - m2}ms")
+
 
     val (code, out, err) = invoke(Seq("sh", "-c", "valgrind -q --leak-check=full /tmp/main"))
 

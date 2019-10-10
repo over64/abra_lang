@@ -43,7 +43,7 @@ class _11WhileTest extends FunSuite {
       astForCode(
         """
          def main =
-           while 1 do # C-style
+           while 1 do -- C-style
              none ..
       """)
     }

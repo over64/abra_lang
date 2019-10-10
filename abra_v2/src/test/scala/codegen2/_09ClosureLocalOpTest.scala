@@ -9,11 +9,11 @@ class _09ClosureLocalOpTest extends FunSuite {
         def main =
           x: $th = $value
 
-          z = lambda
-            y = x       # as store src
-            x = $value  # as store dest
-            dummy(x)    # as call arg
-            x .()       # as ret val
+          z = ||
+            y = x       -- as store src
+            x = $value  -- as store dest
+            dummy(x)    -- as call arg
+            x .()       -- as ret val
 
           42 .""", exitCode = 42)
   }

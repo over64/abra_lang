@@ -13,6 +13,7 @@ import TCMeta.VarTypeTCMetaImplicit
 import TCMeta.CallTypeTCMetaImplicit
 import TCMeta.PolymorphicTCMetaImplicit
 import TCMeta.DefTCMetaImplicit
+import m3.codegen.RC.{decFnName, incFnName}
 
 import scala.collection.mutable
 import scala.collection.mutable.{HashMap, ListBuffer}
@@ -268,9 +269,11 @@ class IrGenPass {
 
         (args zip fieldsTh).zipWithIndex.foreach { case ((field, fieldTh), idx) =>
           val fRes = passExpr(mctx, dctx, field)
+          val feth = dctx.meta.typeHint(field)
+          val syncfRes = Abi.syncValue(mctx, dctx, fRes, AsStoreSrc, feth, feth)
           val fieldDestPtr = "%" + dctx.nextReg("")
           dctx.write(s"$fieldDestPtr = getelementptr $toIrType, $toIrType* $to, ${base}i32 $idx")
-          Abi.store(mctx, dctx, false, !fRes.isAnon, fieldTh, dctx.meta.typeHint(field), fieldDestPtr, fRes.value)
+          Abi.store(mctx, dctx, false, !syncfRes.isAnon, fieldTh, dctx.meta.typeHint(field), fieldDestPtr, syncfRes.value)
         }
         EResult(to, false, true)
       }
@@ -385,6 +388,19 @@ class IrGenPass {
         EResult(r, false, true)
       case id: lId =>
         id.getVarLocation match {
+          case VarDefLocal(fn) =>
+            val fth = dctx.meta.typeHintAs[FnTh](fn)
+            val irFnName = (mctx.modules.head.pkg + "." + fn.name).escaped
+            val r1, r2, r3 = "%" + dctx.nextReg("")
+
+            val irArgs = fth.args.map(th => AbiTh.toCallArg(mctx, th))
+            val closureArgs =irArgs :+ "i8*"
+
+            dctx.write(s"$r1 = bitcast ${fth.ret.toValue(mctx)} ${irArgs.mkString("(", ", ", ")")}* @$irFnName to ${fth.ret.toValue(mctx)} ${closureArgs.mkString("(", ", ", ")")}*") // FIXME: so long line
+            dctx.write(s"$r2 = insertvalue ${fth.toValue(mctx)} undef, ${fth.ret.toValue(mctx)} (${closureArgs.mkString(", ")})* $r1, 0")
+            dctx.write(s"$r3 = insertvalue ${fth.toValue(mctx)} $r2, i8* null, 1")
+
+            EResult(r2, false, true)
           case VarLocal => EResult("%" + dctx.scope.getAlias(id.value), true, false)
           case VarParam =>
             dctx.meta.typeHint(id).classify(mctx) match {
@@ -442,15 +458,15 @@ class IrGenPass {
               val id = e.asInstanceOf[lId]
               if (fn.isGeneric) {
                 var x = 1
-                val mappedResolvedSelfDefs =
-                  mutable.HashMap(fn.getEquations.eqSeq.map { eq =>
-                    val d = call.getResolvedSelfDefs().getOrElse((eq.selfType._2, eq.fnName), {
-                      dctx.resolvedSelfDefs((eq.selfType._2.spec(callSpecMap), eq.fnName))
-                    })
-                    ((eq.selfType._2.asInstanceOf[TypeHint], eq.fnName), d)
-                  }: _*)
+                //                val mappedResolvedSelfDefs =
+                //                  mutable.HashMap(fn.getEquations.eqSeq.map { eq =>
+                //                    val d = call.getResolvedSelfDefs().getOrElse((eq.selfType._2, eq.fnName), {
+                //                      dctx.resolvedSelfDefs((eq.selfType._2.spec(callSpecMap), eq.fnName))
+                //                    })
+                //                    ((eq.selfType._2.asInstanceOf[TypeHint], eq.fnName), d)
+                //                  }: _*)
 
-                passDef(mctx, DContext(mappedSpecMap, mappedResolvedSelfDefs, fn, false))
+                passDef(mctx, DContext(mappedSpecMap, dctx.resolvedSelfDefs ++ call.getResolvedSelfDefs(), fn, false))
 
                 val genericArgs = "[" + fn.params.map(p => p.spec(mappedSpecMap)).mkString(", ") + "]"
                 ("@" + (mctx.modules.head.pkg + "." + id.value + genericArgs).escaped, args, None, callAppliedTh)
@@ -484,6 +500,8 @@ class IrGenPass {
               dctx.write(s"$r1 = extractvalue ${fth.toValue(mctx)} ${sync.value}, 0")
               dctx.write(s"$r2 = extractvalue ${fth.toValue(mctx)} ${sync.value}, 1")
               (r1, args, Some(r2), fth)
+            case _ =>
+              throw new RuntimeException("unmatched")
           }
 
         performCall(mctx, dctx, fth, callArgs, envArg, fName)
@@ -518,20 +536,22 @@ class IrGenPass {
             }
 
             val isGeneric = fn.params.nonEmpty
-            val genericArgs = if (isGeneric) "[" + fn.params.map(p => p.spec(callSpecMap)).mkString(", ") + "]" else ""
+            val genericArgs = if (isGeneric) "[" + fn.params.map(p => p.spec(mappedSpecMap)).mkString(", ") + "]" else ""
             val protoName = "@" + (module.pkg + "." + fnName + genericArgs).escaped
             val irArgs = callAppliedTh.args.map(ath => AbiTh.toCallArg(mctx, dctx.specialized(ath)))
 
-            if (isGeneric) {
-              val mappedResolvedSelfDefs =
-                mutable.HashMap(fn.getEquations.eqSeq.map { eq =>
-                  val d = call.getResolvedSelfDefs().getOrElse((eq.selfType._2, eq.fnName), {
-                    dctx.resolvedSelfDefs((eq.selfType._2.spec(callSpecMap), eq.fnName))
-                  })
-                  ((eq.selfType._2.asInstanceOf[TypeHint], eq.fnName), d)
-                }: _*)
+            var x = 1
 
-              passDef(mctx.copy(modules = module +: mctx.modules), DContext(mappedSpecMap, mappedResolvedSelfDefs, fn, false))
+            if (isGeneric) {
+              //              val mappedResolvedSelfDefs =
+              //                mutable.HashMap(fn.getEquations.eqSeq.map { eq =>
+              //                  val d = call.getResolvedSelfDefs().getOrElse((eq.selfType._2, eq.fnName), {
+              //                    dctx.resolvedSelfDefs((eq.selfType._2.spec(callSpecMap), eq.fnName))
+              //                  })
+              //                  ((eq.selfType._2.asInstanceOf[TypeHint], eq.fnName), d)
+              //                }: _*)
+
+              passDef(mctx.copy(modules = module +: mctx.modules), DContext(mappedSpecMap, dctx.resolvedSelfDefs ++ call.getResolvedSelfDefs(), fn, false))
             } else
               mctx.prototypes += s"${AbiTh.toRetVal(mctx, callAppliedTh.ret)} $protoName (${irArgs.mkString(", ")})"
 
@@ -555,19 +575,21 @@ class IrGenPass {
             }
 
             val isGeneric = fn.params.nonEmpty
-            val genericArgs = if (isGeneric) "[" + fn.params.map(p => p.spec(callSpecMap)).mkString(", ") + "]" else ""
+            val genericArgs = if (isGeneric) "[" + fn.params.map(p => p.spec(mappedSpecMap)).mkString(", ") + "]" else ""
             val selfFnName = "@" + (mctx.modules.head.pkg + "." + fnTh.args.head + "." + fnName + genericArgs).escaped
 
-            if (isGeneric) {
-              val mappedResolvedSelfDefs =
-                mutable.HashMap(fn.getEquations.eqSeq.map { eq =>
-                  val d = call.getResolvedSelfDefs().getOrElse((eq.selfType._2, eq.fnName), {
-                    dctx.resolvedSelfDefs((eq.selfType._2.spec(callSpecMap), eq.fnName))
-                  })
-                  ((eq.selfType._2.asInstanceOf[TypeHint], eq.fnName), d)
-                }: _*)
+            var x = 1
 
-              passDef(mctx, DContext(mappedSpecMap, mappedResolvedSelfDefs, fn, false))
+            if (isGeneric) {
+              //              val mappedResolvedSelfDefs =
+              //                mutable.HashMap(fn.getEquations.eqSeq.map { eq =>
+              //                  val d = call.getResolvedSelfDefs().getOrElse((eq.selfType._2, eq.fnName), {
+              //                    dctx.resolvedSelfDefs((eq.selfType._2.spec(callSpecMap), eq.fnName))
+              //                  })
+              //                  ((eq.selfType._2.asInstanceOf[TypeHint], eq.fnName), d)
+              //                }: _*)
+
+              passDef(mctx, DContext(mappedSpecMap, dctx.resolvedSelfDefs ++ call.getResolvedSelfDefs(), fn, false))
             } else if (mctx.modules.length != 1) {
               val irArgs = callAppliedTh.args.map(ath => AbiTh.toCallArg(mctx, dctx.specialized(ath)))
               mctx.prototypes += s"${AbiTh.toRetVal(mctx, callAppliedTh.ret)} $selfFnName (${irArgs.mkString(", ")})"
@@ -585,15 +607,16 @@ class IrGenPass {
               fn.getTypeHint[FnTh]
             }
 
+            val tInter = new TypeInfer(mctx.level, mctx.modules.head)
+            tInter.infer(Seq.empty, fn.lambda.args.head.typeHint, selfTh)
+            val mappedSpecMap = tInter.specMap
+
             val isGeneric = fn.params.nonEmpty
             if (isGeneric) {
-              val tInter = new TypeInfer(mctx.level, mctx.modules.head)
-              tInter.infer(Seq.empty, fn.lambda.args.head.typeHint, selfTh)
-              val mappedSpecMap = tInter.specMap
               passDef(mctx.copy(modules = Seq(mod)), DContext(mappedSpecMap, dctx.resolvedSelfDefs, fn, false))
             }
 
-            val genericArgs = if (isGeneric) "[" + fn.params.map(p => p.spec(dctx.specMap)).mkString(", ") + "]" else ""
+            val genericArgs = if (isGeneric) "[" + fn.params.map(p => p.spec(mappedSpecMap)).mkString(", ") + "]" else ""
             val selfFnName = "@" + (mod.pkg + "." + fnTh.args.head + "." + fnName + genericArgs).escaped
             performCall(mctx.copy(modules = Seq(mctx.modules.last)), dctx, callAppliedTh.spec(dctx.specMap).asInstanceOf[FnTh], self +: args, None, selfFnName)
           case SelfCallImport(module, fn) =>
@@ -601,9 +624,12 @@ class IrGenPass {
               import TCMeta.ParseNodeTCMetaImplicit
               call.getCallSpecMap
             }
+            val mappedSpecMap = callSpecMap.map {
+              case (k, v) => (k, v.spec(dctx.specMap))
+            }
             val callAppliedTh = {
               import TCMeta.ParseNodeTCMetaImplicit
-              fn.getTypeHint[TypeHint].spec(callSpecMap).asInstanceOf[FnTh]
+              fn.getTypeHint[TypeHint].spec(mappedSpecMap).asInstanceOf[FnTh]
             }
 
             val fnTh = {
@@ -612,11 +638,13 @@ class IrGenPass {
             }
 
             val isGeneric = fn.params.nonEmpty
-            val genericArgs = if (isGeneric) "[" + fn.params.map(p => p.spec(callSpecMap)).mkString(", ") + "]" else ""
+            val genericArgs = if (isGeneric) "[" + fn.params.map(p => p.spec(mappedSpecMap)).mkString(", ") + "]" else ""
             val selfFnName = "@" + (module.pkg + "." + fnTh.args.head + "." + fnName + genericArgs).escaped
 
+            var x = 1
+
             if (isGeneric)
-              passDef(mctx.copy(modules = module +: mctx.modules), DContext(callSpecMap, call.getResolvedSelfDefs(), fn, false))
+              passDef(mctx.copy(modules = module +: mctx.modules), DContext(mappedSpecMap, call.getResolvedSelfDefs(), fn, false))
             else {
               val irArgs = callAppliedTh.args.map(ath => AbiTh.toCallArg(mctx, dctx.specialized(ath)))
               mctx.prototypes += s"${AbiTh.toRetVal(mctx, callAppliedTh.ret)} $selfFnName (${irArgs.mkString(", ")})"
@@ -749,7 +777,13 @@ class IrGenPass {
       case Break() =>
         // oops: instruction numbering magic in llvm ir?
         dctx.nextReg("")
-        val wk = dctx.scope.kind.asInstanceOf[WhileKind]
+        val wk = try {
+          dctx.scope.kind.asInstanceOf[WhileKind]
+        } catch {
+          case ex: ClassCastException =>
+            var x = 1
+            throw ex
+        }
         //FIXME: make freeSet free
         dctx.write(s"br label %${wk.endBr}")
         EResult("__not_result", false, false)
@@ -782,17 +816,27 @@ class IrGenPass {
         dctx.write(s"br label %$unlessBr")
         dctx.write(s"$unlessBr:")
         val (expRes, branches) = dctx.deeper(OtherKind, { dctx =>
-          val res = Abi.syncValue(mctx, dctx, passExpr(mctx, dctx, exp), AsCallArg, expTh, expTh)
+          val condRes = passExpr(mctx, dctx, exp)
+          val res = Abi.syncValue(mctx, dctx, condRes, AsCallArg, expTh, expTh)
 
           val matched = isSeq.zipWithIndex.map { case (is, idx) =>
             val isTypeRef = dctx.specialized(is.typeRef)
             Branch(s"unless${brId}_matched$idx", dctx => {
               is.vName.foreach { vName =>
-                val alias = dctx.addSymbol(vName.value)
-                dctx.scope.aliases.put(vName.value, alias)
-                val r = "%" + dctx.nextReg("")
-                dctx.write(s"$r =  bitcast ${expTh.toValue(mctx)}* ${res.value} to {i64, ${isTypeRef.toValue(mctx)}}*")
-                dctx.write(s"%$alias =  getelementptr {i64, ${isTypeRef.toValue(mctx)}}, {i64, ${isTypeRef.toValue(mctx)}}* $r, i64 0, i32 1")
+                expTh.classify(mctx) match {
+                  case NullableUnion(_) =>
+                    val r = "%" + dctx.nextReg("")
+                    val slot = dctx.addSlot(isTypeRef)
+                    dctx.write(s"$r = bitcast ${expTh.toValue(mctx)} ${res.value} to ${isTypeRef.toValue(mctx)}")
+                    dctx.write(s"store ${isTypeRef.toValue(mctx)} $r, ${isTypeRef.toValue(mctx)}* $slot")
+                    dctx.scope.aliases.put(vName.value, slot.stripPrefix("%"))
+                  case _ =>
+                    val alias = dctx.addSymbol(vName.value)
+                    dctx.scope.aliases.put(vName.value, alias)
+                    val r = "%" + dctx.nextReg("")
+                    dctx.write(s"$r = bitcast ${expTh.toValue(mctx)}* ${res.value} to {i64, ${isTypeRef.toValue(mctx)}}*")
+                    dctx.write(s"%$alias =  getelementptr {i64, ${isTypeRef.toValue(mctx)}}, {i64, ${isTypeRef.toValue(mctx)}}* $r, i64 0, i32 1")
+                }
               }
             }, isTypeRef, is._do)
           }
@@ -810,23 +854,44 @@ class IrGenPass {
             } else
               Branch(s"unless${brId}_unmatched$idx", dctx => {
                 val alias = dctx.addSymbol("unmatched")
+                // FIXME: ineffective to make stack slot if expr is NullableUnion
                 dctx.scope.aliases.put("unmatched", alias)
-                val r = "%" + dctx.nextReg("")
-                dctx.write(s"$r =  bitcast ${expTh.toValue(mctx)}* ${res.value} to {i64, ${th.toValue(mctx)}}*")
-                dctx.write(s"%$alias =  getelementptr {i64, ${th.toValue(mctx)}}, {i64, ${th.toValue(mctx)}}* $r, i64 0, i32 1")
+                expTh.classify(mctx) match {
+                  case NullableUnion(_) =>
+                    val r = "%" + dctx.nextReg("")
+                    dctx.write(s"%$r =  bitcast ${expTh.toValue(mctx)} ${res.value} to ${th.toValue(mctx)}")
+                  case _ =>
+                    val r = "%" + dctx.nextReg("")
+                    dctx.write(s"$r = bitcast ${expTh.toValue(mctx)}* ${res.value} to {i64, ${th.toValue(mctx)}}*")
+                    dctx.write(s"%$alias =  getelementptr {i64, ${th.toValue(mctx)}}, {i64, ${th.toValue(mctx)}}* $r, i64 0, i32 1")
+                }
               }, th, Seq(id))
           }
 
-          val r1, r2 = "%" + dctx.nextReg("")
-          dctx.write(s"$r1 = getelementptr ${expTh.toValue(mctx)}, ${expTh.toValue(mctx)}* ${res.value}, i64 0, i32 0")
-          dctx.write(s"$r2 = load i64, i64* $r1")
-          dctx.write(s"switch i64 $r2, label %$endBr [")
-          expTh.asUnion(mctx).zipWithIndex.foreach { case (variant, idx) =>
-            val branch = matched.find(br => br.th == variant)
-              .getOrElse(unmatched.find(br => br.th == variant).get)
-            dctx.write(s"  i64 $idx, label %${branch.beginLabel}")
+          // FIXME: dedup code
+          expTh.classify(mctx) match {
+            case NullableUnion(variant) =>
+              val r1 = "%" + dctx.nextReg("")
+              dctx.write(s"$r1 = icmp eq ${expTh.toValue(mctx)} ${res.value}, null ")
+              dctx.write(s"switch i1 $r1, label %$endBr [")
+              expTh.asUnion(mctx).zipWithIndex.foreach { case (variant, idx) =>
+                val branch = matched.find(br => br.th == variant)
+                  .getOrElse(unmatched.find(br => br.th == variant).get)
+                dctx.write(s"  i1 $idx, label %${branch.beginLabel}")
+              }
+              dctx.write(s"]")
+            case _ =>
+              val r1, r2 = "%" + dctx.nextReg("")
+              dctx.write(s"$r1 = getelementptr ${expTh.toValue(mctx)}, ${expTh.toValue(mctx)}* ${res.value}, i64 0, i32 0")
+              dctx.write(s"$r2 = load i64, i64* $r1")
+              dctx.write(s"switch i64 $r2, label %$endBr [")
+              expTh.asUnion(mctx).zipWithIndex.foreach { case (variant, idx) =>
+                val branch = matched.find(br => br.th == variant)
+                  .getOrElse(unmatched.find(br => br.th == variant).get)
+                dctx.write(s"  i64 $idx, label %${branch.beginLabel}")
+              }
+              dctx.write(s"]")
           }
-          dctx.write(s"]")
           (res, matched ++ unmatched)
         })
 
@@ -951,6 +1016,8 @@ class IrGenPass {
   }
 
   def pass(root: Level, outConf: OutConf): Unit = {
+    val m1 = System.currentTimeMillis()
+
     root.eachModule((level, module) => {
       outConf.withStream(module, { out =>
 
@@ -1017,5 +1084,8 @@ class IrGenPass {
         }
       })
     })
+
+    val m2 = System.currentTimeMillis()
+    println(s"__CodeGen pass elapsed: ${m2 - m1}ms")
   }
 }

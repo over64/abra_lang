@@ -13,13 +13,11 @@ class _07ParsePassTest extends FunSuite {
     val root = new ParsePass(new Resolver {
       override def resolve(path: String): String = path match {
         case "a" => """
-         import
-           some/c
-           b ."""
-        case "b" => """import some/c ."""
+         import some.c, b """
+        case "b" => """import some.c """
         case "some/c" => ""
       }
-    }).pass("a")
+    }, None).pass("a")
 
     val expectedLevelSeq = Seq("a") :: Seq("b") :: Seq("some/c") :: Nil
     println(s"expected: $expectedLevelSeq")
@@ -32,13 +30,11 @@ class _07ParsePassTest extends FunSuite {
       new ParsePass(new Resolver {
         override def resolve(path: String): String = path match {
           case "a" =>
-            """import
-               b
-               c ."""
-          case "b" => "import c ."
-          case "c" => "import a ."
+            """import b, c """
+          case "b" => "import c"
+          case "c" => "import a"
         }
-      }).pass("a")
+      }, None).pass("a")
 
     } catch {
       case ex: CircularModReference =>
@@ -47,21 +43,21 @@ class _07ParsePassTest extends FunSuite {
   }
 
   test("parse cube demo") {
-    //(1 to 100).foreach { i =>
+    //    (1 to 100).foreach { i =>
     val root = new ParsePass(new FsResolver(
       libDir = System.getProperty("user.dir") + "/abra_v2/abra/lib/",
       projDir = System.getProperty("user.dir") + "/abra_v2/abra/demo/"
-    )).pass("cube")
+    ), None).pass(".cube")
 
     val expectedLevelSeq =
-      Seq("cube") ::
-        Seq("/sys", "/sdl", "/soil", "objLoader") ::
-        Seq("/vec", "/range", "/sreader", "/io", "/gl") ::
-        Seq("/array", "/kazmath", "/sbuffer") ::
-        Seq("/universe") :: Nil
+      Seq(".cube") ::
+        Seq("sys", "sdl", "soil", ".objfile") ::
+        Seq("range", "seq", "sreader", "io", "gl", "vec") ::
+        Seq("array", "kazmath", "sbuffer") ::
+        Seq("unsafeArray") :: Nil
 
     println(s"expected: $expectedLevelSeq")
     checkLevelSeq(expectedLevelSeq, root)
-    // }
+    //    }
   }
 }

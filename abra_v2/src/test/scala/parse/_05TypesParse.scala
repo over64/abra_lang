@@ -16,10 +16,10 @@ class _05TypesParse extends FunSuite {
   import parserType._
 
   test("scalar") {
-    withStr("type Int = llvm i32 .", ScalarDecl(false, Seq.empty, "Int", "i32"))
-    withStr("type Int32 = llvm i32 .", ScalarDecl(false, Seq.empty, "Int32", "i32"))
-    withStr("type I32Bar = ref llvm i8* .", ScalarDecl(true, Seq.empty, "I32Bar", "i8*"))
-    withStr("type FooBar = llvm [i32 x 5] .", ScalarDecl(false, Seq.empty, "FooBar", "[i32 x 5]"))
+    withStr("type Int = native i32 .", ScalarDecl(false, Seq.empty, "Int", "i32"))
+    withStr("type Int32 = native i32 .", ScalarDecl(false, Seq.empty, "Int32", "i32"))
+    withStr("type I32Bar = ref native i8* .", ScalarDecl(true, Seq.empty, "I32Bar", "i8*"))
+    withStr("type FooBar = native [i32 x 5] .", ScalarDecl(false, Seq.empty, "FooBar", "[i32 x 5]"))
   }
 
   test("struct") {

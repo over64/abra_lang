@@ -1,11 +1,13 @@
 package m3.typecheck
 
-import m3.parse.Ast0.TypeHint
+import m3.parse.Ast0.{Def, Module, TypeHint}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 sealed trait VarType
+case class VarDefLocal(fn: Def) extends VarType
+case class VarDefImport(mod: Module) extends VarType
 case object VarParam extends VarType
 case object VarLocal extends VarType
 case class VarClosureParam(nested: Boolean) extends VarType

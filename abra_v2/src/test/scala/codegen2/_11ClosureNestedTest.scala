@@ -9,8 +9,8 @@ class _11ClosureNestedTest extends FunSuite {
         def main =
           x1 = 0
 
-          lambda
-            lambda
+          ||
+            ||
               x1 = 42
               x1 .()
             .()
@@ -22,15 +22,15 @@ class _11ClosureNestedTest extends FunSuite {
     CodeGenUtil.run(
       """
         def some = x: String | None do
-          lambda
-            lambda
+          ||
+            ||
               y = x
               x .()
           .()
         .
 
         def main =
-          some('hello') # no move analysis, so poor performance
+          some('hello') -- no move analysis, so poor performance
           42 .
       """, exitCode = 42)
   }

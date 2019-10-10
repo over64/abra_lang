@@ -1,6 +1,5 @@
 package typecheck
 
-import codegen2.CodeGenUtil
 import m3.parse.Ast0.GenericTh
 import m3.typecheck.TCMeta._
 import org.scalatest.FunSuite
@@ -10,7 +9,7 @@ class _07CallGenericTest extends FunSuite {
   test("simple generic") {
     val ast = astForCode(
       """
-         def + = self: Int, other: Int do llvm
+         def + = self: Int, other: Int native
            ; native code
            .Int
 
@@ -41,20 +40,20 @@ class _07CallGenericTest extends FunSuite {
   test("deep generic") {
     val ast = astForCode(
       """
-         def + = self: Int, other: Int do llvm
+         def + = self: Int, other: Int native
              %1 = contains nsw i32 %self, %other
              ret i32 %1 .Int
 
-         def - = self: Int, other: Int do llvm
+         def - = self: Int, other: Int native
              %1 = sub nsw i32 %self, %other
              ret i32 %1 .Int
 
-         # self call :: num.add(num) -> a1
+         -- self call :: num.add(num) -> a1
          def add = x: num, y: num do
              x + y .
 
-         # self call :: t1.minus(t2) -> t2
-         # call      :: add(t2, t2)
+         -- self call :: t1.minus(t2) -> t2
+         -- call      :: add(t2, t2)
          def subAdd = x: t1, y: t2 do
              z: t2 = x - y
              add(z, y) .
@@ -84,10 +83,10 @@ class _07CallGenericTest extends FunSuite {
   test("deep generic 2") {
     val ast = astForCode(
       """
-        def + = self: Int, other: Int do llvm
+        def + = self: Int, other: Int native
           ;native .Int
 
-        def - = self: Int, other: Int do llvm
+        def - = self: Int, other: Int native
           ;native .Int
 
         def sub = x: num, y: num do
@@ -108,11 +107,11 @@ class _07CallGenericTest extends FunSuite {
   test("deep generic over self 2") {
     val ast = astForCode(
       """
-         def + = self: Int, other: Int do llvm
+         def + = self: Int, other: Int native
            %1 = add nsw i32 %self, %other
            ret i32 %1 .Int
 
-         def sub = self: Int, other: Int do llvm
+         def sub = self: Int, other: Int native
            %1 = sub nsw i32 %self, %other
            ret i32 %1 .Int
 
@@ -120,10 +119,10 @@ class _07CallGenericTest extends FunSuite {
            self + y
            self.sub(y) .
 
-         # incorrect replacement ???
-         # expected Int::sub ???
-         # def sub = self: num1, y: num1 do
-         #   self - y .
+         -- incorrect replacement ???
+         -- expected Int::sub ???
+         -- def sub = self: num1, y: num1 do
+         --   self - y .
 
          def main =
            43.addSub(1) .
@@ -137,10 +136,10 @@ class _07CallGenericTest extends FunSuite {
     //assertThrows[TCE.TypeMismatch] {
     val ast = astForCode(
       """
-        type Seq[t] = llvm %t* .
-        type Log    = llvm i32 .
-        type F2     = llvm i32 .
-        type F3     = llvm i32 .
+        type Seq[t] = native %t* .
+        type Log    = native i32 .
+        type F2     = native i32 .
+        type F3     = native i32 .
 
         def debug = self: Log, str: String, f3: F3 do
           none .
@@ -151,37 +150,37 @@ class _07CallGenericTest extends FunSuite {
         def some = self: Int do
           none .
 
-        def mkSeqInt = llvm
+        def mkSeqInt = native
           ; nop .Seq[Int]
 
-        def mkLog = llvm
+        def mkLog = native
            ; nop .Log
 
-        def mkF2 = llvm
+        def mkF2 = native
            ; nop .F2
 
-        def mkF3 = llvm
+        def mkF3 = native
            ; nop .F3
 
-        # t :: some() -> a1
-        # logger :: debug(String, fake) -> a2
+        -- t :: some() -> a1
+        -- logger :: debug(String, fake) -> a2
         def contains = self: Seq[t], value: t, xx: fake, log: logger do
           value.some()
           log.debug('query from Seq', xx)
           true .
 
-        # logger3 :: doDump(String) -> a1
+        -- logger3 :: doDump(String) -> a1
         def dump = log: logger3 do
           log.doDump('hello') .
 
-        # logger1 :: doDump(String) -> a1
-        # collection :: contains(b, fake1, logger1) -> Bool
+        -- logger1 :: doDump(String) -> a1
+        -- collection :: contains(b, fake1, logger1) -> Bool
         def in = self: b, coll: collection, log: logger1, f: fake1 do
           dump(log)
           coll.contains(self, f, log) .Bool
 
-        # logger2 :: debug(String, F2) -> a1
-        # logger2 :: doDump(String) -> a2
+        -- logger2 :: debug(String, F2) -> a1
+        -- logger2 :: doDump(String) -> a2
         def bar = log: logger2 do
           seq = mkSeqInt()
           f = mkF2()
@@ -195,16 +194,16 @@ class _07CallGenericTest extends FunSuite {
   test("collections-like-2") {
     val ast = astForCode(
       """
-        def + = self: Long, other: Long do llvm
+        def + = self: Long, other: Long native
           ;native .Long
 
-        def - = self: Long, other: Long do llvm
+        def - = self: Long, other: Long native
           ;native .Long
 
-        def * = self: Int, other: Int do llvm
+        def * = self: Int, other: Int native
           ;native .Int
 
-        def < = self: Long, other: Long do llvm
+        def < = self: Long, other: Long native
           ;native .Bool
 
         type ArrayIter[t] = (array: Array[t], idx: Long)
@@ -212,16 +211,16 @@ class _07CallGenericTest extends FunSuite {
         def iter = self: Array[t] do
           ArrayIter(self, 0) .
 
-        def next = self: ArrayIter[t1] do llvm
+        def next = self: ArrayIter[t1] native
           ; native .t1 | None
-        #  if self.idx < self.array.len() do
-        #    self.idx = self.idx + 1
-        #    self.array(self.idx - 1)
-        #  else none ..
+        --  if self.idx < self.array.len() do
+        --    self.idx = self.idx + 1
+        --    self.array(self.idx - 1)
+        --  else none ..
 
         type MapIter[iterator2, t2, u2] = (iter: iterator2, mapper: (t2) -> u2)
 
-        # iterator3 :: next() -> t3 | None
+        -- iterator3 :: next() -> t3 | None
         def map = self: iterator3, mapper: (t3) -> u3 do
           if false do
             value: t3 | None = self.next() .
@@ -235,7 +234,7 @@ class _07CallGenericTest extends FunSuite {
 
         type FilterIter[iterator5, t5] = (iter: iterator5, predicate: (t5) -> Bool)
 
-        # iterator6 :: next() -> t6 | None
+        -- iterator6 :: next() -> t6 | None
         def filter = self: iterator6, predicate: (t6) -> Bool do
           if false do
             value: t6 | None = self.next() .
@@ -254,8 +253,8 @@ class _07CallGenericTest extends FunSuite {
           n = 5
           array1 = Array[Int](n)
           it = array1.iter()
-            .map(lambda x -> x * 2)
-            .filter(lambda x -> x == 0)
+            .map(|x| x * 2)
+            .filter(|x| x == 0)
 
           it.next()
           it.next()
@@ -272,24 +271,24 @@ class _07CallGenericTest extends FunSuite {
   test("foobar") {
     val ast = astForCode(
       """
-        type Seq[t] = llvm ;native .
-        def get = self: Seq[t], idx: Int do llvm
-          ; native .t
+        type Seq[t] = native i8* .
+        def get = self: Seq[t], idx: Int native
+          ; xxx .t
 
-        type T1 = llvm ;native .
+        type T1 = native i8* .
 
-        def mkT1 = llvm
-          ; native .T1
+        def mkT1 = native
+          ;xxx .T1
 
-        # e2 :: bar() -> Int
+        -- e2 :: bar() -> Int
         def some = self: T1, x2: Seq[e2], x3: Int do
           gg: Int = x2(0).bar() .None
 
-        # t1 :: some(t2, t3) -> a1
+        -- t1 :: some(t2, t3) -> a1
         def f1 = x1: t1, x2: t2, x3: t3 do
           x1.some(x2, x3) .a1
 
-        # c2 :: bar() -> Int
+        -- c2 :: bar() -> Int
         def f2 = x2: Seq[c2], x3: Int do
           f1(mkT1(), x2, x3) .
       """)

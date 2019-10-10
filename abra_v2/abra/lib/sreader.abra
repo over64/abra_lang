@@ -1,6 +1,4 @@
-import /universe with None, Bool, Int, String, Float .
-
-llvm
+native
     ; int sscanf(const char *str, const char *format,...);
     declare i32 @sscanf(i8*, i8*,...)
     @.sscanfFloat = private constant [5 x i8] c"%f%n\00", align 1
@@ -8,20 +6,20 @@ llvm
 
 type SReader = (str: String, pos: Int)
 
-def toReader = self: String do SReader(self, 0) .
+def of = s: String do SReader(s, 0) .
 
-def drop = self: SReader, n: Int do llvm
-    %posPtr = getelementptr %SReader, %SReader* %self, i32 0, i32 1
+def drop = self: SReader, n: Int native
+    %posPtr = getelementptr %sreader.SReader.body, %sreader.SReader.body* %self, i32 0, i32 1
     %oldPos = load i32, i32* %posPtr
     %newPos = add nsw i32 %oldPos, %n
     store i32 %newPos, i32* %posPtr
     ret void .None
 
-def readFloat = self: SReader do llvm
+def float = self: SReader native
 	%format = bitcast [5 x i8]* @.sscanfFloat to i8*
-	%posPtr = getelementptr %SReader, %SReader* %self, i32 0, i32 1
+	%posPtr = getelementptr %sreader.SReader.body, %sreader.SReader.body* %self, i32 0, i32 1
     %oldPos = load i32, i32* %posPtr
-    %strPtr = getelementptr %SReader, %SReader* %self, i32 0, i32 0
+    %strPtr = getelementptr %sreader.SReader.body, %sreader.SReader.body* %self, i32 0, i32 0
     %str = load i8*, i8** %strPtr
     %strWithOffset = getelementptr i8, i8* %str, i32 %oldPos
     %readFloatPtr = alloca float
@@ -33,11 +31,11 @@ def readFloat = self: SReader do llvm
     %readFloat = load float, float* %readFloatPtr
     ret float %readFloat .Float
 
-def readInt = self: SReader do llvm
+def int = self: SReader native
 	%format = bitcast [5 x i8]* @.sscanfInt to i8*
-	%posPtr = getelementptr %SReader, %SReader* %self, i32 0, i32 1
+	%posPtr = getelementptr %sreader.SReader.body, %sreader.SReader.body* %self, i32 0, i32 1
     %oldPos = load i32, i32* %posPtr
-    %strPtr = getelementptr %SReader, %SReader* %self, i32 0, i32 0
+    %strPtr = getelementptr %sreader.SReader.body, %sreader.SReader.body* %self, i32 0, i32 0
     %str = load i8*, i8** %strPtr
     %strWithOffset = getelementptr i8, i8* %str, i32 %oldPos
     %readIntPtr = alloca i32

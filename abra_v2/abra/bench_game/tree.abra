@@ -1,37 +1,46 @@
-import
-  /universe with None, Bool, Int, String
-  /range with Range
-  /pool
-  /io .
+import range with Range, io
 
 type Node = (left: Node | None, right: Node | None)
 
-def asNode = self: Node | None, callback: (Node) -> None do llvm
-  %fn = extractvalue { void (%Node*, i8*)*, i8* } %callback, 0
-  %cl = extractvalue { void (%Node*, i8*)*, i8* } %callback, 1
-  %1 = load %Node*, %Node** %self
-  call void %fn(%Node* %1, i8* %cl)
-  ret void .None
+--def asNode = self: Node | None, callback: (Node) -> None native
+--  %fn = extractvalue { void (%Node*, i8*)*, i8* } %callback, 0
+--  %cl = extractvalue { void (%Node*, i8*)*, i8* } %callback, 1
+--  %1 = load %Node*, %Node** %self
+--  call void %fn(%Node* %1, i8* %cl)
+--  ret void .None
 
-# hacky way for manual inline for recursive function
-# llvm cannot do this instead of gcc (Сила в GNU, брат)
+-- FIXME: fix constructors
+def wrap = x: Node do x .Node | None
+
 def mkTree = depth: Int do
-  root = Node(none, none)
   if depth > 0 do
-    Node(mkTree(depth - 1), mkTree(depth - 1))
+    Node(wrap(mkTree(depth - 1)), wrap(mkTree(depth - 1)))
   else
     Node(none, none) ..Node
 
+-- FIXME: this case - variable alias for unless
+--def checksum = self: Node do
+--  sum = 1
+--
+--  self.left unless is l: Node do
+--    self.right asNode |r|
+--      sum = sum + l.checksum() + r.checksum() .
+--
+--  sum .Int
+
 def checksum = self: Node do
-  sum = 1
-
   self.left unless is l: Node do
-    # Some hack for performance. Will be much better when macro ready
-    # C version just uses nullable value, but Abra does not allows this without FORCE
-    self.right asNode lambda r: Node ->
-      sum = sum + l.checksum() + r.checksum() .
+    self.right unless is r: Node do
+      return 1 + l.checksum() + r.checksum() . . -- FIXME
 
-  sum .Int
+  1 .Int
+
+-- it's seems that must be like this
+-- def checksum = self: Node do
+--   self.left unless is l: Node do
+--     self.right unless is r: Node do
+--       return l.checksum() + r.checksum() + 1 .
+--   1 .Int
 
 def stat = nTrees: Int, name: String, depth: Int, sum: Int do
   if nTrees > 1 do io.printInt(nTrees) .
@@ -39,75 +48,26 @@ def stat = nTrees: Int, name: String, depth: Int, sum: Int do
 
 def main =
   minDepth = 4
-  maxDepth = 21 # sys.argInt(0)
+  maxDepth = 21 -- sys.arg(0).toInt()
 
   if maxDepth < minDepth + 2 do
     maxDepth = minDepth + 2 .
 
-  pool.mk() withPool lambda
-    tree = mkTree(maxDepth + 1)
-    stat(1, 'stretch tree of depth ', maxDepth + 1, tree.checksum()) .
+  tree = mkTree(maxDepth + 1)
+  stat(1, 'stretch tree of depth ', maxDepth + 1, tree.checksum())
 
-  Range(minDepth, maxDepth, 2).each with |depth|
+  llTree = mkTree(maxDepth)
+
+  -- FIXME: move this line to end
+  stat(1, 'long lived tree of depth ', maxDepth, llTree.checksum())
+
+  Range(minDepth, maxDepth, 2).forEach with |depth|
     iters    = 1 shl (maxDepth + minDepth - depth)
     totalSum = 0
-    mp = pool.mk()
 
-    Range(1, iters + 1, 1).each with |i|
-      mp withPool lambda
-        totalSum = totalSum + mkTree(depth).checksum() ..
+    Range(1, iters + 1, 1).forEach with |i|
+      totalSum = totalSum + mkTree(depth).checksum() .
 
     stat(iters, '\t trees of depth ', depth, totalSum) .
 
-  pool.mk() withPool lambda
-    llTree = mkTree(maxDepth)
-    stat(1, 'long lived tree of depth ', maxDepth, llTree.checksum()) .
-
   0 .
-
-  type Node[t] = (v: t, next: Node[t] | None)
-
-  def twoLambda = x: Int,
-                  f1: (Int) -> Int,
-                  f2: (Int) -> Int do f2(f1(x))
-
-  def main =
-    (0 to 100).iter()
-      .map(|x| x * 2)
-      .zip((100 to 0).iter())
-      .filter(|p| p.x1 mod 2 == 1)
-      .take(10)
-      .each with |p|
-        fmt.write(io.stdout, 'pair is {}', p)
-
-    (0 to 100).reduce(0, |a, b| a + b)
-    (0 to 100).reduce with 0, |a, b|
-      fmt.write('a = {} b = {}', a, b)
-      a + b
-
-    twoLambda(1, |x| x * 100, |y| y + 1)
-    # with keeps ident?
-    twoLambda with 1,
-      |x| x * 100,
-      |y| y + 1
-
-
-  def main =
-    (0 to 100).iter()
-      .map(|x| do x * 2)
-      .zip((100 to 0).iter())
-      .filter(|p| do p.x1 mod 2 == 1)
-      .take(10)
-      .each with |p| do
-        fmt.write(io.stdout, 'pair is {}', p)
-
-    (0 to 100).reduce(0, |a, b| do a + b)
-    (0 to 100).reduce with 0, |a, b| do
-      fmt.write('a = {} b = {}', a, b)
-      a + b
-
-    twoLambda(1, |x| do x * 100, |y| do y + 1)
-    twoLambda with 1,
-      |x| do x * 100,
-      |y| do y + 1
-

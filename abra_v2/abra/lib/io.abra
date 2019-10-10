@@ -1,8 +1,8 @@
-import
-    /universe with None, Bool, Int, String
-    /sbuffer .
+import sbuffer
 
-llvm
+-- FIXME: use 2 space
+
+native
     @.printfInt = private constant [3 x i8] c"%d\00", align 1
     @.printfStr = private constant [3 x i8] c"%s\00", align 1
     @stdin = external global i8*
@@ -14,31 +14,31 @@ llvm
     ;int close(int fd);
     declare i32 @fclose(i8*) .
 
-def print = s: String do llvm
+def print = s: String native
     %format = bitcast [3 x i8]* @.printfStr to i8*
     call i32 (i8*,...) @printf(i8* %format, i8* %s)
     ret void .None
 
-def printInt = i: Int do llvm
+def printInt = i: Int native
     %format = bitcast [3 x i8]* @.printfInt to i8*
     call i32 (i8*,...) @printf(i8* %format, i32 %i)
     ret void .None
 
-type File = llvm i8* .
+type File = native i8* .
 
-def fopen = fname: String, mode: String do llvm
+def fopen = fname: String, mode: String native
     %1 = call i8* @fopen(i8* %fname, i8* %mode)
     ret i8* %1 .File
 
-def fclose = file: File do llvm
+def fclose = file: File native
     %1 = call i32 @fclose(i8* %file)
     ret void .None
 
-def stdin = llvm
+def stdin = native
     %1 = load i8*, i8** @stdin
     ret i8* %1 .File
 
-def getc = self: File do llvm
+def getc = self: File native
     %1 = call i32 @fgetc(i8* %self)
     ret i32 %1 .Int
 
@@ -53,9 +53,17 @@ def readDelim = self: File, delim: Int do
         if ch == -1 || ch == delim do end = true
         else sb.pushByte(ch.toByte()) ..
 
-    # FIXME: object must be at dead state?
+    -- FIXME: object must be at dead state?
     if sb.len != 0 do
-        sb.pushByte(delim.toByte())
-        sb.pushByte(0.toByte())
-        sb.asString()
-    else sbuffer.freeData(sb.data) ..String | None
+      sb.pushByte(delim.toByte())
+      sb.pushByte(0.toByte())
+      sb.asString()
+    else
+      sbuffer.freeData(sb.data)
+      none ..String | None
+
+def eachLine = self: File, fn: (String) -> None do
+  while true do
+    self.readLine() unless -- FIX mem leak
+      is line: String do fn(line)
+      is None do return ...None -- FIXME: use break

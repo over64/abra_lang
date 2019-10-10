@@ -5,16 +5,16 @@ import org.scalatest.FunSuite
 class _18ArraysTest extends FunSuite {
   val unsafeCode =
     """
-      def + = self: Int, other: Int do llvm
+      def + = self: Int, other: Int native
         %1 = add nsw i32 %self, %other
         ret i32 %1 .Int
 
-      def < = self: Int, other: Int do llvm
+      def < = self: Int, other: Int native
         %1 = icmp slt i32 %self, %other
         %2 = zext i1 %1 to i8
         ret i8 %2 .Bool
 
-      def alloc = len: index do llvm
+      def alloc = len: index native
           %allocFn = load i8* (i64)*, i8* (i64)** @evaAlloc
           %ptr = getelementptr $t, $t* null, $index %len
           %size = ptrtoint $t* %ptr to i64
@@ -24,17 +24,17 @@ class _18ArraysTest extends FunSuite {
           %rv2 = insertvalue $retTypeof() %rv1, $t* %array, 1
           ret $retTypeof() %rv2 .Array[t]
 
-      def len = slf: array do llvm
+      def len = slf: array native
         %1 = extractvalue $array %slf, 0
         ret $index %1 .index
 
-      def get = slf: array, idx: index do llvm
+      def get = slf: array, idx: index native
         %ptr = extractvalue $array %slf, 1
         %elPtr = getelementptr $t, $t* %ptr, $index %idx
         %value = load $t, $t* %elPtr
         ret $t %value .t
 
-      def set = slf: array, idx: index, value: t do llvm
+      def set = slf: array, idx: index, value: t native
         %ptr = extractvalue $array %slf, 1
         %elPtr = getelementptr $t, $t* %ptr, $index %idx
         %old = load $t, $t* %elPtr
@@ -43,7 +43,7 @@ class _18ArraysTest extends FunSuite {
         store $t %value, $t* %elPtr
         ret void .None
 
-      def setInit = slf: array, idx: index, value: t do llvm
+      def setInit = slf: array, idx: index, value: t native
         %ptr = extractvalue $array %slf, 1
         %elPtr = getelementptr $t, $t* %ptr, $index %idx
         ;meta rc_inc[t](value)
@@ -97,7 +97,7 @@ class _18ArraysTest extends FunSuite {
       safeCode +
         """
       def main =
-        array = mk(100, lambda i -> 'hello')
+        array = mk(100, |i| 'hello')
 
         j = 0
         while j < 100 do
@@ -112,7 +112,7 @@ class _18ArraysTest extends FunSuite {
     CodeGenUtil.run(
       safeCode +
         """
-        def mkBuffer = llvm
+        def mkBuffer = native
            ret $retTypeof() undef .Array10[Int]
 
         def main =

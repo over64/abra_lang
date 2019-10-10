@@ -13,14 +13,21 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.collection.mutable.HashMap
 
-class Visitor(source: String, fname: String, _package: String) extends AbstractParseTreeVisitor[ParseNode] with M2ParserVisitor[ParseNode] {
+class Visitor(source: String, fname: String, _package: String, prelude: Option[String]) extends AbstractParseTreeVisitor[ParseNode] with M2ParserVisitor[ParseNode] {
   val byLine = source.split("\n")
   val importedModules = new HashMap[String, String]()
   val importedTypes = new HashMap[String, String]()
+  val preludeEntry = prelude.map(ppkg => ImportEntry("prelude", ppkg, Seq.empty)).toSeq
 
   def emit[T <: ParseNode](start: Token, stop: Token, node: T): T = {
     val (endLine, endCol) =
-      if (start == stop) (start.getLine, start.getCharPositionInLine + start.getText.length - 1)
+      if (start == stop) {
+        if (start.getText.contains("\n")) { // multiline string case
+          val lines = start.getText.split("\n")
+          (start.getLine + lines.length, lines.last.length)
+        } else
+          (start.getLine, start.getCharPositionInLine + start.getText.length - 1)
+      }
       else (stop.getLine, stop.getCharPositionInLine)
 
     node.meta.put("source.location", AstInfo(
@@ -57,9 +64,9 @@ class Visitor(source: String, fname: String, _package: String) extends AbstractP
 
     emit(ctx,
       token.getType match {
-        case StringLiteral => // strip embracing commas
+        case StringLiteral =>
           val (text, length) = (token.getText, token.getText.length)
-          lString(text.substring(1, length - 1))
+          lString(text.substring(1, length - 1)) // strip embracing commas
         case FloatLiteral => lFloat(token.getText)
         case IntLiteral => lInt(token.getText)
         case HexLiteral => lInt(new BigInteger(token.getText.stripPrefix("0x"), 16).toString())
@@ -180,7 +187,7 @@ class Visitor(source: String, fname: String, _package: String) extends AbstractP
     if (ctx.tuple() != null) {
       val indices = visitTuple(ctx.tuple()).seq
       val to: Expression =
-        if(ctx.VarId().isEmpty) first
+        if (ctx.VarId().isEmpty) first
         else Prop(first, ctx.VarId().map(vi => lId(vi.getText)))
       to.setLocation(first.location)
 
@@ -290,7 +297,7 @@ class Visitor(source: String, fname: String, _package: String) extends AbstractP
     val imp =
       if (ctx.import_() != null)
         visitImport_(ctx.import_())
-      else Import(Seq())
+      else Import(preludeEntry)
 
     val lowCode = ctx.llvm().map(l => visitLlvm(l))
     val all = ctx.level1().map { l1 => visitLevel1(l1) }
@@ -325,12 +332,14 @@ class Visitor(source: String, fname: String, _package: String) extends AbstractP
 
   override def visitImportEntry(ctx: ImportEntryContext): ImportEntry = {
     val path = ctx.VarId().map(vi => vi.getText)
-      .mkString(start = if (ctx.abs == null) "" else "/", sep = "/", end = "")
+      .mkString(start = if (ctx.local == null) "" else ".", sep = "/", end = "")
     val modName = ctx.VarId().last.getText
     val types = ctx.TypeId().map(ti => ti.getText)
     emit(ctx, ImportEntry(modName, path, types))
   }
 
-  override def visitImport_(ctx: Import_Context): Import =
-    emit(ctx, Import(ctx.importEntry().map(ie => visitImportEntry(ie))))
+  override def visitImport_(ctx: Import_Context): Import = {
+    val ieSeq = ctx.importEntry().map(ie => visitImportEntry(ie))
+    emit(ctx, Import(preludeEntry ++ ieSeq))
+  }
 }

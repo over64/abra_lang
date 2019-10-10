@@ -10,9 +10,9 @@ class _06CallOpTest extends FunSuite {
         def callArg = x: $th do none .
 
         def main =
-          retVal()          # as ret val
-          callArg(dummy())  # as call arg
-          x = dummy()       # as store src
+          retVal()          -- as ret val
+          callArg(dummy())  -- as call arg
+          x = dummy()       -- as store src
           42 ."""
 
     println(code)

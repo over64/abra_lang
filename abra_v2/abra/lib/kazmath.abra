@@ -1,19 +1,20 @@
-import /universe with None, Float .
-llvm
+native
     ; kmMat4* kmMat4PerspectiveProjection(kmMat4* pOut, kmScalar fovY, kmScalar aspect, kmScalar zNear, kmScalar zFar)
-    declare float* @kmMat4PerspectiveProjection(%Mat4*, float, float, float, float)
+    declare float* @kmMat4PerspectiveProjection(%kazmath.Mat4*, float, float, float, float)
 
     ; kmMat4* kmMat4LookAt(kmMat4* pOut, const kmVec3* pEye, const kmVec3* pCenter, const kmVec3* pUp)
-    declare void @kmMat4LookAt(%Mat4*, %Vec3*, %Vec3*, %Vec3*)
+    declare void @kmMat4LookAt(%kazmath.Mat4*, %kazmath.Vec3*, %kazmath.Vec3*, %kazmath.Vec3*)
 
     ; kmMat4* kmMat4Identity(kmMat4* pOut)
-    declare void @kmMat4Identity(%Mat4*)
+    declare void @kmMat4Identity(%kazmath.Mat4*)
 
     ; kmMat4* kmMat4RotationZ(kmMat4* pOut, const kmScalar radians)
-    declare void @kmMat4RotationZ(%Mat4*, float)
+    declare void @kmMat4RotationZ(%kazmath.Mat4*, float)
 
     ; kmMat4* kmMat4RotationY(kmMat4* pOut, const kmScalar radians)
-    declare void @kmMat4RotationY(%Mat4*, float) .
+    declare void @kmMat4RotationY(%kazmath.Mat4*, float) .
+
+-- FIXME: use $Mat4 instead of %kazmath.Mat4 ???
 
 type Vec3 = (x: Float, y: Float, z: Float)
 
@@ -32,36 +33,36 @@ type Mat4 = (
     x4: Float, y4: Float, z4: Float, w4: Float
 )
 
-def identity4 = llvm
-    %1 = alloca %Mat4
-    call void @kmMat4Identity(%Mat4* %1)
-    %2 = load %Mat4, %Mat4* %1
-    ret %Mat4 %2 .Mat4
+def identity4 = native
+    %1 = alloca %kazmath.Mat4
+    call void @kmMat4Identity(%kazmath.Mat4* %1)
+    %2 = load %kazmath.Mat4, %kazmath.Mat4* %1
+    ret %kazmath.Mat4 %2 .Mat4
 
-def rotateZ = self: Mat4, radians: Float do llvm
-    %ret = alloca %Mat4
-    %1 = load %Mat4, %Mat4* %self
-    store %Mat4 %1, %Mat4* %ret
-    call void @kmMat4RotationZ(%Mat4* %ret, float %radians)
-    %2 = load %Mat4, %Mat4* %ret
-    ret %Mat4 %2 .Mat4
+def rotateZ = self: Mat4, radians: Float native
+    %ret = alloca %kazmath.Mat4
+    %1 = load %kazmath.Mat4, %kazmath.Mat4* %self
+    store %kazmath.Mat4 %1, %kazmath.Mat4* %ret
+    call void @kmMat4RotationZ(%kazmath.Mat4* %ret, float %radians)
+    %2 = load %kazmath.Mat4, %kazmath.Mat4* %ret
+    ret %kazmath.Mat4 %2 .Mat4
 
-def rotateY = self: Mat4, radians: Float do llvm
-    %ret = alloca %Mat4
-    %1 = load %Mat4, %Mat4* %self
-    store %Mat4 %1, %Mat4* %ret
-    call void @kmMat4RotationY(%Mat4* %ret, float %radians)
-    %2 = load %Mat4, %Mat4* %ret
-    ret %Mat4 %2 .Mat4
+def rotateY = self: Mat4, radians: Float native
+    %ret = alloca %kazmath.Mat4
+    %1 = load %kazmath.Mat4, %kazmath.Mat4* %self
+    store %kazmath.Mat4 %1, %kazmath.Mat4* %ret
+    call void @kmMat4RotationY(%kazmath.Mat4* %ret, float %radians)
+    %2 = load %kazmath.Mat4, %kazmath.Mat4* %ret
+    ret %kazmath.Mat4 %2 .Mat4
 
-def perspective = fov: Float, aspectRatio: Float, zNear: Float, zFar: Float do llvm
-    %ret = alloca %Mat4
-    call float* @kmMat4PerspectiveProjection(%Mat4* %ret, float %fov, float %aspectRatio, float %zNear, float %zFar)
-    %2 = load %Mat4, %Mat4* %ret
-    ret %Mat4 %2 .Mat4
+def perspective = fov: Float, aspectRatio: Float, zNear: Float, zFar: Float native
+    %ret = alloca %kazmath.Mat4
+    call float* @kmMat4PerspectiveProjection(%kazmath.Mat4* %ret, float %fov, float %aspectRatio, float %zNear, float %zFar)
+    %2 = load %kazmath.Mat4, %kazmath.Mat4* %ret
+    ret %kazmath.Mat4 %2 .Mat4
 
-def lookAt = eye: Vec3, center: Vec3, up: Vec3 do llvm
-    %ret = alloca %Mat4
-    call void @kmMat4LookAt(%Mat4* %ret, %Vec3* %eye, %Vec3* %center, %Vec3* %up)
-    %1 = load %Mat4, %Mat4* %ret
-    ret %Mat4 %1 .Mat4
+def lookAt = eye: Vec3, center: Vec3, up: Vec3 native
+    %ret = alloca %kazmath.Mat4
+    call void @kmMat4LookAt(%kazmath.Mat4* %ret, %kazmath.Vec3* %eye, %kazmath.Vec3* %center, %kazmath.Vec3* %up)
+    %1 = load %kazmath.Mat4, %kazmath.Mat4* %ret
+    ret %kazmath.Mat4 %1 .Mat4

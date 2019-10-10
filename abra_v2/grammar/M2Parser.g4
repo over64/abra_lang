@@ -61,12 +61,12 @@ continue_: 'continue';
 while_stat: 'while' sp cond=expression sp 'do' sp blockBody* DOT ;
 
 fnArg: id sp (':' sp typeHint (sp '=' sp expression)?)? ;
-lambda: 'lambda' (sp fnArg sp (',' sp fnArg)* sp '->')? sp blockBody* sp DOT?;
+lambda: ('||' | '|' (sp fnArg sp (',' sp fnArg)*)? sp '|') sp blockBody* sp DOT?;
 blockBody: (store | break_ | continue_ | while_stat | expression | ret) sp ';'? sp ;
 
 scalarType: 'type' sp tname=TypeId (sp '[' sp params+=genericTh (sp ',' sp params+=genericTh)* sp ']')? sp '=' sp REF? sp llvm ;
 typeField:  'self'? sp VarId sp ':' sp typeHint (sp '=' sp expression)? ;
-structType: 'type' sp name=TypeId (sp '[' sp params+=genericTh (sp ',' sp params+=genericTh)* sp ']')? sp '=' sp  '(' NL* typeField (',' NL* typeField)* NL*')' ;
+structType: 'type' sp name=TypeId (sp '[' sp params+=genericTh (sp ',' sp params+=genericTh)* sp ']')? sp '=' sp  '(' sp typeField (',' sp typeField)* sp ')' ;
 unionType:  'type' sp name=TypeId sp '=' sp nonUnionTh (sp '|' sp nonUnionTh)+ ;
 
 type: scalarType
@@ -76,10 +76,10 @@ type: scalarType
 
 def: 'def' sp name=(VarId | '!' | '*' | '/' | '+' | '-' | '>' | '<' | '<=' | '>=' | '==' | '!=' | '||' | '&&')
     sp '=' sp
-    (fnArg sp (',' sp fnArg)* sp 'do')? sp ((blockBody* sp DOT) | llvm) typeHint? ;
+    (((fnArg sp (',' sp fnArg)* sp 'do')? sp ((blockBody* sp DOT))) | ((fnArg sp (',' sp fnArg)* sp)? llvm)) typeHint?;
 
-importEntry: sp abs='/'? VarId ('/' VarId)* (sp 'with' sp TypeId sp (',' sp TypeId)*)?;
-import_: 'import' importEntry (NL importEntry)* WS DOT ;
+importEntry: sp local=DOT? VarId (DOT VarId)* (sp 'with' sp TypeId sp (sp TypeId)*)?;
+import_: 'import' importEntry (',' importEntry)*;
 
 level1: type | def ;
 module: sp import_? sp (sp llvm)* sp (level1 sp)* EOF ;

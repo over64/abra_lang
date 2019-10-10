@@ -1,0 +1,35 @@
+type MapIter[iterator, t, u] = (iter: iterator, mapper: (t) -> u)
+
+def map = self: iterator, mapper: (t) -> u do
+  if false do
+    value: t | None = self.next() .
+  MapIter(self, mapper) .
+
+def next = self: MapIter[iterator, t, u] do
+  value: t | None = self.iter.next()
+  value unless is forMap: t do
+    self.mapper(forMap) ..u | None
+
+
+type FilterIter[iterator, t] = (iter: iterator, predicate: (t) -> Bool)
+
+def filter = self: iterator, predicate: (t) -> Bool do
+  if false do
+    value: t | None = self.next() .
+  FilterIter(self, predicate) .
+
+def next = self: FilterIter[iterator, t] do
+  while true do
+    value: t | None = self.iter.next()
+    value unless
+      is forFilter: t do
+        if self.predicate(forFilter) do
+          return value .
+      is None do return none ...t | None
+
+def forEach = self: iterator, callback: (t) -> None do
+  while true do
+    value: t | None = self.next()
+    value unless
+      is exist: t do callback(exist)
+      is None do return ...None

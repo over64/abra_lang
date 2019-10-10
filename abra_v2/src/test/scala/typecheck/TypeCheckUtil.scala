@@ -34,7 +34,7 @@ object TypeCheckUtil extends FunSuite {
         fw.close()
         code
       }
-    }).pass("main")
+    }, None).pass("main")
 
     TypeHintPass.pass(root)
     new TypeCheckPass().pass(root)
@@ -67,7 +67,7 @@ object TypeCheckUtil extends FunSuite {
 
       val parser = new M2Parser(tokens)
       parser.setErrorHandler(new BailErrorStrategy)
-      val visitor = new Visitor(self, "test.abra", "test")
+      val visitor = new Visitor(self, "test.abra", "test", None)
 
       visitor.visit(parser.typeHint()).asInstanceOf[TypeHint]
     }

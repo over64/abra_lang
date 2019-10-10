@@ -9,10 +9,10 @@ class _10ClosureParamOpTest extends FunSuite {
         def dummy = x: Int do none .
 
         def some = x: Int do
-           lambda
-             y = x    # as store src
-             dummy(x) # as call arg
-             x .() .  # as ret val
+           ||
+             y = x    -- as store src
+             dummy(x) -- as call arg
+             x .() .  -- as ret val
 
         def main =
           some(42)

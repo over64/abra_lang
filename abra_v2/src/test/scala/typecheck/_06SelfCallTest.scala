@@ -9,7 +9,7 @@ class _06SelfCallTest extends FunSuite {
   test("self call: simple") {
     val ast = astForCode(
       """
-         def + = self: Int, other: Int do llvm
+         def + = self: Int, other: Int native
            %1 = contains nsw i32 %self, %other
            ret i32 %1 .Int
 
@@ -23,15 +23,15 @@ class _06SelfCallTest extends FunSuite {
   test("self call: self functions with same name") {
     val ast = astForCode(
       """
-         def + = self: Int, other: Int do llvm
+         def + = self: Int, other: Int native
            ; native code
            .Int
 
-         def + = self: Long, other: Long do llvm
+         def + = self: Long, other: Long native
            ; native code
            .Long
 
-         def one = llvm
+         def one = native
            ; assembly stub .Long
 
          def main =
@@ -47,7 +47,7 @@ class _06SelfCallTest extends FunSuite {
       """
          type FunctionLike = (x: Int)
 
-         def mk = llvm
+         def mk = native
             ; assembly .FunctionLike
 
          def get = self: FunctionLike, x: Int, y: Float do
@@ -66,10 +66,10 @@ class _06SelfCallTest extends FunSuite {
       """
          type ArrayLike = (x: Int)
 
-         def mk = llvm
+         def mk = native
             ; assembly .ArrayLike
 
-         def set = self: ArrayLike, x1: Int, x2: Float, value: Int do llvm
+         def set = self: ArrayLike, x1: Int, x2: Float, value: Int native
            ; assembly .None
 
          def main =
@@ -87,7 +87,7 @@ class _06SelfCallTest extends FunSuite {
          def get = self: Gettable, x: Int, y: Float do 'hello' .String
 
          type Wrapper = (g: Gettable)
-         def mk = llvm ; assembly .Wrapper
+         def mk = native ; assembly .Wrapper
 
          def main =
            wrapper = mk()
@@ -105,7 +105,7 @@ class _06SelfCallTest extends FunSuite {
 
          type Wrapper = (g: Gettable)
          type Wrapper2 = (w1: Wrapper)
-         def mk = llvm ; assembly .Wrapper2
+         def mk = native ; assembly .Wrapper2
 
          def main =
            w2 = mk()
@@ -119,9 +119,9 @@ class _06SelfCallTest extends FunSuite {
     assertThrows[TCE.DoubleSelfDefDeclaration] {
       astForCode(
         """
-         def + = self: Int, other: Int do llvm
+         def + = self: Int, other: Int native
            ; assembly stub .Int
-         def + = self: Int, other: Int do llvm
+         def + = self: Int, other: Int native
            ; assembly stub .Int
       """)
     }

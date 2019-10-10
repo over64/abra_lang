@@ -1,19 +1,17 @@
-import /universe with None, Int, String .
-
-llvm
+native
   declare i32 @puts(i8* nocapture readonly)
   declare void @exit(i32)
   declare i32 @sleep(i32) .
 
-def exit = code: Int do llvm
+def exit = code: Int native
   call void @exit(i32 %code)
   ret void .None
 
-def panic = code: Int, msg: String do llvm
+def panic = code: Int, msg: String native
      %1 = call i32 @puts(i8* %msg)
      call void @exit(i32 %code)
      ret void .None
 
-def sleep = seconds: Int do llvm
+def sleep = seconds: Int native
   %1 = call i32 @sleep(i32 %seconds)
   ret void .None

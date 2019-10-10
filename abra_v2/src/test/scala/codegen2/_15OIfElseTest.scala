@@ -20,10 +20,10 @@ class _15OIfElseTest extends FunSuite {
   test("if: none vs unreachable") {
     CodeGenUtil.run(
       """
-        llvm
+        native
           declare void @exit(i32) .
 
-        def panic = code: Int do llvm
+        def panic = code: Int native
           call void @exit(i32 %code)
           ret void .Unreachable
 

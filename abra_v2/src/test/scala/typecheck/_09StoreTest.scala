@@ -56,7 +56,7 @@ class _09StoreTest extends FunSuite {
       astForCode(
         """
          type Vec2 = (x: Int, y: Int)
-         def mkVec2 = llvm
+         def mkVec2 = native
            ;assembly .Vec2
 
          def main =
@@ -71,7 +71,7 @@ class _09StoreTest extends FunSuite {
       """
          type Vec2 = (x: Float, y: Float)
 
-         def mkVec2 = llvm
+         def mkVec2 = native
            ; some assembly .Vec2
 
          def main =
@@ -124,7 +124,7 @@ class _09StoreTest extends FunSuite {
 
          def main =
            x = 42
-           lambda
+           ||
              y = x
              x = 43
              x .()
@@ -140,11 +140,11 @@ class _09StoreTest extends FunSuite {
   test("store: set") {
     val ast = astForCode(
       """
-         type Mat3f = llvm [9 x float] .
+         type Mat3f = native [9 x float] .
 
          def set = self: Mat3f, x: Int, y: Int, z: Int, value: Float do .
 
-         def zeroMat = llvm
+         def zeroMat = native
            ; assembly .Mat3f
 
          def main =
@@ -163,7 +163,7 @@ class _09StoreTest extends FunSuite {
       astForCode(
         """
          type Vec2 = (x: Int, y: Int)
-         def mkVec2 = llvm
+         def mkVec2 = native
            ;assembly .Vec2
 
          def main =
@@ -177,7 +177,7 @@ class _09StoreTest extends FunSuite {
       astForCode(
         """
          type Vec2 = (x: Int, y: Int)
-         def mkVec2 = llvm
+         def mkVec2 = native
            ;assembly .Vec2
 
          def main =

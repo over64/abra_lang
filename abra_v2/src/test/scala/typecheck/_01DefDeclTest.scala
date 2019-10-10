@@ -18,7 +18,7 @@ class _01DefDeclTest extends FunSuite {
   test("def decl: trivial native") {
     astForCode(
       """
-         def bar = llvm
+         def bar = native
            ; asm .Int
       """)
   }
@@ -27,7 +27,7 @@ class _01DefDeclTest extends FunSuite {
     assertThrows[TCE.RetTypeHintRequired] {
       astForCode(
         """
-         def bar = llvm
+         def bar = native
            ; asm .
       """)
     }

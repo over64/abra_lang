@@ -12,7 +12,7 @@ class _17ModCallTest extends FunSuite {
           42 .
         """
       case "main" => """
-        import modA .
+        import modA
         def main =
           modA.some(1, 2) .
         """
@@ -30,7 +30,7 @@ class _17ModCallTest extends FunSuite {
           Bar(42) .
         """
       case "main" => """
-        import modA .
+        import modA
         def main =
           modA.some(1, 2) .
         """
@@ -48,7 +48,7 @@ class _17ModCallTest extends FunSuite {
           Bar(42) .
         """
       case "main" => """
-        import modA with Bar .
+        import modA with Bar
         def main =
           modA.some(1, 2) .
         """
@@ -63,7 +63,7 @@ class _17ModCallTest extends FunSuite {
       astForModules({
         case "modA" => """ """
         case "main" => """
-        import modA .
+        import modA
         def main =
           modA.some(1, 2) .
         """
@@ -78,7 +78,7 @@ class _17ModCallTest extends FunSuite {
         type Bar = (x: Int)
         def passThrough = self: Bar do self ."""
       case "main" => """
-        import modA with Bar .
+        import modA with Bar
         def main =
           Bar(42).passThrough() .
         """
@@ -92,12 +92,10 @@ class _17ModCallTest extends FunSuite {
       case "modC" => """type Bar = (x: Int)"""
       case "modA" =>
         """
-        import modC with Bar .
+        import modC with Bar
         def passThrough = self: Bar do self ."""
       case "main" => """
-        import
-          modC with Bar
-          modA .
+        import modC with Bar, modA
 
         def main =
           b = Bar(42)
@@ -116,7 +114,7 @@ class _17ModCallTest extends FunSuite {
         type Bar = (x: Int)
         def passThrough = self: Bar do self ."""
         case "main" => """
-        import modA .
+        import modA
         type Bar = (x: Int)
 
         def main =

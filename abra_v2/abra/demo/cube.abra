@@ -1,145 +1,139 @@
 import
-  /universe with None, Bool, Int, String, Float
-  /io
-  /sys
-  /sdl with Event
-  /kazmath with Mat4, Vec3
-  /gl with VertexArray, Shader, ShaderProgram, Texture
-  /range with Range
-  /vec
-  /array with Array
-  /soil
-  objLoader .
+  gl with VertexArray ShaderProgram Texture Buffer,
+  kazmath with Vec3 Mat4,
+  vec, sys, sdl, soil, .objfile
 
-type Renderer = (
-    vb: gl.Buffer,
-    vao: VertexArray,
-    program: ShaderProgram,
-    pMatrix: Mat4,
-    vMatrix: Mat4,
-    texture: Texture,
-    rot: Float
-)
+type Renderer = ( vb: Buffer, -- FIXME: use gl.Buffer
+                  vao: VertexArray,
+                  program: ShaderProgram,
+                  pMatrix: Mat4,
+                  vMatrix: Mat4,
+                  texture: Texture,
+                  rot: Float )
 
 def mkShader = shaderType: Int, source: String do
-    shader = gl.createShader(shaderType)
-    shader.setSource(source)
-    shader.compile()
+  shader = gl.createShader(shaderType)
+  shader.setSource(source)
+  shader.compile()
 
-    if shader.getInfo(gl.compileStatus()) == gl.glFalse() do
-        sys.panic(1, shader.getInfoLog()) .
+  if shader.getInfo(gl.compileStatus()) == gl.glFalse() do
+    sys.panic(1, shader.getInfoLog()) .
 
-    shader .
+  shader .
 
 def mkProgram = vertexSource: String, fragmentSource: String do
-    vertex = mkShader(gl.vertexShader(), vertexSource)
-    fragment = mkShader(gl.fragmentShader(), fragmentSource)
-    program = gl.createProgram()
+  vertex = mkShader(gl.vertexShader(), vertexSource)
+  fragment = mkShader(gl.fragmentShader(), fragmentSource)
+  program = gl.createProgram()
 
-    program.attachShader(vertex)
-    program.attachShader(fragment)
-    program.link()
+  program.attachShader(vertex)
+  program.attachShader(fragment)
+  program.link()
 
-    if program.getInfo(gl.linkStatus()) == gl.glFalse() do
-        sys.panic(1, program.getInfoLog()) .
+  if program.getInfo(gl.linkStatus()) == gl.glFalse() do
+    sys.panic(1, program.getInfoLog()) .
 
-    program .
+  program .
 
 def mkRenderer =
-    gl.enable(gl.depthTest())
-    gl.clearColor(0.2117, 0.0823, 0.2784)
-    # gl.clearColor(0.9, 0.9, 0.9)
-    mesh = objLoader.load('/home/over/build/abra_lang/abra_v2/abra/demo/cube.obj')
-    program = mkProgram('
-        #version 130
-        in vec3 vertexPos;
-        in vec2 uv;
-        in vec3 normal;
-        out vec2 texCoord;
+  gl.enable(gl.depthTest())
+  gl.clearColor(0.2117, 0.0823, 0.2784)
+  -- gl.clearColor(0.9, 0.9, 0.9)
+  mesh = objfile.load('/home/over/build/abra_lang/abra_v2/abra/demo/cube.obj')
+  program = mkProgram('
+      #version 130
+      in vec3 vertexPos;
+      in vec2 uv;
+      in vec3 normal;
+      out vec2 texCoord;
 
-        uniform mat4 P;
-        uniform mat4 V;
-        uniform mat4 M;
+      uniform mat4 P;
+      uniform mat4 V;
+      uniform mat4 M;
 
-        void main() {
-            texCoord = uv;
-            gl_Position = P * V * M * vec4(vertexPos.xyz, 1.0);
-        }
+      void main() {
+          texCoord = uv;
+          gl_Position = P * V * M * vec4(vertexPos.xyz, 1.0);
+      }
     ','
-        #version 130
-        in vec2 texCoord;
-        out vec4 color;
+      #version 130
+      in vec2 texCoord;
+      out vec4 color;
 
-        uniform sampler2D tex;
-        void main() {
-            color = texture2D(tex, texCoord);
-        }
-    ')
+      uniform sampler2D tex;
+      void main() {
+          color = texture2D(tex, texCoord);
+      }
+  ')
 
-    vb = gl.genBuffer()
-    vb.bind(gl.arrayBuffer())
-    vb.data(gl.arrayBuffer(), mesh, gl.staticDraw())
+  vb = gl.genBuffer()
+  vb.bind(gl.arrayBuffer())
 
-    vao = gl.genVertexArray()
-    vao.bind()
-    vb.bind(gl.arrayBuffer())
+  mesh.asArray with |data|
+    vb.data(gl.arrayBuffer(), data, gl.staticDraw()) .
 
-    attribVertexPos = program.attribLocation('vertexPos')
-    attribUV = program.attribLocation('uv')
-    attribNormal = program.attribLocation('normal')
+  vao = gl.genVertexArray()
+  vao.bind()
+  vb.bind(gl.arrayBuffer())
 
-    stride = (3 + 2 + 3) * 4 # 3 vertex coords + 2 uv coords + 3 normal coords
-    gl.vertexAttribPointer(attribVertexPos, 3, gl.float(), false, stride, 0)
-    gl.vertexAttribPointer(attribUV, 2, gl.float(), false, stride, 3 * 4)
-    gl.vertexAttribPointer(attribNormal, 3, gl.float(), false, stride, (3 + 2) * 4)
+  attribVertexPos = program.attribLocation('vertexPos')
+  attribUV = program.attribLocation('uv')
+  attribNormal = program.attribLocation('normal')
 
-    texture = gl.genTexture()
-    texture.bind(gl.texture2D())
-    texture.loadFromFile('/home/over/build/abra_lang/abra_v2/abra/demo/tex.png', soil.cLoadAuto(), soil.cFlagInvertY())
+  stride = (3 + 2 + 3) * 4  -- 3 vertex coords + 2 uv coords + 3 normal coords
+  gl.vertexAttribPointer(attribVertexPos, 3, gl.float(), false, stride, 0)
+  gl.vertexAttribPointer(attribUV, 2, gl.float(), false, stride, 3 * 4)
+  gl.vertexAttribPointer(attribNormal, 3, gl.float(), false, stride, (3 + 2) * 4)
 
-    pMatrix = kazmath.perspective(45.0, 640.0 / 480.0, 0.01, 100.0)
+  texture = gl.genTexture()
+  texture.bind(gl.texture2D())
+  texture.loadFromFile('/home/over/build/abra_lang/abra_v2/abra/demo/tex.png', soil.cLoadAuto(), soil.cFlagInvertY())
 
-    eye = Vec3(0.0, 1.0, 5.0)
-    center = Vec3(0.0, 0.0, 0.0)
-    up = Vec3(0.0, 1.0, 0.0)
-    vMatrix = kazmath.lookAt(eye, center, up)
+  pMatrix = kazmath.perspective(45.0, 640.0 / 480.0, 0.01, 100.0)
 
-    Renderer(vb, vao, program, pMatrix, vMatrix, texture, 0.0) .
+  eye = Vec3(0.0, 1.0, 5.0)
+  center = Vec3(0.0, 0.0, 0.0)
+  up = Vec3(0.0, 1.0, 0.0)
+  vMatrix = kazmath.lookAt(eye, center, up)
+
+  Renderer(vb, vao, program, pMatrix, vMatrix, texture, 0.0) .
 
 def render = self: Renderer do
-    gl.clear(gl.colorBufferBit() or gl.depthBufferBit())
-    identity = kazmath.identity4()
-    mMatrix = identity.rotateY(self.rot)
-    self.rot = self.rot + 0.03
+  gl.clear(gl.colorBufferBit() or gl.depthBufferBit())
+  identity = kazmath.identity4()
+  mMatrix = identity.rotateY(self.rot)
+  self.rot = self.rot + 0.03
 
-    self.program.use()
+  program = self.program
 
-    attribVertexPos = self.program.attribLocation('vertexPos')
-    attribUV = self.program.attribLocation('uv')
-    attribNormal = self.program.attribLocation('normal')
+  program.use()
 
-    locationP = self.program.uniformLocation('P')
-    locationV = self.program.uniformLocation('V')
-    locationM = self.program.uniformLocation('M')
-    locationTex = self.program.uniformLocation('tex')
+  attribVertexPos = program.attribLocation('vertexPos')
+  attribUV = program.attribLocation('uv')
+  attribNormal = program.attribLocation('normal')
 
-    self.program.uniformMatrix4(locationP, self.pMatrix)
-    self.program.uniformMatrix4(locationV, self.vMatrix)
-    self.program.uniformMatrix4(locationM, mMatrix)
+  locationP = program.uniformLocation('P')
+  locationV = program.uniformLocation('V')
+  locationM = program.uniformLocation('M')
+  locationTex = program.uniformLocation('tex')
 
-    self.vao.bind()
-    gl.enableVertexAttribArray(attribVertexPos)
-    gl.enableVertexAttribArray(attribUV)
-    gl.enableVertexAttribArray(attribNormal)
+  program.uniformMatrix4(locationP, self.pMatrix)
+  program.uniformMatrix4(locationV, self.vMatrix)
+  program.uniformMatrix4(locationM, mMatrix)
 
-    gl.activeTexture(gl.texture0())
-    self.texture.bind(gl.texture2D())
-    self.program.uniform1i(locationTex, 0)
+  self.vao.bind()
+  gl.enableVertexAttribArray(attribVertexPos)
+  gl.enableVertexAttribArray(attribUV)
+  gl.enableVertexAttribArray(attribNormal)
 
-    gl.drawArrays(gl.triangles(), 0, 36) .
+  gl.activeTexture(gl.texture0())
+  self.texture.bind(gl.texture2D())
+  program.uniform1i(locationTex, 0)
+
+  gl.drawArrays(gl.triangles(), 0, 36) .
 
 def main =
-  sdl.init(sdl.initVideo(), lambda err: String -> sys.panic(1, err))
+  sdl.init(sdl.initVideo(), |err| sys.panic(1, err))
 
   window = sdl.createWindow(
     'ABRA Lang Demo 0!',
@@ -151,7 +145,7 @@ def main =
 
   running = true
   while running do
-    sdl.pollEvents with event ->
+    sdl.pollEvents with |event|
       if event.eventType == sdl.eventQuit() do
         running = false ..
 

@@ -24,10 +24,10 @@ class _02LiteralTest extends FunSuite {
     val ast = astForCode(
       """
          def main =
-           x = 42 # Int
-           intMax = 2147483647 # Int
-           y = 2147483648 # Long
-           longMax = 9223372036854775807 # Long
+           x = 42 -- Int
+           intMax = 2147483647 -- Int
+           y = 2147483648 -- Long
+           longMax = 9223372036854775807 -- Long
            .
       """)
 

@@ -5,7 +5,7 @@ class _04LiteralOpTest extends FunSuite {
   test("literal ops: none") {
     CodeGenUtil.run(
       """
-        def dummy = none . # as ret val
+        def dummy = none . -- as ret val
         def main =
           dummy()
           42 .
@@ -15,10 +15,10 @@ class _04LiteralOpTest extends FunSuite {
   test("literal ops: bool") {
     CodeGenUtil.run(
       """
-        def dummy = x: Bool do true . # as ret val
+        def dummy = x: Bool do true . -- as ret val
         def main =
-          dummy(false) # as call arg
-          x = false # as store src
+          dummy(false) -- as call arg
+          x = false -- as store src
           42 .
     """, exitCode = 42)
   }

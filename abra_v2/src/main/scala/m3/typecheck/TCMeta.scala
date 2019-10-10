@@ -82,7 +82,13 @@ object TCMeta {
       self.meta.put("typecheck.var_type", vt)
 
     def getVarLocation: VarType =
-      self.meta.get("typecheck.var_type").map(x => x.asInstanceOf[VarType]).get
+      try {
+        self.meta.get("typecheck.var_type").map(x => x.asInstanceOf[VarType]).get
+      } catch {
+        case ex: NoSuchElementException =>
+          var x = 1
+          throw ex;
+      }
   }
 
   implicit class CallTypeTCMetaImplicit(self: ParseNode) {

@@ -11,8 +11,8 @@ class _13UnlessTest extends FunSuite {
         def main =
           x: Int | String | None = 'hello'
           x unless
-            is s: String do 'haha'
-            is n: None do 42 ..
+            is None do 42
+            is s: String do 'haha' ..
       """)
 
     assertTh("() -> Int | String", ast.function("main"))

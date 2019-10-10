@@ -1,8 +1,6 @@
-import
-    /universe with None, Bool, Int, String
-    /gl with Texture .
+import gl with Texture
 
-llvm
+native
     ;unsigned int SOIL_load_OGL_texture (
     ;   const char *filename,
     ;   int force_channels,
@@ -14,8 +12,8 @@ llvm
 
 def cLoadAuto = 0 .
 def cFlagInvertY = 16 .
-# def SOIL_FLAG_MIPMAPS
+-- def SOIL_FLAG_MIPMAPS
 
-def loadFromFile = self: Texture, fname: String, channels: Int, flags: Int do llvm
+def loadFromFile = self: Texture, fname: String, channels: Int, flags: Int native
     call void @SOIL_load_OGL_texture(i8* %fname, i32 %channels, i32 %self, i32 %flags)
     ret void .None

@@ -1,6 +1,4 @@
-import /universe with None, Bool, Int, String .
-
-llvm
+native
   declare i32 @SDL_Init(i32)
   declare void @SDL_Quit()
   ; SDL_Window * SDLCALL SDL_CreateWindow(const char *title, int x, int y, int w, int h, Uint32 flags)
@@ -23,12 +21,12 @@ llvm
 
 def initTimer          = 0x00000001 .
 def initAudio          = 0x00000010 .
-def initVideo          = 0x00000020 . # SDL_initVIDEO implies SDL_initEVENTS
-def initJoystick       = 0x00000200 . # SDL_initJOYSTICK implies SDL_initEVENTS
+def initVideo          = 0x00000020 . -- SDL_initVIDEO implies SDL_initEVENTS
+def initJoystick       = 0x00000200 . -- SDL_initJOYSTICK implies SDL_initEVENTS
 def initHaptic         = 0x00001000 .
-def initGameController = 0x00002000 . # SDL_initGAMECONTROLLER implies SDL_initJOYSTICK
+def initGameController = 0x00002000 . -- SDL_initGAMECONTROLLER implies SDL_initJOYSTICK
 def initEvents         = 0x00004000 .
-def initNoParachute    = 0x00100000 . # compatibility; this flag is ignored
+def initNoParachute    = 0x00100000 . -- compatibility; this flag is ignored
 def initEverything =
   initTimer()    or
   initAudio()    or
@@ -42,38 +40,38 @@ def init = mode: Int, onErr: (String) -> None do
   if initInternal(mode) < 0 do
      onErr('sdl init error!') ..None
 
-def initInternal = mode: Int do llvm
+def initInternal = mode: Int native
     %1 = call i32 @SDL_Init(i32 %mode)
     ret i32 %1 .Int
 
-def quit = llvm
+def quit = native
     call void @SDL_Quit()
     ret void .None
 
-type Window = llvm i8* .
-type GLContext = llvm i8* .
+type Window = native i8* .
+type GLContext = native i8* .
 
-def windowFullscreen         = 0x00000001 . # fullscreen window
-def windowOpenGL             = 0x00000002 . # window usable with OpenGL context
-def windowShown              = 0x00000004 . # window is visible
-def windowHidden             = 0x00000008 . # window is not visible
-def windowBorderless         = 0x00000010 . # no window decoration
-def windowResizable          = 0x00000020 . # window can be resized
-def windowMinimized          = 0x00000040 . # window is minimized
-def windowMaximized          = 0x00000080 . # window is maximized
-def windowInputGrabbed       = 0x00000100 . # window has grabbed input focus
-def windowInputFocus         = 0x00000200 . # window has input focus
-def windowMouseFocus         = 0x00000400 . # window has mouse focus
+def windowFullscreen         = 0x00000001 . -- fullscreen window
+def windowOpenGL             = 0x00000002 . -- window usable with OpenGL context
+def windowShown              = 0x00000004 . -- window is visible
+def windowHidden             = 0x00000008 . -- window is not visible
+def windowBorderless         = 0x00000010 . -- no window decoration
+def windowResizable          = 0x00000020 . -- window can be resized
+def windowMinimized          = 0x00000040 . -- window is minimized
+def windowMaximized          = 0x00000080 . -- window is maximized
+def windowInputGrabbed       = 0x00000100 . -- window has grabbed input focus
+def windowInputFocus         = 0x00000200 . -- window has input focus
+def windowMouseFocus         = 0x00000400 . -- window has mouse focus
 def windowFullscreenDesktop  = windowFullscreen() or 0x00001000 .
-def windowForeign            = 0x00000800 . # window not created by SDL
-def windowAllowHighDPI       = 0x00002000 . # window should be created in high-DPI mode if supported
-def windowMouseCapture       = 0x00004000 . # window has mouse captured (unrelated to INPUT_GRABBED)
+def windowForeign            = 0x00000800 . -- window not created by SDL
+def windowAllowHighDPI       = 0x00002000 . -- window should be created in high-DPI mode if supported
+def windowMouseCapture       = 0x00004000 . -- window has mouse captured (unrelated to INPUT_GRABBED)
 
-def createWindow = title: String, x: Int, y: Int, w: Int, h: Int, flags: Int do llvm
+def createWindow = title: String, x: Int, y: Int, w: Int, h: Int, flags: Int native
     %1 = call i8* @SDL_CreateWindow(i8* %title, i32 %x, i32 %y, i32 %w, i32 %h, i32 %flags)
     ret i8* %1 .Window
 
-def destroy = self: Window do llvm
+def destroy = self: Window native
     call void @SDL_DestroyWindow(i8* %self)
     ret void .None
 
@@ -81,33 +79,33 @@ def noEvent      = 0x000 .
 def eventQuit    = 0x100 .
 def eventKeydown = 0x300 .
 
-type EventData = llvm [56 x i8] .
+type EventData = native [56 x i8] .
 type Event = (eventType: Int, data: EventData)
 
 def pollEvents = onEvent: (Event) -> None do
   while true do
     event = pollEvent()
-    if event.eventType == noEvent() do break
+    if event.eventType == noEvent() do return -- FIXME: use break
     else
       onEvent(event) ...None
 
-def pollEvent = llvm
-    %ev = alloca %Event
-    %1 = getelementptr %Event, %Event* %ev, i32 0, i32 0
+def pollEvent = native
+    %ev = alloca %sdl.Event
+    %1 = getelementptr %sdl.Event, %sdl.Event* %ev, i32 0, i32 0
     store i32 0, i32* %1
-    %2 = bitcast %Event* %ev to i8*
+    %2 = bitcast %sdl.Event* %ev to i8*
     %3 = call i32 @SDL_PollEvent(i8* %2)
-    %4 = load %Event, %Event* %ev
-    ret %Event %4 .Event
+    %4 = load %sdl.Event, %sdl.Event* %ev
+    ret %sdl.Event %4 .Event
 
-def glCreateContext = self: Window do llvm
+def glCreateContext = self: Window native
     %1 = call i8* @SDL_GL_CreateContext(i8* %self)
     ret i8* %1 .GLContext
 
-def delete = self: GLContext do llvm
+def delete = self: GLContext native
    call void @SDL_GL_DeleteContext(i8* %self)
    ret void .None
 
-def glSwap = self: Window do llvm
+def glSwap = self: Window native
     call void @SDL_GL_SwapWindow(i8* %self)
     ret void .None

@@ -1,0 +1,53 @@
+import range with Range, pool, io
+
+type Node = (left: Node | None, right: Node | None)
+
+-- hacky way for manual inline for recursive function
+-- llvm cannot do this instead of gcc (Сила в GNU, брат)
+def wrap = x: Node do x .Node | None
+
+def mkTree = depth: Int do
+  if depth > 0 do
+    Node(wrap(mkTree(depth - 1)), wrap(mkTree(depth - 1)))
+  else
+    Node(none, none) ..Node
+
+def checksum = self: Node do
+  self.left unless is l: Node do
+    self.right unless is r: Node do
+      return 1 + l.checksum() + r.checksum() . . -- FIXME
+
+  1 .Int
+
+def stat = nTrees: Int, name: String, depth: Int, sum: Int do
+  if nTrees > 1 do io.printInt(nTrees) .
+  io.print(name) io.printInt(depth) io.print('\t check: ') io.printInt(sum) io.print('\n') .
+
+def main =
+  minDepth = 4
+  maxDepth = 21 -- sys.argInt(0)
+
+  if maxDepth < minDepth + 2 do
+    maxDepth = minDepth + 2 .
+
+  pool.mk() withPool ||
+    tree = mkTree(maxDepth + 1)
+    stat(1, 'stretch tree of depth ', maxDepth + 1, tree.checksum()) .
+
+  Range(minDepth, maxDepth, 2).forEach with |depth|
+    iters    = 1 shl (maxDepth + minDepth - depth)
+    totalSum = 0
+    mp = pool.mk()
+
+    Range(1, iters + 1, 1).forEach with |i|
+      mp withPool ||
+        totalSum = totalSum + mkTree(depth).checksum() ..
+
+    stat(iters, '\t trees of depth ', depth, totalSum) .
+
+  pool.mk() withPool ||
+    llTree = mkTree(maxDepth)
+    stat(1, 'long lived tree of depth ', maxDepth, llTree.checksum()) .
+
+  0 .
+

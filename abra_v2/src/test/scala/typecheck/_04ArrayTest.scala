@@ -8,8 +8,8 @@ class _04ArrayTest extends FunSuite {
   test("array pass: arrayN as array") {
     val ast = astForCode(
       """
-         def mkArray100 = llvm
-           ; native .Array100[Byte]
+         def mkArray100 = native
+           ; asm .Array100[Byte]
 
          def bar = array: Array[Byte] do .
 
@@ -25,8 +25,8 @@ class _04ArrayTest extends FunSuite {
     assertThrows[TCE.TypeMismatch] {
       astForCode(
         """
-         def mkArray = llvm
-           ; native .Array[Byte]
+         def mkArray = native
+           ; asm .Array[Byte]
 
          def bar = array: Array100[Byte] do .
 

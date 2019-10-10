@@ -42,7 +42,6 @@ LAMBDA : 'lambda' ;
 IMPORT : 'import' ;
 WITH : 'with' ;
 MATCH: 'match';
-OF: 'of';
 RETURN: 'return';
 BREAK: 'break';
 CONTINUE: 'continue';
@@ -54,11 +53,11 @@ VERT_LINE: '|';
 BRACKET_LEFT: '[';
 BRACKET_RIGTH: ']';
 
-LlBegin : 'llvm' { start_llvm_ws = true; } -> pushMode(llvm) ;
+LlBegin : 'native' { start_llvm_ws = true; } -> pushMode(llvm) ;
 
 WS : [ \t]+ ;
 NL : '\r'? '\n' ;
-COMMENT : '#' ~[\r\n]* ;
+COMMENT : '--' ~[\r\n]* ;
 
 
 IntLiteral   : '-'? ('0' | NonZeroDigit Digit*) ;

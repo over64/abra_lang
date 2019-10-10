@@ -25,7 +25,7 @@ class _05CallTest extends FunSuite {
            lmb(x) .
 
          def main =
-           apply(42, lambda x -> x) .
+           apply(42, |x| x) .
       """)
 
     assertTh("() -> Int", ast.function("main"))
@@ -35,7 +35,7 @@ class _05CallTest extends FunSuite {
     val ast = astForCode(
       """
          def main =
-           lambda x: Int -> x .(1) .
+           |x: Int| x .(1) .
       """)
 
     assertTh("() -> Int", ast.function("main"))
@@ -45,7 +45,7 @@ class _05CallTest extends FunSuite {
     val ast = astForCode(
       """
          def main =
-           closure = lambda x: Int -> x .
+           closure = |x: Int| x .
            closure(1) .
       """)
 

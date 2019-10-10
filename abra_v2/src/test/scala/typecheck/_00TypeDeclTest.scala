@@ -9,8 +9,8 @@ class _00TypeDeclTest extends FunSuite {
     assertThrows[TCE.BuiltinTypeRedeclare] {
       astForCode(
         """
-        type Int = llvm i32 .
-        type String = ref llvm i32 .
+        type Int = native i32 .
+        type String = ref native i32 .
       """)
     }
   }
@@ -18,8 +18,8 @@ class _00TypeDeclTest extends FunSuite {
   test("type decl: native") {
     astForCode(
       """
-        type Ptr = llvm i8* .
-        type PtrPtr = ref llvm i8* .
+        type Ptr = native i8* .
+        type PtrPtr = ref native i8* .
       """)
   }
 

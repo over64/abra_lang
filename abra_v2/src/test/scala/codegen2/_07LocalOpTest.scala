@@ -14,8 +14,8 @@ class _07LocalOpTest extends FunSuite {
 
         def main =
           x: $th = $value
-          y = x  # as store src
-          y = x  # as store dest
+          y = x  -- as store src
+          y = x  -- as store dest
           retVal()
           callArg(x)
           42 ."""

@@ -31,11 +31,11 @@ class _17GenericsTest extends FunSuite {
   test("call with polymorphic args") {
     CodeGenUtil.run(
       """
-         def + = self: Int, other: Int do llvm
+         def + = self: Int, other: Int native
            %1 = add nsw i32 %self, %other
            ret i32 %1 .Int
 
-         def + = self: Long, other: Long do llvm
+         def + = self: Long, other: Long native
            %1 = add nsw i64 %self, %other
            ret i64 %1 .Long
 
@@ -53,11 +53,11 @@ class _17GenericsTest extends FunSuite {
   test("call with polymorphic args deep") {
     CodeGenUtil.run(
       """
-         def + = self: Int, other: Int do llvm
+         def + = self: Int, other: Int native
            %1 = add nsw i32 %self, %other
            ret i32 %1 .Int
 
-         def - = self: Int, other: Int do llvm
+         def - = self: Int, other: Int native
            %1 = sub nsw i32 %self, %other
            ret i32 %1 .Int
 
@@ -76,7 +76,7 @@ class _17GenericsTest extends FunSuite {
   test("self call with polymorphic args") {
     CodeGenUtil.run(
       """
-         def + = self: Int, other: Int do llvm
+         def + = self: Int, other: Int native
            %1 = add nsw i32 %self, %other
            ret i32 %1 .Int
 
@@ -91,11 +91,11 @@ class _17GenericsTest extends FunSuite {
   test("self call with polymorphic args deep") {
     CodeGenUtil.run(
       """
-         def + = self: Int, other: Int do llvm
+         def + = self: Int, other: Int native
            %1 = add nsw i32 %self, %other
            ret i32 %1 .Int
 
-         def sub = self: Int, other: Int do llvm
+         def sub = self: Int, other: Int native
            %1 = sub nsw i32 %self, %other
            ret i32 %1 .Int
 
@@ -103,10 +103,10 @@ class _17GenericsTest extends FunSuite {
            self + y
            self.sub(y) .
 
-         # incorrect replacement ???
-         # expected Int::sub ???
-         # def sub = self: num1, y: num1 do
-         #   self - y .
+         -- incorrect replacement ???
+         -- expected Int::sub ???
+         -- def sub = self: num1, y: num1 do
+         --   self - y .
 
          def main =
            43.addSub(1) .

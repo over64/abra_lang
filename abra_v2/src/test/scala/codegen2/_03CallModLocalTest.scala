@@ -28,7 +28,7 @@ class _03CallModLocalTest extends FunSuite {
   test("call self def: operator") {
     CodeGenUtil.run(
       """
-        def + = self: Int, other: Int do llvm
+        def + = self: Int, other: Int native
           %1 = add nsw i32 %self, %other
           ret i32 %1 .Int
 

@@ -59,6 +59,8 @@ object Abi {
         EResult(r, false, res.isAnon)
       }
 
+    var x = 1
+
     val sameThRes =
       if (requireTh != hasTh)
         requireTh.classify(mctx) match {

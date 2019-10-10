@@ -1,24 +1,40 @@
-import
-    /universe with None, Bool, Int
-    /array with Array .
+import unsafeArray, array
 
+-- FIXME: use pure native impl, don't use array
 type Vec[t] = (array: Array[t], len: Int)
 
 def get = self: Vec[t], index: Int do
-    #FIXME: should be self.array(index)?
-    self.array.get(index) .
+    -- FIXME: should be self.array(index)?
+    self.array.get(index) .t
 
+-- FIXME: check index
 def set = self: Vec[t], index: Int, value: t do
-    self.array.set(index, value) .
+    unsafeArray.setInit(self.array, index, value) .
 
 def push = self: Vec[t], value: t do
     if self.len >= self.array.len() do
-        newArray: Array[t] = array.alloc(self.array.len() * 2)
-        array.copy(self.array, newArray, 0, 0, self.array.len())
+        newArray: Array[t] = unsafeArray.alloc(self.array.len() * 2)
+
+        i = 0
+        while i < self.array.len() do
+           unsafeArray.setInit(newArray, i, self.array.get(i))
+           i = i + 1 .
+
         self.array = newArray .
 
     self.array(self.len) = value
-    self.len = self.len + 1 .
+    self.len = self.len + 1 .None
 
-def mk = size: Int do
-    Vec(array.alloc(size), 0) .Vec[t]
+def make = size: Int do
+    new: Array[t] = unsafeArray.alloc(size)  -- FIXME: inline into constructor
+    Vec(new, 0) .Vec[t]
+
+def asArrayInternal = slf: Array[t], needSize: Int, fn: (Array[t]) -> None native
+  %1 = insertvalue %"Array[Float]" %slf, i32 %needSize, 0
+  %2 = extractvalue %"(Array[Float]) -> None" %fn, 0
+  %3 = extractvalue %"(Array[Float]) -> None" %fn, 1
+  call void %2(%"Array[Float]" %1, i8* %3)
+  ret void .None
+
+def asArray = self: Vec[t], fn: (Array[t]) -> None do
+ asArrayInternal(self.array, self.len, fn) .

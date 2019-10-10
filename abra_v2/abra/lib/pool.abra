@@ -1,9 +1,7 @@
-import
-  /universe with None, Bool, Int, Long, String, Ptr
-  /allocator with Allocator .
+import allocator with Allocator Ptr
 
-llvm
-  @pool = thread_local global %MemPool zeroinitializer
+native
+  @pool = thread_local global %pool.MemPool zeroinitializer
   define void @poolRelease(i8* %obj, void (i8*)* %releaseCallback) {
     ret void
   }
@@ -30,17 +28,17 @@ llvm
     call void @mpFreeTC(i8* %2)
     br label %end
   end:
-    %3 = load void (i8*, void (i8*)*)*, void (i8*, void (i8*)*)** @rcRelease
-    call void %3(i8* %self, void (i8*)* @mpFreeInner)
+    %3 = load void (i8*)*, void (i8*)** @evaFree
+    call void %3(i8* %self)
     ret void
   }
 
   .
 
-type MemPage = llvm i8* .
+type MemPage = native i8* .
 
-def mkMemPage = llvm
-  %1 = load i8* (i64)*, i8* (i64)** @rcAlloc
+def mkMemPage = native
+  %1 = load i8* (i64)*, i8* (i64)** @evaAlloc
   %2 = call i8* %1(i64 41943040) ; 1 page
   %mp = bitcast i8* %2 to {i8*, i64}*
 
@@ -52,38 +50,38 @@ def mkMemPage = llvm
 
   ret i8* %2 .MemPage
 
-def chain = self: MemPage, child: MemPage do llvm
+def chain = self: MemPage, child: MemPage native
   %sself = bitcast i8* %self to {i8*, i64}*
   %1 = getelementptr {i8*, i64}, {i8*, i64}* %sself, i64 0, i32 0
   store i8* %child, i8** %1
   ret void .None
 
-def mpFreeInner = p: Ptr do llvm
+def mpFreeInner = p: Ptr native
   ret void .None
 
-def mpFree = self: MemPage do llvm
+def mpFree = self: MemPage native
   call void @mpFreeTC(i8* %self)
   ret void .None
 
-def nextPage = self: MemPage do llvm
+def nextPage = self: MemPage native
   %sself = bitcast i8* %self to {i8*, i64}*
   %1 = getelementptr {i8*, i64}, {i8*, i64}* %sself, i64 0, i32 0
   %2 = load i8*, i8** %1
   ret i8* %2 .MemPage
 
-def offset = self: MemPage do llvm
+def offset = self: MemPage native
   %sself = bitcast i8* %self to {i8*, i64}*
   %offsetPtr  = getelementptr {i8*, i64}, {i8*, i64}* %sself, i64 0, i32 1
   %offset = load i64, i64* %offsetPtr
   ret i64 %offset .Long
 
-def setOffset = self: MemPage, offset: Long do llvm
+def setOffset = self: MemPage, offset: Long native
   %sself = bitcast i8* %self to {i8*, i64}*
   %offsetPtr  = getelementptr {i8*, i64}, {i8*, i64}* %sself, i64 0, i32 1
   store i64 %offset, i64* %offsetPtr
   ret void .None
 
-def alloc = self: MemPage, newOffset: Long do llvm
+def alloc = self: MemPage, newOffset: Long native
   %sself = bitcast i8* %self to {i8*, i64}*
   %offsetPtr  = getelementptr {i8*, i64}, {i8*, i64}* %sself, i64 0, i32 1
   %offset = load i64, i64* %offsetPtr
@@ -98,22 +96,22 @@ def alloc = self: MemPage, newOffset: Long do llvm
 type MemPool = (parent: Allocator, root: MemPage)
 def mk = MemPool(allocator.load(), mkMemPage()) .
 
-def bind = self: MemPool do llvm
-  %1 = load %MemPool, %MemPool* %self
-  store %MemPool %1, %MemPool* @pool
+def bind = self: MemPool native
+  %1 = load %pool.MemPool, %pool.MemPool* %self
+  store %pool.MemPool %1, %pool.MemPool* @pool
   ret void .None
 
-def loadPool = llvm
-  %1 = load %MemPool, %MemPool* @pool
-  ret %MemPool %1 .MemPool
+def loadPool = native
+  %1 = load %pool.MemPool, %pool.MemPool* @pool
+  ret %pool.MemPool %1 .MemPool
 
-def loadRoot = llvm
-  %1 = getelementptr %MemPool, %MemPool* @pool, i64 0, i32 1
+def loadRoot = native
+  %1 = getelementptr %pool.MemPool, %pool.MemPool* @pool, i64 0, i32 1
   %2 = load i8*, i8** %1
   ret i8* %2 .MemPage
 
 def poolAlloc = size: Long do
-  # maybe root = loadPool().root ?
+  -- maybe root = loadPool().root ?
   root = loadRoot()
   rootNewOffset = root.offset() + size
 
@@ -132,23 +130,26 @@ def poolAlloc = size: Long do
     newOffset = newPage.offset() + size
     newPage.alloc(newOffset) ..Ptr
 
-def poolInc = obj: Ptr do llvm
+def poolInc = obj: Ptr native
   ret void .None
 
-def poolRelease = obj: Ptr, releaseCallback: (Ptr) -> None do llvm
-  ret void .None
+def poolDec = obj: Ptr native
+  ret i64 1 .Long
 
-def poolFree = self: MemPool do
+def poolFree = obj: Ptr native
+    ret void .None
+
+def free = self: MemPool do
   root = self.root
-  root.setOffset(32.toLong()) # FIXME: move down
+  root.setOffset(32.toLong()) -- FIXME: move down
   next = root.nextPage()
   next.mpFree() .
 
 def withPool = self: MemPool, action: () -> None do
   self.bind()
-  allocator.store(Allocator(poolAlloc, poolInc, poolRelease))
+  allocator.store(Allocator(poolAlloc, poolFree, poolInc, poolDec))
   action()
   allocator.store(self.parent)
-  self.poolFree() .
+  self.free() .
 
-# MemPage.offset & MemPage.alloc must be inlined?
+-- MemPage.offset & MemPage.alloc must be inlined?

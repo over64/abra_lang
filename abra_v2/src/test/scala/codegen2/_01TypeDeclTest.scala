@@ -16,7 +16,7 @@ class _01TypeDeclTest extends FunSuite {
         type U1 = Int | String
         type Node = (v: Int, next: Node | None)
         type Node2 = (v: Int, next: Node2 | Node | Int | None)
-        type Vec3i = llvm <4 x i32> .
+        type Vec3i = native <4 x i32> .
         type U3 = Int | Vec3i
 
         def main = x1: Int, x2: Long, x3: S1, x4: S2, x5: R,

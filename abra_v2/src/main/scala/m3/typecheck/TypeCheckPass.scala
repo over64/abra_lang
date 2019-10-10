@@ -52,22 +52,28 @@ case class PassContext(prefix: String, colorId: Int,
     val loc = expr.location
     val line = loc.source(loc.line - 1)
 
-    if (loc.line == loc.lineEnd) {
-      val record = line.substring(loc.col, loc.colEnd + 1)
-      log(record)
-    } else {
-      val first = " " * loc.col + line.substring(loc.col)
-      val tail = loc.source.drop(loc.line).take(loc.lineEnd - loc.line)
-      val minCol = (loc.col +: tail.map(l => l.indexWhere(c => !c.isSpaceChar))).min
+    try {
+      if (loc.line == loc.lineEnd) {
+        val record = line.substring(loc.col, loc.colEnd + 1)
+        log(record)
+      } else {
+        val first = " " * loc.col + line.substring(loc.col)
+        val tail = loc.source.drop(loc.line).take(loc.lineEnd - loc.line)
+        val minCol = (loc.col +: tail.map(l => l.indexWhere(c => !c.isSpaceChar)).filter(i => i != -1)).min
 
-      (first +: tail).foreach { l =>
-        val eBegin = l.indexWhere(c => !c.isSpaceChar)
-        val (prefix, start) =
-          if (eBegin < minCol) (" " * (minCol - eBegin), eBegin)
-          else ("", minCol)
+        (first +: tail).foreach { l =>
+          val eBegin = Math.max(0, l.indexWhere(c => !c.isSpaceChar))
+          val (prefix, start) =
+            if (eBegin < minCol) (" " * (minCol - eBegin), eBegin)
+            else ("", minCol)
 
-        log(prefix + l.substring(start))
+          log(prefix + l.substring(start))
+        }
       }
+    } catch {
+      case ex: StringIndexOutOfBoundsException =>
+        var x = 1
+        throw ex
     }
   }
 }
@@ -591,6 +597,7 @@ class TypeCheckPass {
           case None =>
             val fn = ctx.module.defs.getOrElse(id.value, throw TCE.NoSuchSymbol(id.location, id.value))
 
+            id.setVarLocation(VarDefLocal(fn))
             if (fn.getTypeHintOpt == None) passDef(ctx.deeperDef(None, id.value), fn)
             fn.getTypeHint
         }
@@ -789,7 +796,7 @@ class TypeCheckPass {
           FieldTh("x" + idx, passExpr(ctx, scope, eq, expected, fieldExpr))
         })
       case Prop(from, props) =>
-        val eth = passExpr(ctx, scope, eq, AnyTh, from)
+        val eth = passExpr(ctx.deeperExpr(), scope, eq, AnyTh, from)
         foldFields(eth, props)
       case store@Store(varTh, to, what) =>
         varTh match {
@@ -1058,8 +1065,10 @@ class TypeCheckPass {
     }
   }
 
-  def pass(root: Level) =
+  def pass(root: Level) = {
+    val m1 = System.currentTimeMillis()
     root.eachModule((level, module) => {
+      println(s"__Typecheck__ pass for ${module.pkg}")
       val ctx = PassContext("", 0, level, module)
 
       checkTypeDecl(ctx)
@@ -1077,4 +1086,8 @@ class TypeCheckPass {
         }
       }
     })
+
+    val m2 = System.currentTimeMillis()
+    println(s"__Typecheck__ pass elapsed: ${m2 - m1}ms")
+  }
 }

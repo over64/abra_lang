@@ -1,0 +1,47 @@
+import
+  io, sreader, range, seq, vec with Vec
+
+def load = fname: String do
+  file = io.fopen(fname, 'r')
+
+  vertices:  Vec[Float] = vec.make(32)
+  textures:  Vec[Float] = vec.make(32)
+  normals:   Vec[Float] = vec.make(32)
+  mesh:      Vec[Float] = vec.make(32)
+
+  file.eachLine with |line|
+    -- io.print(line)
+    reader = sreader.of(line)
+
+    if line.startsWith('v ') do
+      reader.drop(2)
+      3.times(|| vertices.push(reader.float())) . -- x y z
+
+    if line.startsWith('vt ') do
+      reader.drop(3)
+      2.times(|| textures.push(reader.float())) . -- u v
+
+    if line.startsWith('vn ') do
+      reader.drop(3)
+      3.times(|| normals.push(reader.float())) . -- nx ny nz
+--
+--      -- FIXME: vertices.get(vertexId * 3 + i) => vertices(vertexId * 3 + i) and so on
+--
+    if line.startsWith('f ') do
+      reader.drop(2)
+      3 times ||
+        vertexId = reader.int() - 1
+        (0 to 3).forEach with |i|
+          mesh.push(vertices.get(vertexId * 3 + i)) . -- x y z
+        reader.drop(1) -- /
+
+        uvId = reader.int() - 1
+        (0 to 2).forEach with |i|
+          mesh.push(textures.get(uvId * 2 + i)) . -- u v
+        reader.drop(1) -- /
+
+        normalId = reader.int() - 1
+        (0 to 3).forEach with |i|
+          mesh.push(normals.get(normalId * 3 + i)) .... -- nx ny nz
+--    -- io.fclose(file)
+  mesh .
