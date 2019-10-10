@@ -5,15 +5,9 @@ import java.io.PrintStream
 import m3.codegen.IrUtils._
 import m3.parse.Ast0._
 import m3.parse.Level
-import m3.typecheck.Utils.RichDef
-import m3.typecheck.Utils.ThExtension
+import m3.typecheck.TCMeta.{CallTypeTCMetaImplicit, PolymorphicTCMetaImplicit, TypeDeclTCMetaImplicit, VarTypeTCMetaImplicit}
+import m3.typecheck.Utils.{RichDef, ThExtension}
 import m3.typecheck._
-import TCMeta.TypeDeclTCMetaImplicit
-import TCMeta.VarTypeTCMetaImplicit
-import TCMeta.CallTypeTCMetaImplicit
-import TCMeta.PolymorphicTCMetaImplicit
-import TCMeta.DefTCMetaImplicit
-import m3.codegen.RC.{decFnName, incFnName}
 
 import scala.collection.mutable
 import scala.collection.mutable.{HashMap, ListBuffer}
