@@ -21,7 +21,7 @@ object CodeGenUtil {
     val root = new ParsePass(new Resolver {
       override def resolve(path: String): String = {
         val code = resolver(path)
-        val fw = new FileWriter(new File("/tmp/" + path + ".abra"))
+        val fw = new FileWriter(new File("/tmp/" + path + ".eva"))
         fw.write(code)
         fw.close()
         code
@@ -101,7 +101,7 @@ object CodeGenUtil {
     println(s"__LLVM pass elapsed: ${m2 - m1}ms")
 
     if (invoke(Seq("sh", "-c",
-      s"clang-8 -O3 ${objects.mkString(" ")} ${System.getProperty("user.dir")}/v3/abra/lib/runtime2.ll -o /tmp/main  ${linkerFlags.mkString(" ")}"))._1 != 0)
+      s"clang-8 -O3 ${objects.mkString(" ")} ${System.getProperty("user.dir")}/v3/eva/lib/runtime2.ll -o /tmp/main  ${linkerFlags.mkString(" ")}"))._1 != 0)
       throw new RuntimeException("Compilation error: llc")
 
     val m3 = System.currentTimeMillis()

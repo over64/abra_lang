@@ -17,9 +17,9 @@ class FsResolver(libDir: String, projDir: String) extends Resolver {
   override def resolve(path: String): String =
     new String(Files.readAllBytes(Paths.get(
       if (path.startsWith("."))
-        projDir + path.stripPrefix(".") + ".abra"
+        projDir + path.stripPrefix(".") + ".eva"
       else
-        libDir + path + ".abra"
+        libDir + path + ".eva"
     )))
 }
 

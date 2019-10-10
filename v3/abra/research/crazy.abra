@@ -1,6 +1,0 @@
-def main =
-  twice = for i in Range(0, 10) do
-    if i mod 2 == 0 do
-      yield i * 2 .
-
-

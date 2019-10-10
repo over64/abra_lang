@@ -67,7 +67,7 @@ class _07CallGenericTest extends FunSuite {
     //        |z = loadConf()
     //        |    ↑
     //        |
-    //        |main.abra:20:5 tce002: No such function 'loadConf'
+    //        |main.eva:20:5 tce002: No such function 'loadConf'
     //        |
     //        |
     //        |           ↓ any2
@@ -76,7 +76,7 @@ class _07CallGenericTest extends FunSuite {
     //        |    ~~~~~
     //        |    ↑ any1
     //        |
-    //        |main.abra:31:5 tce001: Type mismatch. Expected any1 has any2
+    //        |main.eva:31:5 tce001: Type mismatch. Expected any1 has any2
     //      """.stripMargin)
   }
 

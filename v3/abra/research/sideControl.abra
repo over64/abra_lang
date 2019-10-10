@@ -1,9 +1,0 @@
-type S = (x: Int, y: Int)
-
-def bar = \s: S, x: Int -> S.x = x
-
-def main = {
-    let s = S(1, 2)
-    s = S(2, 3)
-    makeAsyncPayment(&s, 4)
-}

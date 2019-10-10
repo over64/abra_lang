@@ -25,7 +25,7 @@ trait ParseUtil extends Matchers {
 
     try {
       val tree = whatToParse(parser)
-      val visitor = new Visitor(input, "test.abra", "test", None)
+      val visitor = new Visitor(input, "test.eva", "test", None)
       visitor.visit(tree).asInstanceOf[T]
     } catch {
       case ex: ParseCancellationException =>

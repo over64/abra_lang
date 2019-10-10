@@ -40,25 +40,7 @@ define i64 @defEvaDec(i8* %obj) {
     ret i64 %newRc
 }
 
-@evaAlloc = thread_local(initialexec) global i8* (i64)* @defEvaAlloc
+@evaAlloc = thread_local(initialexec) global i8*  (i64)* @defEvaAlloc
 @evaFree  = thread_local(initialexec) global void (i8*)* @defEvaFree
 @evaInc   = thread_local(initialexec) global void (i8*)* @defEvaInc
-@evaDec   = thread_local(initialexec) global i64 (i8*)* @defEvaDec
-
-; evaAlloc - @alias to malloc
-; evaFree - @alias for free
-; evaInc = obj: Ptr do
-;   obj.rc += 1
-;
-; def evaDec = obj: Ptr do
-;   if obj.rc == 1 do 0
-;   else
-;     obj.rc -= 1
-;     obj.rc
-;
-; scenario:
-; x = evaAlloc()
-; evaInc(x)
-; if(evaDec(y.x) == 0)
-;   $dest(y.x)
-; y.x = x
+@evaDec   = thread_local(initialexec) global i64  (i8*)* @defEvaDec

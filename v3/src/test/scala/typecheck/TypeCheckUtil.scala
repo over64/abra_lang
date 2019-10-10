@@ -29,7 +29,7 @@ object TypeCheckUtil extends FunSuite {
     val root = new ParsePass(new Resolver {
       override def resolve(path: String): String = {
         val code = resolver(path)
-        val fw = new FileWriter(new File("/tmp/" + path + ".abra"))
+        val fw = new FileWriter(new File("/tmp/" + path + ".eva"))
         fw.write(code)
         fw.close()
         code
@@ -67,7 +67,7 @@ object TypeCheckUtil extends FunSuite {
 
       val parser = new M2Parser(tokens)
       parser.setErrorHandler(new BailErrorStrategy)
-      val visitor = new Visitor(self, "test.abra", "test", None)
+      val visitor = new Visitor(self, "test.eva", "test", None)
 
       visitor.visit(parser.typeHint()).asInstanceOf[TypeHint]
     }
