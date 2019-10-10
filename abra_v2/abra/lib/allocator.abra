@@ -1,17 +1,16 @@
-type Ptr = native i8* .
-type Allocator = ( alloc  : (Long) -> Ptr,
-                   free   : (Ptr) -> None,
-                   inc    : (Ptr) -> None,
-                   dec    : (Ptr) -> Long )
-
+type Ptr = native i8* .  -- TODO: move Ptr decl to prelude
+type Allocator = ( alloc: (Long) -> Ptr,
+                   free : (Ptr) -> None,
+                   inc  : (Ptr) -> None,
+                   dec  : (Ptr) -> Long )
 
 def load = native
   %a = alloca %allocator.Allocator
 
-  %old.alloc = load i8*  (i64)*, i8*  (i64)**  @evaAlloc
+  %old.alloc = load i8*  (i64)*, i8*  (i64)** @evaAlloc
   %old.free  = load void (i8*)*, void (i8*)** @evaFree
   %old.inc   = load void (i8*)*, void (i8*)** @evaInc
-  %old.dec   = load i64  (i8*)*, i64  (i8*)**  @evaDec
+  %old.dec   = load i64  (i8*)*, i64  (i8*)** @evaDec
 
   %old.alloc.cl = bitcast i8*  (i64)* %old.alloc to i8*  (i64, i8*)*
   %old.free.cl  = bitcast void (i8*)* %old.free  to void (i8*, i8*)*
@@ -22,7 +21,6 @@ def load = native
   %a.free  = getelementptr %allocator.Allocator, %allocator.Allocator* %a, i64 0, i32 1, i32 0
   %a.inc   = getelementptr %allocator.Allocator, %allocator.Allocator* %a, i64 0, i32 2, i32 0
   %a.dec   = getelementptr %allocator.Allocator, %allocator.Allocator* %a, i64 0, i32 3, i32 0
-
 
   store i8*  (i64, i8*)* %old.alloc.cl, i8*  (i64, i8*)**  %a.alloc
   store void (i8*, i8*)* %old.free.cl,  void (i8*, i8*)**  %a.free
