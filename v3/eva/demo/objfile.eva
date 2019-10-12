@@ -29,7 +29,7 @@ def load = fname: String do
 --
     if line.startsWith('f ') do
       reader.drop(2)
-      3 times ||
+      3.times with ||
         vertexId = reader.int() - 1
         (0 to 3).forEach with |i|
           mesh.push(vertices.get(vertexId * 3 + i)) . -- x y z
@@ -44,5 +44,5 @@ def load = fname: String do
         (0 to 3).forEach with |i|
           mesh.push(normals.get(normalId * 3 + i)) .... -- nx ny nz
 
-  -- io.fclose(file) FIXME: BUG_005
+  io.fclose(file)
   mesh .

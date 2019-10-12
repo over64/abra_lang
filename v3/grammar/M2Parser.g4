@@ -61,7 +61,7 @@ continue_: 'continue';
 while_stat: 'while' sp cond=expression sp 'do' sp blockBody* DOT ;
 
 fnArg: id sp (':' sp typeHint (sp '=' sp expression)?)? ;
-lambda: ('||' | '|' (sp fnArg sp (',' sp fnArg)*)? sp '|') sp blockBody* sp DOT?;
+lambda: ('||' | '|' (sp fnArg sp (',' sp fnArg)*)? sp '|') sp blockBody* sp (WS DOT)?;
 blockBody: (store | break_ | continue_ | while_stat | expression | ret) sp ';'? sp ;
 
 scalarType: 'type' sp tname=TypeId (sp '[' sp params+=genericTh (sp ',' sp params+=genericTh)* sp ']')? sp '=' sp REF? sp llvm ;
