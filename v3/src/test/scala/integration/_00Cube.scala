@@ -9,8 +9,8 @@ import org.scalatest.FunSuite
 class _00Cube extends FunSuite {
   test("a cube demo") {
     val resolver = new FsResolver(
-      "/home/over/build/abra_lang/v3/eva/lib/",
-      "/home/over/build/abra_lang/v3/eva/demo/")
+      "/home/over/build/eva_lang/v3/eva/lib/",
+      "/home/over/build/eva_lang/v3/eva/demo/")
     CodeGenUtil.runModules(resolver.resolve, 0, entry = ".cube", prelude = Some("prelude"),
       linkerFlags = Seq("-lGL", "-lSOIL", "-lSDL2", "-lkazmath"))
   }

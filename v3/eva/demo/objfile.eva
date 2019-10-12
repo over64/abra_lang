@@ -25,7 +25,7 @@ def load = fname: String do
       reader.drop(3)
       3.times(|| normals.push(reader.float())) . -- nx ny nz
 --
---      -- FIXME: vertices.get(vertexId * 3 + i) => vertices(vertexId * 3 + i) and so on
+-- FIXME: vertices.get(vertexId * 3 + i) => vertices(vertexId * 3 + i) BUG_004
 --
     if line.startsWith('f ') do
       reader.drop(2)
@@ -43,5 +43,6 @@ def load = fname: String do
         normalId = reader.int() - 1
         (0 to 3).forEach with |i|
           mesh.push(normals.get(normalId * 3 + i)) .... -- nx ny nz
---    -- io.fclose(file)
+
+  -- io.fclose(file) FIXME: BUG_005
   mesh .

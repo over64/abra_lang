@@ -59,11 +59,11 @@ def readDelim = self: File, delim: Int do
       sb.pushByte(0.toByte())
       sb.asString()
     else
-      sbuffer.freeData(sb.data)
+      sbuffer.freeData(sb.data) -- Must be sb.free() ?
       none ..String | None
 
 def eachLine = self: File, fn: (String) -> None do
   while true do
-    self.readLine() unless -- FIX mem leak
+    self.readLine() unless -- FIXME mem leak BUG_009
       is line: String do fn(line)
-      is None do return ...None -- FIXME: use break
+      is None do return ...None -- FIXME: use break BUG_008

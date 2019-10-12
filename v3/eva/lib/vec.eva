@@ -4,7 +4,7 @@ import unsafeArray, array
 type Vec[t] = (array: Array[t], len: Int)
 
 def get = self: Vec[t], index: Int do
-    -- FIXME: should be self.array(index)?
+    -- FIXME: should be self.array(index)? BUG_011:
     self.array.get(index) .t
 
 -- FIXME: check index
@@ -29,7 +29,7 @@ def make = size: Int do
     new: Array[t] = unsafeArray.alloc(size)  -- FIXME: inline into constructor
     Vec(new, 0) .Vec[t]
 
-def asArrayInternal = slf: Array[t], needSize: Int, fn: (Array[t]) -> None native
+def asArrayInternal = slf: Array[t], needSize: Int, fn: (Array[t]) -> None native -- FIXME: нужен argTypeOf(slf) ? BUG_012
   %1 = insertvalue %"Array[Float]" %slf, i32 %needSize, 0
   %2 = extractvalue %"(Array[Float]) -> None" %fn, 0
   %3 = extractvalue %"(Array[Float]) -> None" %fn, 1

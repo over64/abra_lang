@@ -7,8 +7,8 @@ import org.scalatest.FunSuite
 class _02TreePool extends FunSuite {
   test("a binary tree with pool demo") {
     val resolver = new FsResolver(
-      "/home/over/build/abra_lang/v3/eva/lib/",
-      "/home/over/build/abra_lang/v3/eva/bench_game/")
+      "/home/over/build/eva_lang/v3/eva/lib/",
+      "/home/over/build/eva_lang/v3/eva/bench_game/")
     CodeGenUtil.runModules(resolver.resolve, 0, entry = ".treeWithPool", prelude = Some("prelude"))
   }
 }

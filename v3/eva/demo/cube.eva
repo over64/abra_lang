@@ -3,7 +3,7 @@ import
   kazmath with Vec3 Mat4,
   vec, sys, sdl, soil, .objfile
 
-type Renderer = ( vb: Buffer, -- FIXME: use gl.Buffer
+type Renderer = ( vb: Buffer, -- FIXME: BUG_003
                   vao: VertexArray,
                   program: ShaderProgram,
                   pMatrix: Mat4,

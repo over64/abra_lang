@@ -4,7 +4,6 @@ import m3.parse.Ast0._
 import m3.parse.ParseMeta._
 import m3.parse.{AstInfo, Level}
 import m3.typecheck.Builtin._
-import m3.typecheck.Scope2._
 import m3.typecheck.TCE.NoSuchSelfDef
 import m3.typecheck.TCMeta._
 import m3.typecheck.Utils._
@@ -519,7 +518,7 @@ class TypeCheckPass {
   }
 
 
-  def passExpr(ctx: PassContext, scope: Scope2.BlockScope, eq: Equations, th: TypeHint, expr: Expression): TypeHint = {
+  def passExpr(ctx: PassContext, scope: BlockScope, eq: Equations, th: TypeHint, expr: Expression): TypeHint = {
     def foldFields(from: TypeHint, fields: Seq[lId]): TypeHint =
       fields.foldLeft(from) {
         case (sth: ScalarTh, fieldId) =>
@@ -867,7 +866,7 @@ class TypeCheckPass {
         val inferedRetTh = body match {
           case AbraCode(seq) =>
             val lambdaScope = LambdaScope(scope, (args.map(_.name) zip inferedArgsTh).toMap)
-            val lambdaBlock = new Scope2.BlockScope(lambdaScope)
+            val lambdaBlock = new BlockScope(lambdaScope)
 
             seq.dropRight(1).foreach(expr => passExpr(ctx.deeperExpr(), lambdaBlock, eq, AnyTh, expr))
             seq.lastOption.foreach { last =>
@@ -894,16 +893,16 @@ class TypeCheckPass {
         thBool
       case While(cond, _do) =>
         passExpr(ctx.deeperExpr(), scope, eq, thBool, cond)
-        val block = new Scope2.WhileScope(scope)
+        val block = new WhileScope(scope)
         _do.foreach { expr => passExpr(ctx.deeperExpr(), block, eq, AnyTh, expr) }
         thNil
       case bc@(Break() | Continue()) =>
-        def findWhileScope(sc: Scope2.Scope): Option[Scope2.WhileScope] =
+        def findWhileScope(sc: Scope): Option[WhileScope] =
           sc match {
-            case ws: Scope2.WhileScope => Some(ws)
-            case ds: Scope2.DefScope => None
-            case ls: Scope2.LambdaScope => None
-            case bs: Scope2.BlockScope => findWhileScope(bs.parent)
+            case ws: WhileScope => Some(ws)
+            case ds: DefScope => None
+            case ls: LambdaScope => None
+            case bs: BlockScope => findWhileScope(bs.parent)
           }
 
         findWhileScope(scope).getOrElse(throw TCE.NoWhileForBreakOrContinue(bc.location))
@@ -911,13 +910,13 @@ class TypeCheckPass {
       case self@If(cond, _do, _else) =>
         passExpr(ctx.deeperExpr(), scope, eq, thBool, cond)
 
-        val doBlock = new Scope2.BlockScope(scope)
+        val doBlock = new BlockScope(scope)
         _do.dropRight(1).foreach(expr => passExpr(ctx.deeperExpr(), doBlock, eq, AnyTh, expr))
         val doTh = _do.lastOption.map { last =>
           passExpr(ctx.deeperExpr(), doBlock, eq, AnyTh, last)
         }.getOrElse(thNil)
 
-        val elseBlock = new Scope2.BlockScope(scope)
+        val elseBlock = new BlockScope(scope)
         _else.dropRight(1).foreach(expr => passExpr(ctx.deeperExpr(), elseBlock, eq, AnyTh, expr))
         val elseTh = _else.lastOption.map { last =>
           passExpr(ctx.deeperExpr(), elseBlock, eq, AnyTh, last)
@@ -960,7 +959,7 @@ class TypeCheckPass {
             }
           }.getOrElse(throw TCE.UnlessExpectedOneOf(is.typeRef.location, exprUnionVariants, is.typeRef))
 
-          val blockScope = new Scope2.BlockScope(scope)
+          val blockScope = new BlockScope(scope)
           is.vName.foreach(vName => blockScope.addLocal(vName.value, is.typeRef))
 
           is._do.dropRight(1).foreach(expr => passExpr(ctx.deeperExpr(), blockScope, eq, AnyTh, expr))
@@ -1023,7 +1022,7 @@ class TypeCheckPass {
             Some(fn.retTh)
           } else None
 
-        val bodyScope = new Scope2.BlockScope(defScope)
+        val bodyScope = new BlockScope(defScope)
 
         seq.dropRight(1).foreach(expr => passExpr(ctx.deeperExpr(), bodyScope, eq, AnyTh, expr))
         seq.lastOption.foreach { last =>
