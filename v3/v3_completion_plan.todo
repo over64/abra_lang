@@ -1,34 +1,34 @@
-THE BUG LIST
-BUG_001:  TC: treeWithPool.6: конструктор структуры, принимающей поле типа t | None, где в качестве аргумента call, возвращающий t
-BUG_002:  PR: treeWithPool.17: вложенные unless требуют пробела между '.', то есть '. .' вместо '..'
-BUG_003:  CG: cube.6: кодогенератор сравнивает типы на ==, это некорректно
-BUG_004:  CG: objfile.28: реализовать call: SelfCallImport
-BUG_005:  PR: objfile.47: некорректный разрабор AST
-BUG_006:  CG: tree.15: функция mkTree не должна дергать RC
-BUG_007:  CG: tree.31: функция checksum должна дергать RC
-BUG_008:  CG: io.69: не работает break
-BUG_009:  CG: io.67: утечка памяти в unless
-BUG_010:  CG: tree.eva: не инлайнятся функции из prelude (perf)
-BUG_011:  TC: vec.7: array как поле структуры & get
-BUG_012:  CG: vec.32: реализовать argTypeOf
-
-THE EVA CODE IMPROVE
-IMP_001: отрефакторить pool.eva, отрефакторить treeWithPool
-IMP_002: отрефакторить sbuffer.eva и io.eva
-IMP_003: переименовать unsafeArray => arrayUnsafe
-IMP_003: отрефакторить vec.eva
-
-THE COMPILER REFACTOR
-REF_001: сделать META не implicit
-REF_002: убрать BuiltinSelfDef
-REF_003: добавить VarType: IsVar, в CG почистить unless
-REF_004: вытащить inner классы из TypeCheckerPass
-REF_005: TC, CG: убрать конструкторы array
-REF_006: CG: не генерировать конструктор для каждого строкового литерала
-REF_007: TC: отдельный pass для symbol check, который расставляет VarType
-REF_008: GC: подчистить код в call, unless, убрать array constructors
-REF_009: GC: разделить IrGenPass на части
-REF_010: ALL: дедуплицировать код для работы с TypeHint
-REF_011: выделить отдельный pass SymbolCheck
-REF_012: сделать GenericPass, дедуплицировать код в простых pass
-REF_013: сделать command line compiler
+ THE BUG LIST
+ BUG_001:  TC: treeWithPool.6: конструктор структуры, принимающей поле типа t | None, где в качестве аргумента call, возвращающий t
+ BUG_002:  PR: treeWithPool.17: вложенные unless требуют пробела между '.', то есть '. .' вместо '..'
+ BUG_003:  CG: cube.6: кодогенератор сравнивает типы на ==, это некорректно
+ BUG_004:  CG: objfile.28: реализовать call: SelfCallImport
+ BUG_005:  PR: objfile.47: некорректный разрабор AST
+ BUG_006:  CG: tree.15: функция mkTree не должна дергать RC
+ BUG_007:  CG: tree.31: функция checksum должна дергать RC
+ BUG_008:  CG: io.69: не работает break
+ BUG_009:  CG: io.67: утечка памяти в unless
+ BUG_010:  CG: tree.eva: не инлайнятся функции из prelude (perf)
+ BUG_011:  TC: vec.7: array как поле структуры & get
+ BUG_012:  CG: vec.32: реализовать argTypeOf
+ 
+ THE EVA CODE IMPROVE
+ IMP_001: отрефакторить pool.eva, отрефакторить treeWithPool
+ IMP_002: отрефакторить sbuffer.eva и io.eva
+ IMP_003: переименовать unsafeArray => arrayUnsafe
+ IMP_003: отрефакторить vec.eva
+ 
+ THE COMPILER REFACTOR
+ REF_001: сделать META не implicit
+ REF_002: убрать BuiltinSelfDef
+ REF_003: добавить VarType: IsVar, в CG почистить unless
+ REF_004: вытащить inner классы из TypeCheckerPass
+ REF_005: TC, CG: убрать конструкторы array
+ REF_006: CG: не генерировать конструктор для каждого строкового литерала
+ REF_007: TC: отдельный pass для symbol check, который расставляет VarType
+ REF_008: CG: подчистить код в call, unless, убрать array constructors
+ REF_009: CG: разделить IrGenPass на части
+ REF_010: ALL: дедуплицировать код для работы с TypeHint
+ REF_011: выделить отдельный pass SymbolCheck
+ REF_012: сделать GenericPass, дедуплицировать код в простых pass
+ REF_013: сделать command line compiler
