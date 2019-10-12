@@ -1025,9 +1025,9 @@ class IrGenPass {
             foreach(fn => passDef(mctx, DContext(mutable.HashMap.empty, mutable.HashMap.empty, fn, false))))
 
         mctx.write("declare void @llvm.memcpy.p0i8.p0i8.i64(i8* nocapture, i8* nocapture readonly, i64, i32, i1)")
-        mctx.write("@evaAlloc = external thread_local(initialexec) global i8* (i64)*")
+        mctx.write("@evaAlloc = external thread_local(initialexec) global i8*  (i64)*")
         mctx.write("@evaInc   = external thread_local(initialexec) global void (i8*)*")
-        mctx.write("@evaDec   = external thread_local(initialexec) global i64 (i8*)*")
+        mctx.write("@evaDec   = external thread_local(initialexec) global i64  (i8*)*")
         mctx.write("@evaFree  = external thread_local(initialexec) global void (i8*)*")
 
         mctx.modules.head.lowCode.foreach { native =>

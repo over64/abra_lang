@@ -454,7 +454,23 @@ class TypeCheckPass {
 
       if (retTh != AnyTh) {
         ctx.log(s"passret ${fnTh.ret} <= $retTh")
-        eqInfer.infer(Seq(location), fnTh.ret, retTh)
+
+        retTh.isUnion match {
+          case Some(variants) =>
+            val allMismatched = variants.forall { vth =>
+              try {
+                eqInfer.infer(Seq(location), fnTh.ret, vth)
+                false
+              } catch {
+                case _: TCE.TypeMismatch => true
+              }
+            }
+            if (allMismatched)
+              throw TCE.TypeMismatch(Seq(location), retTh, fnTh.ret)
+          case None =>
+            eqInfer.infer(Seq(location), fnTh.ret, retTh)
+        }
+
         ctx.log("callspec " + eqInfer.tInfer.specMap.mkString("{", " , ", "}"))
       }
 

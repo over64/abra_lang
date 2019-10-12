@@ -2,12 +2,9 @@ import range with Range, pool, io
 
 type Node = (left: Node | None, right: Node | None)
 
-
-def wrap = x: Node do x .Node | None -- FIXME: BUG_001
-
 def mkTree = depth: Int do
   if depth > 0 do
-    Node(wrap(mkTree(depth - 1)), wrap(mkTree(depth - 1)))
+    Node(mkTree(depth - 1), mkTree(depth - 1))
   else
     Node(none, none) ..Node
 

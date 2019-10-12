@@ -84,6 +84,20 @@ class _05CallTest extends FunSuite {
     assertTh("() -> Int", main)
   }
 
+  test("call: with union type hint") {
+    val ast = astForCode(
+      """
+         def simple = 42 .
+
+         def main =
+           x: Int | String = simple()
+           x .
+      """)
+
+    val main = ast.function("main")
+    assertTh("() -> Int | String", main)
+  }
+
   test("call fail: arg type mismatch") {
     assertThrows[TCE.TypeMismatch] {
       astForCode(

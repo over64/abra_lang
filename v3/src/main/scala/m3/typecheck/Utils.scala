@@ -81,6 +81,18 @@ object Utils {
         case AnyTh => true
       }
 
+    def isUnion = self match {
+      case UnionTh(seq) => Some(seq)
+      case sth: ScalarTh =>
+        typeDecl(sth) match {
+          case (m, ud: UnionDecl) =>
+            val sm = makeSpecMap(ud.params, sth.params)
+            Some(ud.variants.map(v => v.spec(sm)))
+          case _ => None
+        }
+      case _ => None
+    }
+
     def isArray: Boolean = self match {
       case sth: ScalarTh => Builtin.isArrayThName(sth.name)
       case _ => false
