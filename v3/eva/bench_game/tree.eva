@@ -29,7 +29,7 @@ def mkTree = depth: Int do  -- FIXME: RC BUG_006
 def checksum = self: Node do  -- FIXME: RC BUG_007
   self.left unless is l: Node do
     self.right unless is r: Node do
-      return 1 + l.checksum() + r.checksum() . . -- FIXME
+      return 1 + l.checksum() + r.checksum() ..
 
   1 .Int
 

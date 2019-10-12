@@ -18,7 +18,7 @@ expression: literal #exprLiteral
           | id #exprId
           | '(' sp expression sp ')' #exprParen
           | tuple #exprTuple
-          | expr=expression sp 'unless' sp is+ (WS | NL) DOT #exprUnless
+          | expr=expression sp 'unless' sp is+ (NL | WS)? DOT #exprUnless
           | expression (NL WS?)? DOT op=(VarId  | '*' | '/' | '+' | '-' | '>' | '<' | '<=' | '>=' | '==' | '!=')
               sp tuple #exprSelfCall
           | scalarTh WS* tuple #exprCons
