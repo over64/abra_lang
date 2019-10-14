@@ -43,6 +43,17 @@ case class Scope(parent: Option[Scope],
                  aliases: HashMap[String, String] = HashMap(),
                  freeSet: ListBuffer[(TypeHint, EResult)] = ListBuffer()) {
 
+  def findWhile(): WhileKind = {
+    kind match {
+      case wk: WhileKind => wk
+      case _ =>
+        parent match {
+          case None => throw new RuntimeException("cannot find while scope")
+          case Some(p) => p.findWhile()
+        }
+    }
+  }
+
   def findAlias(name: String): Option[String] =
     aliases.get(name) match {
       case s: Some[String] => s
@@ -657,20 +668,15 @@ class IrGenPass {
       case Continue() =>
         // oops: instruction numbering magic in llvm ir?
         dctx.nextReg("")
-        val wk = dctx.scope.kind.asInstanceOf[WhileKind]
+        val wk = dctx.scope.findWhile()
         //FIXME: make freeSet free
         dctx.write(s"br label %${wk.condBr}")
         EResult("__not_result", false, false)
       case Break() =>
         // oops: instruction numbering magic in llvm ir?
         dctx.nextReg("")
-        val wk = try {
-          dctx.scope.kind.asInstanceOf[WhileKind]
-        } catch {
-          case ex: ClassCastException =>
-            var x = 1
-            throw ex
-        }
+        val wk = dctx.scope.findWhile()
+
         //FIXME: make freeSet free
         dctx.write(s"br label %${wk.endBr}")
         EResult("__not_result", false, false)

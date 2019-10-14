@@ -66,4 +66,4 @@ def eachLine = self: File, fn: (String) -> None do
   while true do
     self.readLine() unless -- FIXME mem leak BUG_009
       is line: String do fn(line)
-      is None do return ...None -- FIXME: use break BUG_008
+      is None do break ...None

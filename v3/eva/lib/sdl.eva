@@ -85,7 +85,7 @@ type Event = (eventType: Int, data: EventData)
 def pollEvents = onEvent: (Event) -> None do
   while true do
     event = pollEvent()
-    if event.eventType == noEvent() do return -- FIXME: use break BUG_008
+    if event.eventType == noEvent() do break
     else
       onEvent(event) ...None
 
