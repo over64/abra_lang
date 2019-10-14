@@ -24,25 +24,23 @@ def load = fname: String do
     if line.startsWith('vn ') do
       reader.drop(3)
       3.times(|| normals.push(reader.float())) . -- nx ny nz
---
--- FIXME: vertices.get(vertexId * 3 + i) => vertices(vertexId * 3 + i) BUG_004
---
+
     if line.startsWith('f ') do
       reader.drop(2)
       3.times with ||
         vertexId = reader.int() - 1
         (0 to 3).forEach with |i|
-          mesh.push(vertices.get(vertexId * 3 + i)) . -- x y z
+          mesh.push(vertices(vertexId * 3 + i)) . -- x y z
         reader.drop(1) -- /
 
         uvId = reader.int() - 1
         (0 to 2).forEach with |i|
-          mesh.push(textures.get(uvId * 2 + i)) . -- u v
+          mesh.push(textures(uvId * 2 + i)) . -- u v
         reader.drop(1) -- /
 
         normalId = reader.int() - 1
         (0 to 3).forEach with |i|
-          mesh.push(normals.get(normalId * 3 + i)) .... -- nx ny nz
+          mesh.push(normals(normalId * 3 + i)) .... -- nx ny nz
 
   io.fclose(file)
   mesh .

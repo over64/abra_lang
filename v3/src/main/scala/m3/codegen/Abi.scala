@@ -5,6 +5,11 @@ import m3.parse.Ast0._
 import m3.typecheck.{Builtin, VarClosureLocal, VarClosureParam, VarType}
 import m3.typecheck.Utils.ThExtension
 
+sealed trait RequireDest
+case object AsStoreSrc extends RequireDest
+case object AsCallArg extends RequireDest
+case object AsRetVal extends RequireDest
+
 sealed trait RCMode
 case object Inc extends RCMode
 case object Dec extends RCMode

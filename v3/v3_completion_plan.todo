@@ -2,7 +2,7 @@
 +BUG_001:  TC: treeWithPool.6: конструктор структуры, принимающей поле типа t | None, где в качестве аргумента call, возвращающий t
 +BUG_002:  PR: treeWithPool.17: вложенные unless требуют пробела между '.', то есть '. .' вместо '..'
  BUG_003:  CG: cube.6: кодогенератор сравнивает типы на ==, это некорректно
- BUG_004:  CG: objfile.28: реализовать call: SelfCallImport
++BUG_004:  CG: objfile.28: реализовать call: SelfCallImport
 +BUG_005:  PR: objfile.47: некорректный разрабор AST
  BUG_006:  CG: tree.15: функция mkTree не должна дергать RC
  BUG_007:  CG: tree.31: функция checksum должна дергать RC

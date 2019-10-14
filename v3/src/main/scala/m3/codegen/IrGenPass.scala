@@ -158,46 +158,9 @@ case class DContext(specMap: mutable.HashMap[GenericTh, TypeHint],
   }
 }
 
-sealed trait RequireDest
-
-case object AsStoreSrc extends RequireDest
-case object AsCallArg extends RequireDest
-case object AsRetVal extends RequireDest
-
 case class EResult(value: String, isPtr: Boolean, isAnon: Boolean)
 
 class IrGenPass {
-  def performCall(mctx: ModContext, dctx: DContext, fth: FnTh, callArgs: Seq[Expression], envArg: Option[String], fName: String): EResult = {
-    val argsResults =
-      (fth.args zip callArgs).map { case (argTh, arg) =>
-        Abi.syncValue(mctx, dctx, passExpr(mctx, dctx, arg), AsCallArg, argTh, dctx.meta.typeHint(arg))
-      }
-
-    val argsIr = (fth.args zip argsResults).map { case (argTh, argRes) =>
-      if (argRes.isAnon && argTh.isRefType(mctx))
-        dctx.scope.freeSet += ((argTh, argRes))
-
-
-      s"${AbiTh.toCallArg(mctx, argTh)} ${argRes.value}"
-    }
-    val argsWithEnvIr = envArg match {
-      case None => argsIr
-      case Some(env) => argsIr :+ s"i8* $env"
-    }
-
-    val res = if (fth.ret == Builtin.thNil || fth.ret == Builtin.thUnreachable) {
-      dctx.write(s"call void $fName(${argsWithEnvIr.mkString(", ")})")
-      EResult("__no_result__", false, true)
-    } else {
-      val r = "%" + dctx.nextReg("")
-      dctx.write(s"$r = call ${AbiTh.toRetVal(mctx, fth.ret)} $fName(${argsWithEnvIr.mkString(", ")})")
-      EResult(r, false, true)
-    }
-
-    res
-  }
-
-
   def passExpr(mctx: ModContext, dctx: DContext, expr: Expression): EResult = {
     mctx.typeHints += dctx.meta.typeHint(expr)
 
@@ -271,34 +234,6 @@ class IrGenPass {
         }
         EResult(to, false, true)
       }
-    }
-
-    def performAndOr(lhs: Expression, rhs: Expression, isAnd: Boolean): EResult = {
-      val (brPrefix, brId) = (if (isAnd) "and" else "or", dctx.nextBranch(""))
-      val (leftBr, rightBr, endBr) = (s"${brPrefix}Lhs$brId", s"${brPrefix}Rhs$brId", s"end$brId")
-
-      dctx.write(s"br label %$leftBr")
-      dctx.write(s"$leftBr:")
-
-      dctx.deeper(OtherKind, { dctx =>
-        val left = Abi.syncValue(mctx, dctx, passExpr(mctx, dctx, lhs), AsStoreSrc, Builtin.thBool, Builtin.thBool)
-        val r1 = "%" + dctx.nextReg("")
-        dctx.write(s"$r1 = icmp eq i8 ${left.value}, ${if (isAnd) "0" else "1"}")
-        dctx.write(s"br i1 $r1, label %$endBr, label %$rightBr")
-      })
-
-      dctx.write(s"$rightBr:")
-
-      val rightVal = dctx.deeper(OtherKind, { dctx =>
-        val right = Abi.syncValue(mctx, dctx, passExpr(mctx, dctx, rhs), AsStoreSrc, Builtin.thBool, Builtin.thBool)
-        dctx.write(s"br label %$endBr")
-        right.value
-      })
-
-      dctx.write(s"$endBr:")
-      val r2 = "%" + dctx.nextReg("")
-      dctx.write(s"$r2 = phi i8 [ $rightVal, %$rightBr ], [ ${if (isAnd) "0" else "1"}, %$leftBr ]")
-      EResult(r2, false, false)
     }
 
     case class Branch(beginLabel: String, before: DContext => Unit,
@@ -388,7 +323,7 @@ class IrGenPass {
             val r1, r2, r3 = "%" + dctx.nextReg("")
 
             val irArgs = fth.args.map(th => AbiTh.toCallArg(mctx, th))
-            val closureArgs =irArgs :+ "i8*"
+            val closureArgs = irArgs :+ "i8*"
 
             dctx.write(s"$r1 = bitcast ${fth.ret.toValue(mctx)} ${irArgs.mkString("(", ", ", ")")}* @$irFnName to ${fth.ret.toValue(mctx)} ${closureArgs.mkString("(", ", ", ")")}*") // FIXME: so long line
             dctx.write(s"$r2 = insertvalue ${fth.toValue(mctx)} undef, ${fth.ret.toValue(mctx)} (${closureArgs.mkString(", ")})* $r1, 0")
@@ -431,226 +366,211 @@ class IrGenPass {
             }
         }
       case t@Tuple(seq) => performCons(t, seq)
-      case cons@Cons(sth, args) => performCons(cons, args)
-      case call@Call(e, args) =>
-        val callSpecMap = {
-          import TCMeta.ParseNodeTCMetaImplicit
-          call.getCallSpecMap
-        }
+      case cons@Cons(_, args) => performCons(cons, args)
+      case self@(_: SelfCall | _: Call) =>
+        def doIrCall(mctx: ModContext, dctx: DContext, fth: FnTh, callArgs: Seq[Expression], envArg: Option[String], fName: String): EResult = {
+          val argsResults =
+            (fth.args zip callArgs).map { case (argTh, arg) =>
+              Abi.syncValue(mctx, dctx, passExpr(mctx, dctx, arg), AsCallArg, argTh, dctx.meta.typeHint(arg))
+            }
 
-        val (fName, callArgs, envArg, fth) =
-          call.getCallType match {
-            case CallLocal(fn) =>
-              var x = 1
-              val mappedSpecMap = callSpecMap.map {
-                case (k, v) => (k, v.spec(dctx.specMap))
-              }
-              val callAppliedTh = {
-                import TCMeta.ParseNodeTCMetaImplicit
-                fn.getTypeHint[TypeHint].spec(mappedSpecMap).asInstanceOf[FnTh]
-              }
-              val id = e.asInstanceOf[lId]
-              if (fn.isGeneric) {
-                var x = 1
-                //                val mappedResolvedSelfDefs =
-                //                  mutable.HashMap(fn.getEquations.eqSeq.map { eq =>
-                //                    val d = call.getResolvedSelfDefs().getOrElse((eq.selfType._2, eq.fnName), {
-                //                      dctx.resolvedSelfDefs((eq.selfType._2.spec(callSpecMap), eq.fnName))
-                //                    })
-                //                    ((eq.selfType._2.asInstanceOf[TypeHint], eq.fnName), d)
-                //                  }: _*)
+          val argsIr = (fth.args zip argsResults).map { case (argTh, argRes) =>
+            if (argRes.isAnon && argTh.isRefType(mctx))
+              dctx.scope.freeSet += ((argTh, argRes))
 
-                passDef(mctx, DContext(mappedSpecMap, dctx.resolvedSelfDefs ++ call.getResolvedSelfDefs(), fn, false))
-
-                val genericArgs = "[" + fn.params.map(p => p.spec(mappedSpecMap)).mkString(", ") + "]"
-                ("@" + (mctx.modules.head.pkg + "." + id.value + genericArgs).escaped, args, None, callAppliedTh)
-              } else
-                ("@" + (mctx.modules.head.pkg + "." + id.value).escaped, args, None, callAppliedTh)
-            case SelfCallLocal(fn) =>
-              val callAppliedTh = {
-                import TCMeta.ParseNodeTCMetaImplicit
-                fn.getTypeHint[TypeHint].spec(callSpecMap).asInstanceOf[FnTh]
-              }
-
-
-              val fnTh = {
-                import TCMeta.ParseNodeTCMetaImplicit
-                fn.getTypeHint[FnTh]
-              }
-
-              if (fn.isGeneric) {
-                passDef(mctx, DContext(callSpecMap, call.getResolvedSelfDefs(), fn, false))
-
-                val genericArgs = "[" + fn.params.map(p => p.spec(callSpecMap)).mkString(", ") + "]"
-                ("@" + (mctx.modules.head.pkg + "." + fnTh.args.head + ".get" + genericArgs).escaped, e +: args, None, callAppliedTh)
-              } else
-                ("@" + (mctx.modules.head.pkg + "." + fnTh.args.head + ".get").escaped, e +: args, None, callAppliedTh)
-            case CallFnPtr =>
-              val fnPtrRes = passExpr(mctx, dctx, e)
-              val fth = dctx.meta.typeHintAs[FnTh](e)
-              val sync = Abi.syncValue(mctx, dctx, fnPtrRes, AsRetVal, fth, fth)
-
-              val r1, r2 = "%" + dctx.nextReg("")
-              dctx.write(s"$r1 = extractvalue ${fth.toValue(mctx)} ${sync.value}, 0")
-              dctx.write(s"$r2 = extractvalue ${fth.toValue(mctx)} ${sync.value}, 1")
-              (r1, args, Some(r2), fth)
-            case _ =>
-              throw new RuntimeException("unmatched")
+            s"${AbiTh.toCallArg(mctx, argTh)} ${argRes.value}"
+          }
+          val argsWithEnvIr = envArg match {
+            case None => argsIr
+            case Some(env) => argsIr :+ s"i8* $env"
           }
 
-        performCall(mctx, dctx, fth, callArgs, envArg, fName)
-      case call@SelfCall(fnName, self, args) =>
-        call.getCallType match {
-          case CallFnPtr =>
-            val xx = {
-              import TCMeta.ParseNodeTCMetaImplicit
-              val realTh = call.getTypeHint[TypeHint]
-              var x = 1
-            }
-            val objRes = passExpr(mctx, dctx, self)
-            val (fth, fnPtrRes) = Abi.getProperty(mctx, dctx, dctx.meta.typeHint(self), objRes, Seq(lId(fnName)))
-            val sync = Abi.syncValue(mctx, dctx, fnPtrRes, AsRetVal, fth, fth)
+          val res = if (fth.ret == Builtin.thNil || fth.ret == Builtin.thUnreachable) {
+            dctx.write(s"call void $fName(${argsWithEnvIr.mkString(", ")})")
+            EResult("__no_result__", false, true)
+          } else {
+            val r = "%" + dctx.nextReg("")
+            dctx.write(s"$r = call ${AbiTh.toRetVal(mctx, fth.ret)} $fName(${argsWithEnvIr.mkString(", ")})")
+            EResult(r, false, true)
+          }
 
-            val r1, r2 = "%" + dctx.nextReg("")
-            dctx.write(s"$r1 = extractvalue ${fth.toValue(mctx)} ${sync.value}, 0")
-            dctx.write(s"$r2 = extractvalue ${fth.toValue(mctx)} ${sync.value}, 1")
-            performCall(mctx, dctx, fth.asInstanceOf[FnTh], args, Some(r2), r1)
-          case CallImport(module, fn) =>
-            val callSpecMap = {
-              import TCMeta.ParseNodeTCMetaImplicit
-              call.getCallSpecMap
-            }
+          res
+        }
 
-            val mappedSpecMap = callSpecMap.map {
-              case (k, v) => (k, v.spec(dctx.specMap))
-            }
-            val callAppliedTh = {
-              import TCMeta.ParseNodeTCMetaImplicit
-              fn.getTypeHint[TypeHint].spec(mappedSpecMap).asInstanceOf[FnTh]
-            }
+        def performCallFnPtr(obj: Expression, props: Seq[lId], args: Seq[Expression]) = {
+          val objRes = passExpr(mctx, dctx, obj)
 
-            val isGeneric = fn.params.nonEmpty
-            val genericArgs = if (isGeneric) "[" + fn.params.map(p => p.spec(mappedSpecMap)).mkString(", ") + "]" else ""
-            val protoName = "@" + (module.pkg + "." + fnName + genericArgs).escaped
-            val irArgs = callAppliedTh.args.map(ath => AbiTh.toCallArg(mctx, dctx.specialized(ath)))
-
-            var x = 1
-
-            if (isGeneric) {
-              //              val mappedResolvedSelfDefs =
-              //                mutable.HashMap(fn.getEquations.eqSeq.map { eq =>
-              //                  val d = call.getResolvedSelfDefs().getOrElse((eq.selfType._2, eq.fnName), {
-              //                    dctx.resolvedSelfDefs((eq.selfType._2.spec(callSpecMap), eq.fnName))
-              //                  })
-              //                  ((eq.selfType._2.asInstanceOf[TypeHint], eq.fnName), d)
-              //                }: _*)
-
-              passDef(mctx.copy(modules = module +: mctx.modules), DContext(mappedSpecMap, dctx.resolvedSelfDefs ++ call.getResolvedSelfDefs(), fn, false))
+          val (fth, fnPtrRes) =
+            if (props.nonEmpty) {
+              val (pth, pRes) = Abi.getProperty(mctx, dctx, dctx.meta.typeHint(obj), objRes, props)
+              (pth.asInstanceOf[FnTh], pRes)
             } else
-              mctx.prototypes += s"${AbiTh.toRetVal(mctx, callAppliedTh.ret)} $protoName (${irArgs.mkString(", ")})"
+              (dctx.meta.typeHintAs[FnTh](obj), objRes)
 
-            performCall(mctx, dctx, callAppliedTh, args, None, protoName)
-          case SelfCallLocal(fn) =>
-            val callSpecMap = {
-              import TCMeta.ParseNodeTCMetaImplicit
-              call.getCallSpecMap
+          val sync = Abi.syncValue(mctx, dctx, fnPtrRes, AsRetVal, fth, fth)
+
+          val r1, r2 = "%" + dctx.nextReg("")
+          dctx.write(s"$r1 = extractvalue ${fth.toValue(mctx)} ${sync.value}, 0")
+          dctx.write(s"$r2 = extractvalue ${fth.toValue(mctx)} ${sync.value}, 1")
+
+          doIrCall(mctx, dctx, fth, args, Some(r2), r1)
+        }
+
+        def performSelfCallLocal(call: ParseNode, fn: Def, fnName: String, self: Expression, args: Seq[Expression]) = {
+          val callSpecMap = {
+            import TCMeta.ParseNodeTCMetaImplicit
+            call.getCallSpecMap
+          }
+          val mappedSpecMap = callSpecMap.map {
+            case (k, v) => (k, v.spec(dctx.specMap))
+          }
+          val callAppliedTh = {
+            import TCMeta.ParseNodeTCMetaImplicit
+            fn.getTypeHint[TypeHint].spec(mappedSpecMap).asInstanceOf[FnTh]
+          }
+
+          val fnTh = {
+            import TCMeta.ParseNodeTCMetaImplicit
+            fn.getTypeHint[FnTh]
+          }
+
+          val isGeneric = fn.params.nonEmpty
+          val genericArgs = if (isGeneric) "[" + fn.params.map(p => p.spec(mappedSpecMap)).mkString(", ") + "]" else ""
+          val selfFnName = "@" + (mctx.modules.head.pkg + "." + fnTh.args.head + "." + fnName + genericArgs).escaped
+
+          if (isGeneric) {
+            passDef(mctx, DContext(mappedSpecMap, dctx.resolvedSelfDefs ++ call.getResolvedSelfDefs(), fn, false))
+          } else if (mctx.modules.length != 1) {
+            val irArgs = callAppliedTh.args.map(ath => AbiTh.toCallArg(mctx, dctx.specialized(ath)))
+            mctx.prototypes += s"${AbiTh.toRetVal(mctx, callAppliedTh.ret)} $selfFnName (${irArgs.mkString(", ")})"
+          }
+
+          doIrCall(mctx, dctx, callAppliedTh, self +: args, None, selfFnName)
+        }
+
+        def performSelfCallImport(call: ParseNode, fn: Def, module: Module, fnName: String, self: Expression, args: Seq[Expression]) = {
+          val callSpecMap = {
+            import TCMeta.ParseNodeTCMetaImplicit
+            call.getCallSpecMap
+          }
+          val mappedSpecMap = callSpecMap.map {
+            case (k, v) => (k, v.spec(dctx.specMap))
+          }
+          val callAppliedTh = {
+            import TCMeta.ParseNodeTCMetaImplicit
+            fn.getTypeHint[TypeHint].spec(mappedSpecMap).asInstanceOf[FnTh]
+          }
+
+          val fnTh = {
+            import TCMeta.ParseNodeTCMetaImplicit
+            fn.getTypeHint[FnTh]
+          }
+
+          val isGeneric = fn.params.nonEmpty
+          val genericArgs = if (isGeneric) "[" + fn.params.map(p => p.spec(mappedSpecMap)).mkString(", ") + "]" else ""
+          val selfFnName = "@" + (module.pkg + "." + fnTh.args.head + "." + fnName + genericArgs).escaped
+
+          if (isGeneric)
+            passDef(mctx.copy(modules = module +: mctx.modules), DContext(mappedSpecMap, call.getResolvedSelfDefs(), fn, false))
+          else {
+            val irArgs = callAppliedTh.args.map(ath => AbiTh.toCallArg(mctx, dctx.specialized(ath)))
+            mctx.prototypes += s"${AbiTh.toRetVal(mctx, callAppliedTh.ret)} $selfFnName (${irArgs.mkString(", ")})"
+          }
+
+          doIrCall(mctx, dctx, callAppliedTh, self +: args, None, selfFnName)
+        }
+
+        self match {
+          case call@Call(e, args) =>
+            call.getCallType match {
+              case CallLocal(fn) =>
+                val callSpecMap = {
+                  import TCMeta.ParseNodeTCMetaImplicit
+                  call.getCallSpecMap
+                }
+
+                val mappedSpecMap = callSpecMap.map {
+                  case (k, v) => (k, v.spec(dctx.specMap))
+                }
+                val callAppliedTh = {
+                  import TCMeta.ParseNodeTCMetaImplicit
+                  fn.getTypeHint[TypeHint].spec(mappedSpecMap).asInstanceOf[FnTh]
+                }
+                val id = e.asInstanceOf[lId]
+                if (fn.isGeneric) {
+                  passDef(mctx, DContext(mappedSpecMap, dctx.resolvedSelfDefs ++ call.getResolvedSelfDefs(), fn, false))
+
+                  val genericArgs = "[" + fn.params.map(p => p.spec(mappedSpecMap)).mkString(", ") + "]"
+                  doIrCall(mctx, dctx, callAppliedTh, args, None, "@" + (mctx.modules.head.pkg + "." + id.value + genericArgs).escaped)
+                } else
+                  doIrCall(mctx, dctx, callAppliedTh, args, None, "@" + (mctx.modules.head.pkg + "." + id.value).escaped)
+              case SelfCallLocal(fn) =>
+                performSelfCallLocal(call, fn, "get", e, args)
+              case SelfCallImport(module, fn) =>
+                performSelfCallImport(call, fn, module, "get", e, args)
+              case CallFnPtr =>
+                performCallFnPtr(e, Seq.empty, args)
             }
-            val mappedSpecMap = callSpecMap.map {
-              case (k, v) => (k, v.spec(dctx.specMap))
+          case call@SelfCall(fnName, self, args) =>
+            call.getCallType match {
+              case CallFnPtr =>
+                performCallFnPtr(self, Seq(lId(fnName)), args)
+              case SelfCallLocal(fn) =>
+                performSelfCallLocal(call, fn, fnName, self, args)
+              case CallImport(module, fn) =>
+                val callSpecMap = {
+                  import TCMeta.ParseNodeTCMetaImplicit
+                  call.getCallSpecMap
+                }
+
+                val mappedSpecMap = callSpecMap.map {
+                  case (k, v) => (k, v.spec(dctx.specMap))
+                }
+                val callAppliedTh = {
+                  import TCMeta.ParseNodeTCMetaImplicit
+                  fn.getTypeHint[TypeHint].spec(mappedSpecMap).asInstanceOf[FnTh]
+                }
+
+                val isGeneric = fn.params.nonEmpty
+                val genericArgs = if (isGeneric) "[" + fn.params.map(p => p.spec(mappedSpecMap)).mkString(", ") + "]" else ""
+                val protoName = "@" + (module.pkg + "." + fnName + genericArgs).escaped
+                val irArgs = callAppliedTh.args.map(ath => AbiTh.toCallArg(mctx, dctx.specialized(ath)))
+
+                if (isGeneric) {
+                  passDef(mctx.copy(modules = module +: mctx.modules), DContext(mappedSpecMap, dctx.resolvedSelfDefs ++ call.getResolvedSelfDefs(), fn, false))
+                } else
+                  mctx.prototypes += s"${AbiTh.toRetVal(mctx, callAppliedTh.ret)} $protoName (${irArgs.mkString(", ")})"
+
+                doIrCall(mctx, dctx, callAppliedTh, args, None, protoName)
+              case SelfCallPolymorphic(callAppliedTh) =>
+                val selfTh = dctx.meta.typeHint(self)
+
+                val (mod, fn) = dctx.resolvedSelfDefs((selfTh, fnName))
+                val fnTh = {
+                  import TCMeta.ParseNodeTCMetaImplicit
+                  fn.getTypeHint[FnTh]
+                }
+
+                val tInter = new TypeInfer(mctx.level, mctx.modules.head)
+                tInter.infer(Seq.empty, fn.lambda.args.head.typeHint, selfTh)
+                val mappedSpecMap = tInter.specMap
+
+                val isGeneric = fn.params.nonEmpty
+                if (isGeneric) {
+                  passDef(mctx.copy(modules = Seq(mod)), DContext(mappedSpecMap, dctx.resolvedSelfDefs, fn, false))
+                }
+
+                val genericArgs = if (isGeneric) "[" + fn.params.map(p => p.spec(mappedSpecMap)).mkString(", ") + "]" else ""
+                val selfFnName = "@" + (mod.pkg + "." + fnTh.args.head + "." + fnName + genericArgs).escaped
+                doIrCall(mctx.copy(modules = Seq(mctx.modules.last)), dctx, callAppliedTh.spec(dctx.specMap).asInstanceOf[FnTh], self +: args, None, selfFnName)
+              case SelfCallImport(module, fn) =>
+                performSelfCallImport(call, fn, module, fnName, self, args)
             }
-            val callAppliedTh = {
-              import TCMeta.ParseNodeTCMetaImplicit
-              fn.getTypeHint[TypeHint].spec(mappedSpecMap).asInstanceOf[FnTh]
-            }
-
-            val fnTh = {
-              import TCMeta.ParseNodeTCMetaImplicit
-              fn.getTypeHint[FnTh]
-            }
-
-            val isGeneric = fn.params.nonEmpty
-            val genericArgs = if (isGeneric) "[" + fn.params.map(p => p.spec(mappedSpecMap)).mkString(", ") + "]" else ""
-            val selfFnName = "@" + (mctx.modules.head.pkg + "." + fnTh.args.head + "." + fnName + genericArgs).escaped
-
-            var x = 1
-
-            if (isGeneric) {
-              //              val mappedResolvedSelfDefs =
-              //                mutable.HashMap(fn.getEquations.eqSeq.map { eq =>
-              //                  val d = call.getResolvedSelfDefs().getOrElse((eq.selfType._2, eq.fnName), {
-              //                    dctx.resolvedSelfDefs((eq.selfType._2.spec(callSpecMap), eq.fnName))
-              //                  })
-              //                  ((eq.selfType._2.asInstanceOf[TypeHint], eq.fnName), d)
-              //                }: _*)
-
-              passDef(mctx, DContext(mappedSpecMap, dctx.resolvedSelfDefs ++ call.getResolvedSelfDefs(), fn, false))
-            } else if (mctx.modules.length != 1) {
-              val irArgs = callAppliedTh.args.map(ath => AbiTh.toCallArg(mctx, dctx.specialized(ath)))
-              mctx.prototypes += s"${AbiTh.toRetVal(mctx, callAppliedTh.ret)} $selfFnName (${irArgs.mkString(", ")})"
-            }
-
-            performCall(mctx, dctx, callAppliedTh, self +: args, None, selfFnName)
-          case SelfCallPolymorphic(callAppliedTh) =>
-            val selfTh = dctx.meta.typeHint(self)
-
-            var x = 1
-
-            val (mod, fn) = dctx.resolvedSelfDefs((selfTh, fnName))
-            val fnTh = {
-              import TCMeta.ParseNodeTCMetaImplicit
-              fn.getTypeHint[FnTh]
-            }
-
-            val tInter = new TypeInfer(mctx.level, mctx.modules.head)
-            tInter.infer(Seq.empty, fn.lambda.args.head.typeHint, selfTh)
-            val mappedSpecMap = tInter.specMap
-
-            val isGeneric = fn.params.nonEmpty
-            if (isGeneric) {
-              passDef(mctx.copy(modules = Seq(mod)), DContext(mappedSpecMap, dctx.resolvedSelfDefs, fn, false))
-            }
-
-            val genericArgs = if (isGeneric) "[" + fn.params.map(p => p.spec(mappedSpecMap)).mkString(", ") + "]" else ""
-            val selfFnName = "@" + (mod.pkg + "." + fnTh.args.head + "." + fnName + genericArgs).escaped
-            performCall(mctx.copy(modules = Seq(mctx.modules.last)), dctx, callAppliedTh.spec(dctx.specMap).asInstanceOf[FnTh], self +: args, None, selfFnName)
-          case SelfCallImport(module, fn) =>
-            val callSpecMap = {
-              import TCMeta.ParseNodeTCMetaImplicit
-              call.getCallSpecMap
-            }
-            val mappedSpecMap = callSpecMap.map {
-              case (k, v) => (k, v.spec(dctx.specMap))
-            }
-            val callAppliedTh = {
-              import TCMeta.ParseNodeTCMetaImplicit
-              fn.getTypeHint[TypeHint].spec(mappedSpecMap).asInstanceOf[FnTh]
-            }
-
-            val fnTh = {
-              import TCMeta.ParseNodeTCMetaImplicit
-              fn.getTypeHint[FnTh]
-            }
-
-            val isGeneric = fn.params.nonEmpty
-            val genericArgs = if (isGeneric) "[" + fn.params.map(p => p.spec(mappedSpecMap)).mkString(", ") + "]" else ""
-            val selfFnName = "@" + (module.pkg + "." + fnTh.args.head + "." + fnName + genericArgs).escaped
-
-            var x = 1
-
-            if (isGeneric)
-              passDef(mctx.copy(modules = module +: mctx.modules), DContext(mappedSpecMap, call.getResolvedSelfDefs(), fn, false))
-            else {
-              val irArgs = callAppliedTh.args.map(ath => AbiTh.toCallArg(mctx, dctx.specialized(ath)))
-              mctx.prototypes += s"${AbiTh.toRetVal(mctx, callAppliedTh.ret)} $selfFnName (${irArgs.mkString(", ")})"
-            }
-
-            performCall(mctx, dctx, callAppliedTh, self +: args, None, selfFnName)
         }
       case Prop(from, props) =>
         val res = passExpr(mctx, dctx, from)
         Abi.getProperty(mctx, dctx, dctx.meta.typeHint(from), res, props)._2
       case store@Store(_, to, what) =>
-        var x = 1
         val (destTh, dRes) =
           dctx.meta.storeDeclTh(store) match {
             case Some(newVarTh) =>
@@ -740,8 +660,39 @@ class IrGenPass {
         dctx.write(s"$r3 = insertvalue ${fth.toValue(mctx)} $r1, i8* $r2, 1")
 
         EResult(r3, false, true)
-      case And(lhs, rhs) => performAndOr(lhs, rhs, isAnd = true)
-      case Or(lhs, rhs) => performAndOr(lhs, rhs, isAnd = false)
+      case self: AndOr =>
+        def performAndOr(lhs: Expression, rhs: Expression, isAnd: Boolean): EResult = {
+          val (brPrefix, brId) = (if (isAnd) "and" else "or", dctx.nextBranch(""))
+          val (leftBr, rightBr, endBr) = (s"${brPrefix}Lhs$brId", s"${brPrefix}Rhs$brId", s"end$brId")
+
+          dctx.write(s"br label %$leftBr")
+          dctx.write(s"$leftBr:")
+
+          dctx.deeper(OtherKind, { dctx =>
+            val left = Abi.syncValue(mctx, dctx, passExpr(mctx, dctx, lhs), AsStoreSrc, Builtin.thBool, Builtin.thBool)
+            val r1 = "%" + dctx.nextReg("")
+            dctx.write(s"$r1 = icmp eq i8 ${left.value}, ${if (isAnd) "0" else "1"}")
+            dctx.write(s"br i1 $r1, label %$endBr, label %$rightBr")
+          })
+
+          dctx.write(s"$rightBr:")
+
+          val rightVal = dctx.deeper(OtherKind, { dctx =>
+            val right = Abi.syncValue(mctx, dctx, passExpr(mctx, dctx, rhs), AsStoreSrc, Builtin.thBool, Builtin.thBool)
+            dctx.write(s"br label %$endBr")
+            right.value
+          })
+
+          dctx.write(s"$endBr:")
+          val r2 = "%" + dctx.nextReg("")
+          dctx.write(s"$r2 = phi i8 [ $rightVal, %$rightBr ], [ ${if (isAnd) "0" else "1"}, %$leftBr ]")
+          EResult(r2, false, false)
+        }
+
+        self match {
+          case And(lhs, rhs) => performAndOr(lhs, rhs, isAnd = true)
+          case Or(lhs, rhs) => performAndOr(lhs, rhs, isAnd = false)
+        }
       case While(cond, _do) =>
         val brId = dctx.nextBranch("")
         val (condBr, blockBr, endBr) = (s"wCond$brId", s"wBlock$brId", s"end$brId")
