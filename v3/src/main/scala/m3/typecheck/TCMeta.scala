@@ -6,11 +6,22 @@ import scala.collection.mutable.HashMap
 
 sealed trait CallType
 case object CallFnPtr extends CallType
-case class CallLocal(fn: Def) extends CallType
-case class CallImport(module: Module, fn: Def) extends CallType
-case class SelfCallLocal(fn: Def) extends CallType
-case class SelfCallImport(module: Module, fn: Def) extends CallType
-case class SelfCallPolymorphic(fth: FnTh) extends CallType
+sealed trait CallDef extends CallType
+
+sealed trait CallStatic extends CallDef {
+  val fn: Def
+}
+case class SelfCallPolymorphic(fth: FnTh) extends CallDef
+
+sealed trait ThisModule extends CallStatic
+sealed trait OtherModule extends CallStatic {
+  val module: Module
+}
+
+case class CallLocal(fn: Def) extends ThisModule
+case class SelfCallLocal(fn: Def) extends ThisModule
+case class CallImport(module: Module, fn: Def) extends OtherModule
+case class SelfCallImport(module: Module, fn: Def) extends OtherModule
 
 object TCMeta {
   def setSthModule(self: ScalarTh, mod: Module): Unit =

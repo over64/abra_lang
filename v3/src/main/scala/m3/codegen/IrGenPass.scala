@@ -397,132 +397,36 @@ class IrGenPass {
           res
         }
 
-        def performCallFnPtr(obj: Expression, props: Seq[lId], args: Seq[Expression]) = {
-          val objRes = passExpr(mctx, dctx, obj)
-
-          val (fth, fnPtrRes) =
-            if (props.nonEmpty) {
-              val (pth, pRes) = Abi.getProperty(mctx, dctx, dctx.meta.typeHint(obj), objRes, props)
-              (pth.asInstanceOf[FnTh], pRes)
-            } else
-              (dctx.meta.typeHintAs[FnTh](obj), objRes)
-
-          val sync = Abi.syncValue(mctx, dctx, fnPtrRes, AsRetVal, fth, fth)
-
-          val r1, r2 = "%" + dctx.nextReg("")
-          dctx.write(s"$r1 = extractvalue ${fth.toValue(mctx)} ${sync.value}, 0")
-          dctx.write(s"$r2 = extractvalue ${fth.toValue(mctx)} ${sync.value}, 1")
-
-          doIrCall(mctx, dctx, fth, args, Some(r2), r1)
-        }
-
-        def performSelfCallLocal(call: ParseNode, fn: Def, fnName: String, self: Expression, args: Seq[Expression]) = {
-          val callSpecMap = {
-            import TCMeta.ParseNodeTCMetaImplicit
-            call.getCallSpecMap
-          }
-          val mappedSpecMap = callSpecMap.map {
-            case (k, v) => (k, v.spec(dctx.specMap))
-          }
-          val callAppliedTh = {
-            import TCMeta.ParseNodeTCMetaImplicit
-            fn.getTypeHint[TypeHint].spec(mappedSpecMap).asInstanceOf[FnTh]
-          }
-
-          val fnTh = {
-            import TCMeta.ParseNodeTCMetaImplicit
-            fn.getTypeHint[FnTh]
-          }
-
-          val isGeneric = fn.params.nonEmpty
-          val genericArgs = if (isGeneric) "[" + fn.params.map(p => p.spec(mappedSpecMap)).mkString(", ") + "]" else ""
-          val selfFnName = "@" + (mctx.modules.head.pkg + "." + fnTh.args.head + "." + fnName + genericArgs).escaped
-
-          if (isGeneric) {
-            passDef(mctx, DContext(mappedSpecMap, dctx.resolvedSelfDefs ++ call.getResolvedSelfDefs(), fn, false))
-          } else if (mctx.modules.length != 1) {
-            val irArgs = callAppliedTh.args.map(ath => AbiTh.toCallArg(mctx, dctx.specialized(ath)))
-            mctx.prototypes += s"${AbiTh.toRetVal(mctx, callAppliedTh.ret)} $selfFnName (${irArgs.mkString(", ")})"
-          }
-
-          doIrCall(mctx, dctx, callAppliedTh, self +: args, None, selfFnName)
-        }
-
-        def performSelfCallImport(call: ParseNode, fn: Def, module: Module, fnName: String, self: Expression, args: Seq[Expression]) = {
-          val callSpecMap = {
-            import TCMeta.ParseNodeTCMetaImplicit
-            call.getCallSpecMap
-          }
-          val mappedSpecMap = callSpecMap.map {
-            case (k, v) => (k, v.spec(dctx.specMap))
-          }
-          val callAppliedTh = {
-            import TCMeta.ParseNodeTCMetaImplicit
-            fn.getTypeHint[TypeHint].spec(mappedSpecMap).asInstanceOf[FnTh]
-          }
-
-          val fnTh = {
-            import TCMeta.ParseNodeTCMetaImplicit
-            fn.getTypeHint[FnTh]
-          }
-
-          val isGeneric = fn.params.nonEmpty
-          val genericArgs = if (isGeneric) "[" + fn.params.map(p => p.spec(mappedSpecMap)).mkString(", ") + "]" else ""
-          val selfFnName = "@" + (module.pkg + "." + fnTh.args.head + "." + fnName + genericArgs).escaped
-
-          if (isGeneric)
-            passDef(mctx.copy(modules = module +: mctx.modules), DContext(mappedSpecMap, call.getResolvedSelfDefs(), fn, false))
-          else {
-            val irArgs = callAppliedTh.args.map(ath => AbiTh.toCallArg(mctx, dctx.specialized(ath)))
-            mctx.prototypes += s"${AbiTh.toRetVal(mctx, callAppliedTh.ret)} $selfFnName (${irArgs.mkString(", ")})"
-          }
-
-          doIrCall(mctx, dctx, callAppliedTh, self +: args, None, selfFnName)
-        }
-
-        self match {
-          case call@Call(e, args) =>
-            call.getCallType match {
-              case CallLocal(fn) =>
-                val callSpecMap = {
-                  import TCMeta.ParseNodeTCMetaImplicit
-                  call.getCallSpecMap
-                }
-
-                val mappedSpecMap = callSpecMap.map {
-                  case (k, v) => (k, v.spec(dctx.specMap))
-                }
-                val callAppliedTh = {
-                  import TCMeta.ParseNodeTCMetaImplicit
-                  fn.getTypeHint[TypeHint].spec(mappedSpecMap).asInstanceOf[FnTh]
-                }
-                val id = e.asInstanceOf[lId]
-                if (fn.isGeneric) {
-                  passDef(mctx, DContext(mappedSpecMap, dctx.resolvedSelfDefs ++ call.getResolvedSelfDefs(), fn, false))
-
-                  val genericArgs = "[" + fn.params.map(p => p.spec(mappedSpecMap)).mkString(", ") + "]"
-                  doIrCall(mctx, dctx, callAppliedTh, args, None, "@" + (mctx.modules.head.pkg + "." + id.value + genericArgs).escaped)
-                } else
-                  doIrCall(mctx, dctx, callAppliedTh, args, None, "@" + (mctx.modules.head.pkg + "." + id.value).escaped)
-              case SelfCallLocal(fn) =>
-                performSelfCallLocal(call, fn, "get", e, args)
-              case SelfCallImport(module, fn) =>
-                performSelfCallImport(call, fn, module, "get", e, args)
-              case CallFnPtr =>
-                performCallFnPtr(e, Seq.empty, args)
+        self.getCallType match {
+          case CallFnPtr =>
+            val (obj, args) = self match {
+              case call: Call => (call.expr, call.args)
+              case call: SelfCall => (call.self, call.args)
             }
-          case call@SelfCall(fnName, self, args) =>
-            call.getCallType match {
-              case CallFnPtr =>
-                performCallFnPtr(self, Seq(lId(fnName)), args)
-              case SelfCallLocal(fn) =>
-                performSelfCallLocal(call, fn, fnName, self, args)
-              case CallImport(module, fn) =>
+
+            val objRes = passExpr(mctx, dctx, obj)
+
+            val (fth, fnPtrRes) = self match {
+              case _: Call => (dctx.meta.typeHintAs[FnTh](obj), objRes)
+              case sc: SelfCall =>
+                val (pth, pRes) = Abi.getProperty(mctx, dctx, dctx.meta.typeHint(obj), objRes, Seq(lId(sc.fnName)))
+                (pth.asInstanceOf[FnTh], pRes)
+            }
+
+            val sync = Abi.syncValue(mctx, dctx, fnPtrRes, AsRetVal, fth, fth)
+
+            val r1, r2 = "%" + dctx.nextReg("")
+            dctx.write(s"$r1 = extractvalue ${fth.toValue(mctx)} ${sync.value}, 0")
+            dctx.write(s"$r2 = extractvalue ${fth.toValue(mctx)} ${sync.value}, 1")
+            doIrCall(mctx, dctx, fth, args, Some(r2), r1)
+          case cd: CallDef =>
+            cd match {
+              case cs: CallStatic =>
+                val fn = cs.fn
                 val callSpecMap = {
                   import TCMeta.ParseNodeTCMetaImplicit
-                  call.getCallSpecMap
+                  self.getCallSpecMap
                 }
-
                 val mappedSpecMap = callSpecMap.map {
                   case (k, v) => (k, v.spec(dctx.specMap))
                 }
@@ -530,22 +434,65 @@ class IrGenPass {
                   import TCMeta.ParseNodeTCMetaImplicit
                   fn.getTypeHint[TypeHint].spec(mappedSpecMap).asInstanceOf[FnTh]
                 }
-
+                val fnTh = {
+                  import TCMeta.ParseNodeTCMetaImplicit
+                  fn.getTypeHint[FnTh]
+                }
                 val isGeneric = fn.params.nonEmpty
                 val genericArgs = if (isGeneric) "[" + fn.params.map(p => p.spec(mappedSpecMap)).mkString(", ") + "]" else ""
-                val protoName = "@" + (module.pkg + "." + fnName + genericArgs).escaped
-                val irArgs = callAppliedTh.args.map(ath => AbiTh.toCallArg(mctx, dctx.specialized(ath)))
 
-                if (isGeneric) {
-                  passDef(mctx.copy(modules = module +: mctx.modules), DContext(mappedSpecMap, dctx.resolvedSelfDefs ++ call.getResolvedSelfDefs(), fn, false))
-                } else
-                  mctx.prototypes += s"${AbiTh.toRetVal(mctx, callAppliedTh.ret)} $protoName (${irArgs.mkString(", ")})"
+                cs match {
+                  case ths: ThisModule =>
+                    val (fnName, args) = ths match {
+                      case _: CallLocal =>
+                        val call = self.asInstanceOf[Call]
+                        ("@" + (mctx.modules.head.pkg + "." + fn.name + genericArgs).escaped, call.args)
+                      case _: SelfCallLocal =>
+                        val args = self match {
+                          case Call(e, args) => e +: args
+                          case SelfCall(_, self, args) => self +: args
+                        }
 
-                doIrCall(mctx, dctx, callAppliedTh, args, None, protoName)
+                        ("@" + (mctx.modules.head.pkg + "." + fnTh.args.head + "." + fn.name + genericArgs).escaped, args)
+                    }
+
+                    if (isGeneric)
+                      passDef(mctx, DContext(mappedSpecMap, dctx.resolvedSelfDefs ++ self.getResolvedSelfDefs(), fn, false))
+                    else if (mctx.modules.length != 1) {
+                      val irArgs = callAppliedTh.args.map(ath => AbiTh.toCallArg(mctx, dctx.specialized(ath)))
+                      mctx.prototypes += s"${AbiTh.toRetVal(mctx, callAppliedTh.ret)} $fnName (${irArgs.mkString(", ")})"
+                    }
+
+                    doIrCall(mctx, dctx, callAppliedTh, args, None, fnName)
+                  case other: OtherModule =>
+                    val module = other.module
+                    val (fnName, args) = other match {
+                      case _: CallImport =>
+                        val call = self.asInstanceOf[SelfCall]
+                        ("@" + (module.pkg + "." + call.fnName + genericArgs).escaped, call.args)
+                      case _: SelfCallImport =>
+                        val args = self match {
+                          case Call(e, args) => e +: args
+                          case SelfCall(_, self, args) => self +: args
+                        }
+
+                        ("@" + (module.pkg + "." + fnTh.args.head + "." + fn.name + genericArgs).escaped, args)
+                    }
+
+                    if (isGeneric)
+                      passDef(mctx.copy(modules = module +: mctx.modules), DContext(mappedSpecMap, dctx.resolvedSelfDefs ++ self.getResolvedSelfDefs(), fn, false))
+                    else {
+                      val irArgs = callAppliedTh.args.map(ath => AbiTh.toCallArg(mctx, dctx.specialized(ath)))
+                      mctx.prototypes += s"${AbiTh.toRetVal(mctx, callAppliedTh.ret)} $fnName (${irArgs.mkString(", ")})"
+                    }
+
+                    doIrCall(mctx, dctx, callAppliedTh, args, None, fnName)
+                }
               case SelfCallPolymorphic(callAppliedTh) =>
-                val selfTh = dctx.meta.typeHint(self)
+                val sc = self.asInstanceOf[SelfCall]
+                val selfTh = dctx.meta.typeHint(sc.self)
 
-                val (mod, fn) = dctx.resolvedSelfDefs((selfTh, fnName))
+                val (mod, fn) = dctx.resolvedSelfDefs((selfTh, sc.fnName))
                 val fnTh = {
                   import TCMeta.ParseNodeTCMetaImplicit
                   fn.getTypeHint[FnTh]
@@ -556,15 +503,13 @@ class IrGenPass {
                 val mappedSpecMap = tInter.specMap
 
                 val isGeneric = fn.params.nonEmpty
-                if (isGeneric) {
-                  passDef(mctx.copy(modules = Seq(mod)), DContext(mappedSpecMap, dctx.resolvedSelfDefs, fn, false))
-                }
-
                 val genericArgs = if (isGeneric) "[" + fn.params.map(p => p.spec(mappedSpecMap)).mkString(", ") + "]" else ""
-                val selfFnName = "@" + (mod.pkg + "." + fnTh.args.head + "." + fnName + genericArgs).escaped
-                doIrCall(mctx.copy(modules = Seq(mctx.modules.last)), dctx, callAppliedTh.spec(dctx.specMap).asInstanceOf[FnTh], self +: args, None, selfFnName)
-              case SelfCallImport(module, fn) =>
-                performSelfCallImport(call, fn, module, fnName, self, args)
+                val selfFnName = "@" + (mod.pkg + "." + fnTh.args.head + "." + sc.fnName + genericArgs).escaped
+
+                if (isGeneric)
+                  passDef(mctx.copy(modules = Seq(mod)), DContext(mappedSpecMap, dctx.resolvedSelfDefs, fn, false))
+
+                doIrCall(mctx.copy(modules = Seq(mctx.modules.last)), dctx, callAppliedTh.spec(dctx.specMap).asInstanceOf[FnTh], sc.self +: sc.args, None, selfFnName)
             }
         }
       case Prop(from, props) =>
