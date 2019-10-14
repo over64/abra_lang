@@ -882,6 +882,10 @@ class IrGenPass {
             }
 
             r = r.replace("$retTypeof()", dctx.specialized(dctx.fn.retTh).toValue(mctx))
+            dctx.fn.lambda.args.foreach { arg =>
+              r = r.replace(s"$$argTypeof(${arg.name})", dctx.specialized(arg.typeHint).toValue(mctx))
+            }
+
             dctx.write(r)
           }
 
