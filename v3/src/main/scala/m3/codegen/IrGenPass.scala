@@ -142,9 +142,6 @@ case class DContext(specMap: mutable.HashMap[GenericTh, TypeHint],
     def closure(self: Lambda) =
       self.getClosure.map { case (name, th, vt) => (name, specialized(th), vt) }
 
-    //    def callAppliedTh(self: ParseNode) =
-    //      specialized(self.getCallAppliedTh).asInstanceOf[FnTh]
-
     def storeDeclTh(self: Store) =
       self.getDeclTh[TypeHint].map(x => specialized(x))
 
@@ -479,7 +476,7 @@ class IrGenPass {
                         ("@" + (module.pkg + "." + fnTh.args.head + "." + fn.name + genericArgs).escaped, args)
                     }
 
-                    if (isGeneric)
+                    if (isGeneric || CGMeta.isIntermodInline(fn))
                       passDef(mctx.copy(modules = module +: mctx.modules), DContext(mappedSpecMap, dctx.resolvedSelfDefs ++ self.getResolvedSelfDefs(), fn, false))
                     else {
                       val irArgs = callAppliedTh.args.map(ath => AbiTh.toCallArg(mctx, dctx.specialized(ath)))
@@ -786,7 +783,7 @@ class IrGenPass {
         })
 
         performBranches(unlessTh, branches, endBr)
-      case ret@Ret(exprOpt) =>
+      case Ret(exprOpt) =>
         exprOpt match {
           case None =>
             dctx.write("ret void")
@@ -804,7 +801,7 @@ class IrGenPass {
   }
 
   def performBlock(mctx: ModContext, dctx: DContext, seq: Seq[Expression]): (Boolean, TypeHint, EResult) = {
-    val isTerm = seq.lastOption.map(e => e.isInstanceOf[Ret]).getOrElse(false)
+    val isTerm = seq.lastOption.exists(e => e.isInstanceOf[Ret])
 
     seq.dropRight(1).foreach { expr =>
       val eth = dctx.meta.typeHint(expr)
@@ -857,7 +854,6 @@ class IrGenPass {
 
     dctx.fn.lambda.body match {
       case llVm(code) =>
-
         code.split("\n").map(line => line.trim).foreach { line =>
           if (line.startsWith(";meta ")) {
             val cmd = line.stripPrefix(";meta ")
@@ -871,7 +867,9 @@ class IrGenPass {
                   RC.doRC(mctx, dctx, mode, th, false, "%" + symName)
 
               }
-            }
+            } else if (cmd.startsWith("intermod_inline"))
+              CGMeta.setIntermodInline(dctx.fn)
+
           } else {
             var r = dctx.fn.params.foldLeft(line) { case (l, gth) =>
               try {
@@ -950,7 +948,9 @@ class IrGenPass {
             case (ath, arg) => s"${AbiTh.toCallArg(mctx, dctx.specialized(ath))} %${arg.name}"
           }
           val realArgs = if (dctx.isClosure) irArgs :+ "i8* %__env" else irArgs
-          val define = if (dctx.isClosure) "define private" else "define"
+          val define =
+            if (dctx.isClosure || CGMeta.isIntermodInline(dctx.fn) || dctx.fn.isGeneric) "define private"
+            else "define"
 
           mctx.write(s"$define ${AbiTh.toRetVal(mctx, fth.ret)} @$fnName (${realArgs.mkString(", ")}) {")
 
