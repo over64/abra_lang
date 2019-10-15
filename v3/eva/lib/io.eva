@@ -64,6 +64,6 @@ def readDelim = self: File, delim: Int do
 
 def eachLine = self: File, fn: (String) -> None do
   while true do
-    self.readLine() unless -- FIXME mem leak BUG_009
+    self.readLine() unless
       is line: String do fn(line)
       is None do break ...None

@@ -253,8 +253,8 @@ class IrGenPass {
       if (resultTh == Builtin.thNil) {
         branches.foreach { br =>
           dctx.write(br.beginLabel + ":")
-          br.before(dctx)
           dctx.deeper(OtherKind, { dctx =>
+            br.before(dctx)
             val (isTerm, _, _) = performBlock(mctx, dctx, br.seq)
             if (!isTerm) dctx.write(s"br label %$endLabel")
           })
@@ -522,30 +522,31 @@ class IrGenPass {
         }
       case Prop(from, props) =>
         val res = passExpr(mctx, dctx, from)
-        Abi.getProperty(mctx, dctx, dctx.meta.typeHint(from), res, props)._2
+        val (propTh, propRes) = Abi.getProperty(mctx, dctx, dctx.meta.typeHint(from), res, props)
+        RC.doRC(mctx, dctx, Inc, propTh, propRes.isPtr, propRes.value)
+        propRes
       case store@Store(_, to, what) =>
-        val (destTh, dRes) =
-          dctx.meta.storeDeclTh(store) match {
-            case Some(newVarTh) =>
-              val vName = to.head.value
-              val alias = dctx.addSymbol(vName)
-              dctx.vars.put(alias, newVarTh)
-              dctx.scope.aliases.put(vName, alias)
-              dctx.scope.freeSet += ((newVarTh, EResult("%" + alias, true, false)))
-
-              (dctx.meta.typeHint(to.head), EResult("%" + alias, true, true))
-            case None =>
-              val toRes = passExpr(mctx, dctx, to.head)
-              if (to.length == 1)
-                (dctx.meta.typeHint(to.head), toRes)
-              else
-                Abi.getProperty(mctx, dctx, dctx.meta.typeHint(to.head), toRes, to.drop(1))
-          }
-
         val whatTh = dctx.meta.typeHint(what)
-        val wRes = Abi.syncValue(mctx, dctx, passExpr(mctx, dctx, what),
-          AsStoreSrc, whatTh, whatTh)
-        Abi.store(mctx, dctx, !dRes.isAnon, !wRes.isAnon, destTh, whatTh, dRes.value, wRes.value)
+        val wRes = Abi.syncValue(mctx, dctx, passExpr(mctx, dctx, what), AsStoreSrc, whatTh, whatTh)
+
+        dctx.meta.storeDeclTh(store) match {
+          case Some(newVarTh) =>
+            val vName = to.head.value
+            val alias = dctx.addSymbol(vName)
+            dctx.vars.put(alias, newVarTh)
+            dctx.scope.aliases.put(vName, alias)
+            dctx.scope.freeSet += ((newVarTh, EResult("%" + alias, true, false)))
+
+            Abi.store(mctx, dctx, false, !wRes.isAnon, dctx.meta.typeHint(to.head), whatTh, "%" + alias, wRes.value)
+          case None =>
+            val toRes = passExpr(mctx, dctx, to.head)
+            val (destTh, dRes) =
+              if (to.length == 1) (dctx.meta.typeHint(to.head), toRes)
+              else Abi.getProperty(mctx, dctx, dctx.meta.typeHint(to.head), toRes, to.drop(1))
+
+            Abi.store(mctx, dctx, true, !wRes.isAnon, destTh, whatTh, dRes.value, wRes.value)
+        }
+
         EResult("__no_result__", false, true)
       case lambda: Lambda =>
         val fth = dctx.meta.typeHintAs[FnTh](lambda)
@@ -652,34 +653,20 @@ class IrGenPass {
         dctx.write(s"br label %$condBr")
         dctx.write(s"$condBr:")
         dctx.deeper(OtherKind, { dctx =>
-          val condRes = Abi.syncValue(mctx, dctx, passExpr(mctx, dctx, cond), AsStoreSrc, Builtin.thBool, Builtin.thBool)
+          val (_, _, res) = performBlock(mctx, dctx, Seq(cond))
+          val condRes = Abi.syncValue(mctx, dctx, res, AsStoreSrc, Builtin.thBool, Builtin.thBool)
           val r1 = "%" + dctx.nextReg("")
           dctx.write(s"$r1 = icmp eq i8 ${condRes.value}, 1")
           dctx.write(s"br i1 $r1, label %$blockBr, label %$endBr")
         })
         dctx.write(s"$blockBr:")
         dctx.deeper(WhileKind(condBr, endBr), { dctx =>
-          performBlock(mctx, dctx, _do)
-          dctx.write(s"br label %$condBr")
+          val (isTerm, _, _) = performBlock(mctx, dctx, _do)
+          if (!isTerm)
+            dctx.write(s"br label %$condBr")
         })
         dctx.write(s"$endBr:")
         EResult("__no__result", false, false)
-
-      case Continue() =>
-        // oops: instruction numbering magic in llvm ir?
-        dctx.nextReg("")
-        val wk = dctx.scope.findWhile()
-        //FIXME: make freeSet free
-        dctx.write(s"br label %${wk.condBr}")
-        EResult("__not_result", false, false)
-      case Break() =>
-        // oops: instruction numbering magic in llvm ir?
-        dctx.nextReg("")
-        val wk = dctx.scope.findWhile()
-
-        //FIXME: make freeSet free
-        dctx.write(s"br label %${wk.endBr}")
-        EResult("__not_result", false, false)
       case self@If(cond, _do, _else) =>
         val ifTh = dctx.meta.typeHint(self)
         val (doTh, elseTh) = dctx.meta.ifBranchTh(self)
@@ -690,7 +677,8 @@ class IrGenPass {
         dctx.write(s"$condBr:")
 
         dctx.deeper(OtherKind, { dctx =>
-          val condRes = Abi.syncValue(mctx, dctx, passExpr(mctx, dctx, cond), AsStoreSrc, Builtin.thBool, Builtin.thBool)
+          val (_, _, res) = performBlock(mctx, dctx, Seq(cond))
+          val condRes = Abi.syncValue(mctx, dctx, res, AsStoreSrc, Builtin.thBool, Builtin.thBool)
           val r1 = "%" + dctx.nextReg("")
           dctx.write(s"$r1 = icmp eq i8 ${condRes.value}, 1")
           dctx.write(s"br i1 $r1, label %$doBr, label %$elseBr")
@@ -723,12 +711,16 @@ class IrGenPass {
                     dctx.write(s"$r = bitcast ${expTh.toValue(mctx)} ${res.value} to ${isTypeRef.toValue(mctx)}")
                     dctx.write(s"store ${isTypeRef.toValue(mctx)} $r, ${isTypeRef.toValue(mctx)}* $slot")
                     dctx.scope.aliases.put(vName.value, slot.stripPrefix("%"))
+                    if (res.isAnon)
+                      dctx.scope.freeSet += ((isTypeRef, EResult(slot, true, true)))
                   case _ =>
                     val alias = dctx.addSymbol(vName.value)
                     dctx.scope.aliases.put(vName.value, alias)
                     val r = "%" + dctx.nextReg("")
                     dctx.write(s"$r = bitcast ${expTh.toValue(mctx)}* ${res.value} to {i64, ${isTypeRef.toValue(mctx)}}*")
                     dctx.write(s"%$alias =  getelementptr {i64, ${isTypeRef.toValue(mctx)}}, {i64, ${isTypeRef.toValue(mctx)}}* $r, i64 0, i32 1")
+                    if (res.isAnon)
+                      dctx.scope.freeSet += ((isTypeRef, EResult(alias, true, true)))
                 }
               }
             }, isTypeRef, is._do)
@@ -789,26 +781,10 @@ class IrGenPass {
         })
 
         performBranches(unlessTh, branches, endBr)
-      case Ret(exprOpt) =>
-        exprOpt match {
-          case None =>
-            dctx.write("ret void")
-            dctx.nextBranch("")
-          case Some(expr) =>
-            val eRes = passExpr(mctx, dctx, expr)
-            val eTh = dctx.meta.typeHint(expr)
-            val fnRetTh = dctx.meta.typeHintAs[FnTh](dctx.fn).ret
-            val sync = Abi.syncValue(mctx, dctx, eRes, AsRetVal, fnRetTh, eTh)
-            dctx.write(s"ret ${fnRetTh.toValue(mctx)} ${sync.value}")
-            dctx.nextBranch("")
-        }
-        EResult("__no__result", false, false)
     }
   }
 
   def performBlock(mctx: ModContext, dctx: DContext, seq: Seq[Expression]): (Boolean, TypeHint, EResult) = {
-    val isTerm = seq.lastOption.exists(e => e.isInstanceOf[Ret])
-
     seq.dropRight(1).foreach { expr =>
       val eth = dctx.meta.typeHint(expr)
       val res = passExpr(mctx, dctx, expr)
@@ -817,21 +793,75 @@ class IrGenPass {
         dctx.scope.freeSet += ((eth, res))
     }
 
-    val (eth, eRes) = seq.lastOption.map { expr =>
-      val retTh = dctx.meta.typeHint(expr)
-      val retRes = passExpr(mctx, dctx, expr)
+    def freeFull(scope: Scope, filterRet: Option[String]): Unit = {
+      scope.parent.foreach(p => freeFull(p, filterRet))
+      freeOne(scope, filterRet)
+    }
 
-      // if fn arg
-      if (!retRes.isAnon && !dctx.scope.freeSet.exists { case (_, res) => res.value == retRes.value })
-        RC.doRC(mctx, dctx, Inc, retTh, retRes.isPtr, retRes.value)
-
-      (retTh, retRes)
-    }.getOrElse((Builtin.thNil, EResult("__no_result__", false, true)))
-
-    dctx.scope.freeSet.foreach { case (freeTh, freeRes) =>
-      if (freeRes.value != eRes.value) {
-        RC.doRC(mctx, dctx, Dec, freeTh, freeRes.isPtr, freeRes.value)
+    def freeUntilWhile(scope: Scope, filterRet: Option[String]): Unit = {
+      scope.parent.foreach { p =>
+        if (!p.kind.isInstanceOf[WhileKind])
+          freeUntilWhile(p, filterRet)
       }
+
+      freeOne(scope, filterRet)
+    }
+
+    def freeOne(scope: Scope, filterRet: Option[String]) =
+      scope.freeSet.foreach { case (freeTh, freeRes) =>
+        if (Some(freeRes.value) != filterRet)
+          RC.doRC(mctx, dctx, Dec, freeTh, freeRes.isPtr, freeRes.value)
+      }
+
+    val (isTerm, eth, eRes) = seq.lastOption match {
+      case Some(Ret(exprOpt)) =>
+        val (th, res) = exprOpt match {
+          case None =>
+            freeFull(dctx.scope, None)
+            dctx.write("ret void")
+            (Builtin.thNil, EResult("__no_result__", false, false))
+          case Some(expr) =>
+            val eRes = passExpr(mctx, dctx, expr)
+            val eTh = dctx.meta.typeHint(expr)
+
+            // increment rc if we returning fnArg
+            if (!eRes.isAnon && !dctx.scope.freeSet.exists { case (_, res) => res.value == eRes.value })
+              RC.doRC(mctx, dctx, Inc, eTh, eRes.isPtr, eRes.value)
+            freeFull(dctx.scope, Some(eRes.value))
+
+            val fnRetTh = dctx.meta.typeHintAs[FnTh](dctx.fn).ret
+            val sync = Abi.syncValue(mctx, dctx, eRes, AsRetVal, fnRetTh, eTh)
+
+            dctx.write(s"ret ${fnRetTh.toValue(mctx)} ${sync.value}")
+            (eTh, eRes)
+        }
+        dctx.nextBranch("")
+        (true, th, res)
+      case Some(Break()) =>
+        freeUntilWhile(dctx.scope, None)
+        dctx.nextBranch("")
+        val wk = dctx.scope.findWhile()
+        dctx.write(s"br label %${wk.endBr}")
+        (true, Builtin.thNil, EResult("__no_result__", false, true))
+      case Some(Continue()) =>
+        freeUntilWhile(dctx.scope, None)
+        dctx.nextBranch("")
+        val wk = dctx.scope.findWhile()
+        dctx.write(s"br label %${wk.condBr}")
+        (true, Builtin.thNil, EResult("__no_result__", false, true))
+      case Some(expr) =>
+        val eRes = passExpr(mctx, dctx, expr)
+        val eTh = dctx.meta.typeHint(expr)
+
+        // increment rc if we returning fnArg
+        if (!eRes.isAnon && !dctx.scope.freeSet.exists { case (_, res) => res.value == eRes.value })
+          RC.doRC(mctx, dctx, Inc, eTh, eRes.isPtr, eRes.value)
+        freeOne(dctx.scope, Some(eRes.value))
+
+        (false, eTh, eRes)
+      case _ =>
+        freeOne(dctx.scope, None)
+        (false, Builtin.thNil, EResult("__no_result__", false, true))
     }
 
     (isTerm, eth, eRes)
@@ -899,15 +929,13 @@ class IrGenPass {
       case AbraCode(seq) =>
         val (isTerm, eth, eRes) = performBlock(mctx, dctx, seq)
 
-        if (retTh == Builtin.thNil || retTh == Builtin.thUnreachable) {
-          if (!isTerm)
+        if (!isTerm)
+          if (retTh == Builtin.thNil || retTh == Builtin.thUnreachable)
             dctx.write(s"ret void")
-        } else {
-          if (!isTerm) {
+          else {
             val sRes = Abi.syncValue(mctx, dctx, eRes, AsRetVal, retTh, eth)
             dctx.write(s"ret ${AbiTh.toRetVal(mctx, retTh)} ${sRes.value}")
           }
-        }
     }
 
     mctx.defs.put(fnName, dctx)

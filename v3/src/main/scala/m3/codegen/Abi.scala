@@ -202,6 +202,6 @@ object Abi {
       else srcTh.toValue(mctx)
 
     dctx.write(s"$r1 = getelementptr $srcIrType, $srcIrType* ${sync.value}, i64 0 ${fieldSeq.map(id => ", i32 " + id).mkString(", ")}")
-    (destTh, EResult(r1, true, false))
+    (destTh, EResult(r1, true, true))
   }
 }

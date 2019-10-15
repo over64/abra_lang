@@ -4,10 +4,10 @@
  BUG_003:  CG: cube.6: кодогенератор сравнивает типы на ==, это некорректно
 +BUG_004:  CG: objfile.28: реализовать call: SelfCallImport
 +BUG_005:  PR: objfile.47: некорректный разрабор AST
- BUG_006:  CG: tree.15: функция mkTree не должна дергать RC
- BUG_007:  CG: tree.31: функция checksum должна дергать RC
++BUG_006:  CG: tree.15: функция mkTree не должна дергать RC
++BUG_007:  CG: tree.31: функция checksum должна дергать RC
 +BUG_008:  CG: io.69: не работает break
- BUG_009:  CG: io.67: утечка памяти в unless
++BUG_009:  CG: io.67: утечка памяти в unless
 +BUG_010:  CG: tree.eva: не инлайнятся функции из prelude (perf)
  BUG_011:  TC: vec.7: array как поле структуры & get
 +BUG_012:  CG: vec.32: реализовать argTypeOf

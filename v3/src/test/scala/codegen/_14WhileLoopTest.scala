@@ -60,8 +60,7 @@ class _14WhileLoopTest extends FunSuite {
           y = 0
           while x < 255 do
             x = x + 1
-            continue
-            y = y + 1 .
+            continue .
           y .
       """, 0)
   }

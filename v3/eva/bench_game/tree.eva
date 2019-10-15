@@ -2,12 +2,6 @@ import range with Range, io
 
 type Node = (left: Node | None, right: Node | None)
 
---def asNode = self: Node | None, callback: (Node) -> None native
---  %fn = extractvalue { void (%Node*, i8*)*, i8* } %callback, 0
---  %cl = extractvalue { void (%Node*, i8*)*, i8* } %callback, 1
---  %1 = load %Node*, %Node** %self
---  call void %fn(%Node* %1, i8* %cl)
---  ret void .None
 
 
 def mkTree = depth: Int do  -- FIXME: RC BUG_006
@@ -32,13 +26,6 @@ def checksum = self: Node do  -- FIXME: RC BUG_007
       return 1 + l.checksum() + r.checksum() ..
 
   1 .Int
-
--- it's seems that must be like this
--- def checksum = self: Node do
---   self.left unless is l: Node do
---     self.right unless is r: Node do
---       return l.checksum() + r.checksum() + 1 .
---   1 .Int
 
 def stat = nTrees: Int, name: String, depth: Int, sum: Int do
   if nTrees > 1 do io.printInt(nTrees) .
