@@ -4,7 +4,6 @@ import unsafeArray, array
 type Vec[t] = (array: Array[t], len: Int)
 
 def get = self: Vec[t], index: Int do
-    -- FIXME: should be self.array(index)? BUG_011:
     self.array.get(index) .t
 
 -- FIXME: check index
@@ -26,8 +25,7 @@ def push = self: Vec[t], value: t do
     self.len = self.len + 1 .None
 
 def make = size: Int do
-    new: Array[t] = unsafeArray.alloc(size)  -- FIXME: inline into constructor
-    Vec(new, 0) .Vec[t]
+    Vec(unsafeArray.alloc(size), 0) .Vec[t]
 
 def asArrayInternal = slf: Array[t], needSize: Int, fn: (Array[t]) -> None native
   %1 = insertvalue $argTypeof(slf) %slf, i32 %needSize, 0

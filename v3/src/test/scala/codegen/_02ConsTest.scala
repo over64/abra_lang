@@ -35,7 +35,7 @@ class _02ConsTest extends FunSuite {
   test("construction: generic ref struct") {
     CodeGenUtil.run(
       """
-        type A[t, u]= (x: t, y: String)
+        type A[t] = (x: t, y: String)
         def main =
           A(1, 'hello')
           42.

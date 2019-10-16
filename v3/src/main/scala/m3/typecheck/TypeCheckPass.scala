@@ -746,60 +746,48 @@ class TypeCheckPass {
                 default()
             }
         }
-      case cons@Cons(sth, args) =>
-        val sd = typeDecl(sth) match {
-          case (_, sd: StructDecl) => sd
+      case cons@Cons(consTh, args) =>
+        val (declaredIn, sd) = typeDecl(consTh) match {
+          case (mod, sd: StructDecl) => (mod, sd)
           case _ => throw TCE.StructTypeRequired(cons.location)
         }
 
-        if (sd.isBuiltinArray) {
-          val argsTh = args.map(arg => passExpr(ctx.deeperExpr(), scope, eq, sth.params.headOption.getOrElse(AnyTh), arg))
-          val thSet = argsTh.toSet
-
-          val inferedElTh =
-            if (thSet.size == 1) thSet.head
-            else UnionTh(thSet.toSeq)
-
-
-          sth.params.headOption match {
-            case Some(elTh) =>
-              new TypeChecker2(ctx.level, ctx.module).doCheck(elTh, inferedElTh)
-            case None =>
-          }
-
-          sd.getBuiltinArrayLen match {
-            case Some(len) =>
-              val newTh = ScalarTh(Seq(inferedElTh), "Array" + len, None)
-              TCMeta.setSthModule(newTh, Builtin.builtInMod)
-              newTh
-            case None =>
-              val newTh = ScalarTh(Seq(inferedElTh), "Array", None)
-              TCMeta.setSthModule(newTh, Builtin.builtInMod)
-              newTh
-          }
-        } else {
-          val realParams =
-            if (th.isInstanceOf[ScalarTh]) { // FIXME: check types more pedantic
-              th.asInstanceOf[ScalarTh].params
-            } else if (sth.params.nonEmpty) {
-              if (sth.params.length != sd.params.length) throw TCE.ParamsCountMismatch(sth.location)
-              sth.params
+        val advicedParams = th match {
+          case sth: ScalarTh =>
+            if (sth.name != consTh.name || TCMeta.getSthModule(sth).pkg != declaredIn.pkg)
+              throw TCE.TypeMismatch(Seq(cons.location), sth, consTh)
+            Some(sth.params)
+          case _ =>
+            if (consTh.params.nonEmpty) {
+              if (consTh.params.length != sd.params.length)
+                throw TCE.ParamsCountMismatch(consTh.location)
+              Some(consTh.params)
             } else
-              sd.params
-
-          val realTh = ScalarTh(realParams, sth.name, sth.ie)
-          TCMeta.setSthModule(realTh, TCMeta.getSthModule(sth))
-          realTh.setLocation(sth.location)
-          val specMap = makeSpecMap(sd.params, realTh.params)
-          val consTh = FnTh(Seq.empty, sd.fields.map(f => f.th.spec(specMap)), realTh)
-
-          Invoker.invokePrototype(ctx, cons, eq, new Equations(), AnyTh, consTh, args.map { arg =>
-            new InferTask {
-              override def infer(ctx: PassContext, eq: Equations, th: TypeHint): (AstInfo, TypeHint) =
-                (arg.location, passExpr(ctx.deeperExpr(), scope, eq, th, arg))
-            }
-          })
+              None
         }
+
+        val specMap = advicedParams match {
+          case Some(params) => makeSpecMap(sd.params, params)
+          case None => makeSpecMap(sd.params, sd.params.map(_ => AnyTh))
+        }
+
+        val tInfer = new TypeInfer(ctx.level, ctx.module)
+
+        (sd.fields zip args).foreach { case (field, arg) =>
+          val advice = field.th.spec(specMap)
+          val argTh = passExpr(ctx, scope, eq, advice, arg)
+          new TypeChecker2(ctx.level, ctx.module).check(Seq(arg.location), advice, argTh)
+          tInfer.infer(Seq(arg.location), field.th, argTh)
+        }
+
+        val resTh = advicedParams match {
+          case Some(params) => ScalarTh(params, consTh.name, consTh.ie)
+          case None => ScalarTh(sd.params.map(p => tInfer.specMap(p)), consTh.name, consTh.ie)
+        }
+
+        TCMeta.setSthModule(resTh, declaredIn)
+        resTh.setLocation(consTh.location)
+        resTh
       case Tuple(seq) =>
         val expectedSeq =
           th match {

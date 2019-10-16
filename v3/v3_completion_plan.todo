@@ -9,8 +9,9 @@
 +BUG_008:  CG: io.69: не работает break
 +BUG_009:  CG: io.67: утечка памяти в unless
 +BUG_010:  CG: tree.eva: не инлайнятся функции из prelude (perf)
- BUG_011:  TC: vec.7: array как поле структуры & get
+?BUG_011:  TC: vec.7: array как поле структуры & get
 +BUG_012:  CG: vec.32: реализовать argTypeOf
++BUG_013:  TC: vec.28: некорректная параметризация конструктора
  
  THE EVA CODE IMPROVE
  IMP_001: отрефакторить pool.eva, отрефакторить treeWithPool

@@ -249,9 +249,11 @@ class _07CallGenericTest extends FunSuite {
                   return value .
               is None do return none ...t7 | None
 
+        def mkArray = native
+          ; .Array[Int]
+
         def main =
-          n = 5
-          array1 = Array[Int](n)
+          array1 = mkArray()
           it = array1.iter()
             .map(|x| x * 2)
             .filter(|x| x == 0)
