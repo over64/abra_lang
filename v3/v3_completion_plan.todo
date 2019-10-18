@@ -15,8 +15,8 @@
  
  THE EVA CODE IMPROVE
  IMP_001: отрефакторить pool.eva, отрефакторить treeWithPool
- IMP_002: отрефакторить sbuffer.eva и io.eva
- IMP_003: переименовать unsafeArray => arrayUnsafe
++IMP_002: отрефакторить sbuffer.eva и io.eva
++IMP_003: переименовать unsafeArray => arrayUnsafe
  IMP_003: отрефакторить vec.eva
  
  THE COMPILER REFACTOR
@@ -24,7 +24,7 @@
  REF_002: убрать BuiltinSelfDef
  REF_003: добавить VarType: IsVar, в CG почистить unless
  REF_004: вытащить inner классы из TypeCheckerPass
- REF_005: TC, CG: убрать конструкторы array
++REF_005: TC, CG: убрать конструкторы array
  REF_006: CG: не генерировать конструктор для каждого строкового литерала
  REF_007: TC: отдельный pass для symbol check, который расставляет VarType
  REF_008: CG: подчистить код в call, unless, убрать array constructors

@@ -1,0 +1,25 @@
+type Ptr = native i8* .
+
+def allocData = len: Int native
+    %alloc = load i8* (i64)*,  i8* (i64)** @evaAlloc
+    %len64 = zext i32 %len to i64
+    %data = call i8* %alloc(i64 %len64)
+    ret i8* %data .Ptr
+
+def copyData = dest: Ptr, src: Ptr, n: Int native
+    %n64 = zext i32 %n to i64
+    call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dest, i8* %src, i64 %n64, i32 0, i1 false)
+    ret void .None
+
+def freeData = data: Ptr native
+    %release = load void (i8*)*, void (i8*)** @evaFree
+    call void %release(i8* %data)
+    ret void .None
+
+def setByte = data: Ptr, idx: Int, byte: Byte native
+    %1 = getelementptr i8, i8* %data, i32 %idx
+    store i8 %byte, i8* %1
+    ret void .None
+
+def asString = data: Ptr native
+    ret i8* %data .String

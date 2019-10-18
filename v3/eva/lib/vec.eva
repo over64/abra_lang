@@ -1,31 +1,33 @@
-import unsafeArray, array
+import arrayUnsafe, array
 
 -- FIXME: use pure native impl, don't use array
+-- but I can't now...
 type Vec[t] = (array: Array[t], len: Int)
 
+-- FIXME: check index
 def get = self: Vec[t], index: Int do
-    self.array.get(index) .t
+  self.array.get(index) .t
 
 -- FIXME: check index
 def set = self: Vec[t], index: Int, value: t do
-    unsafeArray.setInit(self.array, index, value) .
+  arrayUnsafe.setInit(self.array, index, value) .
 
 def push = self: Vec[t], value: t do
-    if self.len >= self.array.len() do
-        newArray: Array[t] = unsafeArray.alloc(self.array.len() * 2)
+  if self.len >= self.array.len() do
+    newArray: Array[t] = arrayUnsafe.alloc(self.array.len() * 2)
 
-        i = 0
-        while i < self.array.len() do
-           unsafeArray.setInit(newArray, i, self.array.get(i))
-           i = i + 1 .
+    i = 0
+    while i < self.array.len() do
+      arrayUnsafe.setInit(newArray, i, self.array.get(i))
+      i = i + 1 .
 
-        self.array = newArray .
+    self.array = newArray .
 
-    self.array(self.len) = value
-    self.len = self.len + 1 .None
+  self.array(self.len) = value
+  self.len = self.len + 1 .None
 
-def make = size: Int do
-    Vec(unsafeArray.alloc(size), 0) .Vec[t]
+def make = capacity: Int do
+  Vec(arrayUnsafe.alloc(capacity), 0) .Vec[t]
 
 def asArrayInternal = slf: Array[t], needSize: Int, fn: (Array[t]) -> None native
   %1 = insertvalue $argTypeof(slf) %slf, i32 %needSize, 0

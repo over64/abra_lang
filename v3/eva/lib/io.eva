@@ -46,20 +46,19 @@ def readLine = self: File do self.readDelim(10) .
 
 def readDelim = self: File, delim: Int do
   end = false
-  sb = sbuffer.mk(64)
+  sb = sbuffer.make(64)
 
   while !end do
     ch = self.getc()
     if ch == -1 || ch == delim do end = true
-    else sb.pushByte(ch.toByte()) ..
+    else sb.push(ch.toByte()) ..
 
-  -- FIXME: object must be at dead state?
   if sb.len != 0 do
-    sb.pushByte(delim.toByte())
-    sb.pushByte(0.toByte())
+    sb.push(delim.toByte())
+    sb.push(0.toByte())
     sb.asString()
   else
-    sbuffer.freeData(sb.data) -- Must be sb.free() ?
+    sb.free()
     none ..String | None
 
 def eachLine = self: File, fn: (String) -> None do

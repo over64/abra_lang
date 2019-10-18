@@ -178,23 +178,13 @@ class IrGenPass {
 
       if (th.isValueType(mctx)) {
         val slot = dctx.addSlot(th)
-
-        val (base, fieldsTh) = th.isIrArray(mctx) match {
-          case Some(sd) =>
-            val r = "%" + dctx.nextReg("")
-            dctx.write(s"$r = getelementptr $irType, $irType* $slot, i64 0, i32 0")
-            dctx.write(s"store i64 ${sd.getBuiltinArrayLen.get}, i64* $r")
-            val elTh = th.asInstanceOf[ScalarTh].params.head
-            ("i32 1, i64 ", (0 to args.length).map(_ => elTh))
-          case None =>
-            ("i32 ", th.structFields(mctx).map(_.typeHint))
-        }
+        val fieldsTh = th.structFields(mctx).map(_.typeHint)
 
         for (((field, fieldTh), idx) <- (args zip fieldsTh).zipWithIndex) {
           val fRes = passExpr(mctx, dctx, field)
 
           val r = "%" + dctx.nextReg("")
-          dctx.write(s"$r = getelementptr $irType, $irType* $slot, i64 0, $base$idx")
+          dctx.write(s"$r = getelementptr $irType, $irType* $slot, i64 0, i32 $idx")
 
           val fResSync = Abi.syncValue(mctx, dctx, fRes, AsStoreSrc, fieldTh, fieldTh)
           Abi.store(mctx, dctx, false, false, fieldTh, dctx.meta.typeHint(field), r, fResSync.value)
@@ -205,39 +195,22 @@ class IrGenPass {
         val r0 = "%" + dctx.nextReg("")
         dctx.write(s"$r0 = load i8* (i64)*,  i8* (i64)** @evaAlloc")
 
-        val (to, toIrType, base, fieldsTh) =
-          th.isIrArray(mctx) match {
-            case Some(sd) =>
-              val elTh = th.asInstanceOf[ScalarTh].params.head
-              val elIrType = elTh.toValue(mctx)
-              val r1, r2, r3, r4, r5, r6 = "%" + dctx.nextReg("")
+        val toIrType = th.toValue(mctx, suffix = ".body")
+        val r1, r2, r3, to = "%" + dctx.nextReg("")
 
-              dctx.write(s"$r1 = getelementptr $elIrType, $elIrType* null, i64 ${args.length}")
-              dctx.write(s"$r2 = ptrtoint $elIrType* $r1 to i64")
-              dctx.write(s"$r3 = add i64 $r2, 8")
-              dctx.write(s"$r4 = call i8* $r0(i64 $r3)")
-              dctx.write(s"$r5 = getelementptr i8, i8* $r4, i64 8")
-              dctx.write(s"$r6 = bitcast i8* $r5 to $elIrType*")
+        dctx.write(s"$r1 = getelementptr $toIrType, $toIrType* null, i64 1")
+        dctx.write(s"$r2 = ptrtoint $toIrType* $r1 to i64")
+        dctx.write(s"$r3 = call i8* $r0(i64 $r2)")
+        dctx.write(s"$to = bitcast i8* $r3 to $irType")
 
-              (r6, elIrType, "", (0 to args.length).map(i => elTh))
-            case None =>
-              val dataIrType = th.toValue(mctx, suffix = ".body")
-              val r1, r2, r3, r4 = "%" + dctx.nextReg("")
-
-              dctx.write(s"$r1 = getelementptr $dataIrType, $dataIrType* null, i64 1")
-              dctx.write(s"$r2 = ptrtoint $dataIrType* $r1 to i64")
-              dctx.write(s"$r3 = call i8* $r0(i64 $r2)")
-              dctx.write(s"$r4 = bitcast i8* $r3 to $irType")
-
-              (r4, dataIrType, "i64 0, ", th.structFields(mctx).map(_.typeHint))
-          }
+        val fieldsTh = th.structFields(mctx).map(_.typeHint)
 
         (args zip fieldsTh).zipWithIndex.foreach { case ((field, fieldTh), idx) =>
           val fRes = passExpr(mctx, dctx, field)
           val feth = dctx.meta.typeHint(field)
           val syncfRes = Abi.syncValue(mctx, dctx, fRes, AsStoreSrc, feth, feth)
           val fieldDestPtr = "%" + dctx.nextReg("")
-          dctx.write(s"$fieldDestPtr = getelementptr $toIrType, $toIrType* $to, ${base}i32 $idx")
+          dctx.write(s"$fieldDestPtr = getelementptr $toIrType, $toIrType* $to, i64 0, i32 $idx")
           Abi.store(mctx, dctx, false, !syncfRes.isAnon, fieldTh, dctx.meta.typeHint(field), fieldDestPtr, syncfRes.value)
         }
         EResult(to, false, true)

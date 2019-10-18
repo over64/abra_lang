@@ -1,45 +1,25 @@
-type Ptr = native i8* .
+import sbufferUnsafe with Ptr
 
-def allocData = len: Int native
-    %alloc = load i8* (i64)*,  i8* (i64)** @evaAlloc
-    %len64 = zext i32 %len to i64
-    %data = call i8* %alloc(i64 %len64)
-    ret i8* %data .Ptr
+type SBuffer = (data: Ptr, dataLen: Int, len: Int)  -- native {i8*, i32, i32}
 
-def freeData = data: Ptr native
-    %release = load void (i8*)*, void (i8*)** @evaFree
-    call void %release(i8* %data)
-    ret void .None
+def make = len: Int do
+  SBuffer(sbufferUnsafe.allocData(len), len, 0) .
 
-def asString = data: Ptr native
-    ret i8* %data .String
+def push = self: SBuffer, byte: Byte do
+  if self.len >= self.dataLen do
+    newLen = self.dataLen * 2
+    newData = sbufferUnsafe.allocData(newLen)
 
-def copyData = dest: Ptr, src: Ptr, n: Int native
-    %n64 = zext i32 %n to i64
-    call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dest, i8* %src, i64 %n64, i32 0, i1 false)
-    ret void .None
+    sbufferUnsafe.copyData(newData, self.data, self.dataLen)
+    sbufferUnsafe.freeData(self.data)
 
-def setByte = data: Ptr, idx: Int, byte: Byte native
-    %1 = getelementptr i8, i8* %data, i32 %idx
-    store i8 %byte, i8* %1
-    ret void .None
+    self.data    = newData
+    self.dataLen = newLen .
 
-type SBuffer = (data: Ptr, dataLen: Int, len: Int)
+  sbufferUnsafe.setByte(self.data, self.len, byte)
+  self.len = self.len + 1 .
 
-def mk = len: Int do SBuffer(allocData(len), len, 0) .
-
-def pushByte = self: SBuffer, byte: Byte do
-    if self.len >= self.dataLen do
-        newLen = self.dataLen * 2
-        newData = allocData(newLen)
-
-        copyData(newData, self.data, self.dataLen)
-        freeData(self.data)
-
-        self.data    = newData
-        self.dataLen = newLen .
-
-    setByte(self.data, self.len, byte)
-    self.len = self.len + 1 .
-
-def asString = self: SBuffer do asString(self.data) .
+def asString = self: SBuffer do
+  sbufferUnsafe.asString(self.data) .
+def free = self: SBuffer do
+  sbufferUnsafe.freeData(self.data) .

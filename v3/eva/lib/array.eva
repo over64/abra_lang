@@ -1,19 +1,19 @@
-import unsafeArray
+import arrayUnsafe
 
 def set = self: Array[t], idx: Int, value: t do
-  unsafeArray.set(self, idx, value) .None
+  arrayUnsafe.set(self, idx, value) .None
 
 def get = self: Array[t], idx: Int do
-  unsafeArray.get(self, idx) .t
+  arrayUnsafe.get(self, idx) .t
 
 def len = self: Array[t] do
-  unsafeArray.len(self) .Int
+  arrayUnsafe.len(self) .Int
 
 def mk = len: Int, init: (Int) -> t do
-  array: Array[t] = unsafeArray.alloc(len)
+  array: Array[t] = arrayUnsafe.alloc(len)
   i = 0
   while i < len do
-    unsafeArray.setInit(array, i, init(i))
+    arrayUnsafe.setInit(array, i, init(i))
     i = i + 1 .
   array .
 

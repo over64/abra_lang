@@ -54,7 +54,7 @@ class _07ParsePassTest extends FunSuite {
         Seq("sys", "sdl", "soil", ".objfile") ::
         Seq("range", "seq", "sreader", "io", "gl", "vec") ::
         Seq("array", "kazmath", "sbuffer") ::
-        Seq("unsafeArray") :: Nil
+        Seq("arrayUnsafe", "sbufferUnsafe") :: Nil
 
     println(s"expected: $expectedLevelSeq")
     checkLevelSeq(expectedLevelSeq, root)
