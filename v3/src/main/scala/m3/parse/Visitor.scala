@@ -102,7 +102,6 @@ class Visitor(source: String, fname: String, _package: String, prelude: Option[S
 
   override def visitFnTh(ctx: FnThContext): FnTh =
     emit(ctx, FnTh(
-      Seq.empty,
       ctx.args.map { f => visitTypeHint(f) },
       visitTypeHint(ctx.rett)))
 

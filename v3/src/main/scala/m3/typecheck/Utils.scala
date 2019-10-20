@@ -55,8 +55,8 @@ object Utils {
           UnionTh(variants.map { th =>
             th.spec(specMap, onNotFound)
           })
-        case FnTh(closure, args, ret) =>
-          FnTh(closure, args.map(arg => arg.spec(specMap, onNotFound)), ret.spec(specMap, onNotFound))
+        case FnTh(args, ret) =>
+          FnTh(args.map(arg => arg.spec(specMap, onNotFound)), ret.spec(specMap, onNotFound))
         case gth: GenericTh =>
           // make deep spec???
           specMap.getOrElse(gth, onNotFound(gth))
@@ -75,7 +75,7 @@ object Utils {
           fields.exists(f => f.typeHint.containsAny)
         case UnionTh(variants) =>
           variants.exists(v => v.containsAny)
-        case FnTh(closure, args, ret) =>
+        case FnTh(args, ret) =>
           args.exists(a => a.containsAny) || ret.containsAny
         case gth: GenericTh => false
         case AnyTh => true
@@ -119,7 +119,7 @@ object Utils {
         fields.foreach(f => f.typeHint.findGenerics(dest))
       case UnionTh(variants) =>
         variants.foreach(v => v.findGenerics(dest))
-      case FnTh(closure, args, ret) =>
+      case FnTh(args, ret) =>
         args.foreach(a => a.findGenerics(dest))
         ret.findGenerics(dest)
       case gth: GenericTh => if (!dest.contains(gth)) dest += gth
@@ -130,7 +130,7 @@ object Utils {
   implicit class RichDef(self: Def) {
     def params: mutable.ListBuffer[GenericTh] = {
       val dest = mutable.ListBuffer[GenericTh]()
-      FnTh(Seq.empty, self.lambda.args.map(_.typeHint), self.retTh)
+      FnTh(self.lambda.args.map(_.typeHint), self.retTh)
         .findGenerics(dest)
       dest
     }

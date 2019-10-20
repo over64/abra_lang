@@ -280,7 +280,7 @@ class TypeCheckPass {
                 })
             }
           case lambda: Lambda =>
-            val lambdaTh = passExpr(ctx, scope, eq, FnTh(Seq.empty, lambda.args.map(_ => AnyTh), th), lambda).asInstanceOf[FnTh]
+            val lambdaTh = passExpr(ctx, scope, eq, FnTh(lambda.args.map(_ => AnyTh), th), lambda).asInstanceOf[FnTh]
 
             call.setCallType(CallFnPtr)
 
@@ -478,7 +478,7 @@ class TypeCheckPass {
             }
             (inferedArgsTh, AnyTh)
           case _ =>
-            throw TCE.TypeMismatch(Seq(lambda.location), th, FnTh(Seq.empty, argsTh, AnyTh))
+            throw TCE.TypeMismatch(Seq(lambda.location), th, FnTh(argsTh, AnyTh))
         }
 
         val inferedRetTh = body match {
@@ -504,7 +504,7 @@ class TypeCheckPass {
             throw TCE.LambdaWithNativeCode(lambda.location)
         }
 
-        FnTh(Seq.empty, inferedArgsTh, inferedRetTh)
+        FnTh(inferedArgsTh, inferedRetTh)
       case andOr: AndOr =>
         passExpr(ctx, scope, eq, thBool, andOr.left)
         passExpr(ctx, scope, eq, thBool, andOr.right)
@@ -631,11 +631,11 @@ class TypeCheckPass {
         if (fn.retTh.containsAny) throw TCE.RetTypeHintRequired(fn.location)
 
         fn.setEquations(eq)
-        fn.setTypeHint(FnTh(Seq.empty, fn.lambda.args.map(_.typeHint), fn.retTh))
+        fn.setTypeHint(FnTh(fn.lambda.args.map(_.typeHint), fn.retTh))
       case AbraCode(seq) =>
         val declaredRetTh =
           if (fn.retTh != AnyTh) {
-            fn.setTypeHint(FnTh(Seq.empty, fn.lambda.args.map(_.typeHint), fn.retTh))
+            fn.setTypeHint(FnTh(fn.lambda.args.map(_.typeHint), fn.retTh))
             fn.setEquations(new Equations())
             Some(fn.retTh)
           } else None
@@ -657,7 +657,7 @@ class TypeCheckPass {
           case Some(declared) =>
             new TypeChecker(ctx.level, ctx.module).check(Seq(declared.location), declared, retTh)
           case None =>
-            fn.setTypeHint(FnTh(Seq.empty, fn.lambda.args.map(_.typeHint), retTh))
+            fn.setTypeHint(FnTh(fn.lambda.args.map(_.typeHint), retTh))
         }
 
         fn.setEquations(eq)

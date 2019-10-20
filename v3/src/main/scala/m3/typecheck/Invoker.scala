@@ -213,7 +213,7 @@ class Invoker(
 
 
         eqCaller.addEq(Equation((Seq(selfLocation), gth), fnName, argsTh, (Seq(location), eqRet)))
-        call.setCallType(SelfCallPolymorphic(FnTh(Seq.empty, gth +: argsTh.map(_._2), eqRet)))
+        call.setCallType(SelfCallPolymorphic(FnTh(gth +: argsTh.map(_._2), eqRet)))
 
         eqRet
       case _ =>
