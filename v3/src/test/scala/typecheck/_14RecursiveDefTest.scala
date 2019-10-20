@@ -16,6 +16,10 @@ class _14RecursiveDefTest extends FunSuite {
           ; native code
           .Int
 
+        def == = self: Int, other: Int native
+          ; native code
+          .Bool
+
         def fact = x: Int do
           if x == 1 do 1 else x * fact(x - 1) ..Int
 
@@ -37,6 +41,10 @@ class _14RecursiveDefTest extends FunSuite {
         def - = self: Int, other: Int native
           ; native code
           .Int
+
+        def == = self: Int, other: Int native
+          ; native code
+          .Bool
 
         def fact = x: Int do
           if x == 1 do 1 else x * fact(x - 1) ..

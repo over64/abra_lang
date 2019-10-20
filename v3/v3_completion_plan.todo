@@ -21,7 +21,7 @@
  
  THE COMPILER REFACTOR
  REF_001: сделать META не implicit
- REF_002: убрать BuiltinSelfDef
++REF_002: убрать BuiltinSelfDef
  REF_003: добавить VarType: IsVar, в CG почистить unless
 +REF_004: вытащить inner классы из TypeCheckerPass
 +REF_005: TC, CG: убрать конструкторы array

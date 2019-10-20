@@ -135,8 +135,7 @@ class TypeCheckPass {
               case Some((mod, ie, fn)) =>
                 (Seq(ie), mod, fn, fn.getTypeHint, fn.getEquations)
               case None =>
-                // FIXME: oops
-                (null, null, null, resolveBuiltinSelfDef(location, selfTh, fnName), new Equations())
+                throw TCE.NoSuchSelfDef(location, fnName, selfTh)
             }
         }
     }

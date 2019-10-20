@@ -56,21 +56,4 @@ object Builtin {
           throw TCE.NoSuchType(th.location, th.ie.toSeq, th.name)
         })
     }
-
-  def resolveBuiltinSelfDef(location: Seq[AstInfo], selfTh: TypeHint, name: String): FnTh =
-    if (name == "==") {
-      FnTh(Seq.empty, Seq(selfTh, selfTh), thBool)
-    } else if (name == "clone") {
-      FnTh(Seq.empty, Seq(selfTh), selfTh)
-    } else
-      selfTh match {
-        case sth: ScalarTh if isArrayThName(sth.name) =>
-          name match {
-            case "len" => FnTh(Seq.empty, Seq(sth), thInt) // ??? why not thArraySize
-            case "get" => FnTh(Seq.empty, Seq(sth, thArraySize), sth.params.head)
-            case "set" => FnTh(Seq.empty, Seq(sth, thArraySize, sth.params.head), thNil)
-          }
-        case th =>
-          throw TCE.NoSuchSelfDef(location, name, selfTh)
-      }
 }

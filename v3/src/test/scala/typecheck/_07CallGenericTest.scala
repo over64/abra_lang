@@ -133,7 +133,6 @@ class _07CallGenericTest extends FunSuite {
   }
 
   test("polymorphic self replace") {
-    //assertThrows[TCE.TypeMismatch] {
     val ast = astForCode(
       """
         type Seq[t] = native %t* .
@@ -202,6 +201,9 @@ class _07CallGenericTest extends FunSuite {
 
         def * = self: Int, other: Int native
           ;native .Int
+
+        def == = self: Int, other: Int native
+          ;native .Bool
 
         def < = self: Long, other: Long native
           ;native .Bool
