@@ -5,7 +5,7 @@ import java.io.PrintStream
 import m3.codegen.IrUtils._
 import m3.parse.Ast0._
 import m3.parse.Level
-import m3.typecheck.TCMeta.{CallTypeTCMetaImplicit, PolymorphicTCMetaImplicit, TypeDeclTCMetaImplicit, VarTypeTCMetaImplicit}
+import m3.typecheck.TCMeta.{CallTypeTCMetaImplicit, PolymorphicTCMetaImplicit, VarTypeTCMetaImplicit}
 import m3.typecheck.Utils.{RichDef, ThExtension}
 import m3.typecheck._
 
@@ -21,16 +21,17 @@ case class ModContext(out: PrintStream,
                       modules: Seq[Module],
                       typeHints: ListBuffer[TypeHint] = ListBuffer(),
                       rcDef: HashMap[(TypeHint, RCMode), StringBuilder] = HashMap(),
-                      strings: ListBuffer[String] = ListBuffer(),
+                      strings: ListBuffer[HexUtil.EncodeResult] = ListBuffer(),
                       defs: HashMap[String, DContext] = HashMap(),
                       prototypes: mutable.ListBuffer[String] = ListBuffer()) {
 
   def write(line: String): Unit =
     out.println(line)
 
-  def addString(str: String): Int = {
-    strings += str
-    strings.length - 1
+  def addString(str: String): (Int, Int) = {
+    val encoded = HexUtil.singleByteNullTerminated(str.getBytes())
+    strings += encoded
+    (strings.length - 1, encoded.bytesLen)
   }
 }
 
@@ -192,15 +193,13 @@ class IrGenPass {
 
         EResult(slot, true, true)
       } else {
-        val r0 = "%" + dctx.nextReg("")
-        dctx.write(s"$r0 = load i8* (i64)*,  i8* (i64)** @evaAlloc")
-
+        dctx.needAlloc = true
         val toIrType = th.toValue(mctx, suffix = ".body")
         val r1, r2, r3, to = "%" + dctx.nextReg("")
 
         dctx.write(s"$r1 = getelementptr $toIrType, $toIrType* null, i64 1")
         dctx.write(s"$r2 = ptrtoint $toIrType* $r1 to i64")
-        dctx.write(s"$r3 = call i8* $r0(i64 $r2)")
+        dctx.write(s"$r3 = call i8* %__alloc(i64 $r2)")
         dctx.write(s"$to = bitcast i8* $r3 to $irType")
 
         val fieldsTh = th.structFields(mctx).map(_.typeHint)
@@ -292,9 +291,10 @@ class IrGenPass {
         EResult((if (value == "true") 1 else 0).toString, false, true)
       case lNone() => EResult("__no_result__", false, true)
       case str: lString =>
-        val strId = mctx.addString(str.value)
+        dctx.needAlloc = true
+        val (id, len) = mctx.addString(str.value)
         val r = "%" + dctx.nextReg("")
-        dctx.write(s"$r = call %String @$$cons.String$strId()")
+        dctx.write(s"$r = call %String @__alloc_string(i8* (i64)* %__alloc, i8* getelementptr inbounds ([$len x i8], [$len x i8]* @strconst$$$id, i32 0, i32 0), i64 $len)")
         EResult(r, false, true)
       case id: lId =>
         id.getVarLocation match {
@@ -947,7 +947,18 @@ class IrGenPass {
 
         typeDecl.foreach { case (th, decl) => mctx.write(decl) }
 
-        ConsUtils.genStringConstuctors(mctx)
+
+        if (mctx.strings.nonEmpty) {
+          mctx.write(s"define private %String @__alloc_string(i8* (i64)* %allocator, i8* %data, i64 %len) {")
+          mctx.write(s"  %1 = call i8* %allocator(i64 %len)")
+          mctx.write(s"  call void @llvm.memcpy.p0i8.p0i8.i64(i8* %1, i8* %data, i64 %len, i32 1, i1 false)")
+          mctx.write(s"  ret %String %1")
+          mctx.write(s"}")
+
+          mctx.strings.zipWithIndex.foreach { case (encoded, id) =>
+            mctx.write(s"""@strconst$$$id = private unnamed_addr constant [${encoded.bytesLen} x i8] c"${encoded.str}" """)
+          }
+        }
 
         mctx.rcDef.foreach { case (_, code) => mctx.write(code.toString()) }
 
@@ -980,6 +991,8 @@ class IrGenPass {
             mctx.write(s"  %__stack_slot${idx}__ = alloca ${slotTh.toValue(mctx)}")
           }
 
+          if (dctx.needAlloc) mctx.write(s"  %__alloc = load i8* (i64)*,  i8* (i64)** @evaAlloc")
+
           dctx.code.foreach(line => mctx.write(line))
           mctx.write("}")
         }
@@ -988,5 +1001,6 @@ class IrGenPass {
 
     val m2 = System.currentTimeMillis()
     println(s"__CodeGen pass elapsed: ${m2 - m1}ms")
+
   }
 }

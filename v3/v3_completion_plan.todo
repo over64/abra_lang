@@ -23,9 +23,9 @@
  REF_001: сделать META не implicit
  REF_002: убрать BuiltinSelfDef
  REF_003: добавить VarType: IsVar, в CG почистить unless
- REF_004: вытащить inner классы из TypeCheckerPass
++REF_004: вытащить inner классы из TypeCheckerPass
 +REF_005: TC, CG: убрать конструкторы array
- REF_006: CG: не генерировать конструктор для каждого строкового литерала
++REF_006: CG: не генерировать конструктор для каждого строкового литерала
  REF_007: TC: отдельный pass для symbol check, который расставляет VarType
  REF_008: CG: подчистить код в call, unless, убрать array constructors
  REF_009: CG: разделить IrGenPass на части

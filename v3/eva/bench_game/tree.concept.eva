@@ -1,0 +1,27 @@
+import range, io
+
+type Node = (child: (Node, Node) | None)
+
+def make = n: Int do
+  if n > 0 do Node((make(n - 1), make(n - 1))) else Node(none)
+
+def check = self: Node do
+  l, r = self.child unless is None return 1
+  l.check() + r.check() + 1
+
+def main =
+  min = 4
+  max = 21 -- sys.argInt(0)
+
+  stretch = make(max + 1)
+  io.stdout('stretch tree of depth % check %', max + 1, stretch.check())
+  
+  longLive = make(max)
+
+  (min to max).by(2).foreach with |depth|
+    iters = 1 shl (max + minDepth - depth)
+    total = (0 to iters).iter()
+      .map(|i| make(depth).check()).sum()
+    io.stdout('% trees of depth % check %' iters, depth, total)
+    
+  io.stdout('long lived tree of depth % check %', max, longLive.check())
