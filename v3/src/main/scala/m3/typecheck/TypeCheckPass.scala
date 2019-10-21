@@ -1,12 +1,13 @@
 package m3.typecheck
 
-import m3.parse.Ast0._
+import m3.Ast0._
+import m3.Builtin._
+import m3.parse.Level
 import m3.parse.ParseMeta._
-import m3.parse.{AstInfo, Level}
-import m3.typecheck.Builtin._
 import m3.typecheck.TCE.NoSuchSelfDef
 import m3.typecheck.TCMeta._
 import m3.typecheck.Utils._
+import m3._
 
 case class PassContext(prefix: String, colorId: Int,
                        level: Level, module: Module,
@@ -78,6 +79,34 @@ case class PassContext(prefix: String, colorId: Int,
 
 
 class TypeCheckPass {
+  //FIXME: move to TypeHintPass
+  def assertCorrect(self: TypeHint, params: Seq[GenericTh]): Unit =
+    self match {
+      case sth: ScalarTh =>
+        val (_, decl) = typeDecl(sth)
+
+        if (decl.params.length != sth.params.length)
+          throw TCE.ParamsCountMismatch(sth.location)
+
+        sth.params.foreach(p => assertCorrect(p, params))
+      case sth: StructTh =>
+        val fieldNames = sth.seq.map(_.name)
+        if (fieldNames.length != fieldNames.toSet.size)
+          throw TCE.FieldNameNotUnique(sth.location)
+        sth.seq.foreach(f => assertCorrect(f.typeHint, params))
+      case uth: UnionTh =>
+        if (uth.seq.length != uth.seq.toSet.size)
+          throw TCE.UnionMembersNotUnique(uth.location)
+        uth.seq.foreach(th => assertCorrect(th, params))
+      case fth: FnTh =>
+        fth.args.foreach(th => assertCorrect(th, params))
+        assertCorrect(fth.ret, params)
+      case gth: GenericTh =>
+        if (!params.contains(gth))
+          throw TCE.NoSuchParameter(gth.location, gth)
+      case AnyTh =>
+    }
+
   def checkTypeDecl(ctx: PassContext): Unit = {
     ctx.module.types.values.foreach { td =>
       if (Builtin.isDeclaredBuiltIn(td.name))
@@ -93,7 +122,7 @@ class TypeCheckPass {
         case st: StructDecl =>
           val fieldNames = st.fields.map(_.name)
           if (fieldNames.length != fieldNames.toSet.size) throw TCE.FieldNameNotUnique(st.location)
-          st.fields.foreach(f => f.th.assertCorrect(ctx, st.params))
+          st.fields.foreach(f => assertCorrect(f.th, st.params))
         case un: UnionDecl =>
           if (un.variants.length != un.variants.toSet.size)
             throw TCE.UnionMembersNotUnique(un.location)
@@ -154,10 +183,10 @@ class TypeCheckPass {
         case (sth: ScalarTh, fieldId) =>
           typeDecl(sth) match {
             case (_, sd: StructDecl) =>
-              sd.fields
+              ThUtil.spec(sd.fields
                 .find(fd => fd.name == fieldId.value)
                 .getOrElse(throw TCE.NoSuchField(fieldId.location, sth, fieldId.value))
-                .th.spec(makeSpecMap(sd.params, sth.params))
+                .th, ThUtil.makeSpecMap(sd.params, sth.params))
             case (_, td) => throw TCE.NoSuchField(fieldId.location, sth, fieldId.value)
           }
         case (sth: StructTh, fieldId) =>
@@ -334,7 +363,7 @@ class TypeCheckPass {
                   case (_, sd: StructDecl) =>
                     sd.fields.find(fd => fd.name == fnName) match {
                       case Some(field) =>
-                        field.th.spec(makeSpecMap(sd.params, sth.params)) match {
+                        ThUtil.spec(field.th, ThUtil.makeSpecMap(sd.params, sth.params)) match {
                           case fth: FnTh =>
                             callField(fth)
                           case gettableTh if findSelfDefOpt(ctx, Seq(call.location), gettableTh, "get") != None =>
@@ -381,14 +410,14 @@ class TypeCheckPass {
         }
 
         val specMap = advicedParams match {
-          case Some(params) => makeSpecMap(sd.params, params)
-          case None => makeSpecMap(sd.params, sd.params.map(_ => AnyTh))
+          case Some(params) => ThUtil.makeSpecMap(sd.params, params)
+          case None => ThUtil.makeSpecMap(sd.params, sd.params.map(_ => AnyTh))
         }
 
         val tInfer = new TypeInfer(ctx.level, ctx.module)
 
         (sd.fields zip args).foreach { case (field, arg) =>
-          val advice = field.th.spec(specMap)
+          val advice = ThUtil.spec(field.th, specMap)
           val argTh = passExpr(ctx, scope, eq, advice, arg)
           new TypeChecker(ctx.level, ctx.module).check(Seq(arg.location), advice, argTh)
           tInfer.infer(Seq(arg.location), field.th, argTh)
@@ -420,7 +449,7 @@ class TypeCheckPass {
           case gth: GenericTh if !eq.typeParams.contains(gth) => eq.typeParams += gth
           case _ =>
         }
-        varTh.assertCorrect(ctx, eq.typeParams)
+        assertCorrect(varTh, eq.typeParams)
         // x: Int = 5 # ok
         // x = 6 # ok
         // x.y: Int = 8 # fail
@@ -464,7 +493,7 @@ class TypeCheckPass {
               case (expectedTh, AnyTh) => expectedTh
               case (expectedTh, argTh) =>
                 try {
-                  new TypeChecker(ctx.level, ctx.module).isEqual(expectedTh, argTh);
+                  ThUtil.isEqual(expectedTh, argTh);
                   argTh
                 } catch {
                   case ex: MismatchLocal => throw TCE.TypeMismatch(Seq(argTh.location), expectedTh, argTh)
@@ -473,7 +502,7 @@ class TypeCheckPass {
             (inferedArgsTh, fth.ret)
           case AnyTh =>
             val inferedArgsTh = args.map { arg =>
-              if (arg.typeHint.containsAny) throw TCE.TypeHintRequired(arg.location)
+              if (ThUtil.containsAny(arg.typeHint)) throw TCE.TypeHintRequired(arg.location)
               arg.typeHint
             }
             (inferedArgsTh, AnyTh)
@@ -554,7 +583,7 @@ class TypeCheckPass {
           case uth: UnionTh => uth.seq
           case sth: ScalarTh =>
             typeDecl(sth) match {
-              case (_, ud: UnionDecl) => ud.variants.map(v => v.spec(makeSpecMap(ud.params, sth.params)))
+              case (_, ud: UnionDecl) => ud.variants.map(v => ThUtil.spec(v, ThUtil.makeSpecMap(ud.params, sth.params)))
               case _ => throw TCE.ExpectedUnionType(expr.location, exprTh)
             }
           case _ => throw TCE.ExpectedUnionType(expr.location, exprTh)
@@ -619,16 +648,16 @@ class TypeCheckPass {
     val eq = new Equations(fn.params)
 
     val args = fn.lambda.args.map { arg =>
-      arg.typeHint.assertCorrect(ctx, eq.typeParams)
+      assertCorrect(arg.typeHint, eq.typeParams)
       (arg.name, arg.typeHint)
     }.toMap
-    fn.retTh.assertCorrect(ctx, eq.typeParams)
+    assertCorrect(fn.retTh, eq.typeParams)
 
     val defScope = DefScope(args)
 
     fn.lambda.body match {
       case llVm(_) =>
-        if (fn.retTh.containsAny) throw TCE.RetTypeHintRequired(fn.location)
+        if (ThUtil.containsAny(fn.retTh)) throw TCE.RetTypeHintRequired(fn.location)
 
         fn.setEquations(eq)
         fn.setTypeHint(FnTh(fn.lambda.args.map(_.typeHint), fn.retTh))

@@ -1,10 +1,9 @@
 package m3.typecheck
 
-import m3.parse.Ast0._
-import m3.parse.AstInfo
+import m3.Ast0._
 import m3.parse.ParseMeta._
 import m3.typecheck.TCMeta._
-import m3.typecheck.Utils._
+import m3.{AstInfo, ThUtil, TypeInfer}
 
 import scala.collection.mutable
 
@@ -41,9 +40,9 @@ class CallInfer(val ctx: PassContext,
 
   def check(lctx: PassContext, infer: TypeInfer, eq: Equation): Seq[Equation] = {
     val (eqSelfLocation, eqSelfTh) = eq.selfType
-    val eqSelfSpec = eqSelfTh.spec(infer.specMap)
+    val eqSelfSpec = ThUtil.spec(eqSelfTh, infer.specMap)
 
-    if (!eqSelfSpec.isInstanceOf[GenericTh] && !eqSelfSpec.containsAny) {
+    if (!eqSelfSpec.isInstanceOf[GenericTh] && !ThUtil.containsAny(eqSelfSpec)) {
       lctx.log(s"check $eq vs $eqSelfSpec")
 
       val (ieSeq, mod, fn, fnTh, fnEq) = findSelfDef(lctx, eqSelfLocation, eqSelfSpec, eq.fnName)
@@ -52,7 +51,7 @@ class CallInfer(val ctx: PassContext,
       val selfFnInfer = new TypeInfer(lctx.level, lctx.module)
       selfFnInfer.infer(Seq() /* ??? */ , fnTh.args(0), eqSelfSpec)
 
-      val selfFn = fnTh.spec(selfFnInfer.specMap, gth => gth).asInstanceOf[FnTh]
+      val selfFn = ThUtil.spec(fnTh, selfFnInfer.specMap, gth => gth).asInstanceOf[FnTh]
 
       val localInfer = new TypeInfer(lctx.level, lctx.module)
 
@@ -68,7 +67,7 @@ class CallInfer(val ctx: PassContext,
       val highOrder = fnEq.eqSeq.flatMap(eq => check(lctx.deeperExpr(), selfFnInfer, eq))
 
       def mySmartSpec(th: TypeHint): TypeHint = {
-        th.spec(reversed, onNotFound = { gth =>
+        ThUtil.spec(th, reversed, onNotFound = { gth =>
           anonIdSeq += 1 // FIXME BUG
           val bound = GenericTh("a" + anonIdSeq, isAnon = true)
           localInfer.specMap.put(bound, gth)
@@ -87,7 +86,7 @@ class CallInfer(val ctx: PassContext,
       }
 
       localInfer.specMap.foreach { case (eqTh, inferedTh) =>
-        val spec = inferedTh.spec(reversed)
+        val spec = ThUtil.spec(inferedTh, reversed)
 
         if (!spec.isInstanceOf[GenericTh])
           infer.infer(Seq() /* ??? */ , eqTh, spec)
@@ -105,11 +104,11 @@ class CallInfer(val ctx: PassContext,
   }
 
   def advice(thCallee: TypeHint): TypeHint =
-    thCallee.spec(tInfer.specMap)
+    ThUtil.spec(thCallee, tInfer.specMap)
 
   def lift(eqCaller: Equations): Unit = {
     def mySmartSpec(th: TypeHint): TypeHint = {
-      th.spec(tInfer.specMap, onNotFound = { gth =>
+      ThUtil.spec(th, tInfer.specMap, onNotFound = { gth =>
         if (gth.isAnon) {
           anonIdSeq += 1
           val bound = GenericTh("a" + anonIdSeq, isAnon = true)
@@ -152,7 +151,7 @@ class Invoker(
     if (retTh != AnyTh) {
       ctx.log(s"passret ${fnTh.ret} <= $retTh")
 
-      retTh.isUnion match {
+      ThUtil.isUnion(retTh) match {
         case Some(variants) =>
           val allMismatched = variants.forall { vth =>
             try {
@@ -173,8 +172,8 @@ class Invoker(
 
     val inferedArgs =
       (fnTh.args zip args).zipWithIndex.map { case ((defArgTh, argTask), idx) =>
-        val advice = eqInfer.advice(defArgTh)
-          .spec(mutable.HashMap()) /* sieve generics??? */
+        val advice = ThUtil.spec(eqInfer.advice(defArgTh),
+          mutable.HashMap()) /* sieve generics??? */
 
         ctx.log(s"inferarg $idx adviced $advice")
         val (argLocation, argTh) = argTask.infer(eqInfer.ctx, eqCaller, advice)

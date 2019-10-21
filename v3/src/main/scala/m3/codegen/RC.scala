@@ -1,9 +1,8 @@
 package m3.codegen
 
 import m3.codegen.IrUtils.{RichString, SimpleU, ThIrExtension}
-import m3.parse.Ast0._
-import m3.typecheck.Builtin
-import m3.typecheck.Utils.ThExtension
+import m3.Ast0._
+import m3.{Builtin, ThUtil}
 
 object RC {
   implicit class RichSB(self: StringBuilder) {
@@ -207,7 +206,7 @@ object RC {
       case RefUnion(variants) =>
         forUnion(mctx, mode, buff, th, variants)
       case RefStruct(fields) =>
-        if (th.isArray)
+        if (ThUtil.isArray(th))
           forRefArray(mctx, mode, buff, th.asInstanceOf[ScalarTh])
         else
           forStruct(mctx, mode, buff, th, fields)

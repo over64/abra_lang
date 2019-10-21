@@ -1,11 +1,12 @@
-package m3.typecheck
+package m3
 
-import m3.parse.Ast0._
+import m3.Ast0._
+import m3.Builtin.{thArraySizes, _}
+import m3.parse.Level
 import m3.parse.ParseMeta._
-import m3.parse.{AstInfo, Level}
-import m3.typecheck.Builtin.{thArraySizes, _}
+import m3.typecheck.TCE
 import m3.typecheck.TCMeta._
-import m3.typecheck.Utils.{makeSpecMap, typeDecl, _}
+import m3.typecheck.Utils.{typeDecl, _}
 
 sealed trait SpecResult
 case object NewSpec extends SpecResult
@@ -16,51 +17,14 @@ class TypeChecker(level: Level, module: Module,
                   genericSpec: (GenericTh, TypeHint) => SpecResult = (adv, th) => Specified(adv),
                   withTransaction: (() => Unit) => Unit = { callback => callback() }) {
 
-  def isEqualSeq(expected: Seq[TypeHint], has: Seq[TypeHint]): Unit = {
-    if (expected.length != has.length) throw new MismatchLocal
-    (expected zip has).foreach { case (e, h) => isEqual(e, h) }
-  }
-
-  def isEqual(self: TypeHint, other: TypeHint): Unit =
-    (self, other) match {
-      case (th, AnyTh) => // ok
-      case (AnyTh, th) => // ok
-      case (adv: ScalarTh, th: ScalarTh) =>
-        val (advMod, _) = typeDecl(adv)
-        val (thMod, _) = typeDecl(th)
-
-        if (advMod.pkg != thMod.pkg || adv.name != th.name) throw new MismatchLocal
-        if (adv.params.length != th.params.length) throw TCE.ParamsCountMismatch(th.location)
-        isEqualSeq(adv.params, th.params)
-      case (adv: UnionTh, th: UnionTh) =>
-        isEqualSeq(adv.seq, th.seq)
-      case (adv: StructTh, th: StructTh) =>
-        isEqualSeq(adv.seq.map(_.typeHint), th.seq.map(_.typeHint))
-      case (adv: FnTh, th: FnTh) =>
-        isEqualSeq(adv.args, th.args)
-        isEqual(adv.ret, th.ret)
-      case (adv: GenericTh, th) =>
-        genericSpec(adv, th) match {
-          case NewSpec =>
-          case Specified(specified: GenericTh) =>
-            if (th.isInstanceOf[GenericTh]) {
-              val gth = th.asInstanceOf[GenericTh]
-              if (specified.typeName != gth.typeName) throw new MismatchLocal
-            } else throw new MismatchLocal
-          case Specified(specifiedTh) =>
-            isEqual(specifiedTh, th)
-        }
-      case (adv, th) => throw new MismatchLocal
-    }
-
   def checkUnionMember(ud: UnionDecl, adv: ScalarTh, th: TypeHint): Unit = {
 
     if (ud.params.length != adv.params.length) throw TCE.ParamsCountMismatch(adv.location)
 
-    val specMapInternal = makeSpecMap(ud.params, adv.params)
+    val specMapInternal = ThUtil.makeSpecMap(ud.params, adv.params)
     ud.variants.exists { udVariant =>
       try {
-        withTransaction(() => isEqual(udVariant.spec(specMapInternal), th));
+        withTransaction(() => ThUtil.checkEqual(ThUtil.spec(udVariant, specMapInternal), th, genericSpec));
         true
       } catch {
         case ex: Exception => false
@@ -74,7 +38,7 @@ class TypeChecker(level: Level, module: Module,
       case (AnyTh, th) =>
       case (arraySize, sth: ScalarTh) if arraySize == thArraySize =>
         doCheck(thArraySizes, sth)
-      case (array1: ScalarTh, array2: ScalarTh) if array1.isArray && array2.isArray =>
+      case (array1: ScalarTh, array2: ScalarTh) if ThUtil.isArray(array1) && ThUtil.isArray(array2) =>
         val (_, decl1) = typeDecl(array1)
         val (_, decl2) = typeDecl(array2)
 
@@ -85,13 +49,13 @@ class TypeChecker(level: Level, module: Module,
               throw new MismatchLocal
         }
 
-        isEqualSeq(array1.params, array2.params)
+        ThUtil.checkEqualSeq(array1.params, array2.params, genericSpec)
       case (adv: ScalarTh, sth: ScalarTh) =>
         val (advMod, advDecl) = typeDecl(adv)
         val (sthMod, sthDecl) = typeDecl(sth)
         if (advMod.pkg == sthMod.pkg && adv.name == sth.name) {
           if (adv.params.length != sth.params.length) throw TCE.ParamsCountMismatch(sth.location)
-          isEqualSeq(adv.params, sth.params)
+          ThUtil.checkEqualSeq(adv.params, sth.params, genericSpec)
         }
         else {
           typeDecl(adv) match {
@@ -108,7 +72,7 @@ class TypeChecker(level: Level, module: Module,
       case (adv: UnionTh, th: ScalarTh) =>
         adv.seq.exists { advVariant =>
           try {
-            withTransaction(() => isEqual(advVariant, th));
+            withTransaction(() => ThUtil.checkEqual(advVariant, th, genericSpec))
             true
           } catch {
             case ex: MismatchLocal => false
@@ -125,7 +89,7 @@ class TypeChecker(level: Level, module: Module,
               case ex: MismatchLocal => false
             }
         }
-      case (adv, th) => isEqual(expected, has)
+      case (adv, th) => ThUtil.checkEqual(expected, has, genericSpec)
     }
 
   def check(location: Seq[AstInfo], expected: TypeHint, has: TypeHint): Unit = {

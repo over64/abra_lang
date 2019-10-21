@@ -1,6 +1,6 @@
 package m3.typecheck
 
-import m3.parse.Ast0.{Def, Module, TypeHint}
+import m3.Ast0.{Def, Module, TypeHint}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer

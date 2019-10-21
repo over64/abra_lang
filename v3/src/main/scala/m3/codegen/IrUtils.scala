@@ -3,11 +3,12 @@ package m3.codegen
 import java.io._
 import java.util.Scanner
 
-import m3.parse.Ast0._
+import m3.Ast0._
+import m3.Builtin
 import m3.parse.Level
 import m3.typecheck.TCMeta._
-import m3.typecheck.Utils.ThExtension
-import m3.typecheck.{Builtin, Utils}
+import m3.ThUtil
+import m3.typecheck.Utils
 
 import scala.collection.mutable
 
@@ -53,10 +54,10 @@ object IrUtils {
               val elTh = th.params(0)
               sd.getBuiltinArrayLen == None || elTh.isRefTypeRecursive(mctx, stack)
             } else {
-              val specMap = Utils.makeSpecMap(sd.params, th.params)
+              val specMap = ThUtil.makeSpecMap(sd.params, th.params)
               sd.fields.exists { f =>
 
-                f.th.spec(specMap).isRefTypeRecursive(mctx, stack :+ th.name)
+                ThUtil.spec(f.th, specMap).isRefTypeRecursive(mctx, stack :+ th.name)
               }
             }
           case (mod, ud: UnionDecl) =>
@@ -98,8 +99,8 @@ object IrUtils {
         case sth: ScalarTh =>
           Utils.typeDecl(sth) match {
             case (_, sd: StructDecl) =>
-              val specMap = Utils.makeSpecMap(sd.params, sth.params)
-              val fields = sd.fields.map(f => FieldTh(f.name, f.th.spec(specMap)))
+              val specMap = ThUtil.makeSpecMap(sd.params, sth.params)
+              val fields = sd.fields.map(f => FieldTh(f.name, ThUtil.spec(f.th, specMap)))
 
               if (isValue) ValueStruct(fields) else RefStruct(fields)
             case (_, ud: UnionDecl) =>
@@ -175,8 +176,8 @@ object IrUtils {
       case sth: ScalarTh =>
         Utils.typeDecl(sth) match {
           case (_, sd: StructDecl) if !sd.isBuiltinArray =>
-            val specMap = Utils.makeSpecMap(sd.params, sth.params)
-            sd.fields.map(f => FieldTh(f.name, f.th.spec(specMap)))
+            val specMap = ThUtil.makeSpecMap(sd.params, sth.params)
+            sd.fields.map(f => FieldTh(f.name, ThUtil.spec(f.th, specMap)))
           case _ =>
             throw new RuntimeException(s"Internal compiler error: $self is not struct type")
         }
@@ -213,9 +214,9 @@ object IrUtils {
               val elementTh = th.params(0)
               elementTh.orderTypeHintsRec(level, module, result, stack)
             case (_, sd: StructDecl) =>
-              val specMap = Utils.makeSpecMap(sd.params, th.params)
+              val specMap = ThUtil.makeSpecMap(sd.params, th.params)
               sd.fields.foreach { f =>
-                val specked = f.th.spec(specMap)
+                val specked = ThUtil.spec(f.th, specMap)
                 specked.orderTypeHintsRec(level, module, result, stack :+ (module, self))
               }
             case (_, ud: UnionDecl) =>
@@ -299,8 +300,8 @@ object IrUtils {
                         else
                           s"[${sd.getBuiltinArrayLen.get} x $elementIr]"
                       case (_, sd: StructDecl) =>
-                        val specMap = Utils.makeSpecMap(sd.params, th.params)
-                        val fieldsIr = sd.fields.map { f => f.th.spec(specMap).toValue(mctx) }
+                        val specMap = ThUtil.makeSpecMap(sd.params, th.params)
+                        val fieldsIr = sd.fields.map { f => ThUtil.spec(f.th, specMap).toValue(mctx) }
                         if (th.isRefType(mctx))
                           s"${self.toValue(mctx, suffix = ".body")}*\n${self.toValue(mctx, suffix = ".body")} = type { ${fieldsIr.mkString(", ")} }" // crunch
                         else

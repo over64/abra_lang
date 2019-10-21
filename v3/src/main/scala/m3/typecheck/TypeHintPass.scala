@@ -1,6 +1,7 @@
 package m3.typecheck
 
-import m3.parse.Ast0._
+import m3.Ast0._
+import m3.Builtin
 import m3.parse.Level
 import m3.parse.ParseMeta.ParseNodeMetaImplicit
 
@@ -30,7 +31,7 @@ object TypeHintPass {
           sth.params.foreach(th => passTh(th))
         case StructTh(fields) => fields.seq.foreach(f => passTh(f.typeHint))
         case UnionTh(variants) => variants.foreach(th => passTh(th))
-        case FnTh(_, args, ret) =>
+        case FnTh(args, ret) =>
           args.foreach(th => passTh(th))
           passTh(ret)
         case _: GenericTh =>

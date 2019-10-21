@@ -3,10 +3,11 @@ package m3.codegen
 import java.io.PrintStream
 
 import m3.codegen.IrUtils._
-import m3.parse.Ast0._
+import m3.Ast0._
+import m3.{Builtin, ThUtil, TypeInfer}
 import m3.parse.Level
 import m3.typecheck.TCMeta.{CallTypeTCMetaImplicit, PolymorphicTCMetaImplicit, VarTypeTCMetaImplicit}
-import m3.typecheck.Utils.{RichDef, ThExtension}
+import m3.typecheck.Utils.{RichDef}
 import m3.typecheck._
 
 import scala.collection.mutable
@@ -136,8 +137,9 @@ case class DContext(specMap: mutable.HashMap[GenericTh, TypeHint],
     t
   }
 
+  /* на данном уровне мы не должны делать специализаций типов? */
   def specialized(th: TypeHint): TypeHint =
-    th.spec(specMap)
+    ThUtil.spec(th, specMap)
 
   object meta {
 
@@ -409,18 +411,18 @@ class IrGenPass {
                   self.getCallSpecMap
                 }
                 val mappedSpecMap = callSpecMap.map {
-                  case (k, v) => (k, v.spec(dctx.specMap))
+                  case (k, v) => (k, ThUtil.spec(v, dctx.specMap))
                 }
                 val callAppliedTh = {
                   import TCMeta.ParseNodeTCMetaImplicit
-                  fn.getTypeHint[TypeHint].spec(mappedSpecMap).asInstanceOf[FnTh]
+                  ThUtil.spec(fn.getTypeHint, mappedSpecMap).asInstanceOf[FnTh]
                 }
                 val fnTh = {
                   import TCMeta.ParseNodeTCMetaImplicit
                   fn.getTypeHint[FnTh]
                 }
                 val isGeneric = fn.params.nonEmpty
-                val genericArgs = if (isGeneric) "[" + fn.params.map(p => p.spec(mappedSpecMap)).mkString(", ") + "]" else ""
+                val genericArgs = if (isGeneric) "[" + fn.params.map(p => ThUtil.spec(p, mappedSpecMap)).mkString(", ") + "]" else ""
 
                 cs match {
                   case ths: ThisModule =>
@@ -479,18 +481,19 @@ class IrGenPass {
                   fn.getTypeHint[FnTh]
                 }
 
+                /* Необходимо как-то избавиться от использования TypeInfer на уровне кодогенерации */
                 val tInter = new TypeInfer(mctx.level, mctx.modules.head)
                 tInter.infer(Seq.empty, fn.lambda.args.head.typeHint, selfTh)
                 val mappedSpecMap = tInter.specMap
 
                 val isGeneric = fn.params.nonEmpty
-                val genericArgs = if (isGeneric) "[" + fn.params.map(p => p.spec(mappedSpecMap)).mkString(", ") + "]" else ""
+                val genericArgs = if (isGeneric) "[" + fn.params.map(p => ThUtil.spec(p, mappedSpecMap)).mkString(", ") + "]" else ""
                 val selfFnName = "@" + (mod.pkg + "." + fnTh.args.head + "." + sc.fnName + genericArgs).escaped
 
                 if (isGeneric)
                   passDef(mctx.copy(modules = Seq(mod)), DContext(mappedSpecMap, dctx.resolvedSelfDefs, fn, false))
 
-                doIrCall(mctx.copy(modules = Seq(mctx.modules.last)), dctx, callAppliedTh.spec(dctx.specMap).asInstanceOf[FnTh], sc.self +: sc.args, None, selfFnName)
+                doIrCall(mctx.copy(modules = Seq(mctx.modules.last)), dctx, ThUtil.spec(callAppliedTh, dctx.specMap).asInstanceOf[FnTh], sc.self +: sc.args, None, selfFnName)
             }
         }
       case Prop(from, props) =>
@@ -845,7 +848,7 @@ class IrGenPass {
     val retTh = fth.ret
 
     val params = dctx.fn.params
-    val irParams = if (params.isEmpty) "" else params.map(p => p.spec(dctx.specMap)).mkString("[", ", ", "]")
+    val irParams = if (params.isEmpty) "" else params.map(p => ThUtil.spec(p, dctx.specMap)).mkString("[", ", ", "]")
 
     val fnName =
       dctx.fn.lambda.args.headOption match {

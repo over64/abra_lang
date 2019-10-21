@@ -1,7 +1,7 @@
 package parse
 
 import grammar.M2Parser
-import m3.parse.Ast0._
+import m3.Ast0._
 import org.antlr.v4.runtime.tree.ParseTree
 import org.scalatest.FunSuite
 

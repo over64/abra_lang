@@ -1,7 +1,7 @@
 package parse
 
 import grammar.{M2LexerForIDE, M2Parser}
-import m3.parse.Ast0.ParseNode
+import m3.Ast0.ParseNode
 import m3.parse.Visitor
 import org.antlr.v4.runtime._
 import org.antlr.v4.runtime.misc.ParseCancellationException

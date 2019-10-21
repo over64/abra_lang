@@ -1,9 +1,9 @@
 package m3.codegen
 
 import m3.codegen.IrUtils.{NullableU, ThIrExtension}
-import m3.parse.Ast0._
-import m3.typecheck.{Builtin, VarClosureLocal, VarClosureParam, VarType}
-import m3.typecheck.Utils.ThExtension
+import m3.Ast0._
+import m3.{Builtin, ThUtil}
+import m3.typecheck.{VarClosureLocal, VarClosureParam, VarType}
 
 sealed trait RequireDest
 case object AsStoreSrc extends RequireDest
@@ -80,11 +80,11 @@ object Abi {
             val slot = dctx.addSlot(requireTh)
             store(mctx, dctx, false, false, requireTh, hasTh, slot, loadResValue(hasTh, res).value)
             EResult(slot, true, res.isAnon)
-          case RefStruct(_) if requireTh.isArray =>
+          case RefStruct(_) if ThUtil.isArray(requireTh) =>
             val r1, r2, r3 = "%" + dctx.nextReg("")
             val elTh = hasTh.asInstanceOf[ScalarTh].params(0)
             dctx.write(s"$r1 = bitcast ${hasTh.toValue(mctx)}* ${res.value} to ${elTh.toValue(mctx)}*")
-            val len = hasTh.getArrayLen
+            val len = ThUtil.getArrayLen(hasTh)
             dctx.write(s"$r2 = insertvalue ${requireTh.toValue(mctx)} undef, i32 $len, 0")
             dctx.write(s"$r3 = insertvalue ${requireTh.toValue(mctx)} $r2, ${elTh.toValue(mctx)}* $r1, 1")
             EResult(r3, false, res.isAnon)

@@ -1,6 +1,6 @@
 package m3.typecheck
 
-import m3.parse.Ast0._
+import m3.Ast0._
 
 import scala.collection.mutable.HashMap
 

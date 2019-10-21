@@ -1,9 +1,9 @@
-package m3.typecheck
+package m3
 
-import m3.parse.Ast0._
+import m3.Ast0._
+import m3.typecheck.{TCE, TCMeta}
 import m3.parse.ParseMeta._
-import m3.typecheck.TCMeta._
-import m3.parse.AstInfo
+import TCMeta.TypeDeclTCMetaImplicit
 
 object Builtin {
   val thLong = ScalarTh(params = Seq.empty, "Long", None)
@@ -25,7 +25,7 @@ object Builtin {
   Seq(thLong, thInt, thShort, thByte,
     thDouble, thFloat, thBool, thString, thNil,
     thUnreachable, thArraySize
-  ).foreach(th => TCMeta.setSthModule(th, builtInMod))
+  ).foreach(th => TCMeta.setSthModule(th, builtInMod)) // FIXME: cross ref to TypecheckPass
 
   val builtinTypeDecl: Map[String, TypeDecl] = (
     Seq("Unreachable", "None", "Bool", "ArraySize", "Byte", "Short", "Int", "Long", "Float", "Double").map { name =>
@@ -48,7 +48,7 @@ object Builtin {
           case "" => None
           case sLen => Some(sLen.toLong)
         }
-        decl.setBuiltinArray(len)
+        decl.setBuiltinArray(len) // FIXME: don't do this
         decl
       case name =>
         builtinTypeDecl.getOrElse(name, {

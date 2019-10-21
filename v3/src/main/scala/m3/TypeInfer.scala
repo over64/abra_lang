@@ -1,7 +1,7 @@
-package m3.typecheck
+package m3
 
-import m3.parse.Ast0.{GenericTh, Module, TypeHint}
-import m3.parse.{AstInfo, Level}
+import m3.Ast0.{GenericTh, Module, TypeHint}
+import m3.parse.Level
 
 import scala.collection.mutable
 
@@ -28,10 +28,8 @@ class TypeInfer(val level: Level, module: Module,
       genericSpec = (adv, th) => {
         specMap.get(adv) match {
           case Some(specified) => Specified(specified)
-          case None =>
-            specMap.put(adv, th); onSpec(this, adv, th); NewSpec
+          case None => specMap.put(adv, th); onSpec(this, adv, th); NewSpec
         }
-      },
-      withTransaction).check(location, expected, has)
+      }, withTransaction).check(location, expected, has)
   }
 }

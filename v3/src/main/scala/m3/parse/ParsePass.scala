@@ -3,7 +3,7 @@ package m3.parse
 import java.nio.file.{Files, Paths}
 
 import grammar.{M2LexerForIDE, M2Parser}
-import m3.parse.Ast0.Module
+import m3.Ast0.Module
 import org.antlr.v4.runtime.misc.ParseCancellationException
 import org.antlr.v4.runtime.{ANTLRInputStream, BailErrorStrategy, CommonTokenStream, InputMismatchException}
 

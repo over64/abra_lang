@@ -1,6 +1,6 @@
 package m3.codegen
 
-import m3.parse.Ast0.Def
+import m3.Ast0.Def
 
 object CGMeta {
   def setIntermodInline(fn: Def): Unit =

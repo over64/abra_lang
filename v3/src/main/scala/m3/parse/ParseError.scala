@@ -1,5 +1,7 @@
 package m3.parse
 
+import m3.AstInfo
+
 sealed trait ParseError extends Exception
 object PE {
   case class ArgTypeHintRequired(location: AstInfo) extends ParseError

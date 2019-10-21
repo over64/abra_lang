@@ -1,6 +1,7 @@
 package m3.parse
 
-import m3.parse.Ast0.{ParseNode, TypeDecl}
+import m3.Ast0.{ParseNode, TypeDecl}
+import m3.AstInfo
 
 object ParseMeta {
   implicit class ParseNodeMetaImplicit(self: ParseNode) {

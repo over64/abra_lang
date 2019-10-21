@@ -1,4 +1,4 @@
-package m3.parse
+package m3
 
 import scala.collection.mutable
 

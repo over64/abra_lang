@@ -1,7 +1,7 @@
 package m3.typecheck
 
-import m3.parse.Ast0.{GenericTh, TypeHint}
-import m3.parse.{Ast0, AstInfo}
+import m3.{Ast0, AstInfo}
+import m3.Ast0.{GenericTh, TypeHint}
 
 sealed trait TypeCheckError extends Exception
 
