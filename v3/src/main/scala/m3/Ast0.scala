@@ -39,8 +39,19 @@ object Ast0 {
   case class UnionDecl(params: Seq[GenericTh], name: String, variants: Seq[TypeHint]) extends TypeDecl
 
   sealed trait TypeHint extends ParseNode
-  case class ScalarTh(params: Seq[TypeHint], name: String, ie: Option[String]) extends TypeHint {
+  case class ScalarTh(params: Seq[TypeHint], name: String, ie: Option[String], declaredIn: String) extends TypeHint {
     override def toString: String = s"${ie.map(s => s + ".").getOrElse("")}$name${if (params.isEmpty) "" else params.mkString("[", ", ", "]")}"
+
+    override def equals(obj: Any): Boolean =
+      obj match {
+        case sth: ScalarTh =>
+          this.params == sth.params &&
+            this.name == sth.name &&
+            this.declaredIn == sth.declaredIn
+        case _ => false
+      }
+
+    override def hashCode(): Int = (params, name, declaredIn).hashCode()
   }
   case class FieldTh(name: String, typeHint: TypeHint) extends ParseNode {
     override def toString: String = s"$name: $typeHint"

@@ -1,5 +1,6 @@
 package typecheck
 
+import m3.Ast0.{ScalarTh, UnionTh}
 import m3.typecheck.TCE
 import org.scalatest.FunSuite
 import typecheck.TypeCheckUtil._
@@ -19,7 +20,11 @@ class _16ImportTypeTest extends FunSuite {
 
     val main = ast.function("main")
     assertTh("() -> None", main)
-    assertTh("modA.Some | Int", main.varDecl("value"))
+    assertThRaw(
+      UnionTh(Seq(
+        ScalarTh(Seq.empty, "Some", Some("modA"), "modA"),
+        ScalarTh(Seq.empty, "Int", None, "prelude"))),
+      main.varDecl("value"))
   }
 
   test("import module: with type") {
@@ -36,7 +41,11 @@ class _16ImportTypeTest extends FunSuite {
 
     val main = ast.function("main")
     assertTh("() -> None", main)
-    assertTh("Some | Int", main.varDecl("value"))
+    assertThRaw(
+      UnionTh(Seq(
+        ScalarTh(Seq.empty, "Some", None, "modA"),
+        ScalarTh(Seq.empty, "Int", None, "prelude"))),
+      main.varDecl("value"))
   }
 
   test("import type from module: deep 3") {

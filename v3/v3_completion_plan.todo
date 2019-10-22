@@ -1,7 +1,7 @@
  THE BUG LIST
 +BUG_001:  TC: treeWithPool.6: конструктор структуры, принимающей поле типа t | None, где в качестве аргумента call, возвращающий t
 +BUG_002:  PR: treeWithPool.17: вложенные unless требуют пробела между '.', то есть '. .' вместо '..'
- BUG_003:  CG: cube.6: кодогенератор сравнивает типы на ==, это некорректно
++BUG_003:  CG: cube.6: кодогенератор сравнивает типы на ==, это некорректно
 +BUG_004:  CG: objfile.28: реализовать call: SelfCallImport
 +BUG_005:  PR: objfile.47: некорректный разрабор AST
 +BUG_006:  CG: tree.15: функция mkTree не должна дергать RC
@@ -27,7 +27,7 @@
 +REF_005: TC, CG: убрать конструкторы array
 +REF_006: CG: не генерировать конструктор для каждого строкового литерала
  REF_007: TC: отдельный pass для symbol check, который расставляет VarType
- REF_008: CG: подчистить код в call, unless, убрать array constructors
++REF_008: CG: подчистить код в call, unless, убрать array constructors
  REF_009: CG: разделить IrGenPass на части
  REF_010: ALL: дедуплицировать код для работы с TypeHint
  REF_011: выделить отдельный pass SymbolCheck

@@ -679,25 +679,27 @@ class IrGenPass {
           val matched = isSeq.zipWithIndex.map { case (is, idx) =>
             val isTypeRef = dctx.specialized(is.typeRef)
             Branch(s"unless${brId}_matched$idx", dctx => {
+
               is.vName.foreach { vName =>
-                expTh.classify(mctx) match {
+                val r = "%" + dctx.nextReg("")
+
+                val destVar = expTh.classify(mctx) match {
                   case NullableUnion(_) =>
-                    val r = "%" + dctx.nextReg("")
                     val slot = dctx.addSlot(isTypeRef)
                     dctx.write(s"$r = bitcast ${expTh.toValue(mctx)} ${res.value} to ${isTypeRef.toValue(mctx)}")
                     dctx.write(s"store ${isTypeRef.toValue(mctx)} $r, ${isTypeRef.toValue(mctx)}* $slot")
                     dctx.scope.aliases.put(vName.value, slot.stripPrefix("%"))
-                    if (res.isAnon)
-                      dctx.scope.freeSet += ((isTypeRef, EResult(slot, true, true)))
+                    slot
                   case _ =>
                     val alias = dctx.addSymbol(vName.value)
                     dctx.scope.aliases.put(vName.value, alias)
-                    val r = "%" + dctx.nextReg("")
                     dctx.write(s"$r = bitcast ${expTh.toValue(mctx)}* ${res.value} to {i64, ${isTypeRef.toValue(mctx)}}*")
                     dctx.write(s"%$alias =  getelementptr {i64, ${isTypeRef.toValue(mctx)}}, {i64, ${isTypeRef.toValue(mctx)}}* $r, i64 0, i32 1")
-                    if (res.isAnon)
-                      dctx.scope.freeSet += ((isTypeRef, EResult(alias, true, true)))
+                    alias
                 }
+
+                if (res.isAnon)
+                  dctx.scope.freeSet += ((isTypeRef, EResult(destVar, true, true)))
               }
             }, isTypeRef, is._do)
           }
@@ -729,30 +731,26 @@ class IrGenPass {
               }, th, Seq(id))
           }
 
-          // FIXME: dedup code
-          expTh.classify(mctx) match {
-            case NullableUnion(variant) =>
+          val (switchOver, switchType) = expTh.classify(mctx) match {
+            case NullableUnion(_) =>
               val r1 = "%" + dctx.nextReg("")
               dctx.write(s"$r1 = icmp eq ${expTh.toValue(mctx)} ${res.value}, null ")
-              dctx.write(s"switch i1 $r1, label %$endBr [")
-              expTh.asUnion(mctx).zipWithIndex.foreach { case (variant, idx) =>
-                val branch = matched.find(br => br.th == variant)
-                  .getOrElse(unmatched.find(br => br.th == variant).get)
-                dctx.write(s"  i1 $idx, label %${branch.beginLabel}")
-              }
-              dctx.write(s"]")
+              (r1, "i1")
             case _ =>
               val r1, r2 = "%" + dctx.nextReg("")
               dctx.write(s"$r1 = getelementptr ${expTh.toValue(mctx)}, ${expTh.toValue(mctx)}* ${res.value}, i64 0, i32 0")
               dctx.write(s"$r2 = load i64, i64* $r1")
-              dctx.write(s"switch i64 $r2, label %$endBr [")
-              expTh.asUnion(mctx).zipWithIndex.foreach { case (variant, idx) =>
-                val branch = matched.find(br => br.th == variant)
-                  .getOrElse(unmatched.find(br => br.th == variant).get)
-                dctx.write(s"  i64 $idx, label %${branch.beginLabel}")
-              }
-              dctx.write(s"]")
+              (r2, "i64")
           }
+
+          dctx.write(s"switch $switchType $switchOver, label %$endBr [")
+          expTh.asUnion(mctx).zipWithIndex.foreach { case (variant, idx) =>
+            val branch = matched.find(br => br.th == variant)
+              .getOrElse(unmatched.find(br => br.th == variant).get)
+            dctx.write(s"  $switchType $idx, label %${branch.beginLabel}")
+          }
+          dctx.write(s"]")
+
           (res, matched ++ unmatched)
         })
 
@@ -1004,6 +1002,5 @@ class IrGenPass {
 
     val m2 = System.currentTimeMillis()
     println(s"__CodeGen pass elapsed: ${m2 - m1}ms")
-
   }
 }

@@ -1,6 +1,7 @@
 package m3.typecheck
 
 import m3.Ast0._
+import m3.parse.Level
 import m3.{Builtin, ThUtil}
 import m3.parse.ParseMeta._
 
@@ -17,16 +18,16 @@ object Utils {
     def isGeneric: Boolean = params.nonEmpty
   }
 
-  def typeDecl(th: ScalarTh): (Module, TypeDecl) = {
-    val declaredIn = TCMeta.getSthModule(th)
+  def typeDecl(level: Level, th: ScalarTh): (Module, TypeDecl) = {
     if (Builtin.isDeclaredBuiltIn(th.name))
-      (declaredIn, Builtin.resolveBuiltinType(th))
+      (Builtin.builtInMod, Builtin.resolveBuiltinType(th))
     else {
-      val td = declaredIn.types.getOrElse(th.name, {
-        var x = 1
+      val mod = level.findMod(th.declaredIn).get
+      val td = mod.types.getOrElse(th.name, {
         throw TCE.NoSuchType(th.location, Seq.empty, th.name)
       })
-      (declaredIn, td)
+
+      (mod, td)
     }
   }
 }

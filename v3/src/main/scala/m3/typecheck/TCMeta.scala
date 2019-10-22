@@ -24,16 +24,6 @@ case class CallImport(module: Module, fn: Def) extends OtherModule
 case class SelfCallImport(module: Module, fn: Def) extends OtherModule
 
 object TCMeta {
-  def setSthModule(self: ScalarTh, mod: Module): Unit =
-    self.meta.put("module_for_scalar_th.declared_at", mod)
-
-  def getSthModule(self: ScalarTh): Module =
-    self.meta.getOrElse("module_for_scalar_th.declared_at", {
-      var x = 1
-      throw new RuntimeException("unreachable")
-    }).asInstanceOf[Module]
-
-
   implicit class PolymorphicTCMetaImplicit(self: ParseNode) {
     def valueOrEmpty() =
       self.meta.getOrElseUpdate("typecheck.resolved_self_defs",

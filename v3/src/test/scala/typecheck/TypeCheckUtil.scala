@@ -3,12 +3,12 @@ package typecheck
 import java.io.{File, FileWriter}
 
 import grammar.{M2LexerForIDE, M2Parser}
-import org.scalatest.FunSuite
 import m3.Ast0._
 import m3.parse.{ParsePass, Resolver, Visitor}
 import m3.typecheck.TCMeta._
-import m3.typecheck.{TypeHintPass, TypeCheckPass}
+import m3.typecheck.TypeCheckPass
 import org.antlr.v4.runtime.{ANTLRInputStream, BailErrorStrategy, CommonTokenStream}
+import org.scalatest.FunSuite
 
 object TypeCheckUtil extends FunSuite {
   def assertTh(expected: String, has: TypeHint): Unit = {
@@ -19,6 +19,16 @@ object TypeCheckUtil extends FunSuite {
     val th: TypeHint = has.getTypeHint
     assert(th === expected.toTh)
   }
+
+  def assertThRaw(expected: TypeHint, has: TypeHint): Unit = {
+    assert(has === expected)
+  }
+
+  def assertThRaw(expected: TypeHint, has: ParseNode): Unit = {
+    val th: TypeHint = has.getTypeHint
+    assert(th === expected)
+  }
+
 
   def astForCode(code: String): Module =
     astForModules({
@@ -36,7 +46,6 @@ object TypeCheckUtil extends FunSuite {
       }
     }, None).pass("main")
 
-    TypeHintPass.pass(root)
     new TypeCheckPass().pass(root)
     root.findMod("main").get
   }
@@ -67,7 +76,7 @@ object TypeCheckUtil extends FunSuite {
 
       val parser = new M2Parser(tokens)
       parser.setErrorHandler(new BailErrorStrategy)
-      val visitor = new Visitor(self, "test.eva", "test", None)
+      val visitor = new Visitor(self, "main.eva", "main", None)
 
       visitor.visit(parser.typeHint()).asInstanceOf[TypeHint]
     }

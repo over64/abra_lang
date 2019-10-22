@@ -1,8 +1,10 @@
 package typecheck
 
+import m3.Ast0.{FnTh, ScalarTh}
 import m3.typecheck.TCE
 import org.scalatest.FunSuite
 import typecheck.TypeCheckUtil._
+import m3.typecheck.TCMeta.ParseNodeTCMetaImplicit
 
 class _17ModCallTest extends FunSuite {
   test("mod call: simple") {
@@ -37,7 +39,7 @@ class _17ModCallTest extends FunSuite {
     })
 
     val main = ast.function("main")
-    assertTh("() -> Bar", main)
+    assertThRaw(FnTh(Seq.empty, ScalarTh(Seq.empty, "Bar", None, "modA")), main)
   }
 
   test("mod call: imported foreign type return") {
@@ -55,7 +57,7 @@ class _17ModCallTest extends FunSuite {
     })
 
     val main = ast.function("main")
-    assertTh("() -> Bar", main)
+    assertThRaw(FnTh(Seq.empty, ScalarTh(Seq.empty, "Bar", None, "modA")), main)
   }
 
   test("mod call: no such def") {
@@ -84,7 +86,8 @@ class _17ModCallTest extends FunSuite {
         """
     })
 
-    assertTh("() -> Bar", ast.function("main"))
+    val main = ast.function("main")
+    assertThRaw(FnTh(Seq.empty, ScalarTh(Seq.empty, "Bar", None, "modA")), main)
   }
 
   test("mod self-extension: user-defined") {
@@ -103,7 +106,9 @@ class _17ModCallTest extends FunSuite {
         """
     })
 
-    assertTh("() -> Bar", ast.function("main"))
+    val main = ast.function("main")
+    assertThRaw(FnTh(Seq.empty, ScalarTh(Seq.empty, "Bar", None, "modC")), main)
+
   }
 
   test("mod self-extension: type clash") {

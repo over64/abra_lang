@@ -5,20 +5,18 @@ import java.math.BigInteger
 import grammar.M2Parser._
 import grammar.M2ParserVisitor
 import m3.Ast0._
-import ParseMeta._
-import m3.AstInfo
+import m3.parse.ParseMeta._
+import m3.{AstInfo, Builtin}
 import org.antlr.v4.runtime.tree.{AbstractParseTreeVisitor, TerminalNode}
 import org.antlr.v4.runtime.{ParserRuleContext, Token}
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
-import scala.collection.mutable.HashMap
 
 class Visitor(source: String, fname: String, _package: String, prelude: Option[String]) extends AbstractParseTreeVisitor[ParseNode] with M2ParserVisitor[ParseNode] {
   val byLine = source.split("\n")
-  val importedModules = new HashMap[String, String]()
-  val importedTypes = new HashMap[String, String]()
   val preludeEntry = prelude.map(ppkg => ImportEntry("prelude", ppkg, Seq.empty)).toSeq
+  var hackImports: Import = Import(Seq.empty) // zloy hack
 
   def emit[T <: ParseNode](start: Token, stop: Token, node: T): T = {
     val (endLine, endCol) =
@@ -87,14 +85,24 @@ class Visitor(source: String, fname: String, _package: String, prelude: Option[S
     emit(ctx, lId(realId.getSymbol.getText))
   }
 
-  //  override def visitExprTypeId(ctx: ExprTypeIdContext) =
-  //    emit(ctx.TypeId().getSymbol, lId(ctx.TypeId().getText))
+  override def visitScalarTh(ctx: ScalarThContext): ScalarTh = {
+    val name = ctx.typeName.getText
+    val ie = Option(ctx.id()).map(_.getText)
+    val declaredIn = ie match {
+      case Some(mod) =>
+        hackImports.seq.find(sie => sie.modName == mod).get.path
+      case None =>
+        if (Builtin.isDeclaredBuiltIn(name)) "prelude"
+        else hackImports.seq.find(sie => sie.withTypes.contains(name)) match {
+          case Some(ie) => ie.path
+          case None => _package
+        }
+    }
 
-  override def visitScalarTh(ctx: ScalarThContext): ScalarTh =
     emit(ctx, ScalarTh(
       params = ctx.typeHint().map(th => visitTypeHint(th)),
-      name = ctx.typeName.getText,
-      ie = Option(ctx.id()).map(_.getText)))
+      name, ie, declaredIn))
+  }
 
   override def visitFieldTh(ctx: FieldThContext): FieldTh =
     emit(ctx, FieldTh(
@@ -299,6 +307,8 @@ class Visitor(source: String, fname: String, _package: String, prelude: Option[S
         visitImport_(ctx.import_())
       else Import(preludeEntry)
 
+    hackImports = imp
+
     val lowCode = ctx.llvm().map(l => visitLlvm(l))
     val all = ctx.level1().map { l1 => visitLevel1(l1) }
     val types = all.filter(_.isInstanceOf[TypeDecl]).map(_.asInstanceOf[TypeDecl])
@@ -306,7 +316,7 @@ class Visitor(source: String, fname: String, _package: String, prelude: Option[S
 
     val typeMap = new mutable.HashMap[String, TypeDecl]()
     types.foreach { td =>
-      if (typeMap.contains(td.name)) throw new PE.DoubleTypeDeclaration(td.location)
+      if (typeMap.contains(td.name)) throw PE.DoubleTypeDeclaration(td.location)
       typeMap.put(td.name, td)
     }
 

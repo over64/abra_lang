@@ -47,9 +47,9 @@ object IrUtils {
       case th: ScalarTh =>
         if (stack.contains(th.name)) throw new RecursiveSelfRefEx
 
-        Utils.typeDecl(th) match {
+        Utils.typeDecl(mctx.level, th) match {
           case (_, sd: ScalarDecl) => sd.ref
-          case (mod, sd: StructDecl) =>
+          case (_, sd: StructDecl) =>
             if (sd.isBuiltinArray) {
               val elTh = th.params(0)
               sd.getBuiltinArrayLen == None || elTh.isRefTypeRecursive(mctx, stack)
@@ -97,7 +97,7 @@ object IrUtils {
 
       self match {
         case sth: ScalarTh =>
-          Utils.typeDecl(sth) match {
+          Utils.typeDecl(mctx.level, sth) match {
             case (_, sd: StructDecl) =>
               val specMap = ThUtil.makeSpecMap(sd.params, sth.params)
               val fields = sd.fields.map(f => FieldTh(f.name, ThUtil.spec(f.th, specMap)))
@@ -128,7 +128,7 @@ object IrUtils {
 
       self match {
         case sth: ScalarTh =>
-          Utils.typeDecl(sth) match {
+          Utils.typeDecl(mctx.level, sth) match {
             case (_, ud: UnionDecl) => sieveVariants(ud.variants.map(v => v))
             case _ => NoUnion
           }
@@ -140,7 +140,7 @@ object IrUtils {
     def asUnion(mctx: ModContext): Seq[TypeHint] =
       self match {
         case sth: ScalarTh =>
-          Utils.typeDecl(sth) match {
+          Utils.typeDecl(mctx.level, sth) match {
             case (_, ud: UnionDecl) =>
               ud.variants.map(th => th)
             case _ =>
@@ -154,7 +154,7 @@ object IrUtils {
     def isIrArray(mctx: ModContext): Option[StructDecl] =
       self match {
         case sth: ScalarTh =>
-          Utils.typeDecl(sth) match {
+          Utils.typeDecl(mctx.level, sth) match {
             case (_, sd: StructDecl) if sd.isBuiltinArray => Some(sd)
             case _ => None
           }
@@ -164,7 +164,7 @@ object IrUtils {
     def isStruct(mctx: ModContext): Boolean =
       self match {
         case sth: ScalarTh =>
-          Utils.typeDecl(sth) match {
+          Utils.typeDecl(mctx.level, sth) match {
             case (_, _: StructDecl) => true
             case _ => false
           }
@@ -174,7 +174,7 @@ object IrUtils {
 
     def structFields(mctx: ModContext): Seq[FieldTh] = self match {
       case sth: ScalarTh =>
-        Utils.typeDecl(sth) match {
+        Utils.typeDecl(mctx.level, sth) match {
           case (_, sd: StructDecl) if !sd.isBuiltinArray =>
             val specMap = ThUtil.makeSpecMap(sd.params, sth.params)
             sd.fields.map(f => FieldTh(f.name, ThUtil.spec(f.th, specMap)))
@@ -189,7 +189,7 @@ object IrUtils {
     def isScalar(level: Level, module: Module): Boolean =
       self match {
         case sth: ScalarTh =>
-          Utils.typeDecl(sth) match {
+          Utils.typeDecl(level, sth) match {
             case (_, _: ScalarDecl) => true
             case _ => false
           }
@@ -207,7 +207,7 @@ object IrUtils {
 
       self match {
         case th: ScalarTh =>
-          Utils.typeDecl(th) match {
+          Utils.typeDecl(level, th) match {
             case (_, sd: ScalarDecl) =>
               th.params.foreach(th => th.orderTypeHintsRec(level, module, result, stack :+ (module, self)))
             case (_, sd: StructDecl) if sd.isBuiltinArray =>
@@ -240,7 +240,7 @@ object IrUtils {
         if (Builtin.isDeclaredBuiltIn(sth.name))
           sth.toString
         else {
-          val (mod, _) = Utils.typeDecl(sth)
+          val (mod, _) = Utils.typeDecl(mctx.level, sth)
           mod.pkg + "." + sth.copy(ie = None).toString
         }
       case UnionTh(seq) =>
@@ -278,7 +278,7 @@ object IrUtils {
               case _ =>
                 self match {
                   case th: ScalarTh =>
-                    Utils.typeDecl(th) match {
+                    Utils.typeDecl(mctx.level, th) match {
                       case (_, sd: ScalarDecl) if Builtin.isDeclaredBuiltIn(sd.name) =>
                         sd.name match {
                           case "Long" => "i64"

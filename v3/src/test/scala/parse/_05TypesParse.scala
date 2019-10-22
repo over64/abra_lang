@@ -23,22 +23,22 @@ class _05TypesParse extends FunSuite {
   }
 
   test("struct") {
-    withStr("type S = (x: Int)", StructDecl(Seq(), "S", Seq(FieldDecl(false, "x", ScalarTh(Seq(), "Int", None)))))
+    withStr("type S = (x: Int)", StructDecl(Seq(), "S", Seq(FieldDecl(false, "x", ScalarTh(Seq(), "Int", None, "prelude")))))
     withStr("type Seq[t] = (length: Int, ptr: Ptr)", StructDecl(Seq(GenericTh("t")), "Seq", Seq(
-      FieldDecl(false, "length", ScalarTh(Seq(), "Int", None)),
-      FieldDecl(false, "ptr", ScalarTh(Seq(), "Ptr", None))
+      FieldDecl(false, "length", ScalarTh(Seq(), "Int", None, "prelude")),
+      FieldDecl(false, "ptr", ScalarTh(Seq(), "Ptr", None, "test"))
     )))
   }
 
   test("union") {
     withStr("type StringOpt = String | None", UnionDecl(Seq(), "StringOpt", Seq(
-      ScalarTh(Seq(), "String", None),
-      ScalarTh(Seq(), "None", None))))
+      ScalarTh(Seq(), "String", None, "prelude"),
+      ScalarTh(Seq(), "None", None, "prelude"))))
 
     withStr("type U2 = String | None | Bool", UnionDecl(Seq(), "U2", Seq(
-      ScalarTh(Seq(), "String", None),
-      ScalarTh(Seq(), "None", None),
-      ScalarTh(Seq(), "Bool", None))))
+      ScalarTh(Seq(), "String", None, "prelude"),
+      ScalarTh(Seq(), "None", None, "prelude"),
+      ScalarTh(Seq(), "Bool", None, "prelude"))))
 
     // Disabled now
     //    withStr("type Option[t] = t | None", UnionDecl(Seq(GenericTh("t")), "Option", Seq(

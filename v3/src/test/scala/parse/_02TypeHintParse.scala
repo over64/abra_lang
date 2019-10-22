@@ -16,47 +16,47 @@ class _02TypeHintParse extends FunSuite {
   import parser._
 
   test("scalar") {
-    withStr("Int", ScalarTh(Seq.empty, "Int", None))
+    withStr("Int", ScalarTh(Seq.empty, "Int", None, "prelude"))
     withStr("Map[K, V]", ScalarTh(Seq(
-      ScalarTh(Seq.empty, "K", None),
-      ScalarTh(Seq.empty, "V", None)),
-      "Map", None))
+      ScalarTh(Seq.empty, "K", None, "test"),
+      ScalarTh(Seq.empty, "V", None, "test")),
+      "Map", None, "test"))
   }
 
   test("fn") {
-    withStr("() -> None", FnTh(args = Seq.empty, ScalarTh(Seq.empty, "None", None)))
+    withStr("() -> None", FnTh(args = Seq.empty, ScalarTh(Seq.empty, "None", None, "prelude")))
 
     withStr("(Int) -> None", FnTh(
-      args = Seq(ScalarTh(Seq.empty, "Int", None)),
-      ret = ScalarTh(Seq.empty, "None", None)))
+      args = Seq(ScalarTh(Seq.empty, "Int", None, "prelude")),
+      ret = ScalarTh(Seq.empty, "None", None, "prelude")))
 
     withStr("(Int, Float) -> None", FnTh(
       args = Seq(
-        ScalarTh(Seq.empty, "Int", None),
-        ScalarTh(Seq.empty, "Float", None)),
-      ret = ScalarTh(Seq.empty, "None", None)))
+        ScalarTh(Seq.empty, "Int", None, "prelude"),
+        ScalarTh(Seq.empty, "Float", None, "prelude")),
+      ret = ScalarTh(Seq.empty, "None", None, "prelude")))
   }
 
   test("struct") {
     withStr("(x: Int, y: Seq[Int])", StructTh(Seq(
-      FieldTh("x", ScalarTh(Seq.empty, "Int", None)),
-      FieldTh("y", ScalarTh(Seq(ScalarTh(Seq.empty, "Int", None)), "Seq", None)))))
+      FieldTh("x", ScalarTh(Seq.empty, "Int", None, "prelude")),
+      FieldTh("y", ScalarTh(Seq(ScalarTh(Seq.empty, "Int", None, "prelude")), "Seq", None, "test")))))
   }
 
   test("union") {
     withStr("Int | Float", UnionTh(Seq(
-      ScalarTh(Seq.empty, "Int", None),
-      ScalarTh(Seq.empty, "Float", None)
+      ScalarTh(Seq.empty, "Int", None, "prelude"),
+      ScalarTh(Seq.empty, "Float", None, "prelude")
     )))
   }
 
   test("union with union") {
     withStr("(Int | None) | None", UnionTh(Seq(
       UnionTh(Seq(
-        ScalarTh(Seq.empty, "Int", None),
-        ScalarTh(Seq.empty, "None", None)
+        ScalarTh(Seq.empty, "Int", None, "prelude"),
+        ScalarTh(Seq.empty, "None", None, "prelude")
       )),
-      ScalarTh(Seq.empty, "None", None)
+      ScalarTh(Seq.empty, "None", None, "prelude")
     )))
   }
 }

@@ -1,9 +1,9 @@
 import
-  gl with VertexArray ShaderProgram Texture Buffer,
+  gl with VertexArray ShaderProgram Texture,
   kazmath with Vec3 Mat4,
   vec, sys, sdl, soil, .objfile
 
-type Renderer = ( vb: Buffer, -- FIXME: BUG_003
+type Renderer = ( vb: gl.Buffer,
                   vao: VertexArray,
                   program: ShaderProgram,
                   pMatrix: Mat4,

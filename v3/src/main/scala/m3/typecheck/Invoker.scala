@@ -151,7 +151,7 @@ class Invoker(
     if (retTh != AnyTh) {
       ctx.log(s"passret ${fnTh.ret} <= $retTh")
 
-      ThUtil.isUnion(retTh) match {
+      ThUtil.isUnion(ctx.level, ctx.module, retTh) match {
         case Some(variants) =>
           val allMismatched = variants.forall { vth =>
             try {
