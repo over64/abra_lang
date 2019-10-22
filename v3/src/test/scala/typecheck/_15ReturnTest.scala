@@ -1,6 +1,6 @@
 package typecheck
 
-import m3.typecheck.TCE
+import m3._02typecheck.TCE
 import org.scalatest.FunSuite
 import typecheck.TypeCheckUtil._
 

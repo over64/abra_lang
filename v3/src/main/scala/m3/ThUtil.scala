@@ -1,22 +1,21 @@
 package m3
 
 import m3.Ast0._
-import m3.parse.Level
-import m3.parse.ParseMeta._
-import m3.typecheck.Utils.typeDecl
-import m3.typecheck._
+import m3._01parse.ParseMeta._
+import m3._02typecheck.Utils.typeDecl
 
-import scala.collection.mutable
+import scala.collection.immutable.ArraySeq
+import scala.collection.mutable.{ArrayBuffer, Buffer, HashMap}
 
 object ThUtil {
-  def makeSpecMap(gen: Seq[GenericTh], params: Seq[TypeHint]) = {
+  def makeSpecMap(gen: ArraySeq[GenericTh], params: ArraySeq[TypeHint]) = {
     if (gen.length != params.length)
       throw new RuntimeException("params length mismatch")
 
-    mutable.HashMap((gen zip params): _*)
+    (gen zip params).to(HashMap)
   }
 
-  def spec(self: TypeHint, specMap: mutable.HashMap[GenericTh, TypeHint],
+  def spec(self: TypeHint, specMap: HashMap[GenericTh, TypeHint],
            onNotFound: GenericTh => TypeHint = gth => AnyTh): TypeHint = {
     val res = self match {
       case oldTh@ScalarTh(params, name, pkg, declaredIn) =>
@@ -87,7 +86,7 @@ object ThUtil {
         throw ex
     }
 
-  def findGenerics(self: TypeHint, dest: mutable.ListBuffer[GenericTh]): Unit = self match {
+  def findGenerics(self: TypeHint, dest: ArrayBuffer[GenericTh]): Unit = self match {
     case ScalarTh(params, _, _, _) =>
       params.foreach(p => findGenerics(p, dest))
     case StructTh(fields) =>

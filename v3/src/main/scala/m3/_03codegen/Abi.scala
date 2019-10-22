@@ -1,9 +1,9 @@
-package m3.codegen
+package m3._03codegen
 
-import m3.codegen.IrUtils.{NullableU, ThIrExtension}
+import m3._03codegen.IrUtils.{NullableU, ThIrExtension}
 import m3.Ast0._
 import m3.{Builtin, ThUtil}
-import m3.typecheck.{VarClosureLocal, VarClosureParam, VarType}
+import m3._02typecheck.{VarClosureLocal, VarClosureParam, VarType}
 
 sealed trait RequireDest
 case object AsStoreSrc extends RequireDest

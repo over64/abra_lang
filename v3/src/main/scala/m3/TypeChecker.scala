@@ -2,11 +2,12 @@ package m3
 
 import m3.Ast0._
 import m3.Builtin.{thArraySizes, _}
-import m3.parse.Level
-import m3.parse.ParseMeta._
-import m3.typecheck.TCE
-import m3.typecheck.TCMeta._
-import m3.typecheck.Utils.{typeDecl, _}
+import m3._01parse.ParseMeta._
+import m3._02typecheck.TCE
+import m3._02typecheck.TCMeta._
+import m3._02typecheck.Utils.{typeDecl, _}
+
+import scala.collection.immutable.ArraySeq
 
 sealed trait SpecResult
 case object NewSpec extends SpecResult
@@ -17,7 +18,7 @@ class TypeChecker(level: Level, module: Module,
                   genericSpec: (GenericTh, TypeHint) => SpecResult = (adv, th) => Specified(adv),
                   withTransaction: (() => Unit) => Unit = { callback => callback() }) {
 
-  def checkEqualSeq(expected: Seq[TypeHint], has: Seq[TypeHint],
+  def checkEqualSeq(expected: ArraySeq[TypeHint], has: ArraySeq[TypeHint],
                     genericSpec: (GenericTh, TypeHint) => SpecResult): Unit = {
     if (expected.length != has.length) throw new MismatchLocal
     (expected zip has).foreach { case (e, h) => checkEqual(e, h, genericSpec) }

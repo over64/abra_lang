@@ -1,9 +1,8 @@
-package m3.typecheck
+package m3._02typecheck
 
 import m3.Ast0.{Def, Module, TypeHint}
 
-import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.{ArrayBuffer, HashMap}
 
 sealed trait VarType
 case class VarDefLocal(fn: Def) extends VarType
@@ -19,7 +18,7 @@ sealed trait Scope {
 }
 
 case class DefScope(params: Map[String, TypeHint],
-                    retTypes: mutable.ListBuffer[TypeHint] = ListBuffer.empty) extends Scope {
+                    retTypes: ArrayBuffer[TypeHint] = ArrayBuffer.empty) extends Scope {
 
   def findVar(varName: String): Option[(TypeHint, VarType)] =
     params.get(varName).map(th => (th, VarParam))
@@ -31,8 +30,8 @@ case class DefScope(params: Map[String, TypeHint],
 
 case class LambdaScope(parent: Scope,
                        params: Map[String, TypeHint],
-                       closure: mutable.HashMap[String, (TypeHint, VarType)] = mutable.HashMap(),
-                       retTypes: mutable.ListBuffer[TypeHint] = ListBuffer.empty) extends Scope {
+                       closure: HashMap[String, (TypeHint, VarType)] = HashMap(),
+                       retTypes: ArrayBuffer[TypeHint] = ArrayBuffer.empty) extends Scope {
 
   def findVar(varName: String): Option[(TypeHint, VarType)] =
     params.get(varName) match {
@@ -55,7 +54,7 @@ case class LambdaScope(parent: Scope,
 }
 
 class BlockScope(val parent: Scope,
-                 vars: mutable.HashMap[String, TypeHint] = mutable.HashMap.empty) extends Scope {
+                 vars: HashMap[String, TypeHint] = HashMap.empty) extends Scope {
 
   def findVar(varName: String): Option[(TypeHint, VarType)] =
     vars.get(varName) match {
@@ -70,5 +69,4 @@ class BlockScope(val parent: Scope,
     parent.addRetType(th)
 }
 
-
-class WhileScope(parent: Scope) extends BlockScope(parent, mutable.HashMap.empty)
+class WhileScope(parent: Scope) extends BlockScope(parent, HashMap.empty)

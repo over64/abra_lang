@@ -1,17 +1,16 @@
-package m3.codegen
+package m3._03codegen
 
 import java.io.PrintStream
 
-import m3.codegen.IrUtils._
+import m3._03codegen.IrUtils._
 import m3.Ast0._
-import m3.{Builtin, ThUtil, TypeInfer}
-import m3.parse.Level
-import m3.typecheck.TCMeta.{CallTypeTCMetaImplicit, PolymorphicTCMetaImplicit, VarTypeTCMetaImplicit}
-import m3.typecheck.Utils.{RichDef}
-import m3.typecheck._
+import m3.{Builtin, Level, ThUtil, TypeInfer}
+import m3._02typecheck.TCMeta.{CallTypeTCMetaImplicit, PolymorphicTCMetaImplicit, VarTypeTCMetaImplicit}
+import m3._02typecheck.Utils.RichDef
+import m3._02typecheck._
 
 import scala.collection.mutable
-import scala.collection.mutable.{HashMap, ListBuffer}
+import scala.collection.mutable.{ArrayBuffer, HashMap}
 
 trait OutConf {
   def withStream[T](module: Module, op: PrintStream => T): T
@@ -20,11 +19,11 @@ trait OutConf {
 case class ModContext(out: PrintStream,
                       level: Level,
                       modules: Seq[Module],
-                      typeHints: ListBuffer[TypeHint] = ListBuffer(),
+                      typeHints: ArrayBuffer[TypeHint] = ArrayBuffer(),
                       rcDef: HashMap[(TypeHint, RCMode), StringBuilder] = HashMap(),
-                      strings: ListBuffer[HexUtil.EncodeResult] = ListBuffer(),
+                      strings: ArrayBuffer[HexUtil.EncodeResult] = ArrayBuffer(),
                       defs: HashMap[String, DContext] = HashMap(),
-                      prototypes: mutable.ListBuffer[String] = ListBuffer()) {
+                      prototypes: ArrayBuffer[String] = ArrayBuffer()) {
 
   def write(line: String): Unit =
     out.println(line)
@@ -43,7 +42,7 @@ case class WhileKind(condBr: String, endBr: String) extends ScopeKind
 case class Scope(parent: Option[Scope],
                  kind: ScopeKind,
                  aliases: HashMap[String, String] = HashMap(),
-                 freeSet: ListBuffer[(TypeHint, EResult)] = ListBuffer()) {
+                 freeSet: ArrayBuffer[(TypeHint, EResult)] = ArrayBuffer()) {
 
   def findWhile(): WhileKind = {
     kind match {
@@ -75,10 +74,10 @@ case class DContext(specMap: mutable.HashMap[GenericTh, TypeHint],
                     isClosure: Boolean,
                     symbols: HashMap[String, Int] = HashMap(),
                     vars: HashMap[String, TypeHint] = HashMap(),
-                    closureSlots: ListBuffer[String] = ListBuffer(),
-                    slots: ListBuffer[TypeHint] = ListBuffer(),
+                    closureSlots: ArrayBuffer[String] = ArrayBuffer(),
+                    slots: ArrayBuffer[TypeHint] = ArrayBuffer(),
                     var scope: Scope = Scope(None, OtherKind),
-                    code: ListBuffer[String] = ListBuffer(),
+                    code: ArrayBuffer[String] = ArrayBuffer(),
                     var needAlloc: Boolean = false,
                     var needInc: Boolean = false,
                     var needDec: Boolean = false,
@@ -171,7 +170,7 @@ case class DContext(specMap: mutable.HashMap[GenericTh, TypeHint],
 
 case class EResult(value: String, isPtr: Boolean, isAnon: Boolean)
 
-class IrGenPass {
+class Pass {
   def passExpr(mctx: ModContext, dctx: DContext, expr: Expression): EResult = {
     mctx.typeHints += dctx.meta.typeHint(expr)
 
@@ -410,7 +409,7 @@ class IrGenPass {
                   import TCMeta.ParseNodeTCMetaImplicit
                   self.getCallSpecMap
                 }
-                val mappedSpecMap = callSpecMap.map {
+                val mappedSpecMap = callSpecMap.map[GenericTh, TypeHint] {
                   case (k, v) => (k, ThUtil.spec(v, dctx.specMap))
                 }
                 val callAppliedTh = {
@@ -940,10 +939,10 @@ class IrGenPass {
           mctx.write(native.code)
         }
 
-        val typeHintOrder = ListBuffer[TypeHint]()
+        val typeHintOrder = ArrayBuffer[TypeHint]()
         mctx.typeHints.distinct.foreach(th => th.orderTypeHints(level, module, typeHintOrder))
 
-        val typeDecl = ListBuffer[(TypeHint, String)]()
+        val typeDecl = ArrayBuffer[(TypeHint, String)]()
         typeHintOrder.distinct.foreach(th => th.toDecl(mctx, typeDecl))
 
         typeDecl.foreach { case (th, decl) => mctx.write(decl) }

@@ -1,7 +1,6 @@
 package m3
 
 import m3.Ast0.{GenericTh, Module, TypeHint}
-import m3.parse.Level
 
 import scala.collection.mutable
 

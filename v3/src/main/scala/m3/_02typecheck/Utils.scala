@@ -1,16 +1,15 @@
-package m3.typecheck
+package m3._02typecheck
 
 import m3.Ast0._
-import m3.parse.Level
-import m3.{Builtin, ThUtil}
-import m3.parse.ParseMeta._
+import m3._01parse.ParseMeta._
+import m3.{Builtin, Level, ThUtil}
 
-import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 object Utils {
   implicit class RichDef(self: Def) {
-    def params: mutable.ListBuffer[GenericTh] = {
-      val dest = mutable.ListBuffer[GenericTh]()
+    def params: ArrayBuffer[GenericTh] = {
+      val dest = ArrayBuffer[GenericTh]()
       ThUtil.findGenerics(FnTh(self.lambda.args.map(_.typeHint), self.retTh), dest)
       dest
     }

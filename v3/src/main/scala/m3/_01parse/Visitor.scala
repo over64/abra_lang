@@ -1,22 +1,40 @@
-package m3.parse
+package m3._01parse
 
 import java.math.BigInteger
 
 import grammar.M2Parser._
 import grammar.M2ParserVisitor
 import m3.Ast0._
-import m3.parse.ParseMeta._
+import m3._01parse.ParseMeta._
 import m3.{AstInfo, Builtin}
 import org.antlr.v4.runtime.tree.{AbstractParseTreeVisitor, TerminalNode}
 import org.antlr.v4.runtime.{ParserRuleContext, Token}
 
-import scala.collection.JavaConversions._
-import scala.collection.mutable
+import scala.collection.immutable.ArraySeq
+import scala.collection.mutable.Buffer
+import scala.collection.mutable.HashMap
+import scala.jdk.CollectionConverters._
+import scala.reflect.ClassTag
 
 class Visitor(source: String, fname: String, _package: String, prelude: Option[String]) extends AbstractParseTreeVisitor[ParseNode] with M2ParserVisitor[ParseNode] {
+
+  implicit class ListMapper[T](self: java.util.List[T]) {
+    def map[U](lambda: T => U)(implicit m: ClassTag[U]): ArraySeq[U] = {
+      val array = new Array[U](self.size())
+
+      var i = 0
+      while (i < self.size()) {
+        array(i) = lambda(self.get(i))
+        i += 1
+      }
+
+      ArraySeq.unsafeWrapArray(array)
+    }
+  }
+
   val byLine = source.split("\n")
-  val preludeEntry = prelude.map(ppkg => ImportEntry("prelude", ppkg, Seq.empty)).toSeq
-  var hackImports: Import = Import(Seq.empty) // zloy hack
+  val preludeEntry = prelude.map(ppkg => ImportEntry("prelude", ppkg, ArraySeq.empty)).to(ArraySeq)
+  var hackImports: Import = Import(ArraySeq.empty) // zloy hack
 
   def emit[T <: ParseNode](start: Token, stop: Token, node: T): T = {
     val (endLine, endCol) =
@@ -153,7 +171,7 @@ class Visitor(source: String, fname: String, _package: String, prelude: Option[S
 
   override def visitUnionType(ctx: UnionTypeContext): UnionDecl = {
     emit(ctx, UnionDecl(
-      Seq.empty,
+      ArraySeq.empty,
       ctx.name.getText,
       ctx.nonUnionTh().map { th => visitNonUnionTh(th) }
     ))
@@ -243,7 +261,7 @@ class Visitor(source: String, fname: String, _package: String, prelude: Option[S
     ctx.op.getText match {
       case "&&" => emit(ctx, And(visitExpr(ctx.expression(0)), visitExpr(ctx.expression(1))))
       case "||" => emit(ctx, Or(visitExpr(ctx.expression(0)), visitExpr(ctx.expression(1))))
-      case _ => emit(ctx, SelfCall(ctx.op.getText, visitExpr(ctx.expression(0)), Seq(visitExpr(ctx.expression(1)))))
+      case _ => emit(ctx, SelfCall(ctx.op.getText, visitExpr(ctx.expression(0)), ArraySeq(visitExpr(ctx.expression(1)))))
     }
   }
 
@@ -253,7 +271,7 @@ class Visitor(source: String, fname: String, _package: String, prelude: Option[S
 
   override def visitExprUnaryCall(ctx: ExprUnaryCallContext): Expression =
     emit(ctx, SelfCall(ctx.op.getText,
-      visitExpr(ctx.expression()), Seq()
+      visitExpr(ctx.expression()), ArraySeq.empty
     ))
 
   override def visitExprLambda(ctx: ExprLambdaContext): Lambda = visitLambda(ctx.lambda())
@@ -314,14 +332,14 @@ class Visitor(source: String, fname: String, _package: String, prelude: Option[S
     val types = all.filter(_.isInstanceOf[TypeDecl]).map(_.asInstanceOf[TypeDecl])
     val functions = all.filter(_.isInstanceOf[Def]).map(_.asInstanceOf[Def])
 
-    val typeMap = new mutable.HashMap[String, TypeDecl]()
+    val typeMap = HashMap[String, TypeDecl]()
     types.foreach { td =>
       if (typeMap.contains(td.name)) throw PE.DoubleTypeDeclaration(td.location)
       typeMap.put(td.name, td)
     }
 
-    val defs = new mutable.HashMap[String, Def]()
-    val selfDefs = new mutable.ListBuffer[Def]()
+    val defs = HashMap[String, Def]()
+    val selfDefs = Buffer[Def]()
 
     functions.foreach { fn =>
       val selfTh = fn.lambda.args.headOption match {
@@ -337,13 +355,13 @@ class Visitor(source: String, fname: String, _package: String, prelude: Option[S
       }
     }
 
-    emit(ctx, Module(_package, imp, lowCode, typeMap.toMap, defs.toMap, selfDefs.groupBy(_.name)))
+    emit(ctx, Module(_package, imp, lowCode, typeMap.toMap, defs.toMap, selfDefs.to(ArraySeq).groupBy(_.name)))
   }
 
   override def visitImportEntry(ctx: ImportEntryContext): ImportEntry = {
     val path = ctx.VarId().map(vi => vi.getText)
       .mkString(start = if (ctx.local == null) "" else ".", sep = "/", end = "")
-    val modName = ctx.VarId().last.getText
+    val modName = ctx.VarId().asScala.last.getText
     val types = ctx.TypeId().map(ti => ti.getText)
     emit(ctx, ImportEntry(modName, path, types))
   }

@@ -1,9 +1,11 @@
 package typecheck
 
 import m3.Ast0.{ScalarTh, UnionTh}
-import m3.typecheck.TCE
+import m3._02typecheck.TCE
 import org.scalatest.FunSuite
 import typecheck.TypeCheckUtil._
+
+import scala.collection.immutable.ArraySeq
 
 class _16ImportTypeTest extends FunSuite {
   test("import module: use type with mod prefix") {
@@ -21,9 +23,9 @@ class _16ImportTypeTest extends FunSuite {
     val main = ast.function("main")
     assertTh("() -> None", main)
     assertThRaw(
-      UnionTh(Seq(
-        ScalarTh(Seq.empty, "Some", Some("modA"), "modA"),
-        ScalarTh(Seq.empty, "Int", None, "prelude"))),
+      UnionTh(ArraySeq(
+        ScalarTh(ArraySeq.empty, "Some", Some("modA"), "modA"),
+        ScalarTh(ArraySeq.empty, "Int", None, "prelude"))),
       main.varDecl("value"))
   }
 
@@ -42,9 +44,9 @@ class _16ImportTypeTest extends FunSuite {
     val main = ast.function("main")
     assertTh("() -> None", main)
     assertThRaw(
-      UnionTh(Seq(
-        ScalarTh(Seq.empty, "Some", None, "modA"),
-        ScalarTh(Seq.empty, "Int", None, "prelude"))),
+      UnionTh(ArraySeq(
+        ScalarTh(ArraySeq.empty, "Some", None, "modA"),
+        ScalarTh(ArraySeq.empty, "Int", None, "prelude"))),
       main.varDecl("value"))
   }
 

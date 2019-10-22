@@ -4,9 +4,10 @@ import java.io._
 import java.util.Scanner
 
 import m3.Ast0.Module
-import m3.codegen.{IrGenPass, OutConf}
-import m3.parse.{Level, ParsePass, Resolver}
-import m3.typecheck.TypeCheckPass
+import m3.Level
+import m3._03codegen.{OutConf, Pass}
+import m3._01parse.{Pass, Resolver}
+import m3._02typecheck.Pass
 
 import scala.collection.mutable
 
@@ -18,7 +19,7 @@ object CodeGenUtil {
     })
 
   def astForModules(resolver: String => String, entry: String = "main", prelude: Option[String]  = None): (Level, Module) = {
-    val root = new ParsePass(new Resolver {
+    val root = new m3._01parse.Pass(new Resolver {
       override def resolve(path: String): String = {
         val code = resolver(path)
         val fw = new FileWriter(new File("/tmp/" + path + ".eva"))
@@ -28,7 +29,7 @@ object CodeGenUtil {
       }
     }, prelude).pass(entry)
 
-    new TypeCheckPass().pass(root)
+    new m3._02typecheck.Pass().pass(root)
 
     (root, root.findMod(entry).get)
   }
@@ -84,7 +85,7 @@ object CodeGenUtil {
 
     val (root, _) = astForModules(resolver, entry, prelude)
     val outConf = new FileOutProvider
-    new IrGenPass().pass(root, outConf)
+    new m3._03codegen.Pass().pass(root, outConf)
 
     val objects = outConf.files.map { file =>
       val src = file.getAbsolutePath
@@ -103,8 +104,8 @@ object CodeGenUtil {
       s"clang-8 -O3 -g ${objects.mkString(" ")} ${System.getProperty("user.dir")}/v3/eva/lib/runtime2.ll -o /tmp/main  ${linkerFlags.mkString(" ")}"))._1 != 0)
       throw new RuntimeException("Compilation error: llc")
 
-    val m3 = System.currentTimeMillis()
-    println(s"__Linker pass elapsed: ${m3 - m2}ms")
+    val _m3 = System.currentTimeMillis()
+    println(s"__Linker pass elapsed: ${_m3 - m2}ms")
 
 
     val (code, out, err) = invoke(Seq("sh", "-c", "valgrind -q --leak-check=full /tmp/main"))

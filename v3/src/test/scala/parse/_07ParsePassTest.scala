@@ -1,6 +1,7 @@
 package parse
 
-import m3.parse._
+import m3.Level
+import m3._01parse._
 import org.scalatest.FunSuite
 
 class _07ParsePassTest extends FunSuite {
@@ -10,7 +11,7 @@ class _07ParsePassTest extends FunSuite {
   }
 
   test("build module LevelTree") {
-    val root = new ParsePass(new Resolver {
+    val root = new m3._01parse.Pass(new Resolver {
       override def resolve(path: String): String = path match {
         case "a" => """
          import some.c, b """
@@ -27,7 +28,7 @@ class _07ParsePassTest extends FunSuite {
 
   test("circular module reference") {
     try {
-      new ParsePass(new Resolver {
+      new m3._01parse.Pass(new Resolver {
         override def resolve(path: String): String = path match {
           case "a" =>
             """import b, c """
@@ -44,7 +45,7 @@ class _07ParsePassTest extends FunSuite {
 
   test("parse cube demo") {
     //    (1 to 100).foreach { i =>
-    val root = new ParsePass(new FsResolver(
+    val root = new m3._01parse.Pass(new FsResolver(
       libDir = System.getProperty("user.dir") + "/v3/eva/lib/",
       projDir = System.getProperty("user.dir") + "/v3/eva/demo/"
     ), None).pass(".cube")

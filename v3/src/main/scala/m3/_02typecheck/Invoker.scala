@@ -1,21 +1,22 @@
-package m3.typecheck
+package m3._02typecheck
 
 import m3.Ast0._
-import m3.parse.ParseMeta._
-import m3.typecheck.TCMeta._
+import m3._01parse.ParseMeta._
+import m3._02typecheck.TCMeta._
 import m3.{AstInfo, ThUtil, TypeInfer}
 
-import scala.collection.mutable
+import scala.collection.immutable.ArraySeq
+import scala.collection.mutable.{ArrayBuffer, Buffer, HashMap}
 
 case class Equation(selfType: (Seq[AstInfo], GenericTh),
                     fnName: String,
-                    args: Seq[(Seq[AstInfo], TypeHint)],
+                    args: ArraySeq[(Seq[AstInfo], TypeHint)],
                     ret: (Seq[AstInfo], TypeHint)) {
   override def toString: String = selfType._2 + "::" + fnName + args.map(_._2).mkString("(", ", ", ")") + " -> " + ret._2
 }
 
-class Equations(val typeParams: mutable.ListBuffer[GenericTh] = mutable.ListBuffer()) {
-  val eqSeq = mutable.ListBuffer[Equation]()
+class Equations(val typeParams: ArrayBuffer[GenericTh] = ArrayBuffer()) {
+  val eqSeq = Buffer[Equation]()
   var idSeq = 0
 
   def nextAnonType(): GenericTh = {
@@ -38,7 +39,7 @@ class CallInfer(val ctx: PassContext,
   var eqSeq = eqCallee.eqSeq
   val tInfer = new TypeInfer(ctx.level, ctx.module)
 
-  def check(lctx: PassContext, infer: TypeInfer, eq: Equation): Seq[Equation] = {
+  def check(lctx: PassContext, infer: TypeInfer, eq: Equation): Buffer[Equation] = {
     val (eqSelfLocation, eqSelfTh) = eq.selfType
     val eqSelfSpec = ThUtil.spec(eqSelfTh, infer.specMap)
 
@@ -60,9 +61,9 @@ class CallInfer(val ctx: PassContext,
           localInfer.infer(eqArgLocation, eqArgTh, fnArgTh)
         }
 
-      val reversed = localInfer.specMap.filter { case (_, v) =>
-        v.isInstanceOf[GenericTh]
-      }.map({ case (k, v) => (v.asInstanceOf[GenericTh], k.asInstanceOf[TypeHint]) })
+      val reversed = localInfer.specMap
+        .filter { case (_, v) => v.isInstanceOf[GenericTh]}
+        .map[GenericTh, TypeHint] { case (k, v) => (v.asInstanceOf[GenericTh], k.asInstanceOf[TypeHint]) }
 
       val highOrder = fnEq.eqSeq.flatMap(eq => check(lctx.deeperExpr(), selfFnInfer, eq))
 
@@ -95,7 +96,7 @@ class CallInfer(val ctx: PassContext,
       lctx.log(s"checkspec ${localInfer.specMap.mkString("{", " , ", "}")}")
       res
     } else
-      Seq(eq)
+      Buffer(eq)
   }
 
   def infer(location: Seq[AstInfo], thCallee: TypeHint, thCaller: TypeHint): Unit = {
@@ -135,10 +136,10 @@ trait InferTask {
   def infer(ctx: PassContext, eq: Equations, th: TypeHint): (AstInfo, TypeHint)
 }
 
-class Invoker(
-               val findSelfDef: (PassContext, Seq[AstInfo], TypeHint, String) => (Seq[ImportEntry], Module, Def, FnTh, Equations)) {
+class Invoker(val findSelfDef: (PassContext, Seq[AstInfo], TypeHint, String) => (Seq[ImportEntry], Module, Def, FnTh, Equations)) {
+
   def invokePrototype(ctx: PassContext, caller: ParseNode, eqCaller: Equations, eqCallee: Equations,
-                      retTh: TypeHint, fnTh: FnTh, args: Seq[InferTask]): TypeHint = {
+                      retTh: TypeHint, fnTh: FnTh, args: ArraySeq[InferTask]): TypeHint = {
 
     val location = caller.location
 
@@ -173,7 +174,7 @@ class Invoker(
     val inferedArgs =
       (fnTh.args zip args).zipWithIndex.map { case ((defArgTh, argTask), idx) =>
         val advice = ThUtil.spec(eqInfer.advice(defArgTh),
-          mutable.HashMap()) /* sieve generics??? */
+          HashMap()) /* sieve generics??? */
 
         ctx.log(s"inferarg $idx adviced $advice")
         val (argLocation, argTh) = argTask.infer(eqInfer.ctx, eqCaller, advice)
@@ -193,11 +194,11 @@ class Invoker(
   }
 
   def invokeDef(ctx: PassContext, call: Call, eqCaller: Equations,
-                retTh: TypeHint, toCall: Def, args: Seq[InferTask]): TypeHint =
+                retTh: TypeHint, toCall: Def, args: ArraySeq[InferTask]): TypeHint =
     invokePrototype(ctx, call, eqCaller, toCall.getEquations, retTh, toCall.getTypeHint, args)
 
   def invokeSelfDef(ctx: PassContext, eqCaller: Equations, call: ParseNode,
-                    retTh: TypeHint, fnName: String, self: InferTask, args: Seq[InferTask]): TypeHint = {
+                    retTh: TypeHint, fnName: String, self: InferTask, args: ArraySeq[InferTask]): TypeHint = {
 
     val location = call.location
     val (selfLocation, selfTh) = self.infer(ctx, eqCaller, AnyTh)
@@ -208,6 +209,7 @@ class Invoker(
       case gth: GenericTh =>
         val argsTh = args.map(argTask => argTask.infer(ctx, eqCaller, AnyTh))
           .map { case (loc, th) => (Seq(loc), th) }
+
         val eqRet = if (retTh != AnyTh) retTh else eqCaller.nextAnonType()
 
 

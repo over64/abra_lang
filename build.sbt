@@ -8,11 +8,11 @@ lazy val eva3 = (project in file("v3"))
   .settings(
     name := "eva-lang-compiler-v0.3",
     version := "1.0.0",
-    scalaVersion := "2.12.8",
-    assemblyJarName in assembly := "kadabra.jar",
+    scalaVersion := "2.13.1",
+    assemblyJarName in assembly := "eva.jar",
     libraryDependencies ++= Seq(
-      "com.github.scopt" %% "scopt" % "3.5.0",
+      "com.github.scopt" %% "scopt" % "4.0.0-RC2",
       "org.antlr" % "antlr4-runtime" % "4.7",
-      "org.scalatest" % "scalatest_2.12" % "3.0.1" % "test"
+      "org.scalatest" % "scalatest_2.13" % "3.0.8" % "test"
     )
   )

@@ -1,7 +1,7 @@
 package typecheck
 
 import m3.Ast0.GenericTh
-import m3.typecheck.TCMeta._
+import m3._02typecheck.TCMeta._
 import org.scalatest.FunSuite
 import typecheck.TypeCheckUtil._
 

@@ -1,7 +1,9 @@
-package m3.typecheck
+package m3._02typecheck
 
 import m3.Ast0._
 
+import scala.collection.immutable.ArraySeq
+import scala.collection.mutable.Buffer
 import scala.collection.mutable.HashMap
 
 sealed trait CallType
@@ -101,7 +103,7 @@ object TCMeta {
   }
 
   implicit class ClosureTCMetaImplicit(self: Lambda) {
-    def setClosure(closure: Seq[(String, TypeHint, VarType)]): Unit =
+    def setClosure(closure: ArraySeq[(String, TypeHint, VarType)]): Unit =
       self.meta.put("typecheck.lambda_closure", closure)
 
     def getClosure =

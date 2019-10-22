@@ -1,16 +1,15 @@
-package m3.codegen
+package m3._03codegen
 
 import java.io._
 import java.util.Scanner
 
 import m3.Ast0._
-import m3.Builtin
-import m3.parse.Level
-import m3.typecheck.TCMeta._
-import m3.ThUtil
-import m3.typecheck.Utils
+import m3.{Builtin, Level, ThUtil}
+import m3._02typecheck.TCMeta._
+import m3._02typecheck.Utils
 
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 sealed trait TypeClass
 case class NullableUnion(variant: TypeHint) extends TypeClass
@@ -196,10 +195,10 @@ object IrUtils {
         case _ => false
       }
 
-    def orderTypeHints(level: Level, module: Module, result: mutable.ListBuffer[TypeHint]): Unit =
+    def orderTypeHints(level: Level, module: Module, result: ArrayBuffer[TypeHint]): Unit =
       orderTypeHintsRec(level, module, result, Seq.empty)
 
-    def orderTypeHintsRec(level: Level, module: Module, result: mutable.ListBuffer[TypeHint], stack: Seq[(Module, TypeHint)]): Unit = {
+    def orderTypeHintsRec(level: Level, module: Module, result: ArrayBuffer[TypeHint], stack: Seq[(Module, TypeHint)]): Unit = {
       if (stack.contains((module, self))) {
         // result += self //???
         return
@@ -259,7 +258,7 @@ object IrUtils {
         prefix + (other.toValueRec(mctx) + suffix).escaped
     }
 
-    def toDecl(mctx: ModContext, typeDecls: mutable.ListBuffer[(TypeHint, String)]): Unit = {
+    def toDecl(mctx: ModContext, typeDecls: ArrayBuffer[(TypeHint, String)]): Unit = {
 
       def forUnion(variants: Seq[TypeHint]) = {
         val size = calculateSize(mctx, variants, typeDecls)
@@ -325,7 +324,7 @@ object IrUtils {
     }
   }
 
-  def calculateSize(mctx: ModContext, variants: Seq[TypeHint], typeDecl: mutable.ListBuffer[(TypeHint, String)]): Long = {
+  def calculateSize(mctx: ModContext, variants: Seq[TypeHint], typeDecl: ArrayBuffer[(TypeHint, String)]): Long = {
     val fw = new FileWriter("/tmp/sizes.ll")
     typeDecl.foreach { case (th, decl) => fw.write(decl + "\n") }
 

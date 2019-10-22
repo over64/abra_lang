@@ -5,6 +5,8 @@ import m3.Ast0._
 import org.antlr.v4.runtime.tree.ParseTree
 import org.scalatest.FunSuite
 
+import scala.collection.immutable.ArraySeq
+
 /**
   * Created by over on 01.05.17.
   */
@@ -18,10 +20,10 @@ class _06FunctionParse extends FunSuite {
   test("llvm function") {
     withStr("def + = x: Int, y: Int native ;asm .Int", Def(
       name = "+",
-      lambda = Lambda(Seq(
-        Arg("x", ScalarTh(Seq(), "Int", None, "prelude")),
-        Arg("y", ScalarTh(Seq(), "Int", None, "prelude"))),
+      lambda = Lambda(ArraySeq(
+        Arg("x", ScalarTh(ArraySeq(), "Int", None, "prelude")),
+        Arg("y", ScalarTh(ArraySeq(), "Int", None, "prelude"))),
         body = llVm(";asm")),
-      retTh = ScalarTh(Seq(), "Int", None, "prelude")))
+      retTh = ScalarTh(ArraySeq(), "Int", None, "prelude")))
   }
 }

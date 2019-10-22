@@ -1,9 +1,10 @@
-package m3.parse
+package m3._01parse
 
 import java.nio.file.{Files, Paths}
 
 import grammar.{M2LexerForIDE, M2Parser}
 import m3.Ast0.Module
+import m3.Level
 import org.antlr.v4.runtime.misc.ParseCancellationException
 import org.antlr.v4.runtime.{ANTLRInputStream, BailErrorStrategy, CommonTokenStream, InputMismatchException}
 
@@ -25,46 +26,11 @@ class FsResolver(libDir: String, projDir: String) extends Resolver {
 
 class CircularException() extends Exception
 
-case class Level(modules: mutable.HashMap[String, Module], var next: Option[Level]) {
-  def append(level: Level): Unit =
-    next match {
-      case Some(n) => n.append(level)
-      case None => next = Some(level)
-    }
 
-  def findMod(path: String): Option[Module] =
-    modules.get(path) match {
-      case s: Some[Module] => s
-      case None =>
-        next.flatMap(level => level.findMod(path))
-    }
-
-  def stealMod(path: String): Option[Module] =
-    modules.get(path) match {
-      case s: Some[Module] =>
-        val removed = modules.remove(path)
-
-        if (modules.keys.isEmpty) {
-          modules.put(path, removed.get)
-          throw new CircularException()
-        }
-
-        s
-      case None =>
-        next.flatMap { level =>
-          level.stealMod(path)
-        }
-    }
-
-  def eachModule(callback: (Level, Module) => Unit): Unit = {
-    next.foreach(level => level.eachModule(callback))
-    modules.values.foreach(module => callback(this, module))
-  }
-}
 
 class CircularModReference(val stack: Seq[String]) extends Exception
 
-class ParsePass(resolver: Resolver, prelude: Option[String]) {
+class Pass(resolver: Resolver, prelude: Option[String]) {
   def parseMod(path: String, code: String): Module = {
     val lexer = new M2LexerForIDE(new ANTLRInputStream(code))
     val tokens = new CommonTokenStream(lexer)
@@ -93,7 +59,7 @@ class ParsePass(resolver: Resolver, prelude: Option[String]) {
     }
 
   def recursiveParse(deep: Int, root: Level, paths: Seq[String]): Level = {
-    val current = Level(mutable.HashMap.empty, None)
+    val current = m3.Level(mutable.HashMap.empty, None)
 
     paths.map { path =>
       try {
@@ -128,7 +94,7 @@ class ParsePass(resolver: Resolver, prelude: Option[String]) {
 
   def pass(entry: String): Level = {
     val m1 = System.currentTimeMillis()
-    val level = recursiveParse(0, Level(mutable.HashMap.empty, None), Seq(entry))
+    val level = recursiveParse(0, m3.Level(mutable.HashMap.empty, None), Seq(entry))
     val m2 = System.currentTimeMillis()
     println(s"__Parse__ pass elapsed: ${m2 - m1}ms")
     level

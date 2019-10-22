@@ -1,7 +1,7 @@
 package integration
 
 import codegen.CodeGenUtil
-import m3.parse.FsResolver
+import m3._01parse.FsResolver
 import org.scalatest.FunSuite
 
 class _02TreePool extends FunSuite {

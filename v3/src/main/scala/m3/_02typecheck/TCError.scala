@@ -1,7 +1,10 @@
-package m3.typecheck
+package m3._02typecheck
 
 import m3.{Ast0, AstInfo}
 import m3.Ast0.{GenericTh, TypeHint}
+
+import scala.collection.immutable.ArraySeq
+import scala.collection.mutable.Buffer
 
 sealed trait TypeCheckError extends Exception
 
@@ -38,7 +41,8 @@ object TCE {
   case class LambdaWithNativeCode(location: AstInfo) extends TypeCheckError
 
   case class TypeMismatch(location: Seq[AstInfo], expected: TypeHint, has: TypeHint) extends TypeCheckError {
-    override def toString: String = s"Type mismatch: expected $expected has $has\n${location.map(l => s"at $l").mkString("\n")}"
+    override def toString: String =
+      s"Type mismatch: expected $expected has $has\n${location.map(l => s"at $l").mkString("\n")}"
   }
   case class RetTypeMismatch(location: AstInfo, expected: TypeHint, has: TypeHint) extends TypeCheckError {
 
@@ -55,7 +59,7 @@ object TCE {
   case class ExpectedUnionType(location: AstInfo, has: TypeHint) extends TypeCheckError {
     override def toString: String = s"$location Expected union type but has $has"
   }
-  case class UnlessExpectedOneOf(location: AstInfo, oneOf: Seq[TypeHint], has: TypeHint) extends TypeCheckError
+  case class UnlessExpectedOneOf(location: AstInfo, oneOf: ArraySeq[TypeHint], has: TypeHint) extends TypeCheckError
   case class CaseAlreadyCovered(location: AstInfo, forTh: TypeHint, coveredAt: AstInfo) extends TypeCheckError
   case class NoSuchDef(location: Seq[AstInfo], name: String) extends TypeCheckError {
     override def toString: String = s"No such def with name $name \n${location.map(l => s"at $l").mkString("\n")}"

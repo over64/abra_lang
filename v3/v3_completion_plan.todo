@@ -33,3 +33,4 @@
  REF_011: выделить отдельный pass SymbolCheck
  REF_012: сделать GenericPass, дедуплицировать код в простых pass
  REF_013: сделать command line compiler
++REF_014: миграция на scala 2.13: Seq => ArraySeq, ListBuffer => ArrayBuffer

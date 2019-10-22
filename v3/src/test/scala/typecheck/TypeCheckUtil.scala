@@ -4,9 +4,9 @@ import java.io.{File, FileWriter}
 
 import grammar.{M2LexerForIDE, M2Parser}
 import m3.Ast0._
-import m3.parse.{ParsePass, Resolver, Visitor}
-import m3.typecheck.TCMeta._
-import m3.typecheck.TypeCheckPass
+import m3._01parse.{Pass, Resolver, Visitor}
+import m3._02typecheck.TCMeta._
+import m3._02typecheck.Pass
 import org.antlr.v4.runtime.{ANTLRInputStream, BailErrorStrategy, CommonTokenStream}
 import org.scalatest.FunSuite
 
@@ -36,7 +36,7 @@ object TypeCheckUtil extends FunSuite {
     })
 
   def astForModules(resolver: String => String): Module = {
-    val root = new ParsePass(new Resolver {
+    val root = new m3._01parse.Pass(new Resolver {
       override def resolve(path: String): String = {
         val code = resolver(path)
         val fw = new FileWriter(new File("/tmp/" + path + ".eva"))
@@ -46,7 +46,7 @@ object TypeCheckUtil extends FunSuite {
       }
     }, None).pass("main")
 
-    new TypeCheckPass().pass(root)
+    new m3._02typecheck.Pass().pass(root)
     root.findMod("main").get
   }
 

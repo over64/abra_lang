@@ -1,13 +1,17 @@
-package m3.typecheck
+package m3._02typecheck
 
 import m3.Ast0._
 import m3.Builtin._
-import m3.parse.Level
-import m3.parse.ParseMeta._
-import m3.typecheck.TCE.NoSuchSelfDef
-import m3.typecheck.TCMeta._
-import m3.typecheck.Utils._
-import m3._
+import m3._01parse.ParseMeta._
+import m3._02typecheck.TCE.NoSuchSelfDef
+import m3._02typecheck.TCMeta._
+import m3._02typecheck.Utils._
+import m3.{Level, _}
+
+import scala.collection.immutable.ArraySeq
+import scala.collection.mutable
+import scala.collection.mutable.{ArrayBuffer, Buffer}
+import scala.reflect.ClassTag
 
 case class PassContext(prefix: String, colorId: Int,
                        level: Level, module: Module,
@@ -78,9 +82,13 @@ case class PassContext(prefix: String, colorId: Int,
 }
 
 
-class TypeCheckPass {
+class Pass {
+  implicit class ArrayBufferConv[T](self: ArrayBuffer[T])(implicit m: ClassTag[T]) {
+    def asSeq: ArraySeq[T] = ArraySeq.unsafeWrapArray(self.toArray) // NOT SO GOOD
+  }
+
   //FIXME: move to TypeHintPass
-  def assertCorrect(ctx: PassContext,self: TypeHint, params: Seq[GenericTh]): Unit =
+  def assertCorrect(ctx: PassContext, self: TypeHint, params: ArraySeq[GenericTh]): Unit =
     self match {
       case sth: ScalarTh =>
         val (_, decl) = typeDecl(ctx.level, sth)
@@ -178,7 +186,7 @@ class TypeCheckPass {
     }
 
   def passExpr(ctx: PassContext, scope: BlockScope, eq: Equations, th: TypeHint, expr: Expression): TypeHint = {
-    def foldFields(from: TypeHint, fields: Seq[lId]): TypeHint =
+    def foldFields(from: TypeHint, fields: ArraySeq[lId]): TypeHint =
       fields.foldLeft(from) {
         case (sth: ScalarTh, fieldId) =>
           typeDecl(ctx.level, sth) match {
@@ -448,7 +456,7 @@ class TypeCheckPass {
           case gth: GenericTh if !eq.typeParams.contains(gth) => eq.typeParams += gth
           case _ =>
         }
-        assertCorrect(ctx, varTh, eq.typeParams)
+        assertCorrect(ctx, varTh, eq.typeParams.asSeq)
         // x: Int = 5 # ok
         // x = 6 # ok
         // x.y: Int = 8 # fail
@@ -506,7 +514,7 @@ class TypeCheckPass {
             throw TCE.TypeMismatch(Seq(lambda.location), th, FnTh(argsTh, AnyTh))
         }
 
-        val inferedRetTh = body match {
+        val inferedRetTh: TypeHint = body match {
           case AbraCode(seq) =>
             val lambdaScope = LambdaScope(scope, (args.map(_.name) zip inferedArgsTh).toMap)
             val lambdaBlock = new BlockScope(lambdaScope)
@@ -516,14 +524,15 @@ class TypeCheckPass {
               lambdaBlock.addRetType(passExpr(ctx.deeperExpr(), lambdaBlock, eq, AnyTh, last))
             }
 
-            lambda.setClosure(lambdaScope.closure
-              .map { case (name, (th, vt)) => (name, th, vt) }
-              .toSeq.sortBy { case (name, _, _) => name })
+            lambda.setClosure(
+              lambdaScope.closure
+                .map[(String, TypeHint, VarType)] { case (name, (th, vt)) => (name, th, vt) }
+                .to(ArrayBuffer).sortInPlaceBy { case (name, _, _) => name }.asSeq)
 
             lambdaScope.retTypes.distinct match {
-              case Seq() => thNil
-              case Seq(th) => th
-              case seq => UnionTh(seq)
+              case ArrayBuffer() => thNil
+              case ArrayBuffer(th) => th
+              case ab => UnionTh(ab.asSeq)
             }
           case _ =>
             throw TCE.LambdaWithNativeCode(lambda.location)
@@ -535,6 +544,9 @@ class TypeCheckPass {
         passExpr(ctx, scope, eq, thBool, andOr.right)
         thBool
       case While(cond, _do) =>
+        val b = Buffer[Int]()
+        val s: ArraySeq[Int] = Array(1, 2, 3).to(ArraySeq)
+
         passExpr(ctx.deeperExpr(), scope, eq, thBool, cond)
         val block = new WhileScope(scope)
         _do.foreach { expr => passExpr(ctx.deeperExpr(), block, eq, AnyTh, expr) }
@@ -567,9 +579,9 @@ class TypeCheckPass {
 
         self.setBranchTh((doTh, elseTh))
 
-        Seq(doTh, elseTh).filter(th => th != thUnreachable).distinct match {
-          case Seq(one) => one
-          case many => UnionTh(many)
+        ArrayBuffer(doTh, elseTh).filter(th => th != thUnreachable).distinct match {
+          case ArrayBuffer(one) => one
+          case many => UnionTh(many.asSeq)
         }
       case self@Unless(expr, isSeq) =>
         val tc = new TypeChecker(ctx.level, ctx.module)
@@ -616,10 +628,10 @@ class TypeCheckPass {
         val uncoveredTypes = exprUnionVariants.toSet -- coveredType
         self.setUncovered(uncoveredTypes.toSeq)
 
-        val overallType = (mappedType ++ uncoveredTypes).toSeq
+        val overallType = (mappedType ++ uncoveredTypes).to(ArraySeq)
 
         overallType match {
-          case Seq(one) => one
+          case ArraySeq(one) => one
           case many => UnionTh(many)
         }
     }
@@ -644,10 +656,10 @@ class TypeCheckPass {
     val eq = new Equations(fn.params)
 
     val args = fn.lambda.args.map { arg =>
-      assertCorrect(ctx, arg.typeHint, eq.typeParams)
+      assertCorrect(ctx, arg.typeHint, eq.typeParams.asSeq)
       (arg.name, arg.typeHint)
     }.toMap
-    assertCorrect(ctx, fn.retTh, eq.typeParams)
+    assertCorrect(ctx, fn.retTh, eq.typeParams.asSeq)
 
     val defScope = DefScope(args)
 
@@ -673,9 +685,9 @@ class TypeCheckPass {
         }
 
         val retTh = defScope.retTypes.distinct match {
-          case Seq() => thNil
-          case Seq(th) => th
-          case seq => UnionTh(seq)
+          case ArrayBuffer() => thNil
+          case ArrayBuffer(th) => th
+          case ab => UnionTh(ab.asSeq)
         }
 
         declaredRetTh match {

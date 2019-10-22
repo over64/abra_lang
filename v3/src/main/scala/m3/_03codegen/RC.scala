@@ -1,6 +1,6 @@
-package m3.codegen
+package m3._03codegen
 
-import m3.codegen.IrUtils.{RichString, SimpleU, ThIrExtension}
+import m3._03codegen.IrUtils.{RichString, SimpleU, ThIrExtension}
 import m3.Ast0._
 import m3.{Builtin, ThUtil}
 

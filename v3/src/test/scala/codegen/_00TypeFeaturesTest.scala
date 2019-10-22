@@ -2,8 +2,8 @@ package codegen
 
 import codegen.CodeGenUtil._
 import grammar.M2Parser
-import m3.codegen.IrUtils.ThIrExtension
-import m3.codegen.ModContext
+import m3._03codegen.IrUtils.ThIrExtension
+import m3._03codegen.ModContext
 import m3.Ast0.TypeHint
 import org.antlr.v4.runtime.tree.ParseTree
 import org.scalatest.{FunSuite, Ignore}
