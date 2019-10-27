@@ -1,6 +1,7 @@
 package typecheck
 
 import m3.Ast0.GenericTh
+import m3._02typecheck.TCE
 import m3._02typecheck.TCMeta._
 import org.scalatest.FunSuite
 import typecheck.TypeCheckUtil._
@@ -133,8 +134,9 @@ class _07CallGenericTest extends FunSuite {
   }
 
   test("polymorphic self replace") {
-    val ast = astForCode(
-      """
+    assertThrows[TCE.TypeMismatch] {
+      astForCode(
+        """
         type Seq[t] = native %t* .
         type Log    = native i32 .
         type F2     = native i32 .
@@ -188,6 +190,7 @@ class _07CallGenericTest extends FunSuite {
         def main =
           bar(mkLog()) .
       """)
+    }
   }
 
   test("collections-like-2") {

@@ -39,7 +39,7 @@ def mkRenderer =
   gl.enable(gl.depthTest())
   gl.clearColor(0.2117, 0.0823, 0.2784)
   -- gl.clearColor(0.9, 0.9, 0.9)
-  mesh = objfile.load('/home/over/build/eva_lang/v3/eva/demo/cube.obj')
+  mesh = objfile.load('/home/devteam/build/eva_lang/v3/eva/demo/cube/cube.obj')
   program = mkProgram('
       #version 130
       in vec3 vertexPos;
@@ -87,7 +87,7 @@ def mkRenderer =
 
   texture = gl.genTexture()
   texture.bind(gl.texture2D())
-  texture.loadFromFile('/home/over/build/eva_lang/v3/eva/demo/tex.png', soil.cLoadAuto(), soil.cFlagInvertY())
+  texture.loadFromFile('/home/devteam/build/eva_lang/v3/eva/demo/cube/tex.png', soil.cLoadAuto(), soil.cFlagInvertY())
 
   pMatrix = kazmath.perspective(45.0, 640.0 / 480.0, 0.01, 100.0)
 

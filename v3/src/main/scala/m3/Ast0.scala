@@ -79,7 +79,7 @@ object Ast0 {
       args.mkString("(", ", ", ")") + " -> " + ret
   }
 
-  case class Prop(from: Expression, props: ArraySeq[lId]) extends Expression
+  case class Prop(from: Expression, props: ArraySeq[lId]) extends Expression // FIXME: REF_015
   case class Tuple(seq: ArraySeq[Expression]) extends Expression
   case class Cons(sth: ScalarTh, args: ArraySeq[Expression]) extends Expression
   case class SelfCall(fnName: String, self: Expression, args: ArraySeq[Expression]) extends Expression

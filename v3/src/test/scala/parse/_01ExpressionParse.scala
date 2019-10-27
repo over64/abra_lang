@@ -59,8 +59,9 @@ class _01ExpressionParse extends FunSuite {
   }
 
   test("prop") {
-    withStr("a.b", Prop(lId("a"), ArraySeq(lId("b"))))
-    withStr("a.b.c", Prop(lId("a"), ArraySeq(lId("b"), lId("c"))))
+    // Antlr is PZDC parser?
+    withStr("a.b .", Prop(lId("a"), ArraySeq(lId("b"))))
+    withStr("a.b.c .", Prop(Prop(lId("a"), ArraySeq(lId("b"))), ArraySeq(lId("c"))))
   }
 
   test("call") {
@@ -69,9 +70,9 @@ class _01ExpressionParse extends FunSuite {
   }
 
   test("lambda") {
-    withStr("lambda 1 .", Lambda(ArraySeq(), AbraCode(ArraySeq(lInt("1")))))
-    withStr("lambda self: Int -> self",
-      Lambda(ArraySeq(Arg("self", ScalarTh(ArraySeq.empty, "Int", None, "test"))), AbraCode(ArraySeq(lId("self")))))
+    withStr("|| 1 .", Lambda(ArraySeq(), AbraCode(ArraySeq(lInt("1")))))
+    withStr("|self: Int| self .",
+      Lambda(ArraySeq(Arg("self", ScalarTh(ArraySeq.empty, "Int", None, "prelude"))), AbraCode(ArraySeq(lId("self")))))
   }
 
   test("unary call") {
@@ -105,8 +106,8 @@ class _01ExpressionParse extends FunSuite {
     withStr("if 1 == 1 do 1 .", If(SelfCall( "==", lInt("1"), ArraySeq(lInt("1"))), ArraySeq(lInt("1")), ArraySeq()))
     withStr("if true do 1 else 2 .", If(lBoolean("true"), ArraySeq(lInt("1")), ArraySeq(lInt("2"))))
 
-    withStr("if true do lambda x -> x .", If(lBoolean("true"), ArraySeq(Lambda(ArraySeq(Arg("x", AnyTh)), AbraCode(ArraySeq(lId("x"))))), ArraySeq()))
-    withStr("if true do 1 else lambda x -> x .", If(lBoolean("true"),
+    withStr("if true do |x| x .", If(lBoolean("true"), ArraySeq(Lambda(ArraySeq(Arg("x", AnyTh)), AbraCode(ArraySeq(lId("x"))))), ArraySeq()))
+    withStr("if true do 1 else |x| x .", If(lBoolean("true"),
       ArraySeq(lInt("1")),
       ArraySeq(Lambda(ArraySeq(Arg("x", AnyTh)), AbraCode(ArraySeq(lId("x")))))))
   }

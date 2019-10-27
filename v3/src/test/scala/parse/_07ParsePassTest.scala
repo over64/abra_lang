@@ -47,7 +47,7 @@ class _07ParsePassTest extends FunSuite {
     //    (1 to 100).foreach { i =>
     val root = new m3._01parse.Pass(new FsResolver(
       libDir = System.getProperty("user.dir") + "/v3/eva/lib/",
-      projDir = System.getProperty("user.dir") + "/v3/eva/demo/"
+      projDir = System.getProperty("user.dir") + "/v3/eva/demo/cube/"
     ), None).pass(".cube")
 
     val expectedLevelSeq =

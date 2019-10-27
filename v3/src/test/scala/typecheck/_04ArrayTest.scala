@@ -1,10 +1,12 @@
 package typecheck
 
 import m3._02typecheck.TCE
-import org.scalatest.FunSuite
+import org.scalatest.{FunSuite, Ignore}
 import typecheck.TypeCheckUtil._
 
+@Ignore
 class _04ArrayTest extends FunSuite {
+
   test("array pass: arrayN as array") {
     val ast = astForCode(
       """
