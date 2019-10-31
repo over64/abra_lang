@@ -35,4 +35,3 @@
  REF_013: сделать command line compiler
 +REF_014: миграция на scala 2.13: Seq => ArraySeq, ListBuffer => ArrayBuffer
  REF_015: Ast0.Prop не можем содержать seq of props by grammar design
-test diff
