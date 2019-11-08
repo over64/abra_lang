@@ -26,7 +26,9 @@ object TCE {
   case class NoSuchSymbol(location: AstInfo, name: String) extends TypeCheckError {
     override def toString: String = s"$location No local var, argument or function with name $name"
   }
-  case class NoSuchField(location: AstInfo, th: TypeHint, fieldName: String) extends TypeCheckError
+  case class NoSuchField(location: AstInfo, th: TypeHint, fieldName: String) extends TypeCheckError {
+    override def toString: String = s"$location No such field $fieldName on type $th"
+  }
 
   case class NoSuchCallable(location: AstInfo, name: String) extends TypeCheckError {
     override def toString: String = s"$location No such function with name $name"
