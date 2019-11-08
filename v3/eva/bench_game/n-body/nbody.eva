@@ -3,32 +3,40 @@ import io, array, arrayUnsafe
 native
     declare call float@llvm.sqrt.f32(float %val) .
 
+type Body = (x: Double, y: Double, vx: Double, vy: Double, vz: Double, mass: Double)
+
+def pi = 3.141592653589793 .Double
+def xSolarMass = pi() * pi() * 4.0 .
+def xDaysPerSear = 365.24 .Double
+
 def sqrt = self : Float native
     %1 = call float @llvm.sqrt.f32(float %self)
     ret float %1 .Float
 
-def offsetMomentum = b : Array[Body], nbody : Int do
-    px = 0
-    py = 0
-    pz = 0
+def offsetMomentum = b : Array[Body] do
+    px: Double = 0.0
+    py: Double = 0.0
+    pz: Double = 0.0
     i = 0
 
-    while i < nbody do
+    while i < b.len() do
         bi = b(i)
-        local bim = bi.mass
+        bim = bi.mass
         px = px + (bi.vx * bim)
         py = py + (bi.vy * bim)
         pz = pz + (bi.vz * bim)
         i = i + 1 .
 
-    b(0).vx = -px / SOLAR_MASS
-    b(0).vy = -py / SOLAR_MASS
-    b(0).vz = -pz / SOLAR_MASS .
+--     b(0).vx = -px / xSolarMass()
+--     b(0).vy = -py / xSolarMass()
+--     b(0).vz = -pz / xSolarMass()
+     .
 
-def advance = bodies : Array[Body], nbody : Int, dt : Float do
+def advance = bodies: Array[Body], dt : Float do
     i = 0
     j = 0
-    while i < nbody do
+
+    while i < bodies.len() do
         bi = bodies(i)
         bix = bi.x
         biy = bi.y
@@ -37,8 +45,9 @@ def advance = bodies : Array[Body], nbody : Int, dt : Float do
         bivx = bi.vx
         bivy = bi.vy
         bivz = bi.vz
+        j = i+ 1
 
-        while j=i+1 < nbody do
+        while j < nbody do
               bj = bodies(j)
               dx = bix-bj.x
               dy = biy-bj.y
@@ -61,13 +70,13 @@ def advance = bodies : Array[Body], nbody : Int, dt : Float do
         bi.x = bix + dt * bivx
         bi.y = biy + dt * bivy
         bi.z = biz + dt * bivz
-        i = i + 1.
-.
+        i = i + 1 ..
 
-def energy =  bodies : Array[Body], nbody : Int
+def energy =  bodies: Array[Body] do
     i = 0
     j = 0
-    e = 0
+    e: Double = 0.0
+
     while i < nbody do
         bi = bodies(i)
         vx = bi.vx
@@ -75,83 +84,76 @@ def energy =  bodies : Array[Body], nbody : Int
         vz = bi.vz
         bim = bi.mass
         e = e + (0.5 * bim * (vx*vx + vy*vy + vz*vz))
+        j= i + 1
 
-        while j=i+1 < 0  do
+        while j < 0  do
             bj = bodies(j)
             dx = bi.x-bj.x
             dy = bi.y-bj.y
             dz = bi.z-bj.z
             distance = sqrt(dx*dx + dy*dy + dz*dz)
             e = e - ((bim * bj.mass) / distance)
-            j = j + 1
-        .
-        i = i + 1
-    .
---how to return number e
-.
+            j = j + 1 .
+        i = i + 1 .
+    e .
 
 def main =
-    PI = 3.141592653589793 -- closure ?
-    SOLAR_MASS = 4 * PI * PI
-    DAYS_PER_YEAR = 365.24
-    NBODY = 5
 
-    type Body = (x: Float, y: Float, vx: Float, vy: Float, vz: Float, mass: Float)
 
-    sun = Body(0, 0, 0, 0, 0, 0, SOLAR_MASS)
+    sun = Body(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, xSolarMass())
 
     jupiter = Body(4.84143144246472090e+00,
               -1.16032004402742839e+00,
               -1.03622044471123109e-01,
-              1.66007664274403694e-03 * DAYS_PER_YEAR,
-              7.69901118419740425e-03 * DAYS_PER_YEAR,
-              -6.90460016972063023e-05 * DAYS_PER_YEAR,
-              9.54791938424326609e-04 * SOLAR_MASS)
+              1.66007664274403694e-03 * xDaysPerYear(),
+              7.69901118419740425e-03 * xDaysPerYear(),
+              -6.90460016972063023e-05 * xDaysPerYear(),
+              9.54791938424326609e-04 * xSolarMass())
 
     saturn = Body(8.34336671824457987e+00,
              4.12479856412430479e+00,
              -4.03523417114321381e-01,
-             -2.76742510726862411e-03 * DAYS_PER_YEAR,
-             4.99852801234917238e-03 * DAYS_PER_YEAR,
-             2.30417297573763929e-05 * DAYS_PER_YEAR,
-             2.85885980666130812e-04 * SOLAR_MASS)
+             -2.76742510726862411e-03 * xDaysPerYear(),
+             4.99852801234917238e-03 * xDaysPerYear(),
+             2.30417297573763929e-05 * xDaysPerYear(),
+             2.85885980666130812e-04 * xSolarMass())
 
     uranus = Body(1.28943695621391310e+01,
             -1.51111514016986312e+01,
             -2.23307578892655734e-01,
-            2.96460137564761618e-03 * DAYS_PER_YEAR,
-            2.37847173959480950e-03 * DAYS_PER_YEAR,
-            -2.96589568540237556e-05 * DAYS_PER_YEAR,
-            4.36624404335156298e-05 * SOLAR_MASS)
+            2.96460137564761618e-03 * xDaysPerYear(),
+            2.37847173959480950e-03 * xDaysPerYear(),
+            -2.96589568540237556e-05 * xDaysPerYear(),
+            4.36624404335156298e-05 * xSolarMass())
 
     neptune = Body(1.53796971148509165e+01,
             -2.59193146099879641e+01,
             1.79258772950371181e-01,
-            2.68067772490389322e-03 * DAYS_PER_YEAR,
-            1.62824170038242295e-03 * DAYS_PER_YEAR,
-            -9.51592254519715870e-05 * DAYS_PER_YEAR,
-            5.15138902046611451e-05 * SOLAR_MASS)
+            2.68067772490389322e-03 * xDaysPerYear(),
+            1.62824170038242295e-03 * xDaysPerYear(),
+            -9.51592254519715870e-05 * xDaysPerYear(),
+            5.15138902046611451e-05 * xSolarMass())
 
 
-    bodies: Array[Body] = unsafeArray.alloc(NBODY)
+    bodies: Array[Body] = unsafeArray.alloc(5)
     setInit(bodies, 0, sun)
     setInit(bodies, 1, jupiter)
     setInit(bodies, 2, saturn)
     setInit(bodies, 3, uranus)
     setInit(bodies, 4, neptune)
 
-    N = 1000
+    n = 1000
 
-    offsetMomentum(bodies,NBODY)
+    offsetMomentum(bodies,bodies.len())
     io.print('\n')
-    io.printInt(energy(bodies, nbody))
+    io.printInt(energy(bodies, bodies.len()))
     io.print('\n')
 
     i = 0
 
-    while i < N
-      advance(bodies, NBODY, 0.01)
-      i = i + 1
-    .
-    io.printInt(energy(bodies, nbody))
+    while i < n do
+      advance(bodies, bodies.len(), 0.01)
+      i = i + 1 .
+
+    io.printInt(energy(bodies, bodies.len()))
     io.print('\n') .

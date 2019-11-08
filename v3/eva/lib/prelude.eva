@@ -24,6 +24,11 @@ def + = self: Int, other: Int native
   %1 = add nsw i32 %self, %other
   ret i32 %1 .Int
 
+def + = self: Double, other: Double native
+  ;meta intermod_inline
+  %1 = fadd double %self, %other
+  ret double %1 .Double
+
 def - = self: Int, other: Int native
   ;meta intermod_inline
   %1 = sub nsw i32 %self, %other
@@ -128,10 +133,17 @@ def * = self: Float, other: Float native
   ;meta intermod_inline
   %1 = fmul float %self, %other
   ret float %1 .Float
+
 def / = self: Float, other: Float native
   ;meta intermod_inline
   %1 = fdiv float %self, %other
   ret float %1 .Float
+
+def * = self: Double, other: Double native
+  ;meta intermod_inline
+  %1 = fmul double %self, %other
+  ret double %1 .Double
+
 
 def toRadians = self: Float do self * 3.14159265359 / 180.0 .
 
