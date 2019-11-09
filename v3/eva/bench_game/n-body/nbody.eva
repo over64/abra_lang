@@ -3,7 +3,7 @@ import io, array, arrayUnsafe
 native
     declare call float@llvm.sqrt.f32(float %val) .
 
-type Body = (x: Double, y: Double, vx: Double, vy: Double, vz: Double, mass: Double)
+type Body = (x: Double, y: Double, z: Double, vx: Double, vy: Double, vz: Double, mass: Double)
 
 def pi = 3.141592653589793 .Double
 def xSolarMass = pi() * pi() * 4.0 .
@@ -47,7 +47,7 @@ def advance = bodies: Array[Body], dt : Float do
         bivz = bi.vz
         j = i+ 1
 
-        while j < nbody do
+        while j < bodies.len() do
               bj = bodies(j)
               dx = bix-bj.x
               dy = biy-bj.y
