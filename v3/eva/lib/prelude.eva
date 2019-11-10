@@ -34,6 +34,11 @@ def - = self: Int, other: Int native
   %1 = sub nsw i32 %self, %other
   ret i32 %1 .Int
 
+def - = self: Double, other: Double native
+  ;meta intermod_inline
+  %1 = fsub double %self, %other
+  ret double %1 .Double
+
 def * = self: Int, other: Int native
   ;meta intermod_inline
   %1 = mul nsw i32 %self, %other
@@ -93,6 +98,7 @@ def + = self: Long, other: Long native
   ;meta intermod_inline
   %1 = add nsw i64 %self, %other
   ret i64 %1 .Long
+
 
 def >= = self: Long, other: Long native
   ;meta intermod_inline
