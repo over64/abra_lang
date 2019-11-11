@@ -27,7 +27,7 @@ def + = self: Int, other: Int native
 def + = self: Double, other: Double native
   ;meta intermod_inline
   %1 = fadd double %self, %other
-  ret double, %1 .Double
+  ret double %1 .Double
 
 def - = self: Int, other: Int native
   ;meta intermod_inline
@@ -144,6 +144,11 @@ def / = self: Float, other: Float native
   ;meta intermod_inline
   %1 = fdiv float %self, %other
   ret float %1 .Float
+
+def / = self: Double, other: Double native
+  ;meta intermod_inline
+  %1 = fdiv double %self, %other
+  ret double %1 .Double
 
 def * = self: Double, other: Double native
   ;meta intermod_inline

@@ -4,9 +4,12 @@ import sbuffer
 
 native
     @.printfInt = private constant [3 x i8] c"%d\00", align 1
+    @.printfDouble = private constant [3 x i16] c"%d\00", align 1
     @.printfStr = private constant [3 x i8] c"%s\00", align 1
+
     @stdin = external global i8*
     declare i32 @printf(i8*,...)
+    declare f64 @printf(i16*,...)
     declare i32 @puts(i8*)
     declare i32 @fgetc(i8*)
     ; int open(const char *pathname, int flags);
@@ -22,6 +25,11 @@ def print = s: String native
 def printInt = i: Int native
     %format = bitcast [3 x i8]* @.printfInt to i8*
     call i32 (i8*,...) @printf(i8* %format, i32 %i)
+    ret void .None
+
+def printDouble = i: Double native
+    %format = bitcast [3 x i16]* @.printfDouble to i16*
+    call f64 (i16*,...) @printf(i16* %format, double %i)
     ret void .None
 
 type File = native i8* .

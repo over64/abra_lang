@@ -1,7 +1,7 @@
 import io, array, arrayUnsafe
 
 native
-    declare call float@llvm.sqrt.f32(double %val) .
+    declare double  @llvm.sqrt.f64(double %val) .
 
 type Body = (x: Double, y: Double, z: Double, vx: Double, vy: Double, vz: Double, mass: Double)
 
@@ -10,7 +10,7 @@ def xSolarMass = pi() * pi() * 4.0 .
 def xDaysPerYear = 365.24 .Double
 
 def sqrt = self : Double native
-    %1 = call double @llvm.sqrt.f32(double %self)
+    %1 = call double @llvm.sqrt.f64(double %self)
     ret double %1 .Double
 
 def offsetMomentum = b : Array[Body] do
