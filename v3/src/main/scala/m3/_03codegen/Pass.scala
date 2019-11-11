@@ -878,6 +878,22 @@ class Pass {
               }
             } else if (cmd.startsWith("intermod_inline"))
               CGMeta.setIntermodInline(dctx.fn)
+            else if (cmd.startsWith("store_arg")) {
+              val pattern = """store_arg\(([a-zA-Z0-9]+),\s*([a-zA-Z0-9]+)\)""".r
+              cmd.replace(" ", "") match {
+                case pattern(argName, dest) =>
+                  val arg = dctx.fn.lambda.args.find(arg => arg.name == argName).get
+                  val argTh = dctx.specialized(arg.typeHint)
+                  val src = argTh.classify(mctx) match {
+                    case ValueUnion(_) | RefUnion(_) | ValueStruct(_) =>
+                      Abi.syncValue(mctx, dctx, EResult("%" + argName, true, false), AsStoreSrc, argTh, argTh).value
+                    case _ =>
+                      "%" + argName
+                  }
+
+                  Abi.store(mctx, dctx, false, false, argTh, argTh, "%" + dest, src)
+              }
+            }
 
           } else {
             var r = dctx.fn.params.foldLeft(line) { case (l, gth) =>

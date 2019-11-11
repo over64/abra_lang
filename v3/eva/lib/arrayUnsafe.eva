@@ -24,12 +24,12 @@ def set = slf: array, idx: index, value: t native
   %old = load $t, $t* %elPtr
   ;meta rc_inc[t](value)
   ;meta rc_dec[t](old)
-  store $t %value, $t* %elPtr
+  ;meta store_arg(value, elPtr)
   ret void .None
 
 def setInit = slf: array, idx: index, value: t native
   %ptr = extractvalue $array %slf, 1
   %elPtr = getelementptr $t, $t* %ptr, $index %idx
   ;meta rc_inc[t](value)
-  store $t %value, $t* %elPtr
+  ;meta store_arg(value, elPtr)
   ret void .None
