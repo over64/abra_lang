@@ -27,9 +27,10 @@ def offsetMomentum = b : Array[Body] do
         pz = pz + (bi.vz * bim)
         i = i + 1 .
 
---     b(0).vx = -px / xSolarMass()
---     b(0).vy = -py / xSolarMass()
---     b(0).vz = -pz / xSolarMass()
+     t =b(0)
+     t.vx = px / xSolarMass() * -1.0
+     t.vy = py / xSolarMass() * -1.0
+     t.vz = pz / xSolarMass()* -1.0
      .
 
 def advance = bodies: Array[Body], dt : Double do
