@@ -4,7 +4,7 @@ import sbuffer
 
 native
     @.printfInt = private constant [3 x i8] c"%d\00", align 1
-    @.printfDouble = private constant [3 x i8] c"%d\00", align 1
+    @.printfDouble = private constant [5 x i8] c"%.9f\00", align 1
     @.printfStr = private constant [3 x i8] c"%s\00", align 1
 
     @stdin = external global i8*
@@ -27,7 +27,7 @@ def printInt = i: Int native
     ret void .None
 
 def printDouble = i: Double native
-    %format = bitcast [3 x i8]* @.printfDouble to i8*
+    %format = bitcast [5 x i8]* @.printfDouble to i8*
     call i32 (i8*,...) @printf(i8* %format, double %i)
     ret void .None
 

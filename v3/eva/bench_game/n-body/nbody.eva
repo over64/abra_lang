@@ -25,12 +25,14 @@ def offsetMomentum = b : Array[Body] do
         px = px + (bi.vx * bim)
         py = py + (bi.vy * bim)
         pz = pz + (bi.vz * bim)
+        b(i) = bi
         i = i + 1 .
 
-     t =b(0)
+     t = b(0)
      t.vx = px / xSolarMass() * -1.0
      t.vy = py / xSolarMass() * -1.0
-     t.vz = pz / xSolarMass()* -1.0
+     t.vz = pz / xSolarMass() * -1.0
+     b(0) = t
      .
 
 def advance = bodies: Array[Body], dt : Double do
@@ -46,15 +48,15 @@ def advance = bodies: Array[Body], dt : Double do
         bivx = bi.vx
         bivy = bi.vy
         bivz = bi.vz
-        j = i+ 1
+        j = i + 1
 
         while j < bodies.len() do
               bj = bodies(j)
               dx = bix-bj.x
               dy = biy-bj.y
               dz = biz-bj.z
-              mag : Double = (dx*dx + dy*dy + dz*dz)
-              mag = (dt / (mag * mag * mag)).sqrt()
+              mag : Double = (dx*dx + dy*dy + dz*dz).sqrt()
+              mag = dt / (mag * mag * mag)
               bm = bj.mass*mag
               bivx = bivx - (dx * bm)
               bivy = bivy - (dy * bm)
@@ -63,6 +65,7 @@ def advance = bodies: Array[Body], dt : Double do
               bj.vx = bj.vx + (dx * bm)
               bj.vy = bj.vy + (dy * bm)
               bj.vz = bj.vz + (dz * bm)
+              bodies(j) = bj
               j = j + 1 .
 
         bi.vx = bivx
@@ -71,6 +74,7 @@ def advance = bodies: Array[Body], dt : Double do
         bi.x = bix + dt * bivx
         bi.y = biy + dt * bivy
         bi.z = biz + dt * bivz
+        bodies(i) = bi
         i = i + 1 ..
 
 def energy =  bodies: Array[Body] do
@@ -92,7 +96,7 @@ def energy =  bodies: Array[Body] do
             dx = bi.x-bj.x
             dy = bi.y-bj.y
             dz = bi.z-bj.z
-            distance = (dx*dx + dy*dy + dz*dz)
+            distance = (dx*dx + dy*dy + dz*dz).sqrt()
             e = e - ((bim * bj.mass) / distance)
             j = j + 1 .
         i = i + 1 .
@@ -143,7 +147,7 @@ def main =
     arrayUnsafe.set(bodies, 3, uranus)
     arrayUnsafe.set(bodies, 4, neptune)
 
-    n = 1000
+    n = 50000000
 
     offsetMomentum(bodies)
     io.print('\n')
