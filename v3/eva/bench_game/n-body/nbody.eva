@@ -91,7 +91,7 @@ def energy =  bodies: Array[Body] do
         e = e + (bim * (vx*vx + vy*vy + vz*vz) * 0.5)
         j= i + 1
 
-        while j < 0  do
+        while j < bodies.len()  do
             bj = bodies(j)
             dx = bi.x-bj.x
             dy = bi.y-bj.y
