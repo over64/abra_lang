@@ -34,7 +34,9 @@ object TCE {
     override def toString: String = s"$location No such function with name $name"
   }
   case class ExpressionNotCallable(location: AstInfo) extends TypeCheckError
-  case class ParamsCountMismatch(location: AstInfo) extends TypeCheckError
+  case class ParamsCountMismatch(location: AstInfo) extends TypeCheckError {
+    override def toString: String = s"$location Generic type params count mismatch"
+  }
 
   case class ArgsCountMismatch(location: Seq[AstInfo], expected: Int, has: Int) extends TypeCheckError {
     override def toString: String = s"Arg count mismatch: expected $expected has $has\n${location.map(l => s"at $l").mkString("\n")}"
