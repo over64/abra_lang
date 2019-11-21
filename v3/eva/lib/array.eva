@@ -3,6 +3,20 @@ import arrayUnsafe
 def set = self: Array[t], idx: Int, value: t do
   arrayUnsafe.set(self, idx, value) .None
 
+def map = self: Array, index: Int, mapper(t)->t do
+    i = index
+
+    while i < self.len() do
+        self(i) = mapper( self(i) )
+        i++..
+
+def mapIndexed = self: Array, index: Int, mapper(i, t)->t do
+    i = index
+
+    while i < self.len() do
+        self(i) = mapper( i, self(i) )
+        i++..
+
 def get = self: Array[t], idx: Int do
   arrayUnsafe.get(self, idx) .t
 

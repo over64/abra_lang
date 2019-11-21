@@ -9,156 +9,104 @@ def pi = 3.141592653589793 .Double
 def xSolarMass = pi() * pi() * 4.0 .
 def xDaysPerYear = 365.24 .Double
 
-def sqrt = self : Double native
-    %1 = call double @llvm.sqrt.f64(double %self)
-    ret double %1 .Double
 
-def offsetMomentum = b : Array[Body] do
+def offsetMomentum = bodies: Array[Body] do
     px: Double = 0.0
     py: Double = 0.0
     pz: Double = 0.0
-    i = 0
 
-    while i < b.len() do
-        bi = b(i)
-        bim = bi.mass
-        px = px + (bi.vx * bim)
-        py = py + (bi.vy * bim)
-        pz = pz + (bi.vz * bim)
-        b(i) = bi
-        i = i + 1 .
+    bodies.forEach with |bi|
+      bim = bi.mass
+      px = px + (bi.vx * bim)
+      py = py + (bi.vy * bim)
+      pz = pz + (bi.vz * bim) .
 
-     t = b(0)
-     t.vx = px / xSolarMass() * -1.0
-     t.vy = py / xSolarMass() * -1.0
-     t.vz = pz / xSolarMass() * -1.0
-     b(0) = t
-     .
+    bodies.mapOne with 0, |b0|
+      Body(b0.x, b0.y, b0.z,
+           px / xSolarMass() * -1.0, py / xSolarMass() * -1.0, pz / xSolarMass() * -1.0,
+           b0.mass) ..
 
-def advance = bodies: Array[Body], dt : Double do
-    i = 0
-    j = 0
+def advance = bodies: Array[Body], dt: Double do
+  boies.mapIndexed with |i, bi|
+    bivx = bi.vx
+    bivy = bi.vy
+    bivz = bi.vz
 
-    while i < bodies.len() do
-        bi = bodies(i)
-        bix = bi.x
-        biy = bi.y
-        biz = bi.z
-        bimass = bi.mass
-        bivx = bi.vx
-        bivy = bi.vy
-        bivz = bi.vz
-        j = i + 1
+    bodies.mapOffset with i + 1, |bj|
+      dx = bi.x - bj.x
+      dy = bi.y - bj.y
+      dz = bi.z - bj.z
 
-        while j < bodies.len() do
-              bj = bodies(j)
-              dx = bix-bj.x
-              dy = biy-bj.y
-              dz = biz-bj.z
-              mag : Double = (dx*dx + dy*dy + dz*dz).sqrt()
-              mag = dt / (mag * mag * mag)
-              bm = bj.mass*mag
-              bivx = bivx - (dx * bm)
-              bivy = bivy - (dy * bm)
-              bivz = bivz - (dz * bm)
-              bm = bimass*mag
-              bj.vx = bj.vx + (dx * bm)
-              bj.vy = bj.vy + (dy * bm)
-              bj.vz = bj.vz + (dz * bm)
-              bodies(j) = bj
-              j = j + 1 .
+      mag = (dx * dx + dy * dy + dz * dz)
+      mag = (dt / (mag * mag * mag)).sqrt()
 
-        bi.vx = bivx
-        bi.vy = bivy
-        bi.vz = bivz
-        bi.x = bix + dt * bivx
-        bi.y = biy + dt * bivy
-        bi.z = biz + dt * bivz
-        bodies(i) = bi
-        i = i + 1 ..
+      bm = bj.mass * mag
+      bivx = bivx - (dx * bm)
+      bivy = bivy - (dy * bm)
+      bivz = bivz - (dz * bm)
 
-def energy =  bodies: Array[Body] do
-    i = 0
-    j = 0
-    e: Double = 0.0
+      bm = bi.mass * mag
+      Body(bj.x, bj.y, bj.z,
+           bj.vx + dx * bm, bj.vy + dy * bm, bj.vz + dz * bm,
+           bj.mass) .
 
-    while i < bodies.len() do
-        bi = bodies(i)
-        vx = bi.vx
-        vy = bi.vy
-        vz = bi.vz
-        bim : Double = bi.mass
-        e = e + (bim * (vx*vx + vy*vy + vz*vz) * 0.5)
-        j= i + 1
+    Body(bivx, bivy, bivz,
+         bix + dt * bivx, biy + dt * bivy, biz + dt * bivz,
+         bi.mass) ..
 
-        while j < bodies.len()  do
-            bj = bodies(j)
-            dx = bi.x-bj.x
-            dy = bi.y-bj.y
-            dz = bi.z-bj.z
-            distance = (dx*dx + dy*dy + dz*dz).sqrt()
-            e = e - ((bim * bj.mass) / distance)
-            j = j + 1 .
-        i = i + 1 .
-    e .
+def energy = bodies: Array[Body] do
+  e: Double = 0.0
+
+  bodies.forEach with |bi|
+    vx = bi.vx
+    vy = bi.vy
+    vz = bi.vz
+    bim = bi.mass
+    e = e + (bim * (vx * vx + vy * vy + vz * vz) * 0.5)
+
+    bodies.forEachOffset with i + 1, |bj|
+      dx = bi.x-bj.x
+      dy = bi.y-bj.y
+      dz = bi.z-bj.z
+      distance = dx * dx + dy * dy + dz * dz
+      e = e - (bim * bj.mass / distance)
+  e .
 
 def main =
+  dpy = xDaysPerYear()
+  sun = Body(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, xSolarMass())
+
+  jupiter = Body(4.84143144246472090e+00, -1.16032004402742839e+00, -1.03622044471123109e-01,
+    dpy * 1.66007664274403694e-03, dpy * 7.69901118419740425e-03, dpy * -6.90460016972063023e-05,
+    xSolarMass() * 9.54791938424326609e-04)
+
+  saturn = Body(8.34336671824457987e+00, 4.12479856412430479e+00, -4.03523417114321381e-01,
+    dpy * -2.76742510726862411e-03, dpy * 4.99852801234917238e-03, dpy * 2.30417297573763929e-05,
+    xSolarMass() * 2.85885980666130812e-04)
+
+  uranus = Body(
+    1.28943695621391310e+01, -1.51111514016986312e+01, -2.23307578892655734e-01,
+    dpy * 2.96460137564761618e-03, dpy * 2.37847173959480950e-03, dpy * -2.96589568540237556e-05,
+    xSolarMass() * 4.36624404335156298e-05)
+
+  neptune = Body(
+    1.53796971148509165e+01, -2.59193146099879641e+01, 1.79258772950371181e-01,
+    dpy * 2.68067772490389322e-03, dpy * 1.62824170038242295e-03, dpy * -9.51592254519715870e-05,
+    xSolarMass() * 5.15138902046611451e-05)
 
 
-    sun = Body(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, xSolarMass())
+  bodies: Array[Body] = arrayUnsafe.alloc(5)
+  arrayUnsafe.set(bodies, 0, sun)
+  arrayUnsafe.set(bodies, 1, jupiter)
+  arrayUnsafe.set(bodies, 2, saturn)
+  arrayUnsafe.set(bodies, 3, uranus)
+  arrayUnsafe.set(bodies, 4, neptune)
 
-    jupiter = Body(4.84143144246472090e+00,
-              -1.16032004402742839e+00,
-              -1.03622044471123109e-01,
-              xDaysPerYear() * 1.66007664274403694e-03,
-              xDaysPerYear() * 7.69901118419740425e-03 ,
-              xDaysPerYear() * -6.90460016972063023e-05,
-              xSolarMass() * 9.54791938424326609e-04)
+  offsetMomentum(bodies)
+  io.printDouble(energy(bodies))
+  io.print('\n')
 
-    saturn = Body(8.34336671824457987e+00,
-             4.12479856412430479e+00,
-             -4.03523417114321381e-01,
-             xDaysPerYear() * -2.76742510726862411e-03,
-             xDaysPerYear() * 4.99852801234917238e-03 ,
-             xDaysPerYear() * 2.30417297573763929e-05 ,
-             xSolarMass() * 2.85885980666130812e-04)
+  50000000.times(|| advance(bodies, 0.01))
 
-    uranus = Body(1.28943695621391310e+01,
-            -1.51111514016986312e+01,
-            -2.23307578892655734e-01,
-            xDaysPerYear() * 2.96460137564761618e-03,
-            xDaysPerYear() * 2.37847173959480950e-03,
-            xDaysPerYear() * -2.96589568540237556e-05,
-            xSolarMass() * 4.36624404335156298e-05)
-
-    neptune = Body(1.53796971148509165e+01,
-            -2.59193146099879641e+01,
-            1.79258772950371181e-01,
-            xDaysPerYear() * 2.68067772490389322e-03,
-            xDaysPerYear() * 1.62824170038242295e-03,
-            xDaysPerYear() * -9.51592254519715870e-05,
-            xSolarMass() * 5.15138902046611451e-05)
-
-
-    bodies: Array[Body] = arrayUnsafe.alloc(5)
-    arrayUnsafe.set(bodies, 0, sun)
-    arrayUnsafe.set(bodies, 1, jupiter)
-    arrayUnsafe.set(bodies, 2, saturn)
-    arrayUnsafe.set(bodies, 3, uranus)
-    arrayUnsafe.set(bodies, 4, neptune)
-
-    n = 50000000
-
-    offsetMomentum(bodies)
-    io.print('\n')
-    io.printDouble(energy(bodies))
-    io.print('\n')
-
-    i = 0
-
-    while i < n do
-      advance(bodies, 0.01)
-      i = i + 1 .
-
-    io.printDouble(energy(bodies))
-    io.print('\n') .
+  io.printDouble(energy(bodies))
+  io.print('\n') .
