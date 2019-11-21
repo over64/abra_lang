@@ -1,4 +1,4 @@
-import io, array, arrayUnsafe
+import io, array, arrayUnsafe, range
 
 native
     declare double  @llvm.sqrt.f64(double %val) .

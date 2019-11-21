@@ -3,7 +3,7 @@ import arrayUnsafe
 def set = self: Array[t], idx: Int, value: t do
   arrayUnsafe.set(self, idx, value) .None
 
-def map = self: Array, index: Int, mapper(t)->t do
+def mapOffset = self: Array, index: Int, mapper(t)->t do
     i = index
 
     while i < self.len() do
@@ -16,6 +16,21 @@ def mapIndexed = self: Array, index: Int, mapper(i, t)->t do
     while i < self.len() do
         self(i) = mapper( i, self(i) )
         i++..
+
+def mapOne = self: Array, index: Int, mapper(t)->t do
+    self(index) = mapper(self(index)).
+
+def forEach = self: Array, forepper(t)->t do
+    i = 0
+
+    while i < self.len()
+        forepper(self(i))..
+
+def forEachOffset = self: Array, index: Int, forepper(t)->t do
+    i = index
+
+    while i < self.len()
+        forepper(self(i))..
 
 def get = self: Array[t], idx: Int do
   arrayUnsafe.get(self, idx) .t
