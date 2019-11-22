@@ -57,7 +57,7 @@ def advance = bodies: Array[Body], dt: Double do
 def energy = bodies: Array[Body] do
   e: Double = 0.0
 
-  bodies.forEach with |bi|
+  bodies.forEachIndexed with |i, bi|
     vx = bi.vx
     vy = bi.vy
     vz = bi.vz
@@ -69,7 +69,7 @@ def energy = bodies: Array[Body] do
       dy = bi.y-bj.y
       dz = bi.z-bj.z
       distance = dx * dx + dy * dy + dz * dz
-      e = e - (bim * bj.mass / distance)
+      e = e - (bim * bj.mass / distance) .
   e .
 
 def main =

@@ -3,36 +3,43 @@ import arrayUnsafe
 def set = self: Array[t], idx: Int, value: t do
   arrayUnsafe.set(self, idx, value) .None
 
-def mapOffset = self: Array, index: Int, mapper: (t)->t do
+def mapOffset = self: Array[t], index: Int, mapper: (t)->t do
     i = index
 
     while i < self.len() do
         self(i) = mapper( self(i) )
-        i = i + 1..
+        i = i + 1 ..
 
-def mapIndexed = self: Array, index: Int, mapper: (i, t)->t do
+def mapIndexed = self: Array[t], index: Int, mapper: (i, t)->t do
     i = index
 
     while i < self.len() do
         self(i) = mapper( i, self(i) )
-        i = i + 1..
+        i = i + 1 ..
 
-def mapOne = self: Array, index: Int, mapper: (t)->t do
-    self(index) = mapper(self(index)).
+def mapOne = self: Array[t], index: Int, mapper: (t)->t do
+    self(index) = mapper(self(index)) .
 
-def forEach = self: Array, forepper: (t)->None do
+def forEach = self: Array[t], forepper: (t)->None do
     i = 0
 
     while i < self.len() do
         forepper(self(i))
-        i = i + 1..
+        i = i + 1 ..
 
-def forEachOffset = self: Array, index: Int, forepper: (t)->None do
+def forEachOffset = self: Array[t], index: Int, forepper: (t)->None do
     i = index
 
     while i < self.len() do
         forepper(self(i))
-        i = i + 1..
+        i = i + 1 ..
+
+def forEachIndexed = self: Array[t],forepper: (i, t)->None do
+    i = 0
+
+    while i < self.len() do
+        forepper(i, self(i))
+        i = i + 1 ..
 
 def get = self: Array[t], idx: Int do
   arrayUnsafe.get(self, idx) .t
