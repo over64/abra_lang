@@ -3,43 +3,34 @@ import arrayUnsafe
 def set = self: Array[t], idx: Int, value: t do
   arrayUnsafe.set(self, idx, value) .None
 
-def mapOffset = self: Array[t], index: Int, mapper: (t)->t do
-    i = index
+def at = self: Array[t], idx: Int, fn: (t) -> None native
+  %len = extractvalue $argTypeof(self) %self, 0
+  %ptr = extractvalue $argTypeof(self) %self, 1
 
-    while i < self.len() do
-        self(i) = mapper( self(i) )
-        i = i + 1 ..
+  %closure = extractvalue $argTypeof(fn) %fn, 0
+  %env = extractvalue $argTypeof(fn) %fn, 1
+  %elPtr = getelementptr $t, $t* %ptr, i32 %idx
 
-def mapIndexed = self: Array[t], index: Int, mapper: (i, t)->t do
-    i = index
+  ;meta if_pass_by_pointer[t] call void %closure($t* %elPtr, i8* %env)
+  ;meta if_pass_by_ref[t]     %el = load $t, $t* %elPtr
+  ;meta if_pass_by_ref[t]     call void %closure($t %el, i8* %env)
 
-    while i < self.len() do
-        self(i) = mapper( i, self(i) )
-        i = i + 1 ..
+  ret void .None
 
-def mapOne = self: Array[t], index: Int, mapper: (t)->t do
-    self(index) = mapper(self(index)) .
+def forEach = self: Array[t], fn: (t) -> None do
+   self.forEachOffset(0, fn) .
 
-def forEach = self: Array[t], forepper: (t)->None do
-    i = 0
+def forEachOffset = self: Array[t], start: Int, fn: (t) -> None do
+  i = start
+  while i < self.len() do
+    self.at(i, fn)
+    i = i + 1 ..
 
-    while i < self.len() do
-        forepper(self(i))
-        i = i + 1 ..
-
-def forEachOffset = self: Array[t], index: Int, forepper: (t)->None do
-    i = index
-
-    while i < self.len() do
-        forepper(self(i))
-        i = i + 1 ..
-
-def forEachIndexed = self: Array[t],forepper: (i, t)->None do
-    i = 0
-
-    while i < self.len() do
-        forepper(i, self(i))
-        i = i + 1 ..
+def forEachIndexed = self: Array[t], fn: (Int, t) -> None do
+  i = 0
+  while i < self.len() do
+    self.at(i, |v: t| fn(i, v)) -- FIXME: bug in type infer!!!
+    i = i + 1 ..
 
 def get = self: Array[t], idx: Int do
   arrayUnsafe.get(self, idx) .t

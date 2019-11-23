@@ -53,7 +53,8 @@ object Compiler {
               runtimeLL: String,
               prelude: Option[String] = None,
               entry: String,
-              linkerFlags: String = ""): Unit = {
+              linkerFlags: String = "",
+              mcpu: String = ""): Unit = {
 
     val m1 = System.currentTimeMillis()
 
@@ -72,7 +73,7 @@ object Compiler {
       val llSrc = file.getAbsolutePath
       val objDest = llSrc.stripSuffix(".ll") + ".o"
 
-      if (invoke(Seq("sh", "-c", s"opt-8 -O3 -debugify $llSrc | llc-8 -O3 -filetype=obj -o $objDest"))._1 != 0)
+      if (invoke(Seq("sh", "-c", s"opt-8 -O3 -debugify $llSrc | llc-8 -O3 ${if(mcpu != "") s"-mcpu=$mcpu " else "" }-filetype=obj -o $objDest"))._1 != 0)
         throw new RuntimeException("Compilation error: llc")
       objDest
     }

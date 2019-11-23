@@ -852,7 +852,7 @@ class Pass {
         case Some(arg) if arg.name == "self" => (mctx.modules.head.pkg + "." + arg.typeHint + "." + dctx.fn.name + irParams).escaped
         case _ =>
           if (dctx.fn.name == "main") "main"
-          else if (dctx.isClosure) (dctx.fn.name + irParams).escaped
+          else if (dctx.isClosure) (dctx.fn.name).escaped
           else (mctx.modules.head.pkg + "." + dctx.fn.name + irParams).escaped
       }
 
@@ -863,7 +863,7 @@ class Pass {
 
     dctx.fn.lambda.body match {
       case llVm(code) =>
-        code.split("\n").map(line => line.trim).foreach { line =>
+        def processLine(line: String): Unit = {
           if (line.startsWith(";meta ")) {
             val cmd = line.stripPrefix(";meta ")
 
@@ -878,7 +878,7 @@ class Pass {
               }
             } else if (cmd.startsWith("intermod_inline"))
               CGMeta.setIntermodInline(dctx.fn)
-            else if (cmd.startsWith("store_arg")) {
+            else if (cmd.startsWith("store_arg")) { // FIXME: replace with if_pass_by_pointer?
               val pattern = """store_arg\(([a-zA-Z0-9]+),\s*([a-zA-Z0-9]+)\)""".r
               cmd.replace(" ", "") match {
                 case pattern(argName, dest) =>
@@ -893,8 +893,25 @@ class Pass {
 
                   Abi.store(mctx, dctx, false, false, argTh, argTh, "%" + dest, src)
               }
+            } else if (cmd.startsWith("if_pass_by_pointer")) {
+              val pattern = """if_pass_by_pointer\[([a-zA-Z0-9]+)\]\s(.*)""".r
+              cmd match {
+                case pattern(typeName, ir) =>
+                  dctx.specMap(GenericTh(typeName)).classify(mctx) match {
+                    case ValueUnion(_) | RefUnion(_) | ValueStruct(_) => processLine(ir)
+                    case _ =>
+                  }
+              }
+            } else if (cmd.startsWith("if_pass_by_ref")) {
+              val pattern = """if_pass_by_ref\[([a-zA-Z0-9]+)\]\s(.*)""".r
+              cmd match {
+                case pattern(typeName, ir) =>
+                  dctx.specMap(GenericTh(typeName)).classify(mctx) match {
+                    case ValueUnion(_) | RefUnion(_) | ValueStruct(_) =>
+                    case _ => processLine(ir)
+                  }
+              }
             }
-
           } else {
             var r = dctx.fn.params.foldLeft(line) { case (l, gth) =>
               try {
@@ -913,8 +930,9 @@ class Pass {
 
             dctx.write(r)
           }
-
         }
+
+        code.split("\n").map(line => line.trim).foreach { line => processLine(line) }
       case AbraCode(seq) =>
         val (isTerm, eth, eRes) = performBlock(mctx, dctx, seq)
 
@@ -990,7 +1008,7 @@ class Pass {
             if (dctx.isClosure || CGMeta.isIntermodInline(dctx.fn) || dctx.fn.isGeneric) "define private"
             else "define"
 
-          mctx.write(s"$define ${AbiTh.toRetVal(mctx, fth.ret)} @$fnName (${realArgs.mkString(", ")}) {")
+          mctx.write(s"$define ${AbiTh.toRetVal(mctx, fth.ret)} @$fnName (${realArgs.mkString(", ")}) ${if (dctx.isClosure) "alwaysinline" else ""} {")
 
           if (dctx.isClosure)
             mctx.write(s"  %__closure = bitcast i8* %__env to ${AbiTh.toClosure(mctx, dctx.meta.closure(dctx.fn.lambda))}*")

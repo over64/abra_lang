@@ -140,9 +140,6 @@ def * = self: Float, other: Float native
   %1 = fmul float %self, %other
   ret float %1 .Float
 
-def sqrt = self : Double native
-    %1 = call double @llvm.sqrt.f64(double %self)
-    ret double %1 .Double
 
 def / = self: Float, other: Float native
   ;meta intermod_inline
@@ -158,7 +155,6 @@ def * = self: Double, other: Double native
   ;meta intermod_inline
   %1 = fmul double %self, %other
   ret double %1 .Double
-
 
 def toRadians = self: Float do self * 3.14159265359 / 180.0 .
 

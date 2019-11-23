@@ -3,6 +3,12 @@ import io, array, arrayUnsafe, range
 native
     declare double  @llvm.sqrt.f64(double %val) .
 
+-- we cannot move sqrt to prelude because of inline
+-- we cannot intermod_inline functions which have dependencies of native block now
+def sqrt = self : Double native
+  %1 = call double @llvm.sqrt.f64(double %self)
+  ret double %1 .Double
+
 type Body = (x: Double, y: Double, z: Double, vx: Double, vy: Double, vz: Double, mass: Double)
 
 def pi = 3.141592653589793 .Double
@@ -21,38 +27,46 @@ def offsetMomentum = bodies: Array[Body] do
       py = py + (bi.vy * bim)
       pz = pz + (bi.vz * bim) .
 
-    bodies.mapOne with 0, |b0|
-      Body(b0.x, b0.y, b0.z,
-           px / xSolarMass() * -1.0, py / xSolarMass() * -1.0, pz / xSolarMass() * -1.0,
-           b0.mass) ..
+    bodies.at with 0, |b0|
+      b0.vx = px / xSolarMass() * -1.0
+      b0.vy = py / xSolarMass() * -1.0
+      b0.vz = pz / xSolarMass() * -1.0 ..
 
 def advance = bodies: Array[Body], dt: Double do
-  boies.mapIndexed with |i, bi|
-    bivx = bi.vx
-    bivy = bi.vy
+  bodies.forEachIndexed with |i, bi|
+    bivx = bi.vx -- multiple declarations will be usable
+    bivy = bi.vy -- maybe (bivx, bivy, bivz) = (bi.vx, bi.vy, bi.vz) ???
     bivz = bi.vz
+    bim = bi.mass
+    bix = bi.x
+    biy = bi.y
+    biz = bi.z
 
-    bodies.mapOffset with i + 1, |bj|
-      dx = bi.x - bj.x
-      dy = bi.y - bj.y
-      dz = bi.z - bj.z
+    bodies.forEachOffset with i + 1, |bj|
+      dx = bix - bj.x
+      dy = biy - bj.y
+      dz = biz - bj.z
 
-      mag = (dx * dx + dy * dy + dz * dz)
-      mag = (dt / (mag * mag * mag)).sqrt()
+      dSquared = dx * dx + dy * dy + dz * dz
+      mag = dSquared.sqrt()
+      mag = dt / (mag * dSquared)
 
       bm = bj.mass * mag
-      bivx = bivx - (dx * bm)
-      bivy = bivy - (dy * bm)
-      bivz = bivz - (dz * bm)
+      bivx = bivx - dx * bm
+      bivy = bivy - dy * bm
+      bivz = bivz - dz * bm
 
-      bm = bi.mass * mag
-      Body(bj.x, bj.y, bj.z,
-           bj.vx + dx * bm, bj.vy + dy * bm, bj.vz + dz * bm,
-           bj.mass) .
+      bm = bim * mag
+      bj.vx = bj.vx + dx * bm
+      bj.vy = bj.vy + dy * bm
+      bj.vz = bj.vz + dz * bm .
 
-    Body(bivx, bivy, bivz,
-         bix + dt * bivx, biy + dt * bivy, biz + dt * bivz,
-         bi.mass) ..
+    bi.x = bix + dt * bivx
+    bi.y = biy + dt * bivy
+    bi.z = biz + dt * bivz
+    bi.vx = bivx
+    bi.vy = bivy
+    bi.vz = bivz ..
 
 def energy = bodies: Array[Body] do
   e: Double = 0.0
@@ -65,11 +79,11 @@ def energy = bodies: Array[Body] do
     e = e + (bim * (vx * vx + vy * vy + vz * vz) * 0.5)
 
     bodies.forEachOffset with i + 1, |bj|
-      dx = bi.x-bj.x
-      dy = bi.y-bj.y
-      dz = bi.z-bj.z
-      distance = dx * dx + dy * dy + dz * dz
-      e = e - (bim * bj.mass / distance) .
+      dx = bi.x - bj.x
+      dy = bi.y - bj.y
+      dz = bi.z - bj.z
+      distance = (dx * dx + dy * dy + dz * dz).sqrt()
+      e = e - (bim * bj.mass / distance) ..
   e .
 
 def main =
@@ -106,7 +120,7 @@ def main =
   io.printDouble(energy(bodies))
   io.print('\n')
 
-  50000000.times(|| advance(bodies, 0.01))
+  50000000.times(|| advance(bodies, 0.01)) -- this call must be inlined
 
   io.printDouble(energy(bodies))
   io.print('\n') .
