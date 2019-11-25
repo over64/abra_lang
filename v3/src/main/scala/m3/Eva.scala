@@ -8,6 +8,7 @@ import scopt.OParser
 object Eva {
   case class Config(libDir: String = "/home/devteam/build/eva_lang/v3/eva/lib/",
                     linkerFlags: String = "",
+                    mcpu: String ="",
                     mainFile: Path = null)
 
   def main(args: Array[String]): Unit = {
@@ -25,6 +26,9 @@ object Eva {
         opt[String]("linker-flags")
           .action((flags, c) => c.copy(linkerFlags = flags))
           .text("linker flags"),
+        opt[String]("mcpu")
+          .action((march, c) => c.copy(mcpu = march))
+          .text("target cpu micro architecture"),
         arg[String]("file")
           .required()
           .action { (f, c) =>
@@ -54,6 +58,7 @@ object Eva {
       conf.libDir + "/runtime2.ll",
       Some("prelude"),
       entryModule,
-      conf.linkerFlags)
+      conf.linkerFlags,
+      conf.mcpu)
   }
 }

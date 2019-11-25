@@ -62,7 +62,7 @@ class CallInfer(val ctx: PassContext,
         }
 
       val reversed = localInfer.specMap
-        .filter { case (_, v) => v.isInstanceOf[GenericTh]}
+        .filter { case (_, v) => v.isInstanceOf[GenericTh] }
         .map[GenericTh, TypeHint] { case (k, v) => (v.asInstanceOf[GenericTh], k.asInstanceOf[TypeHint]) }
 
       val highOrder = fnEq.eqSeq.flatMap(eq => check(lctx.deeperExpr(), selfFnInfer, eq))
@@ -171,20 +171,19 @@ class Invoker(val findSelfDef: (PassContext, Seq[AstInfo], TypeHint, String) => 
       ctx.log("callspec " + eqInfer.tInfer.specMap.mkString("{", " , ", "}"))
     }
 
-    val inferedArgs =
-      (fnTh.args zip args).zipWithIndex.map { case ((defArgTh, argTask), idx) =>
-        val advice = ThUtil.spec(eqInfer.advice(defArgTh),
-          HashMap()) /* sieve generics??? */
+    (fnTh.args zip args).zipWithIndex.map { case ((defArgTh, argTask), idx) =>
+      val advice = ThUtil.spec(eqInfer.advice(defArgTh),
+        eqInfer.tInfer.specMap)
 
-        ctx.log(s"inferarg $idx adviced $advice")
-        val (argLocation, argTh) = argTask.infer(eqInfer.ctx, eqCaller, advice)
+      ctx.log(s"inferarg $idx adviced $advice")
+      val (argLocation, argTh) = argTask.infer(eqInfer.ctx, eqCaller, advice)
 
-        ctx.log(s"passarg $idx $defArgTh <= $argTh")
-        eqInfer.infer(Seq(argLocation), defArgTh, argTh)
-        ctx.log("callspec " + eqInfer.tInfer.specMap.mkString("{", " , ", "}"))
+      ctx.log(s"passarg $idx $defArgTh <= $argTh")
+      eqInfer.infer(Seq(argLocation), defArgTh, argTh)
+      ctx.log("callspec " + eqInfer.tInfer.specMap.mkString("{", " , ", "}"))
 
-        eqInfer.advice(defArgTh)
-      }
+      eqInfer.advice(defArgTh)
+    }
 
     eqInfer.lift(eqCaller)
 

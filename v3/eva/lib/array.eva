@@ -3,6 +3,35 @@ import arrayUnsafe
 def set = self: Array[t], idx: Int, value: t do
   arrayUnsafe.set(self, idx, value) .None
 
+def at = self: Array[t], idx: Int, fn: (t) -> None native
+  %len = extractvalue $argTypeof(self) %self, 0
+  %ptr = extractvalue $argTypeof(self) %self, 1
+
+  %closure = extractvalue $argTypeof(fn) %fn, 0
+  %env = extractvalue $argTypeof(fn) %fn, 1
+  %elPtr = getelementptr $t, $t* %ptr, i32 %idx
+
+  ;meta if_pass_by_pointer[t] call void %closure($t* %elPtr, i8* %env)
+  ;meta if_pass_by_ref[t]     %el = load $t, $t* %elPtr
+  ;meta if_pass_by_ref[t]     call void %closure($t %el, i8* %env)
+
+  ret void .None
+
+def forEach = self: Array[t], fn: (t) -> None do
+   self.forEachOffset(0, fn) .
+
+def forEachOffset = self: Array[t], start: Int, fn: (t) -> None do
+  i = start
+  while i < self.len() do
+    self.at(i, fn)
+    i = i + 1 ..
+
+def forEachIndexed = self: Array[t], fn: (Int, t) -> None do
+  i = 0
+  while i < self.len() do
+    self.at(i, |v| fn(i, v))
+    i = i + 1 ..
+
 def get = self: Array[t], idx: Int do
   arrayUnsafe.get(self, idx) .t
 
