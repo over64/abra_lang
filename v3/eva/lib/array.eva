@@ -29,7 +29,7 @@ def forEachOffset = self: Array[t], start: Int, fn: (t) -> None do
 def forEachIndexed = self: Array[t], fn: (Int, t) -> None do
   i = 0
   while i < self.len() do
-    self.at(i, |v: t| fn(i, v)) -- FIXME: bug in type infer!!!
+    self.at(i, |v| fn(i, v))
     i = i + 1 ..
 
 def get = self: Array[t], idx: Int do
