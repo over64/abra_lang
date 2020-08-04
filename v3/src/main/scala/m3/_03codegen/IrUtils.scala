@@ -337,7 +337,7 @@ object IrUtils {
     if (filtered.isEmpty) return 8
 
     fw.close()
-    val proc = Runtime.getRuntime.exec(Seq("sh", "-c", "llc-8 -filetype=obj /tmp/sizes.ll -o /tmp/sizes.o && nm -td -n -S /tmp/sizes.o").toArray)
+    val proc = Runtime.getRuntime.exec(Seq("sh", "-c", "llc-9 -filetype=obj /tmp/sizes.ll -o /tmp/sizes.o && nm -td -n -S /tmp/sizes.o").toArray)
     proc.waitFor()
 
     val err = new Scanner(proc.getErrorStream)

@@ -91,7 +91,7 @@ object CodeGenUtil {
       val src = file.getAbsolutePath
       val dest = src.stripSuffix(".ll") + ".o"
 
-      if (invoke(Seq("sh", "-c", s"opt-8 -O3 -debugify $src | llc-8 -O3 -filetype=obj -o $dest"))._1 != 0)
+      if (invoke(Seq("sh", "-c", s"opt-9 -O3 -debugify $src | llc-9 -O3 -filetype=obj -o $dest"))._1 != 0)
         throw new RuntimeException("Compilation error: llc")
 
       dest
@@ -101,7 +101,7 @@ object CodeGenUtil {
     println(s"__LLVM pass elapsed: ${m2 - m1}ms")
 
     if (invoke(Seq("sh", "-c",
-      s"clang-8 -O3 -g ${objects.mkString(" ")} ${System.getProperty("user.dir")}/v3/eva/lib/runtime2.ll -o /tmp/main  ${linkerFlags.mkString(" ")}"))._1 != 0)
+      s"clang-9 -O3 -g ${objects.mkString(" ")} ${System.getProperty("user.dir")}/v3/eva/lib/runtime2.ll -o /tmp/main  ${linkerFlags.mkString(" ")}"))._1 != 0)
       throw new RuntimeException("Compilation error: llc")
 
     val _m3 = System.currentTimeMillis()

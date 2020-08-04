@@ -1,7 +1,13 @@
 import range with Range, io
 
+native
+  declare void @my_init() .
+
 type Node = (left: Node | None, right: Node | None)
 
+def myAllocInit = native
+  call void @my_init()
+  ret void .None
 
 
 def mkTree = depth: Int do  -- FIXME: RC BUG_006
@@ -32,6 +38,8 @@ def stat = nTrees: Int, name: String, depth: Int, sum: Int do
   io.print(name) io.printInt(depth) io.print('\t check: ') io.printInt(sum) io.print('\n') .
 
 def main =
+  myAllocInit()
+
   minDepth = 4
   maxDepth = 21 -- sys.arg(0).toInt()
 

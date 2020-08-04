@@ -25,3 +25,79 @@ def main =
     io.stdout('% trees of depth % check %' iters, depth, total)
     
   io.stdout('long lived tree of depth % check %', max, longLive.check())
+
+type EUnclassifiedName = (name: String)
+
+def twice = self: Int then x * 2
+def twice = self: Int -> x * 2
+def check = self: Node ->
+  l, r = self.child unless is None return 1
+  l.check() + r.check() + 1
+
+
+def main =
+   x = 0
+   while x < 100
+     x = x + 1
+
+   while x < 100 then x = x + 1
+
+
+   goodNum = num unless 5 | 6 | 7 -> 1 -- filter bad nums
+
+   username = loadName(io) unless is EInput -> 'Ivan'
+   country = if username
+     is 'John'  | 'Donald' then 'US'
+     is 'Boris' | 'Ivan'   then 'RU'
+     else EUnclassifiedName(username)
+
+   isBig = if count is 0 | 1 | 2 then false else true
+
+   isBig = if count == 0 | 1 | 2 then false else true
+   isBig = true unless count == 0 | 1 | 2 -> false
+
+   country = if username
+     == 'John'  | 'Donald' -> 'US'
+     == 'Boris' | 'Ivan'   -> 'RU'
+     else EUnclassifiedName(username)
+
+   isBig = if count
+     == 0 | 1 | 2 -> Small()
+     <  100       -> Medium()
+     else            Large()
+
+   isBig = if count <
+     10  -> Small()
+     100 -> Medium()
+     else   Large()
+
+   if flag then
+     doSomeIOStaff()
+
+   if longCondition1() ||
+      longCondition2() ||
+      longCondition3()
+      then doSomeIOStaff()
+      else fuckYou()
+
+def matches = self: Int, other: Int -> self * other < 70
+def main =
+   a, b, c = io.sscanf('%d %d %d')
+   localVar: Int = io.readInt()
+   if localVar
+     .matches(1) -> 'good'
+     .matches(2) -> 'bad'
+     else           'ugly'
+
+
+
+   if 'http://xxx.com'
+     .matches('http://(.*)\.com')
+       with domain -> domain + '.com'
+     .startsWith('http://') -> 'web'
+
+   if vec
+     .x == 0      -> 'zero x coord'
+     .x + .y < 10 -> 'special vector'
+     .x.pow(3) + .y.pow(3) + .z.pow(3) == 1 ->
+        'identity vector'

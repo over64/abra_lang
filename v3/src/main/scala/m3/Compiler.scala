@@ -73,7 +73,7 @@ object Compiler {
       val llSrc = file.getAbsolutePath
       val objDest = llSrc.stripSuffix(".ll") + ".o"
 
-      if (invoke(Seq("sh", "-c", s"opt-8 -O3 -debugify $llSrc | llc-8 -O3 ${if(mcpu != "") s"-mcpu=$mcpu " else "" }-filetype=obj -o $objDest"))._1 != 0)
+      if (invoke(Seq("sh", "-c", s"opt-9 -O3 -debugify $llSrc | llc-9 -O3 ${if(mcpu != "") s"-mcpu=$mcpu " else "" }-filetype=obj -o $objDest"))._1 != 0)
         throw new RuntimeException("Compilation error: llc")
       objDest
     }
@@ -83,7 +83,7 @@ object Compiler {
 
     val binFile = entry.stripPrefix(".").stripSuffix(".eva")
     if (invoke(Seq("sh", "-c",
-      s"clang-8 -O3 -g ${objects.mkString(" ")} $runtimeLL $linkerFlags -o $targetDir/$binFile"))._1 != 0)
+      s"clang-9 -O3 -g ${objects.mkString(" ")} $runtimeLL $linkerFlags -o $targetDir/$binFile"))._1 != 0)
       throw new RuntimeException("Compilation error: llc")
 
     val _m3 = System.currentTimeMillis()
