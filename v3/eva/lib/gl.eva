@@ -199,7 +199,7 @@ def getInfo = self: Shader, paramName: Int native
     ret i32 %2 .Int
 
 def getInfoLog = self: Shader native
-; #define GL_INFO_LOG_LENGTH                0x8B84 = 35716
+    ; #define GL_INFO_LOG_LENGTH                0x8B84 = 35716
     %1 = alloca i32
     call void @glGetShaderiv(i32 %self, i32 35716, i32* %1)
     %length32 = load i32, i32* %1
@@ -232,7 +232,7 @@ def getInfo = self: ShaderProgram, paramName: Int native
     ret i32 %2 .Int
 
 def getInfoLog = self: ShaderProgram native
-; #define GL_INFO_LOG_LENGTH                0x8B84 = 35716
+    ; #define GL_INFO_LOG_LENGTH                0x8B84 = 35716
     %1 = alloca i32
     call void @glGetProgramiv(i32 %self, i32 35716, i32* %1)
     %length32 = load i32, i32* %1

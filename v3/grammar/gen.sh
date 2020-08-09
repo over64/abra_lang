@@ -1,0 +1,1 @@
+jflex --nobak lexer.flex -d ../src/main/java/grammar
