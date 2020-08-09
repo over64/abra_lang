@@ -22,22 +22,22 @@ object ParseNS {
                 rule: => PResult[T]): PResult[Seq[T]] = {
       val buff = mutable.ListBuffer[T]()
       var matched = true
-      var (savePos, saveIdent) = (ctx.pos, ctx.lastIdent)
+      val savepoint = new Savepoint(); ctx.save(savepoint)
       var lastMsg: String = "__unreachable_no_message__"
 
       rule match {
-        case Right(value) => buff += value; savePos = ctx.pos; saveIdent = ctx.lastIdent
-        case Left(msg) => ctx.pos = savePos; ctx.lastIdent = saveIdent; matched = false; lastMsg = msg
+        case Right(value) => buff += value; ctx.save(savepoint)
+        case Left(msg) => ctx.restore(savepoint); matched = false; lastMsg = msg
       }
 
       while (matched) {
         delim match {
           case Right(_) =>
             rule match {
-              case Right(value) => buff += value; savePos = ctx.pos; saveIdent = ctx.lastIdent
-              case Left(msg) => ctx.pos = savePos; ctx.lastIdent = saveIdent; matched = false; lastMsg = msg
+              case Right(value) => buff += value; ctx.save(savepoint)
+              case Left(msg) => ctx.restore(savepoint); matched = false; lastMsg = msg
             }
-          case Left(msg) => ctx.pos = savePos; ctx.lastIdent = saveIdent; matched = false; lastMsg = msg
+          case Left(msg) => ctx.restore(savepoint); matched = false; lastMsg = msg
         }
       }
 
@@ -45,12 +45,13 @@ object ParseNS {
     }
 
     def or[T](rules: (() => PResult[T])*): PResult[T] = {
-      var (i, savePos, saveIdent) = (0, ctx.pos, ctx.lastIdent)
+      var i = 0
+      val savepoint = new Savepoint(); ctx.save(savepoint)
       val anyOf = mutable.ListBuffer[String]()
       while (i < rules.length) {
         rules(i)() match {
           case right@Right(_) => return right
-          case Left(msg) => ctx.pos = savePos; ctx.lastIdent = saveIdent; anyOf += msg
+          case Left(msg) => ctx.restore(savepoint); anyOf += msg
         }
         i += 1
       }
@@ -59,19 +60,29 @@ object ParseNS {
     }
 
     def opt[T](rule: => PResult[T]): PResult[Option[T]] = {
-      val (savePos, saveIdent) = (ctx.pos, ctx.lastIdent)
+      val savepoint = new Savepoint(); ctx.save(savepoint)
       rule match {
         case Right(value) => Right(Some(value))
-        case Left(_) => ctx.pos = savePos; ctx.lastIdent = saveIdent; Right(None)
+        case Left(_) => ctx.restore(savepoint); Right(None)
       }
     }
   }
 
-  final class Ctx(source: Array[Char], stream: Array[Long],
-                  var pos: Int, var lastIdent: Int) {
-    def next(): Long = {
-      pos += 1
-      stream(pos - 1)
+  class Savepoint(var pos: Int = 0, var iPtr: Int = 0)
+  final class Ctx(source: Array[Char], stream: Array[Long], var pos: Int,
+                  iStack: Array[Int] = Array.fill(128)(0), var iPtr: Int = 0) {
+    def identCur = iStack(iPtr)
+    def identPop() = iPtr -= 1
+    def identPush(ident: Int) = {
+      iPtr += 1
+      iStack(iPtr) = ident
+    }
+
+    def save(point: Savepoint): Unit = {
+      point.pos = pos; point.iPtr = iPtr
+    }
+    def restore(point: Savepoint): Unit = {
+      pos = point.pos; iPtr = point.iPtr
     }
 
     def tokenText(token: Long): String =

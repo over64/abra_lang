@@ -8,7 +8,6 @@ import m3.grammar.ParseNS._
 import org.scalatest.FunSuite
 
 import scala.collection.immutable.Seq
-import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 class _002NewParser extends FunSuite {
@@ -95,20 +94,18 @@ class _002NewParser extends FunSuite {
     def rtLit() = or(rtLitNone, rtLitBool, rtLitInt, rtLitFloat, rtLitString)
 
     def rIdentIn = {
-      ctx.lastIdent += 2;
-      Right(())
+      ctx.identPush(ctx.identCur + 2); Right(())
     }
 
     def rIdentOut = {
-      ctx.lastIdent -= 2;
-      Right(())
+      ctx.identPop(); Right(())
     }
 
     def rIdent = l_ident match {
       case Right(token) =>
         val len = Emitter.decodeLen(token)
-        if (len != ctx.lastIdent)
-          throw new RuntimeException(s"Expected ident ${ctx.lastIdent} has $len")
+        if (len != ctx.identCur)
+          throw new RuntimeException(s"Expected ident ${ctx.identCur} has $len")
         Right(())
       case left@Left(_) => left
     }
@@ -138,7 +135,7 @@ class _002NewParser extends FunSuite {
           _ <- rIdentOut
         } yield seq.map {ctx.tokenText}
       }
-    } yield ImportEntry(ctx.tokenText(id), "nopath", types.getOrElse(Seq()))
+    } yield ImportEntry(ctx.tokenText(id), "__", types.getOrElse(Seq()))
 
     def rImport = for {
       _ <- l_import
@@ -150,7 +147,7 @@ class _002NewParser extends FunSuite {
 
     def rGenericTh = for {
       id <- l_id
-    } yield GenericTh(ctx.tokenText(id), false)
+    } yield GenericTh(ctx.tokenText(id))
 
     def rScalarTh: PResult[ScalarTh] = for {
       mod <- opt {
@@ -207,27 +204,31 @@ class _002NewParser extends FunSuite {
     val source = input.toCharArray
     val tokens = ArrayBuffer[Long]()
     LexUtils.lexRaw(source, { token => tokens += token })
-    new Parser(new Ctx(source, tokens.toArray, 1, 0))
+    new Parser(new Ctx(source, tokens.toArray, 1))
   }
 
   // +- 2, no stack, savepoint for ident
   // rIdent just checks, всегда одинаково
   // type declarations???
-  // + 1. get text for lexems
-  //   2. add metadata to Lex, fix literals
-  //   3. make Or
-  //   4. Or, And, Opt => fix savepoints
-  // > 5. parse typehint <
+  //   1. add metadata to Lex, fix literals
+  //   2. fix ident for typehint
 
   test("parse import") {
-    val d = parserForInput(
+    assert(parserForInput(
       """import io, seq,
         |  lib1, lib2,
         |  pg with Connection,
         |  json with
         |    JsonTree JsonPath,
-        |  lib3""".stripMargin).rImport
-    println(d)
+        |  lib3""".stripMargin).rImport ===
+      Right(Import(Seq(
+        ImportEntry("io", "__", Seq()),
+        ImportEntry("seq", "__", Seq()),
+        ImportEntry("lib1", "__", Seq()),
+        ImportEntry("lib2", "__", Seq()),
+        ImportEntry("pg", "__", Seq("Connection")),
+        ImportEntry("json","__",Seq("JsonTree", "JsonPath")),
+        ImportEntry("lib3", "__", Seq())))))
   }
 
   test("parse typehint: generic") {
